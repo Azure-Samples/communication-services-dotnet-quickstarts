@@ -1,3 +1,12 @@
+---
+page_type: sample
+languages:
+- csharp
+products:
+- azure
+---
+
+
 # Send an SMS Message Quickstart
 
 For full instructions on how to build this code sample from scratch, look at [Quickstart: Send an SMS Message](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/send)
