@@ -15,7 +15,7 @@ namespace SendSMS
                     from: "<from-phone-number>", // Your E.164 formatted from phone number used to send SMS
                     to: "<to-phone-number>", // E.164 formatted recipient phone number
                     message: "Hello 👋🏻");
-            Console.WriteLine($"Sms id: {sendResult.MessageId}");
+            Console.WriteLine($"Message id {sendResult.MessageId}");
         }
     }
 }
