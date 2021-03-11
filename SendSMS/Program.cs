@@ -14,7 +14,7 @@ namespace SendSMS
             SmsSendResult sendResult = smsClient.Send(
                     from: "<from-phone-number>", // Your E.164 formatted from phone number used to send SMS
                     to: "<to-phone-number>", // E.164 formatted recipient phone number
-                    message: "Hi");
+                    message: "Hello 👋🏻");
             Console.WriteLine($"Sms id: {sendResult.MessageId}");
         }
     }
