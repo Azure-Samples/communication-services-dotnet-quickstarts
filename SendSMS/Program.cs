@@ -12,9 +12,9 @@ namespace SendSMS
             SmsClient smsClient = new SmsClient(connectionString);
 
             SmsSendResult sendResult = smsClient.Send(
-                    from: "<from-phone-number>", // Your E.164 formatted from phone number used to send SMS
-                    to: "<to-phone-number>", // E.164 formatted recipient phone number
-                    message: "Hello 👋🏻");
+                from: "<from-phone-number>", // Your E.164 formatted from phone number used to send SMS
+                to: "<to-phone-number>", // E.164 formatted recipient phone number
+                message: "Hello 👋🏻");
             Console.WriteLine($"Message id {sendResult.MessageId}");
         }
     }
