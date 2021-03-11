@@ -8,14 +8,14 @@ namespace SendSMS
     {
         private static void Main()
         {
-            const string connectionString = "YOUR_CONNECTION_STRING"; // Acquire from your Azure Communication resource in the Azure portal 
-            var smsClient = new SmsClient(connectionString);
-            var response = smsClient.Send(
-                from: new PhoneNumber("+1YOUR-PHONE-NUMBER"), // Acquire phone number on your Azure Communication resource
-                to: new PhoneNumber("+12222222222"),
-                message: "Hello 👋🏻");
+            var connectionString = "<connection-string>"; // Find your Communication Services resource in the Azure portal
+            SmsClient smsClient = new SmsClient(connectionString);
 
-            Console.WriteLine($"Message id {response.Value.MessageId}");
+            SmsSendResult sendResult = smsClient.Send(
+                from: "<from-phone-number>", // Your E.164 formatted from phone number used to send SMS
+                to: "<to-phone-number>", // E.164 formatted recipient phone number
+                message: "Hello 👋🏻");
+            Console.WriteLine($"Message id {sendResult.MessageId}");
         }
     }
 }
