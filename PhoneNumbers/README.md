@@ -9,7 +9,7 @@ products:
 
 # Manage phone numbers Quickstart
 
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Send an SMS Message](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivot=programming-language-csharp)
+For full instructions on how to build this code sample from scratch, look at [Quickstart: Manage phone numbers](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivot=programming-language-csharp)
 
 ## Prerequisites
 
