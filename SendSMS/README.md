@@ -4,6 +4,7 @@ languages:
 - csharp
 products:
 - azure
+- azure-communication-services
 ---
 
 
