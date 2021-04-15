@@ -13,3 +13,8 @@ Azure Communication Services enable developers to add communication capabilities
 1. [Send SMS](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/telephony-sms/send?pivots=programming-language-csharp)
 
 2. [Manage Phone Numbers](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivot=programming-language-csharp)
+
+3. [Create and manage Communication Services resources](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/create-communication-resource?tabs=windows&pivots=platform-net)
+
+2. [Create and manage access tokens](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp)
+
