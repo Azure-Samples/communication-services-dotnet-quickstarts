@@ -9,7 +9,7 @@ products:
 
 # Create and manage Communication Services resources
 
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Create and manage Communication Services resources](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/create-communication-resource?tabs=windows&pivots=platform-net)
+For full instructions on how to build this code sample from scratch, look at [Quickstart: Create and manage Communication Services resources](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource?tabs=windows&pivots=platform-net)
 
 ## Prerequisites
 
