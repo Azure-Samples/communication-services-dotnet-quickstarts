@@ -10,14 +10,14 @@ products:
 
 # Add Chat to your Application
 
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Add Chat to your App](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/chat/get-started?pivots=programming-language-csharp)
+For full instructions on how to build this code sample from scratch, look at [Quickstart: Add Chat to your App](https://docs.microsoft.com/azure/communication-services/quickstarts/chat/get-started?pivots=programming-language-csharp)
 
 ## Prerequisites
 
 - An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F). 
 - Install [Visual Studio](https://visualstudio.microsoft.com/downloads/)
 - Create an Azure Communication Services resource. For details, see [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource endpoint for this quickstart.
-- Create three ACS Users and issue them a [User Access Token](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp). Be sure to set the scope to "chat", and note the token string as well as the userId string.
+- Create three ACS Users and issue them a [User Access Token](https://docs.microsoft.com/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp). Be sure to set the scope to "chat", and note the token string as well as the userId string.
 
 ## Code Structure
 
