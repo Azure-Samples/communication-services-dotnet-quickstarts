@@ -1,3 +1,13 @@
+---
+page_type: sample
+languages:
+- csharp
+products:
+- azure
+- azure-communication-services
+---
+
+
 # Outboung Call Reminder Sample
 
 This sample application shows how the Azure Communication Services Server Calling SDK can be used to build IVR related solutions. This sample make an outbound call to a phone number or a communication identifier, play an audio message. If the callee presses 1 (tone1) then the application invites a new participant and then hangup the call. If the callee presses any other key then the application hangup the call. This sample application is also capable of making concurrent outbound calls as well.
