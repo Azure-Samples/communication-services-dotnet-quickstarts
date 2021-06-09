@@ -8,10 +8,10 @@ products:
 ---
 
 
-# Outboung Call Reminder Sample
+# Outbound Reminder Call Sample
 
-This sample application shows how the Azure Communication Services Server Calling SDK can be used to build IVR related solutions. This sample make an outbound call to a phone number or a communication identifier, play an audio message. If the callee presses 1 (tone1) then the application invites a new participant and then hangup the call. If the callee presses any other key then the application hangup the call. This sample application is also capable of making concurrent outbound calls as well.
-The application is a console based application build on .Net Framework 4.7.2.
+This sample application shows how the Azure Communication Services Server Calling SDK can be used to build IVR related solutions. This sample makes an outbound call to a phone number or a communication identifier and plays an audio message. If the callee presses 1 (tone1), to reschedule an appointment, then the application invites a new participant and then leaves the call. If the callee presses any other key then the application ends the call. This sample application is also capable of making multiple concurrent outbound calls.
+The application is a console based application built on .Net Framework 4.7.2.
 
 ## Getting started
 
@@ -32,9 +32,13 @@ The application is a console based application build on .Net Framework 4.7.2.
 - Open the app.config file to configure the following settings
 
 	- Connection String: Azure Communication Service resource's connection string.
-	- Source Phone: Phone number associated with the resource.
-	- DestinationIdentities: Destination identities to call. Multiple outbound calls are seperated by a semi-colon and participants in an outbound call are seperated by a coma. 
-      For e.g. +14251002000, 8:acs:ab12b0ea-85ea-4f83-b0b6-84d90209c7c4_00000009-bce0-da09-54b7-xxxxxxxxxxxx; +14251002001, 8:acs:ab12b0ea-85ea-4f83-b0b6-84d90209c7c4_00000009-bce0-da09-555-xxxxxxxxxxxx).
+	- Source Phone: Phone number associated with the Azure Communication Service resource.
+	- DestinationIdentities: Multiple sets of outbound target and Transfer target. These sets are seperated by a semi-colon, and outbound target and Transfer target in a each set are seperated by a coma.
+
+    	Format: "OutboundTarget1(PhoneNumber),TransferTarget1(PhoneNumber/MRI);OutboundTarget2(PhoneNumber),TransferTarget2(PhoneNumber/MRI);OutboundTarget3(PhoneNumber),TransferTarget3(PhoneNumber/MRI)".
+
+	  	For e.g. "+1425XXXAAAA,8:acs:ab12b0ea-85ea-4f83-b0b6-84d90209c7c4_00000009-bce0-da09-54b7-xxxxxxxxxxxx;+1425XXXBBBB,+1425XXXCCCC"
+
 	- NgrokExePath: Folder path where ngrok.exe is insalled/saved.
 	- SecretPlaceholder: Secret/Password that would be part of callback and will be use to validate incoming requests.
 	- CognitiveServiceKey: (Optional) Cognitive service key used for generating custom message
