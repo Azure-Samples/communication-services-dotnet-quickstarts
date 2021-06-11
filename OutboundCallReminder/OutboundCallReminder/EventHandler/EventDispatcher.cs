@@ -4,12 +4,10 @@
 namespace Communication.Server.Calling.Sample.OutboundCallReminder
 {
     using Azure.Communication.CallingServer;
-    using Microsoft.Azure.EventGrid;
-    using Microsoft.Azure.EventGrid.Models;
+    using Azure.Messaging;
     using Newtonsoft.Json;
     using System;
     using System.Collections.Concurrent;
-    using System.Linq;
     using System.Threading.Tasks;
 
     public class EventDispatcher
@@ -75,14 +73,14 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
         public string GetEventKey(CallingServerEventBase callEventBase)
         {
-            if (callEventBase is CallLegStateChangedEvent)
+            if (callEventBase is CallConnectionStateChangedEvent)
             {
-                var callLegId = ((CallLegStateChangedEvent)callEventBase).CallLegId;
-                return BuildEventKey(CallingServerEventType.CallLegStateChangedEvent.ToString(), callLegId);;
+                var callLegId = ((CallConnectionStateChangedEvent)callEventBase).CallConnectionId;
+                return BuildEventKey(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callLegId);;
             }
             else if (callEventBase is ToneReceivedEvent)
             {
-                var callLegId = ((ToneReceivedEvent)callEventBase).CallLegId;
+                var callLegId = ((ToneReceivedEvent)callEventBase).CallConnectionId;
                 return BuildEventKey(CallingServerEventType.ToneReceivedEvent.ToString(), callLegId);
             }
             else if (callEventBase is PlayAudioResultEvent)
@@ -111,29 +109,25 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
         /// <returns></returns>
         public CallingServerEventBase ExtractEvent(string content)
         {
-            EventGridSubscriber eventGridSubscriber = new EventGridSubscriber();
+            CloudEvent cloudEvent = CloudEvent.Parse(BinaryData.FromString(content));
 
-            EventGridEvent[] eventGridEvents = eventGridSubscriber.DeserializeEventGridEvents(content);
-
-            if (eventGridEvents != null && eventGridEvents.Any())
+            if (cloudEvent != null && cloudEvent.Data != null)
             {
-                var eventGridEvent = eventGridEvents[0];
-
-                if (eventGridEvent.EventType.Equals(CallingServerEventType.CallLegStateChangedEvent.ToString()))
+                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
                 {
-                    return CallLegStateChangedEvent.Deserialize(eventGridEvent.Data.ToString());
+                    return CallConnectionStateChangedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (eventGridEvent.EventType.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
                 {
-                    return ToneReceivedEvent.Deserialize(eventGridEvent.Data.ToString());
+                    return ToneReceivedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (eventGridEvent.EventType.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
                 {
-                    return PlayAudioResultEvent.Deserialize(eventGridEvent.Data.ToString());
+                    return PlayAudioResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (eventGridEvent.EventType.Equals(CallingServerEventType.InviteParticipantsResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.InviteParticipantsResultEvent.ToString()))
                 {
-                    return InviteParticipantsResultEvent.Deserialize(eventGridEvent.Data.ToString());
+                    return InviteParticipantsResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
             }
 

@@ -43,7 +43,7 @@
   <ItemGroup>
     <Reference Include="Azure.Communication.CallingServer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Azure.Communication.CallingServer.1.0.0-alpha.20210607.2\lib\netstandard2.0\Azure.Communication.CallingServer.dll</HintPath>
+      <HintPath>..\packages\Azure.Communication.CallingServer.1.0.0-alpha.20210608.3\lib\netstandard2.0\Azure.Communication.CallingServer.dll</HintPath>
     </Reference>
     <Reference Include="Azure.Communication.Common">
       <HintPath>..\packages\Azure.Communication.Common.1.0.1\lib\netstandard2.0\Azure.Communication.Common.dll</HintPath>

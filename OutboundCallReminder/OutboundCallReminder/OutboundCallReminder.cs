@@ -14,8 +14,9 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
     public class OutboundCallReminder
     {
-        private CallConfiguration CallConfiguration;
-        private CallClient CallClient;
+        private CallConfiguration callConfiguration;
+        private CallingServerClient callClient;
+        private CallConnection callConnection;
         private CancellationTokenSource reportCancellationTokenSource;
         private CancellationToken reportCancellationToken;
 
@@ -28,26 +29,26 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
         public OutboundCallReminder(CallConfiguration callConfiguration)
         {
-            this.CallConfiguration = callConfiguration;
-            this.CallClient = new CallClient(this.CallConfiguration.ConnectionString);
+            this.callConfiguration = callConfiguration;
+            callClient = new CallingServerClient(this.callConfiguration.ConnectionString);
         }
 
         public async Task Report(string targetPhoneNumber, string participant)
         {
-            this.reportCancellationTokenSource = new CancellationTokenSource();
-            this.reportCancellationToken = reportCancellationTokenSource.Token;
+            reportCancellationTokenSource = new CancellationTokenSource();
+            reportCancellationToken = reportCancellationTokenSource.Token;
 
             try
             {
-                var call = await CreateCallAsync(targetPhoneNumber).ConfigureAwait(false);
-                RegisterToDtmfResultEvent(call.CallLegId);
+                callConnection = await CreateCallAsync(targetPhoneNumber).ConfigureAwait(false);
+                RegisterToDtmfResultEvent(callConnection.CallConnectionId);
 
-                await PlayAudioAsync(call.CallLegId).ConfigureAwait(false);
+                await PlayAudioAsync(callConnection.CallConnectionId).ConfigureAwait(false);
                 var playAudioCompleted = await playAudioCompletedTask.Task.ConfigureAwait(false);
 
                 if (!playAudioCompleted)
                 {
-                    await HangupAsync(call.CallLegId).ConfigureAwait(false);
+                    await HangupAsync(callConnection.CallConnectionId).ConfigureAwait(false);
                 }
                 else
                 {
@@ -56,17 +57,17 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                     {
                         Console.WriteLine($"Initiating invite participant from number {targetPhoneNumber} and participant identifier is {participant}");
 
-                        var inviteParticipantCompleted = await InviteParticipant(call.CallLegId, participant);
+                        var inviteParticipantCompleted = await InviteParticipant(callConnection.CallConnectionId, participant);
                         if (!inviteParticipantCompleted)
                         {
-                            await RetryInviteParticipantAsync(async () => await InviteParticipant(call.CallLegId, participant));
+                            await RetryInviteParticipantAsync(async () => await InviteParticipant(callConnection.CallConnectionId, participant));
                         }
 
-                        await HangupAsync(call.CallLegId).ConfigureAwait(false);
+                        await HangupAsync(callConnection.CallConnectionId).ConfigureAwait(false);
                     }
                     else
                     {
-                        await HangupAsync(call.CallLegId).ConfigureAwait(false);
+                        await HangupAsync(callConnection.CallConnectionId).ConfigureAwait(false);
                     }
                 }
 
@@ -98,29 +99,29 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             }
         }
 
-        private async Task<CreateCallResponse> CreateCallAsync(string targetPhoneNumber)
+        private async Task<CallConnection> CreateCallAsync(string targetPhoneNumber)
         {
             try
             {
                 //Preparting request data
-                var source = new CommunicationUserIdentifier(this.CallConfiguration.SourceIdentity);
+                var source = new CommunicationUserIdentifier(callConfiguration.SourceIdentity);
                 var target = new PhoneNumberIdentifier(targetPhoneNumber);
                 var createCallOption = new CreateCallOptions(
-                    new Uri(this.CallConfiguration.AppCallbackUrl),
+                    new Uri(callConfiguration.AppCallbackUrl),
                     new List<CallModality> { CallModality.Audio },
                     new List<EventSubscriptionType> { EventSubscriptionType.ParticipantsUpdated, EventSubscriptionType.DtmfReceived }
                     );
-                createCallOption.AlternateCallerId = new PhoneNumberIdentifier(this.CallConfiguration.SourcePhoneNumber);
+                createCallOption.AlternateCallerId = new PhoneNumberIdentifier(callConfiguration.SourcePhoneNumber);
 
                 Console.WriteLine("Performing CreateCall operation");
-                var call = await this.CallClient.CreateCallAsync(source, 
+                var call = await callClient.CreateCallConnectionAsync(source, 
                     new List<CommunicationIdentifier>() { target }, 
                     createCallOption, reportCancellationToken)
                     .ConfigureAwait(false);
 
-                Console.WriteLine("Call initiated with Call Leg id: {0}", call.Value.CallLegId);
+                Console.WriteLine("Call initiated with Call Leg id: {0}", call.Value.CallConnectionId);
 
-                RegisterToCallStateChangeEvent(call.Value.CallLegId);
+                RegisterToCallStateChangeEvent(call.Value.CallConnectionId);
 
                 //Wait for operation to complete
                 await callEstablishedTask.Task.ConfigureAwait(false);
@@ -147,13 +148,13 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                 // Preparing data for request
                 var playAudioRequest = new PlayAudioOptions()
                 {
-                    AudioFileUri = new Uri(this.CallConfiguration.AudioFileUrl),
+                    AudioFileUri = new Uri(callConfiguration.AudioFileUrl),
                     OperationContext = Guid.NewGuid().ToString(),
                     Loop = true,
                 };
 
                 Console.WriteLine("Performing PlayAudio operation");
-                var response = await this.CallClient.PlayAudioAsync(callLegId, playAudioRequest, reportCancellationToken).ConfigureAwait(false);
+                var response = await callConnection.PlayAudioAsync(playAudioRequest, reportCancellationToken).ConfigureAwait(false);
 
                 if (response.Value.Status == OperationStatus.Running)
                 {
@@ -191,7 +192,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             }
 
             Console.WriteLine("Performing Hangup operation");
-            await this.CallClient.HangupCallAsync(callLegId, reportCancellationToken).ConfigureAwait(false);
+            await callConnection.HangupAsync(reportCancellationToken).ConfigureAwait(false);
         }
 
         private async Task CancelMediaProcessing(string callLegId)
@@ -205,7 +206,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             Console.WriteLine("Performing cancel media processing operation to stop playing audio");
 
             var operationContext = Guid.NewGuid().ToString();
-            await this.CallClient.CancelAllMediaOperationsAsync(callLegId, operationContext, reportCancellationToken).ConfigureAwait(false);
+            await callConnection.CancelAllMediaOperationsAsync(operationContext, reportCancellationToken).ConfigureAwait(false);
         }
 
         private void RegisterToCallStateChangeEvent(string callLegId)
@@ -218,24 +219,24 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             //Set the callback method
             var callStateChangeNotificaiton = new NotificationCallback((CallingServerEventBase callEvent) =>
             {
-                var callStateChanged = (CallLegStateChangedEvent)callEvent;
+                var callStateChanged = (CallConnectionStateChangedEvent)callEvent;
 
-                Console.WriteLine("Call State changed to: {0}", callStateChanged.CallState);
+                Console.WriteLine("Call State changed to: {0}", callStateChanged.CallConnectionState);
 
-                if (callStateChanged.CallState == CallState.Established)
+                if (callStateChanged.CallConnectionState == CallConnectionState.Established)
                 {
                     callEstablishedTask.TrySetResult(true);
                 }
-                else if (callStateChanged.CallState == CallState.Terminated)
+                else if (callStateChanged.CallConnectionState == CallConnectionState.Terminated)
                 {
-                    EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallLegStateChangedEvent.ToString(), callLegId);
+                    EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callLegId);
                     reportCancellationTokenSource.Cancel();
                     callTerminatedTask.SetResult(true);
                 }
             });
 
             //Subscribe to the event
-            var eventId = EventDispatcher.Instance.Subscribe(CallingServerEventType.CallLegStateChangedEvent.ToString(), callLegId, callStateChangeNotificaiton);
+            var eventId = EventDispatcher.Instance.Subscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callLegId, callStateChangeNotificaiton);
         }
 
         private void RegisterToPlayAudioResultEvent(string operationContext)
@@ -314,11 +315,11 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
                 if (identifierKind == CommunicationIdentifierKind.UserIdentity)
                 {
-                    await CallClient.AddParticipantAsync(callLegId, new CommunicationUserIdentifier(invitedParticipant), alternartCallerid, operationContext).ConfigureAwait(false);
+                    await callConnection.AddParticipantAsync(new CommunicationUserIdentifier(invitedParticipant), alternartCallerid, operationContext).ConfigureAwait(false);
                 }
                 else if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                 {
-                    await CallClient.AddParticipantAsync(callLegId, new PhoneNumberIdentifier(invitedParticipant), alternartCallerid, operationContext).ConfigureAwait(false);
+                    await callConnection.AddParticipantAsync(new PhoneNumberIdentifier(invitedParticipant), alternartCallerid, operationContext).ConfigureAwait(false);
                 }
             }
 
