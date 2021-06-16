@@ -88,10 +88,10 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                 var operationContext = ((PlayAudioResultEvent)callEventBase).OperationContext;
                 return BuildEventKey(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
             }
-            else if (callEventBase is InviteParticipantsResultEvent)
+            else if (callEventBase is AddParticipantResultEvent)
             {
-                var operationContext = ((InviteParticipantsResultEvent)callEventBase).OperationContext;
-                return BuildEventKey(CallingServerEventType.InviteParticipantsResultEvent.ToString(), operationContext);
+                var operationContext = ((AddParticipantResultEvent)callEventBase).OperationContext;
+                return BuildEventKey(CallingServerEventType.AddParticipantResultEvent.ToString(), operationContext);
             }
 
             return null;
@@ -125,9 +125,9 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                 {
                     return PlayAudioResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.InviteParticipantsResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.AddParticipantResultEvent.ToString()))
                 {
-                    return InviteParticipantsResultEvent.Deserialize(cloudEvent.Data.ToString());
+                    return AddParticipantResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
             }
 

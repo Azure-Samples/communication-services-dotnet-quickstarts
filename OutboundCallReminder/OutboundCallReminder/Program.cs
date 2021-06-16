@@ -21,7 +21,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Starting ACS Sample App");
+            Logger.LogMessage(Logger.MessageType.INFORMATION, "Starting ACS Sample App");
 
             var ngrokUrl = await StartNgrokService();
 
@@ -29,23 +29,23 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             {
                 using (WebApp.Start<Startup>(url))
                 {
-                    Console.WriteLine("Server started at:" + url);
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Server started at: {url}");
 
                     await Task.Run(async () =>
                     {
                         await RunSample(ngrokUrl).ConfigureAwait(false);
                     });
 
-                    Console.WriteLine("Press any key to exit the sample");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, "Press any key to exit the sample");
                     Console.ReadLine();
                 }
             }
             else
             {
-                Console.WriteLine("Failed to start Ngrok service");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, "Failed to start Ngrok service");
                 Console.ReadKey();
             }
-            
+
             ngrokService?.Dispose();
         }
 
@@ -61,23 +61,23 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
                 if (string.IsNullOrEmpty(ngrokPath))
                 {
-                    Console.WriteLine("Ngrok path not provided");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, "Ngrok path not provided");
                     return null;
                 }
 
-                Console.WriteLine("Starting Ngrok");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, "Starting Ngrok");
                 ngrokService = new NgrokService(ngrokPath);
 
-                Console.WriteLine("Fetching Ngrok Url");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, "Fetching Ngrok Url");
                 var ngrokUrl = await ngrokService.GetNgrokUrl();
 
-                Console.WriteLine("Ngrok Started with url: " + ngrokUrl);
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Ngrok Started with url: {ngrokUrl}");
 
                 return ngrokUrl;
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Logger.LogMessage(Logger.MessageType.ERROR, ex.Message);
                 return null;
             }
         }
@@ -92,7 +92,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             OutboundCallReminder outboundCallReminder = new OutboundCallReminder(callConfiguration);
             var outboundCallPairs = ConfigurationManager.AppSettings["DestinationIdentities"];
             if (outboundCallPairs != null && outboundCallPairs.Length > 0)
-            { 
+            {
                 var identities = outboundCallPairs.Split(';');
                 var tasks = new List<Task>();
                 foreach (var identity in identities)
@@ -148,7 +148,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Exception while generating text to speech, falling back to sample audio. Exception: {0}", ex.Message);             
+                Logger.LogMessage(Logger.MessageType.ERROR, $"Exception while generating text to speech, falling back to sample audio. Exception: {ex.Message}");
                 return "sample-message.wav";
             }
         }
