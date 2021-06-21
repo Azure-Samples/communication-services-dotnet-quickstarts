@@ -203,6 +203,54 @@ namespace QuickStartApi.Controllers
         }
 
         /// <summary>
+        /// Method to get recording state
+        /// </summary>
+        /// <param name="serverCallId">Conversation id of the call</param>
+        /// <param name="recordingId">Recording id of the call</param>
+        /// <returns>
+        /// CallRecordingProperties
+        ///     RecordingState is {active}, in case of active recording
+        ///     RecordingState is {inactive}, in case if recording is paused
+        /// 404:Recording not found, if recording was stopped or recording id is invalid.
+        /// </returns>
+        [HttpGet]
+        [Route("getRecordingState")]
+        public async Task<IActionResult> GetRecordingState(string serverCallId, string recordingId)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(serverCallId))
+                {
+                    if (string.IsNullOrEmpty(recordingId))
+                    {
+                        recordingId = recordingData[serverCallId];
+                    }
+                    else
+                    {
+                        if (!recordingData.ContainsKey(serverCallId))
+                        {
+                            recordingData[serverCallId] = recordingId;
+                        }
+                    }
+
+                    var recordingState = await callingServerClient.InitializeServerCall(serverCallId).GetRecordingStateAsync(recordingId).ConfigureAwait(false);
+
+                    Logger.LogInformation($"GetRecordingStateAsync response -- > {recordingState}");
+
+                    return Json(recordingState.Value.RecordingState);
+                }
+                else
+                {
+                    return BadRequest(new { Message = "serverCallId is invalid" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { Exception = ex });
+            }
+        }
+
+        /// <summary>
         /// Web hook to receive the recording file update status event
         /// </summary>
         /// <param name="request"></param>

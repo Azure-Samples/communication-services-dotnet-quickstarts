@@ -15,7 +15,7 @@ This is a sample application to show how the Azure Communication Services server
 
 Its a C# based application powered by Dot net core to connect this application with Azure Communication Services.
 
-A separate branch with end to end implementation is [available](https://github.com/Azure-Samples/communication-services-web-calling-hero/blob/teams-interop/README.md). Teams Interop is in public preview and uses beta SDKs that are not meant for production use. Please use the main branch sample for any production scenarios.
+A separate branch with end to end implementation is [available](https://github.com/Azure-Samples/communication-services-web-calling-hero/tree/public-preview). It's a public preview branch and uses beta SDKs that are not meant for production use. Please use the main branch sample for any production scenarios.
 
 ## Prerequisites
 
@@ -23,12 +23,13 @@ A separate branch with end to end implementation is [available](https://github.c
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/)
 - [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this quickstart.
+- Create a webhook and subscribe to the recording events [Create webhook](https://docs.microsoft.com/azure/communication-services/quickstarts/voice-video-calling/download-recording-file-sample)
 
 ## Code structure
 
-- ./Calling/Controllers : Server app core logic for calling recording APIs using Azure Communication Services server calling SDK
-- ./Calling/Program.cs : Entry point for the server app program logic
-- ./Calling/Startup.cs : Entry point for the server app startup logic
+- ./ServerRecording/Controllers : Server app core logic for calling recording APIs using Azure Communication Services server calling SDK
+- ./ServerRecording/Program.cs : Entry point for the server app program logic
+- ./ServerRecording/Startup.cs : Entry point for the server app startup logic
 
 ## Before running the sample for the first time
 1. Get the `Connection String` from the Azure portal. For more information on connection strings, see [Create an Azure Communication Resources](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource)
