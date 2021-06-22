@@ -13,8 +13,6 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
     public class EventDispatcher
     {
         public static readonly EventDispatcher Instance;
-
-        private readonly EventSerializer Serializer;
         private readonly ConcurrentDictionary<string, NotificationCallback> NotificationCallback;
         private object SubscriptionLock = new object();
 
@@ -25,7 +23,6 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
         private EventDispatcher()
         {
-            Serializer = new EventSerializer();
             NotificationCallback = new ConcurrentDictionary<string, NotificationCallback>(StringComparer.OrdinalIgnoreCase);
         }
 
@@ -137,32 +134,6 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
         ~EventDispatcher()
         {
 
-        }
-
-        public class EventSerializer
-        {
-            /// <summary>
-            /// Default constructor.
-            /// </summary>
-            public EventSerializer()
-            {
-                this.JsonSerializerSettings = new JsonSerializerSettings
-                {
-                    TypeNameHandling = TypeNameHandling.All
-                };
-            }
-
-            /// <summary>
-            /// Gets the JSON serializer settings.
-            /// </summary>
-            private JsonSerializerSettings JsonSerializerSettings { get; }
-
-            public T DeserializeObject<T>(string inputString)
-            {
-                return string.IsNullOrEmpty(inputString)
-                    ? default(T)
-                    : JsonConvert.DeserializeObject<T>(inputString, this.JsonSerializerSettings);
-            }
         }
     }
 }
