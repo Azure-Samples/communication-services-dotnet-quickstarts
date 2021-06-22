@@ -1,11 +1,9 @@
 ﻿using Azure.Communication.CallingServer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.EventGrid;
-using Microsoft.Azure.EventGrid.Models;
+using Azure.Messaging.EventGrid;
+using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -261,15 +259,14 @@ namespace QuickStartApi.Controllers
         {
             try
             {
-                //Deserializing the request 
-                var eventGridEvent = JsonConvert.DeserializeObject<EventGridEvent[]>(request.ToString()).FirstOrDefault();
+                var httpContent = new BinaryData(request.ToString()).ToStream();
+                EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
 
-                if (string.Equals(eventGridEvent.EventType, EventTypes.EventGridSubscriptionValidationEvent, StringComparison.OrdinalIgnoreCase))
+                if (cloudEvent.EventType == SystemEventNames.EventGridSubscriptionValidation)
                 {
-                    var data = eventGridEvent.Data as JObject;
-                    var eventData = data.ToObject<SubscriptionValidationEventData>();
+                    var eventData = cloudEvent.Data.ToObjectFromJson<SubscriptionValidationEventData>();
 
-                    Logger.LogInformation("Microsoft.EventGrid.SubscriptionValidationEvent response  -- >" + eventGridEvent.Data);
+                    Logger.LogInformation("Microsoft.EventGrid.SubscriptionValidationEvent response  -- >" + cloudEvent.Data);
 
                     var responseData = new SubscriptionValidationResponse
                     {
@@ -282,25 +279,25 @@ namespace QuickStartApi.Controllers
                     }
                 }
 
-                if (string.Equals(eventGridEvent.EventType, "Microsoft.Communication.RecordingFileStatusUpdated", StringComparison.OrdinalIgnoreCase))
+                if (cloudEvent.EventType == SystemEventNames.AcsRecordingFileStatusUpdated)
                 {
-                    Logger.LogInformation($"Event type is -- > {eventGridEvent.EventType}");
+                    Logger.LogInformation($"Event type is -- > {cloudEvent.EventType}");
 
-                    Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + eventGridEvent.Data);
+                    Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + cloudEvent.Data);
 
-                    RecordingFileData data = EventSerializer.DeserializeObject<RecordingFileData>(eventGridEvent.Data.ToString());
+                    var eventData = cloudEvent.Data.ToObjectFromJson<AcsRecordingFileStatusUpdatedEventData>();
 
                     Logger.LogInformation("Start processing recorded media -- >");
 
-                    await ProcessFile(data.recordingStorageInfo.recordingChunks[0].contentLocation,
-                        data.recordingStorageInfo.recordingChunks[0].documentId,
+                    await ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation,
+                        eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
                         "mp4",
                         "recording");
 
                     Logger.LogInformation("Start processing metadata -- >");
 
-                    await ProcessFile(data.recordingStorageInfo.recordingChunks[0].metadataLocation,
-                        data.recordingStorageInfo.recordingChunks[0].documentId,
+                    await ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,
+                        eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
                         "json",
                         "metadata");
                 }

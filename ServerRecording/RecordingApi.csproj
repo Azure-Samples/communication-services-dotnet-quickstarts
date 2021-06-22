@@ -6,11 +6,10 @@
 	<ItemGroup>
 		<PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-alpha.20210615.5" />
 		<PackageReference Include="Azure.Communication.Identity" Version="1.0.1" />
-		<PackageReference Include="Azure.Messaging.EventGrid" Version="4.3.0" />
+		<PackageReference Include="Azure.Messaging.EventGrid" Version="4.4.0" />
 		<PackageReference Include="Azure.Storage.Blobs" Version="12.9.0-beta.1" />
 		<PackageReference Include="Microsoft.AspNetCore.SpaServices" Version="3.1.8" />
 		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="3.1.8" />
-		<PackageReference Include="Microsoft.Azure.EventGrid" Version="3.2.1" />
 	</ItemGroup>
 
 </Project>
