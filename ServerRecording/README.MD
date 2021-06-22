@@ -7,8 +7,6 @@ products:
 - azure-communication-services
 ---
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure-Samples%2Fcommunication-services-web-calling-hero%2Fmain%2Fdeploy%2Fazuredeploy.json)
-
 # Recording APIs Sample
 
 This is a sample application to show how the Azure Communication Services server calling SDK can be used to build a call recording feature.
@@ -23,6 +21,7 @@ A separate branch with end to end implementation is [available](https://github.c
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/)
 - [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) (Make sure to install the version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this quickstart.
+- An Azure storage account and container, for details, see [Create a storage account](https://docs.microsoft.com/azure/storage/common/storage-account-create?tabs=azure-portal). You'll need to record your storage **connection string** and **container name** for this quickstart.
 - Create a webhook and subscribe to the recording events. For details, see [Create webhook](https://docs.microsoft.com/azure/communication-services/quickstarts/voice-video-calling/download-recording-file-sample)
 
 ## Code structure
@@ -32,11 +31,13 @@ A separate branch with end to end implementation is [available](https://github.c
 - ./ServerRecording/Startup.cs : Entry point for the server app startup logic
 
 ## Before running the sample for the first time
-1. Get the `Connection String` from the Azure portal. For more information on connection strings, see [Create an Azure Communication Resources](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource)
-2. Once you get the config keys add the keys to the **Calling/appsetting.json**  file found under the Calling folder.
-	- Input your connection string in the variable: `Connectionstring`
+
+1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
+2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git
+3. Once you get the config keys add the keys to the **Calling/appsetting.json**  file found under the Calling folder.
+	- Input your ACS connection string in the variable: `ACSResourceConnectionString`
 	- Input your storage connection string in the variable: `BlobStorageConnectionString`
-	- Input blob container name for recorded media in the variable `ContainerName`
+	- Input blob container name for recorded media in the variable `BlobContainerName`
 	- Input recording callback url for start recording api in the variable `CallbackUri`
 
 ## Locally deploying the sample app
@@ -56,7 +57,7 @@ A separate branch with end to end implementation is [available](https://github.c
 1. Right click the `RecordingApi` project and select Publish.
 2. Create a new publish profile and select your app name, Azure subscription, resource group and etc.
 3. Before publishing, add your connection string with `Edit App Service Settings`, and fill in `ResourceConnectionString` as key and connection string (copy from appsettings.json) as value
-
+4. Detailed instructions on publishing the app to Azure are available at [Publish a Web app](https://docs.microsoft.com/en-US/visualstudio/deployment/quickstart-deploy-to-azure?view=vs-2019).
 
 **Note**: While you may use http://localhost for local testing, the sample when deployed will only work when served over https. The SDK [does not support http](https://docs.microsoft.com/en-us/azure/communication-services/concepts/voice-video-calling/calling-sdk-features#user-webrtc-over-https).
 
