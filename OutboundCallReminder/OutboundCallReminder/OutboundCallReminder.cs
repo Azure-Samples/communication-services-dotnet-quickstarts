@@ -343,7 +343,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                     EventDispatcher.Instance.Unsubscribe(CallingServerEventType.AddParticipantResultEvent.ToString(), operationContext);
                     addParticipantCompleteTask.TrySetResult(true);
                 }
-                else if (addParticipantUpdatedEvent.Status == "Failed")
+                else if (addParticipantUpdatedEvent.Status == OperationStatus.Failed)
                 {
                     addParticipantCompleteTask.TrySetResult(false);
                 }
