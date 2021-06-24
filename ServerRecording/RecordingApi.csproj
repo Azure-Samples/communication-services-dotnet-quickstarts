@@ -4,7 +4,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-alpha.20210623.1" />
+		<PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-beta.1" />
 		<PackageReference Include="Azure.Communication.Identity" Version="1.0.1" />
 		<PackageReference Include="Azure.Messaging.EventGrid" Version="4.4.0" />
 		<PackageReference Include="Azure.Storage.Blobs" Version="12.9.0-beta.1" />
