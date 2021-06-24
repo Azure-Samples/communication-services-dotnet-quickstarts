@@ -13,9 +13,7 @@ products:
 This sample application shows how the Azure Communication Services Server Calling SDK can be used to build IVR related solutions. This sample makes an outbound call to a phone number or a communication identifier and plays an audio message. If the callee presses 1 (tone1), to reschedule an appointment, then the application invites a new participant and then leaves the call. If the callee presses any other key then the application ends the call. This sample application is also capable of making multiple concurrent outbound calls.
 The application is a console based application built on .Net Framework 4.7.2.
 
-## Getting started
-
-### Prerequisites
+## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/)
@@ -26,6 +24,11 @@ The application is a console based application built on .Net Framework 4.7.2.
 - (Optional) Create Azure Speech resource for generating custom message to be played by application. Follow [here](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/overview#try-the-speech-service-for-free) to create the resource.
 
 > Note: the samples make use of the Microsoft Cognitive Services Speech SDK. By downloading the Microsoft Cognitive Services Speech SDK, you acknowledge its license, see [Speech SDK license agreement](https://aka.ms/csspeech/license201809).
+
+## Before running the sample for the first time
+
+1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
+2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git.
 
 ### Configuring application
 
