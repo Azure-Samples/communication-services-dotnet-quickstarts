@@ -312,18 +312,17 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
             else
             {
                 var operationContext = Guid.NewGuid().ToString();
-                var alternartCallerid = new PhoneNumberIdentifier(callConfiguration.SourcePhoneNumber).ToString();
 
                 RegisterToAddParticipantsResultEvent(operationContext);
 
                 if (identifierKind == CommunicationIdentifierKind.UserIdentity)
                 {
-                    var response = await callConnection.AddParticipantAsync(new CommunicationUserIdentifier(addedParticipant), alternartCallerid, operationContext).ConfigureAwait(false);
+                    var response = await callConnection.AddParticipantAsync(new CommunicationUserIdentifier(addedParticipant), null, operationContext).ConfigureAwait(false);
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipantAsync response --> {response}");
                 }
                 else if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                 {
-                    var response = await callConnection.AddParticipantAsync(new PhoneNumberIdentifier(addedParticipant), alternartCallerid, operationContext).ConfigureAwait(false);
+                    var response = await callConnection.AddParticipantAsync(new PhoneNumberIdentifier(addedParticipant), callConfiguration.SourcePhoneNumber, operationContext).ConfigureAwait(false);
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipantAsync response --> {response}");
                 }
             }
