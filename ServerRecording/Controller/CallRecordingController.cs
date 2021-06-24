@@ -313,7 +313,7 @@ namespace QuickStartApi.Controllers
         private async Task<bool> ProcessFile(string downloadLocation, string documentId, string fileFormat, string downloadType)
         {
             var recordingDownloadUri = new Uri(downloadLocation);
-            var response = DownloadExtentions.DownloadStreamingAsync(callingServerClient, recordingDownloadUri);
+            var response = callingServerClient.DownloadStreamingAsync(recordingDownloadUri);
 
             Logger.LogInformation($"Download {downloadType} response  -- >" + response.Result.GetRawResponse());
             Logger.LogInformation($"Save downloaded {downloadType} -- >");

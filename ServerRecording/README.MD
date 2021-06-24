@@ -33,8 +33,9 @@ A separate branch with end to end implementation is [available](https://github.c
 ## Before running the sample for the first time
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
-2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git
-3. Once you get the config keys add the keys to the **Calling/appsetting.json**  file found under the Calling folder.
+2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git.
+3. Add nuget package source https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-net/nuget/v3/index.json for installing Azure.Communication.CallingServer SDK. For details, see [Install and manage packages in Visual Studio](https://docs.microsoft.com/nuget/consume-packages/install-use-packages-visual-studio).
+4. Once you get the config keys add the keys to the **Calling/appsetting.json**  file found under the Calling folder.
 	- Input your ACS connection string in the variable: `ACSResourceConnectionString`
 	- Input your storage connection string in the variable: `BlobStorageConnectionString`
 	- Input blob container name for recorded media in the variable `BlobContainerName`
