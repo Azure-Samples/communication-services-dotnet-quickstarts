@@ -341,7 +341,6 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Add participant status - {addParticipantUpdatedEvent.Status}");
                     EventDispatcher.Instance.Unsubscribe(CallingServerEventType.AddParticipantResultEvent.ToString(), operationContext);
 
-                    //Remove this sleep logic once the call disconnection issue when two PSTN participants present in the call and app exited
                     Logger.LogMessage(Logger.MessageType.INFORMATION, "Sleeping for 60 seconds before proceeding further");
                     Thread.Sleep(60 * 1000);
 
