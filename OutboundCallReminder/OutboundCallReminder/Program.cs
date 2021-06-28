@@ -98,7 +98,10 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                 foreach (var identity in identities)
                 {
                     var pair = identity.Split(',');
-                    tasks.Add(Task.Run(async() => await new OutboundCallReminder(callConfiguration).Report(pair[0].Trim(), pair[1].Trim())));
+                    if (pair.Length == 2 && !string.IsNullOrWhiteSpace(pair[0]) && !string.IsNullOrWhiteSpace(pair[1]))
+                        tasks.Add(Task.Run(async () => await new OutboundCallReminder(callConfiguration).Report(pair[0].Trim(), pair[1].Trim())));
+                    else
+                        Logger.LogMessage(Logger.MessageType.ERROR, $"Malformed destination identitity --> {identity}");
                 }
 
                 await Task.WhenAll(tasks);
