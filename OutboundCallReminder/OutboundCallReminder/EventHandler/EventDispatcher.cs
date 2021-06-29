@@ -130,11 +130,6 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
             return null;
         }
-
-        ~EventDispatcher()
-        {
-
-        }
     }
 }
 

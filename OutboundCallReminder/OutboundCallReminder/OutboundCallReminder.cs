@@ -333,7 +333,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
 
         private void RegisterToAddParticipantsResultEvent(string operationContext)
         {
-            var addParticipantReceivedEvent = new NotificationCallback((CallingServerEventBase callEvent) =>
+            var addParticipantReceivedEvent = new NotificationCallback(async (CallingServerEventBase callEvent) =>
             {
                 var addParticipantUpdatedEvent = (AddParticipantResultEvent)callEvent;
                 if (addParticipantUpdatedEvent.Status == OperationStatus.Completed)
@@ -342,7 +342,7 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
                     EventDispatcher.Instance.Unsubscribe(CallingServerEventType.AddParticipantResultEvent.ToString(), operationContext);
 
                     Logger.LogMessage(Logger.MessageType.INFORMATION, "Sleeping for 60 seconds before proceeding further");
-                    Thread.Sleep(60 * 1000);
+                    await Task.Delay(60 * 1000);
 
                     addParticipantCompleteTask.TrySetResult(true);
                 }
