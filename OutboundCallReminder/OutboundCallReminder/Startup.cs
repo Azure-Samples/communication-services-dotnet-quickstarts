@@ -16,7 +16,6 @@ namespace Communication.Server.Calling.Sample.OutboundCallReminder
         public void Configuration(IAppBuilder app)
         {
             // Configure Web API for self-host. 
-            // Note: I prefer my routes to be "api/{controller}/{action}" instead of "api/{controller}/{id}"
             HttpConfiguration config = new HttpConfiguration();
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
