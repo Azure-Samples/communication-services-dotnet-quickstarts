@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.Chat" Version="1.0.0" />
+    <PackageReference Include="Azure.Communication.Chat" Version="1.1.0-beta.1" />
+    <PackageReference Include="Azure.Communication.Identity" Version="1.0.1" />
+    <PackageReference Include="Azure.Messaging.EventGrid" Version="4.5.0" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.7.0" />
   </ItemGroup>
 
 </Project>
