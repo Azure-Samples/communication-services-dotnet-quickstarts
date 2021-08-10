@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.PhoneNumbers" Version="1.0.0-beta.5" />
+    <PackageReference Include="Azure.Communication.PhoneNumbers" Version="1.0.1" />
   </ItemGroup>
 
 </Project>
