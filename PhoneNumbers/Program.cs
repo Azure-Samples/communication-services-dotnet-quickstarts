@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Azure.Communication.PhoneNumbers;
-using Azure.Communication.PhoneNumbers.Models;
 
 namespace PhoneNumbers
 {
@@ -25,13 +24,13 @@ namespace PhoneNumbers
 
             // Purchase searched phone numbers
             var purchaseOperation = await client.StartPurchasePhoneNumbersAsync(searchOperation.Value.SearchId);
-            await purchaseOperation.WaitForCompletionAsync();
+            await purchaseOperation.WaitForCompletionResponseAsync();
 
             // Get purchased phone number(s)
-            var getPhoneNumberResponse = await client.GetPhoneNumberAsync(phoneNumber);
+            var getPhoneNumberResponse = await client.GetPurchasedPhoneNumberAsync(phoneNumber);
             Console.WriteLine($"Phone number: {getPhoneNumberResponse.Value.PhoneNumber}, country code: {getPhoneNumberResponse.Value.CountryCode}");
 
-            var purchasedPhoneNumbers = client.GetPhoneNumbersAsync();
+            var purchasedPhoneNumbers = client.GetPurchasedPhoneNumbersAsync();
             await foreach (var purchasedPhoneNumber in purchasedPhoneNumbers)
             {
                 Console.WriteLine($"Phone number: {purchasedPhoneNumber.PhoneNumber}, country code: {purchasedPhoneNumber.CountryCode}");
@@ -43,7 +42,7 @@ namespace PhoneNumbers
 
             // Release phone number
             var releaseOperation = await client.StartReleasePhoneNumberAsync(phoneNumber);
-            await releaseOperation.WaitForCompletionAsync();
+            await releaseOperation.WaitForCompletionResponseAsync();
         }
     }
 }
