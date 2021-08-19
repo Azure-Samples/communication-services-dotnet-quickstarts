@@ -21,7 +21,7 @@ namespace SendSMS
 
             Response<IReadOnlyList<SmsSendResult>> response = smsClient.Send(
             from: "<from-phone-number>",
-            to: new string[] { "<to-phone-number-1>", "<to-phone-number-2>" },
+            to: new string[] { "<to-phone-number-1>", "<to-phone-number-2>" }, // E.164 formatted recipient phone numbers
             message: "Hello 👋🏻",
             options: new SmsSendOptions(enableDeliveryReport: true) // OPTIONAL
             {
