@@ -4,11 +4,11 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-beta.2" />
-		<PackageReference Include="Azure.Communication.Identity" Version="1.1.0-alpha.20210730.1" />
-		<PackageReference Include="Azure.Messaging.EventGrid" Version="4.6.0-alpha.20210730.1" />
-		<PackageReference Include="Azure.Storage.Blobs" Version="12.10.0-beta.2" />
-		<PackageReference Include="Microsoft.AspNetCore.SpaServices" Version="5.0.0-preview.8.20414.8" />
-		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="5.0.8" />
+		<PackageReference Include="Azure.Communication.Identity" Version="1.0.1" />
+		<PackageReference Include="Azure.Messaging.EventGrid" Version="4.6.0" />
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.9.1" />
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices" Version="3.1.18" />
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="5.0.9" />
 	</ItemGroup>
 </Project>
   

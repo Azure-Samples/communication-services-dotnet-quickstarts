@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Identity" Version="1.0.1" />
     <PackageReference Include="Azure.Communication.Sms" Version="1.0.1" />
-    <PackageReference Include="Azure.Identity" Version="1.5.0-beta.2" />
+    <PackageReference Include="Azure.Identity" Version="1.4.1" />
   </ItemGroup>
 
 </Project>
