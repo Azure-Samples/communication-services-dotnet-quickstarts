@@ -89,8 +89,12 @@ namespace QuickStartApi.Controllers
                 if (!string.IsNullOrEmpty(serverCallId))
                 {
                     var uri = new Uri(callbackUri);
-                    //Passing RecordingContent.Audio initiates call with Audio only recording
-                    var startRecordingResponse = await callingServerClient.InitializeServerCall(serverCallId).StartRecordingAsync(uri, RecordingContent.Audio, RecordingChannel.Mixed, RecordingFormat.Mp3).ConfigureAwait(false);
+                    //Passing RecordingContent.Audio initiates audio only recording.
+                    //RecordingChannel is used to pass the channel type. mixed/unmixed
+                    //RecordingFormat is used to pass the format of the recording. mp4/mp3/wav
+                    var startRecordingResponse = await callingServerClient
+                        .InitializeServerCall(serverCallId)
+                        .StartRecordingAsync(uri, RecordingContent.Audio, RecordingChannel.Mixed, RecordingFormat.Mp4).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAudioAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
 
