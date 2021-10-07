@@ -36,7 +36,7 @@ namespace QuickStartApi.Controllers
         }
 
         /// <summary>
-        /// Method to start audiovideo call recording
+        /// Method to start call recording
         /// </summary>
         /// <param name="serverCallId">Conversation id of the call</param>
         [HttpGet]
@@ -48,7 +48,12 @@ namespace QuickStartApi.Controllers
                 if (!string.IsNullOrEmpty(serverCallId))
                 {
                     var uri = new Uri(callbackUri);
-                    var startRecordingResponse = await callingServerClient.InitializeServerCall(serverCallId).StartRecordingAsync(uri).ConfigureAwait(false);
+                    //Passing RecordingContent initiates recording in specific format. audio/audiovideo
+                    //RecordingChannel is used to pass the channel type. mixed/unmixed
+                    //RecordingFormat is used to pass the format of the recording. mp4/mp3/wav
+                    var startRecordingResponse = await callingServerClient
+                        .InitializeServerCall(serverCallId)
+                        .StartRecordingAsync(uri, RecordingContent.AudioVideo, RecordingChannel.Mixed, RecordingFormat.Mp4).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
 
@@ -77,24 +82,35 @@ namespace QuickStartApi.Controllers
         }
 
         /// <summary>
-        /// Method to start audio only call recording
+        /// Method to start call recording using given parameters
         /// </summary>
         /// <param name="serverCallId">Conversation id of the call</param>
+        /// <param name="recordingContent">Recording content type. audiovideo/audio</param>
+        /// <param name="recordingChannel">Recording channel type. mixed/unmixed</param>
+        /// <param name="recordingFormat">Recording format type. mp3/mp4/wav</param>
         [HttpGet]
-        [Route("startAudioRecording")]
-        public async Task<IActionResult> StartAudioRecordingAsync(string serverCallId)
+        [Route("startRecording")]
+        public async Task<IActionResult> StartRecordingAsync(string serverCallId, string recordingContent, string recordingChannel, string recordingFormat)
         {
             try
             {
                 if (!string.IsNullOrEmpty(serverCallId))
                 {
-                    var uri = new Uri(callbackUri);
-                    //Passing RecordingContent.Audio initiates audio only recording.
+                    RecordingContent recContentVal;
+                    RecordingChannel recChannelVal;
+                    RecordingFormat recFormatVal;
+
+                    //Passing RecordingContent initiates recording in specific format. audio/audiovideo
                     //RecordingChannel is used to pass the channel type. mixed/unmixed
                     //RecordingFormat is used to pass the format of the recording. mp4/mp3/wav
                     var startRecordingResponse = await callingServerClient
                         .InitializeServerCall(serverCallId)
-                        .StartRecordingAsync(uri, RecordingContent.Audio, RecordingChannel.Mixed, RecordingFormat.Mp4).ConfigureAwait(false);
+                        .StartRecordingAsync(
+                            new Uri(callbackUri),
+                            Mapper.RecordingContentMap.TryGetValue(recordingContent, out recContentVal) ? recContentVal : RecordingContent.AudioVideo,
+                            Mapper.RecordingChannelMap.TryGetValue(recordingChannel, out recChannelVal) ? recChannelVal : RecordingChannel.Mixed,
+                            Mapper.RecordingFormatMap.TryGetValue(recordingFormat, out recFormatVal) ? recFormatVal : RecordingFormat.Mp4
+                        ).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAudioAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
 
