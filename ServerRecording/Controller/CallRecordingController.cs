@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace QuickStartApi.Controllers
 {
@@ -23,18 +24,19 @@ namespace QuickStartApi.Controllers
         private const string CallRecodingActiveError = "Recording is already in progress, one recording can be active at one time.";
         public ILogger<CallRecordingController> Logger { get; }
         static Dictionary<string, string> recordingData = new Dictionary<string, string>();
+        public static string recFileFormat;
 
         public CallRecordingController(IConfiguration configuration, ILogger<CallRecordingController> logger)
         {
             blobStorageConnectionString = configuration["BlobStorageConnectionString"];
             callbackUri = configuration["CallbackUri"];
-            containerName = configuration["ContainerName"];
-            callingServerClient = new CallingServerClient(configuration["ResourceConnectionString"]);
+            containerName = configuration["BlobContainerName"];
+            callingServerClient = new CallingServerClient(configuration["ACSResourceConnectionString"]);
             Logger = logger;
         }
 
         /// <summary>
-        /// Method to start call recording
+        /// Method to start audiovideo call recording
         /// </summary>
         /// <param name="serverCallId">Conversation id of the call</param>
         [HttpGet]
@@ -49,6 +51,48 @@ namespace QuickStartApi.Controllers
                     var startRecordingResponse = await callingServerClient.InitializeServerCall(serverCallId).StartRecordingAsync(uri).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
+
+                    var recordingId = startRecordingResponse.Value.RecordingId;
+                    if (!recordingData.ContainsKey(serverCallId))
+                    {
+                        recordingData.Add(serverCallId, string.Empty);
+                    }
+                    recordingData[serverCallId] = recordingId;
+
+                    return Json(recordingId);
+                }
+                else
+                {
+                    return BadRequest(new { Message = "serverCallId is invalid" });
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains(CallRecodingActiveErrorCode))
+                {
+                    return BadRequest(new { Message = CallRecodingActiveError });
+                }
+                return Json(new { Exception = ex });
+            }
+        }
+
+        /// <summary>
+        /// Method to start audio only call recording
+        /// </summary>
+        /// <param name="serverCallId">Conversation id of the call</param>
+        [HttpGet]
+        [Route("startAudioRecording")]
+        public async Task<IActionResult> StartAudioRecordingAsync(string serverCallId)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(serverCallId))
+                {
+                    var uri = new Uri(callbackUri);
+                    //Passing RecordingContent.Audio initiates call with Audio only recording
+                    var startRecordingResponse = await callingServerClient.InitializeServerCall(serverCallId).StartRecordingAsync(uri, RecordingContent.Audio, RecordingChannel.Mixed, RecordingFormat.Mp3).ConfigureAwait(false);
+
+                    Logger.LogInformation($"StartRecordingAudioAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
 
                     var recordingId = startRecordingResponse.Value.RecordingId;
                     if (!recordingData.ContainsKey(serverCallId))
@@ -287,19 +331,19 @@ namespace QuickStartApi.Controllers
 
                     var eventData = cloudEvent.Data.ToObjectFromJson<AcsRecordingFileStatusUpdatedEventData>();
 
-                    Logger.LogInformation("Start processing recorded media -- >");
-
-                    await ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation,
-                        eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
-                        "mp4",
-                        "recording");
-
                     Logger.LogInformation("Start processing metadata -- >");
 
                     await ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,
                         eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
-                        "json",
-                        "metadata");
+                        FileFormat.Json,
+                        FileDownloadType.Metadata);
+
+                    Logger.LogInformation("Start processing recorded media -- >");
+
+                    await ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation,
+                        eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
+                        string.IsNullOrWhiteSpace(recFileFormat) ? FileFormat.Mp4 : recFileFormat,
+                        FileDownloadType.Recording);
                 }
 
                 return Ok();
@@ -326,6 +370,14 @@ namespace QuickStartApi.Controllers
                     await streamToReadFrom.CopyToAsync(streamToWriteTo);
                     await streamToWriteTo.FlushAsync();
                 }
+            }
+
+            if (string.Equals(downloadType, FileDownloadType.Metadata, StringComparison.InvariantCultureIgnoreCase) && System.IO.File.Exists(filePath))
+            {
+                Root deserializedFilePath = JsonConvert.DeserializeObject<Root>(System.IO.File.ReadAllText(filePath));
+                recFileFormat = deserializedFilePath.recordingInfo.format;
+
+                Logger.LogInformation($"Recording File Format is -- > {recFileFormat}");
             }
 
             Logger.LogInformation($"Starting to upload {downloadType} to BlobStorage into container -- > {containerName}");
