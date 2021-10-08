@@ -79,6 +79,9 @@ namespace QuickStartApi.Controllers
             }
         }
 
+
+//********** Replace above API with this if you want to start recording with additional arguments. *************
+
         /// <summary>
         /// Method to start call recording using given parameters
         /// </summary>
@@ -86,8 +89,8 @@ namespace QuickStartApi.Controllers
         /// <param name="recordingContent">Recording content type. audiovideo/audio</param>
         /// <param name="recordingChannel">Recording channel type. mixed/unmixed</param>
         /// <param name="recordingFormat">Recording format type. mp3/mp4/wav</param>
-        [HttpGet]
-        [Route("startRecording")]
+        //[HttpGet]
+        //[Route("startRecording")]
         public async Task<IActionResult> StartRecordingAsync(string serverCallId, string recordingContent, string recordingChannel, string recordingFormat)
         {
             try
