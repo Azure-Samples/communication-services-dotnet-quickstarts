@@ -1,0 +1,23 @@
+﻿<Page
+    x:Class="ChatTeamsInteropQuickStart.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ChatTeamsInteropQuickStart"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Height="742" Width="1098">
+
+    <Grid>
+        <TextBox x:Name="TxtChat" HorizontalAlignment="Center" Margin="0,279,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="967" Height="353" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.VerticalScrollMode="Enabled" AcceptsReturn="True" TextChanged="TxtChat_TextChanged"/>
+        <TextBox x:Name="TxtMessage" HorizontalAlignment="Left" Margin="66,672,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" RenderTransformOrigin="-0.154,0.547" Width="340" Height="45" IsEnabled="True"/>
+        <Button x:Name="SendMessageButton" Content="Send Message" Margin="427,672,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.685,0.047" Height="45" Width="123" Click="SendMessageButton_Click" IsEnabled="False"/>
+        <TextBox x:Name="TxtTeamsLinkTextBox" HorizontalAlignment="Center" Margin="0,81,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="967" Height="55"/>
+        <TextBlock HorizontalAlignment="Left" Margin="66,148,0,0" Text="Call state : " TextWrapping="Wrap" VerticalAlignment="Top" Width="77"/>
+        <TextBlock x:Name="CallStatusTextBlock" HorizontalAlignment="Left" Margin="178,148,0,0" Text="Disconnected" TextWrapping="Wrap" VerticalAlignment="Top" Width="166"/>
+        <Button x:Name="CallButton" Content="Join Teams Meeting" Margin="66,193,0,0" VerticalAlignment="Top" Click="CallButton_Click"/>
+        <Button x:Name="HangupButton" Content="Hang Up" Margin="263,193,0,0" VerticalAlignment="Top" Click="HangupButton_Click" IsEnabled="False"/>
+        <TextBlock HorizontalAlignment="Left" Margin="66,38,0,0" Text="Please enter Teams meeting link:" TextWrapping="Wrap" VerticalAlignment="Top" Width="212" />
+        <TextBlock HorizontalAlignment="Left" Margin="66,57,0,0" Text="i.e https://teams.microsoft.com/l/meetup-join/19:meeting_NTgyN...." TextWrapping="Wrap" VerticalAlignment="Top" Width="678" FontWeight="Normal" FontStyle="Italic" />
+    </Grid>
+</Page>
