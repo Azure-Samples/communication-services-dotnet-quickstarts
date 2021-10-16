@@ -10,7 +10,7 @@
 
     <Grid>
         <TextBox x:Name="TxtChat" HorizontalAlignment="Center" Margin="0,279,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="967" Height="353" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.VerticalScrollMode="Enabled" AcceptsReturn="True" TextChanged="TxtChat_TextChanged"/>
-        <TextBox x:Name="TxtMessage" HorizontalAlignment="Left" Margin="66,672,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" RenderTransformOrigin="-0.154,0.547" Width="340" Height="45" IsEnabled="True"/>
+        <TextBox x:Name="TxtMessage" HorizontalAlignment="Left" Margin="66,672,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="340" Height="45" IsEnabled="True"/>
         <Button x:Name="SendMessageButton" Content="Send Message" Margin="427,672,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.685,0.047" Height="45" Width="123" Click="SendMessageButton_Click" IsEnabled="False"/>
         <TextBox x:Name="TxtTeamsLinkTextBox" HorizontalAlignment="Center" Margin="0,81,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="967" Height="55"/>
         <TextBlock HorizontalAlignment="Left" Margin="66,148,0,0" Text="Call state : " TextWrapping="Wrap" VerticalAlignment="Top" Width="77"/>
