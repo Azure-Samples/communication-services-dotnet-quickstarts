@@ -31,8 +31,6 @@ To complete this tutorial, you’ll need the following prerequisites:
 ## Run the code locally
 
 You can build and run the code on Visual Studio. Please note that for solution platforms we support `x64`,`x86` and `ARM64`. 
-IMPORTANT :
-Make sure you select the architecture supported by your device. i.e `x64`
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 2. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
@@ -52,7 +50,15 @@ Install-Package Azure.Communication.Identity -Version 1.0.1
 //ACS resource connection string i.e = "endpoint=https://your-resource.communication.azure.net/;accesskey=your-access-key";
 private const string connectionString_ = "";
 ```
+---
+<b> IMPORTANT:</b>
 
+- Select the proper platform from the 'Solution Platforms' dropdown list in Visual Studio <b>before</b> running the code. i.e `x64`
+- Make sure you have the 'Developer Mode' in Windows 10 enabled (Developer Settings)
+
+**The next steps will not work if this is not configured properly**
+
+---
 
 
 6. Press F5 to start the project in debugging mode.

@@ -159,7 +159,7 @@ namespace ChatTeamsInteropQuickStart
                             {
                                 textMessages++;
                                 userPrefix = message.Sender.Equals(currentUser) ? "[you]:" : "";
-                                messageList.Add(long.Parse(message.SequenceId), $"{userPrefix}{message.Content.Message}");
+                                messageList.Add(long.Parse(message.SequenceId), $"{userPrefix}{StripHtml(message.Content.Message)}");
                             }
                         }
 
@@ -296,6 +296,20 @@ namespace ChatTeamsInteropQuickStart
             user_Id_ = user.Value.Id;
             user_token_ = tokenResponseUser.Value.Token;
         }
+
+
+        /// <summary>
+        /// Support function to remove basic html tags introduced by teams client chat
+        /// </summary>
+        /// <param name="html"></param>
+        /// <returns></returns>
+        private string StripHtml(string html)
+        {
+            List<string> stripList = new() { "<p>", "</p>", "<i>", "</i>", "<strong>", "</strong>", "<em>", "</em>" };
+            stripList.ForEach(x => { html = html.Replace(x, string.Empty); });
+            return html;
+        }
+
         #endregion
     }
 }
