@@ -28,6 +28,10 @@ namespace ChatTeamsInteropQuickStart
         //ACS resource connection string i.e = "endpoint=https://your-resource.communication.azure.net/;accesskey=your-access-key";
         private const string connectionString_ = "";
         private Call call_;
+        private Azure.WinRT.Communication.CommunicationTokenCredential token_credential;
+        CallClient call_client;
+        CallAgent call_agent;
+
         private ChatClient chatClient_;
         private bool keepPolling_;
 
@@ -38,6 +42,7 @@ namespace ChatTeamsInteropQuickStart
         public MainPage()
         {
             InitializeComponent();
+            call_client = new();
         }
 
         private async void CallButton_Click(object sender, RoutedEventArgs e)
@@ -70,12 +75,6 @@ namespace ChatTeamsInteropQuickStart
 
         private async Task JoinCallAndSetChatThreadId()
         {
-            //  Create CallClient
-            CallClient call_client = new();
-
-            //  Create CallAgent
-            Azure.WinRT.Communication.CommunicationTokenCredential token_credential;
-            CallAgent call_agent;
 
             try
             {
@@ -132,7 +131,7 @@ namespace ChatTeamsInteropQuickStart
         }
 
         /// <summary>
-        /// Backgroung task that keeps polling for chat messages while the call connection is stablished
+        /// Background task that keeps polling for chat messages while the call connection is stablished
         /// </summary>
         private async Task StartPollingForChatMessages()
         {
@@ -179,7 +178,7 @@ namespace ChatTeamsInteropQuickStart
                         }
 
                         await SetInCallState(true);
-                        Thread.Sleep(3000);
+                        await Task.Delay(3000);
                     }
                     catch (Exception e)
                     {
