@@ -49,7 +49,7 @@ namespace OutboundFunction
                     log.LogInformation($"sourceNumber --> {sourceNumber}");
                     log.LogInformation($"targerNumber --> {targetNumber}");
 
-                    if (!string.IsNullOrEmpty(isSmsSend) && isSmsSend == "true")
+                    if (!string.IsNullOrEmpty(isSmsSend) && isSmsSend.ToLower() == "true")
                     {
                         string message = data?.SMS?.Message;
 
@@ -65,7 +65,7 @@ namespace OutboundFunction
                     }
 
                     string isInitiatePhoneCall = data?.PhoneCall?.Send;
-                    if (!string.IsNullOrEmpty(isInitiatePhoneCall) && isInitiatePhoneCall == "true")
+                    if (!string.IsNullOrEmpty(isInitiatePhoneCall) && isInitiatePhoneCall.ToLower() == "true")
                     {
                         string callbackUrl = $"{req.Scheme}://{req.Host}/api/";
                         string audioUrl = data?.PhoneCall?.PlayAudioUrl;
