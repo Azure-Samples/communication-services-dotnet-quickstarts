@@ -8,35 +8,34 @@ using System.Threading.Tasks;
 
 public class EventDispatcher
 {
-    public static readonly EventDispatcher Instance;
-    private static readonly ConcurrentDictionary<string, NotificationCallback> NotificationCallback;
-    private readonly object SubscriptionLock = new object();
+    private static readonly EventDispatcher instance;
+    private static readonly ConcurrentDictionary<string, NotificationCallback> notificationCallbacks;
+
+    public static EventDispatcher Instance
+    {
+        get
+        {
+            return instance;
+        }
+    }
 
     static EventDispatcher()
     {
-        Instance = new EventDispatcher();
-        NotificationCallback = new ConcurrentDictionary<string, NotificationCallback>(StringComparer.OrdinalIgnoreCase);
+        instance = new EventDispatcher();
+        notificationCallbacks = new ConcurrentDictionary<string, NotificationCallback>(StringComparer.OrdinalIgnoreCase);
     }
 
     public bool Subscribe(string eventType, string eventKey, NotificationCallback notificationCallback)
     {
         string eventId = BuildEventKey(eventType, eventKey);
-        
-        lock (this.SubscriptionLock)
-        {
-            bool ret = NotificationCallback.TryAdd(eventId, notificationCallback);
-            return ret;
-        }
+        bool ret = notificationCallbacks.TryAdd(eventId, notificationCallback);
+        return ret;
     }
 
     public void Unsubscribe(string eventType, string eventKey)
     {
         string eventId = BuildEventKey(eventType, eventKey);
-
-        lock (this.SubscriptionLock)
-        {
-            NotificationCallback.TryRemove(eventId, out _);
-        }
+        notificationCallbacks.TryRemove(eventId, out _);
     }
 
     public void ProcessNotification(string request)
@@ -45,17 +44,14 @@ public class EventDispatcher
 
         if (callEvent != null)
         {
-            lock (SubscriptionLock)
+            if (notificationCallbacks.TryGetValue(GetEventKey(callEvent), out NotificationCallback notificationCallback))
             {
-                if (NotificationCallback.TryGetValue(GetEventKey(callEvent), out NotificationCallback notificationCallback))
+                if (notificationCallback != null)
                 {
-                    if (notificationCallback != null)
+                    Task.Run(() =>
                     {
-                        Task.Run(() =>
-                        {
-                            notificationCallback.Callback.Invoke(callEvent);
-                        });
-                    }
+                        notificationCallback.Callback.Invoke(callEvent);
+                    });
                 }
             }
         }

@@ -32,7 +32,7 @@ The azure function is built on .NET Framework 4.7.2.
   },
   "PhoneCall": {
     "Send": "true",
-    "PlayAudioUrl": "wav audio URL as Blob URL "
+    "PlayAudioUrl": "audio file URL function app can able to access"
   }
 }
 ```
@@ -44,7 +44,6 @@ The azure function is built on .NET Framework 4.7.2.
 - [.NET Framework 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivots=platform-azp)
-- An Azure storage account and container, for details, see [Create a storage account](https://docs.microsoft.com/azure/storage/common/storage-account-create?tabs=azure-portal). For storing sample audio file **AudioFileUrl**.
 
 ## Code structure
 
@@ -74,4 +73,5 @@ The azure function is built on .NET Framework 4.7.2.
 	- Connectionstring: Azure Communication Service resource's connection string.
 	- SourcePhone: Phone number associated with the Azure Communication Service resource.
 	- SecretPlaceholder: Secret/Password that would be part of callback and will be use to validate incoming requests.
+  
   - AudioFileUrl: Url of default wav file going to play in outbound phone call (should be a blob URL).

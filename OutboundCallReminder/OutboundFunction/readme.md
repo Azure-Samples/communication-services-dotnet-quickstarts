@@ -30,7 +30,7 @@ The azure function is built on .NET Framework 4.7.2.
   },
   "PhoneCall": {
     "Send": "true",
-    "PlayAudioUrl": "wav audio URL as Blob URL "
+    "PlayAudioUrl": "audio file URL function app can able to access"
   }
 }
 ```
@@ -42,7 +42,6 @@ The azure function is built on .NET Framework 4.7.2.
 - [.NET Framework 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivots=platform-azp)
-- An Azure storage account and container, for details, see [Create a storage account](https://docs.microsoft.com/azure/storage/common/storage-account-create?tabs=azure-portal). For storing sample audio file **AudioFileUrl**.
 
 ## Code structure
 
@@ -54,8 +53,8 @@ The azure function is built on .NET Framework 4.7.2.
 ## Before running the sample for the first time
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
-2. git clone `link of azure function sample`.
-3. Once you get the config keys add the keys to the **Calling/local.settings.json**  file found under the OutboundFunction folder.
+2. git clone `https://github.com/Azure-Samples/communication-services-dotnet-quickstarts.git`.
+3. Once you get the config keys add the keys as an environment variable.
 	- Input your connection string in variable: `Connectionstring`
 	- Input you Secret/Password that would be part of callback and will be use to validate incoming requests in variable `SecretPlaceholder`
 	- Input URL of default wav file going to play in outbound phone call in variable `CallbackUri`
@@ -68,9 +67,7 @@ The azure function is built on .NET Framework 4.7.2.
 
 ## Publish to Azure
 
-1. Right click the `OutboundFunction` project and select Publish.
-2. Create a new publish profile and select `target` as `Azure`, `specific target` as `Azure function App (Windows)` then under `function instance` select your Azure subscription, and create new `function app` under your selected resource group.
-3. After publishing, add your connection string with `Edit App Service Settings`, and fill in `ResourceConnectionString` as key and connection string (copy from appsettings.json) as value
+1. [Publish the project to Azure](https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-your-first-function-visual-studio#publish-the-project-to-azure)
 
 **Note**: While you may use http://localhost for local testing, the sample when deployed will only work when served over https. The SDK [does not support http](https://docs.microsoft.com/azure/communication-services/concepts/voice-video-calling/calling-sdk-features#user-webrtc-over-https).
 
@@ -81,4 +78,5 @@ The azure function is built on .NET Framework 4.7.2.
 	- Connectionstring: Azure Communication Service resource's connection string.
 	- SourcePhone: Phone number associated with the Azure Communication Service resource.
 	- SecretPlaceholder: Secret/Password that would be part of callback and will be use to validate incoming requests.
+
   - AudioFileUrl: Url of default wav file going to play in outbound phone call (should be a blob URL).

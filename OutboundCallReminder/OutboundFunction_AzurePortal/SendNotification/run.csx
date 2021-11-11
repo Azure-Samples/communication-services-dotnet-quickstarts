@@ -27,21 +27,21 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
         isSendNotification = null;
     }
 
-    if (!string.IsNullOrEmpty(isSendNotification) && isSendNotification.ToLower() == "true")
+    if (!string.IsNullOrWhiteSpace(isSendNotification) && isSendNotification.ToLower() == "true")
     {
         string sourceNumber = data?.SourceNumber;
         string targetNumber = data?.OutboundNumber;
 
-        if(!string.IsNullOrEmpty(targetNumber) && !string.IsNullOrEmpty(sourceNumber))
+        if(!string.IsNullOrWhiteSpace(targetNumber) && !string.IsNullOrWhiteSpace(sourceNumber))
         {
             string isSmsSend = data?.SMS?.Send;
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"sourceNumber --> {sourceNumber}");
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"targerNumber --> {targetNumber}");
 
-            if (!string.IsNullOrEmpty(isSmsSend) && isSmsSend.ToLower() == "true")
+            if (!string.IsNullOrWhiteSpace(isSmsSend) && isSmsSend.ToLower() == "true")
             {
                 string message = data?.SMS?.Message;
-                if (!string.IsNullOrEmpty(message))
+                if (!string.IsNullOrWhiteSpace(message))
                 {
                     var sendSMS = new SendSMS();
                     Task.Run(() => { sendSMS.SendOneToOneSms(sourceNumber, targetNumber, message); });
@@ -53,7 +53,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
             }
 
             string isInitiatePhoneCall = data?.PhoneCall?.Send;
-            if (!string.IsNullOrEmpty(isInitiatePhoneCall) && isInitiatePhoneCall.ToLower() == "true")
+            if (!string.IsNullOrWhiteSpace(isInitiatePhoneCall) && isInitiatePhoneCall.ToLower() == "true")
             {
                 string callbackUrl = $"{req.Scheme}://{req.Host}/api/";
                 string audioUrl = data?.PhoneCall?.PlayAudioUrl;
@@ -74,7 +74,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
         if (EventAuthHandler.Authorize(req))
         {
             // handling callbacks
-            if (!string.IsNullOrEmpty(requestBody))
+            if (!string.IsNullOrWhiteSpace(requestBody))
             {
                 Task.Run(() =>
                 {

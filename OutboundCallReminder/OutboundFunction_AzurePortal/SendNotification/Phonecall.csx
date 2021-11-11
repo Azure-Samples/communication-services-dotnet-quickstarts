@@ -16,16 +16,15 @@ class Phonecall
     private CallingServerClient callClient;
     private CallConnection callConnection;
     private string appCallbackUrl;
-
+    private string connectionString;
     private CancellationTokenSource reportCancellationTokenSource;
     private CancellationToken reportCancellationToken;
-
     private TaskCompletionSource<bool> callEstablishedTask;
     private TaskCompletionSource<bool> callTerminatedTask;
 
     public Phonecall(string callbackUrl)
     {
-        var connectionString = Environment.GetEnvironmentVariable("Connectionstring");
+        connectionString = Environment.GetEnvironmentVariable("Connectionstring");
         callClient = new CallingServerClient(connectionString);
         appCallbackUrl = callbackUrl;
     }
@@ -49,11 +48,10 @@ class Phonecall
     {
         try
         {
-            var connectionString = Environment.GetEnvironmentVariable("Connectionstring");
             string appCallbackUrl = $"{this.appCallbackUrl}SendNotification?{EventAuthHandler.GetSecretQuerystring}";
 
             //Preparing request data
-            var source = await CreateUser(connectionString);
+            var source = await CreateUser();
             var target = new PhoneNumberIdentifier(targetPhoneNumber);
             CreateCallOptions createCallOption = new CreateCallOptions(
                 new Uri(appCallbackUrl),
@@ -113,7 +111,7 @@ class Phonecall
         var eventId = EventDispatcher.Instance.Subscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId, callStateChangeNotificaiton);
     }
 
-    private static async Task<CommunicationUserIdentifier> CreateUser(string connectionString)
+    private async Task<CommunicationUserIdentifier> CreateUser()
     {
         var client = new CommunicationIdentityClient(connectionString);
         var user = await client.CreateUserAsync().ConfigureAwait(false);
