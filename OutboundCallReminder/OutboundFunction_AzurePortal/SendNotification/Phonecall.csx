@@ -29,7 +29,7 @@ class Phonecall
         appCallbackUrl = callbackUrl;
     }
 
-    public async void InitiatePhoneCall(string sourcePhoneNumber, string targetPhoneNumber, string audioFileUrl)
+    public async Task InitiatePhoneCall(string sourcePhoneNumber, string targetPhoneNumber, string audioFileUrl)
     {
         reportCancellationTokenSource = new CancellationTokenSource();
         reportCancellationToken = reportCancellationTokenSource.Token;
@@ -128,7 +128,7 @@ class Phonecall
 
         try
         {
-            if (string.IsNullOrEmpty(audioFileUrl))
+            if (string.IsNullOrWhiteSpace(audioFileUrl))
             {
                 audioFileUrl = Environment.GetEnvironmentVariable("AudioFileUrl");
             }

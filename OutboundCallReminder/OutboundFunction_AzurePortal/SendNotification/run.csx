@@ -9,80 +9,89 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
-public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
+public static IActionResult Run(HttpRequest req, ILogger log)
 {
     string responseMessage = null;
-    Logger.SetLoggerInstance(log);
-
-    string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-    dynamic data = JsonConvert.DeserializeObject(requestBody);
-    string isSendNotification;
 
     try
     {
-        isSendNotification = data?.SendNotification;
-    }
-    catch(Exception ex)
-    {
-        isSendNotification = null;
-    }
+        Logger.SetLoggerInstance(log);
 
-    if (!string.IsNullOrWhiteSpace(isSendNotification) && isSendNotification.ToLower() == "true")
-    {
-        string sourceNumber = data?.SourceNumber;
-        string targetNumber = data?.OutboundNumber;
+        string requestBody = new StreamReader(req.Body).ReadToEnd();
+        dynamic data = JsonConvert.DeserializeObject(requestBody);
+        string isSendNotification;
 
-        if(!string.IsNullOrWhiteSpace(targetNumber) && !string.IsNullOrWhiteSpace(sourceNumber))
+        try
         {
-            string isSmsSend = data?.SMS?.Send;
-            Logger.LogMessage(Logger.MessageType.INFORMATION, $"sourceNumber --> {sourceNumber}");
-            Logger.LogMessage(Logger.MessageType.INFORMATION, $"targerNumber --> {targetNumber}");
+            isSendNotification = data?.SendNotification;
+        }
+        catch(Exception ex)
+        {
+            Logger.LogMessage(Logger.MessageType.INFORMATION, ex.Message);
+            isSendNotification = null;
+        }
 
-            if (!string.IsNullOrWhiteSpace(isSmsSend) && isSmsSend.ToLower() == "true")
+        if (!string.IsNullOrWhiteSpace(isSendNotification) && isSendNotification.ToLower() == "true")
+        {
+            string sourceNumber = data?.SourceNumber;
+            string targetNumber = data?.OutboundNumber;
+
+            if(!string.IsNullOrWhiteSpace(targetNumber) && !string.IsNullOrWhiteSpace(sourceNumber))
             {
-                string message = data?.SMS?.Message;
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    var sendSMS = new SendSMS();
-                    Task.Run(() => { sendSMS.SendOneToOneSms(sourceNumber, targetNumber, message); });
-                }
-                else
-                {
-                    responseMessage = "SMS notification request body missing message text. Please a message text to the request body.";
-                }
-            }
+                string isSmsSend = data?.SMS?.Send;
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"sourceNumber --> {sourceNumber}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"targerNumber --> {targetNumber}");
 
-            string isInitiatePhoneCall = data?.PhoneCall?.Send;
-            if (!string.IsNullOrWhiteSpace(isInitiatePhoneCall) && isInitiatePhoneCall.ToLower() == "true")
+                if (!string.IsNullOrWhiteSpace(isSmsSend) && isSmsSend.ToLower() == "true")
+                {
+                    string message = data?.SMS?.Message;
+                    if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        var sendSMS = new SendSMS();
+                        Task.Run(() => { sendSMS.SendOneToOneSms(sourceNumber, targetNumber, message); });
+                    }
+                    else
+                    {
+                        responseMessage = "SMS notification request body missing message text. Please a message text to the request body.";
+                    }
+                }
+
+                string isInitiatePhoneCall = data?.PhoneCall?.Send;
+                if (!string.IsNullOrWhiteSpace(isInitiatePhoneCall) && isInitiatePhoneCall.ToLower() == "true")
+                {
+                    string callbackUrl = $"{req.Scheme}://{req.Host}/api/";
+                    string audioUrl = data?.PhoneCall?.PlayAudioUrl;
+                    var phoneCall = new Phonecall(callbackUrl);
+                    Task.Run(() => { phoneCall.InitiatePhoneCall(sourceNumber, targetNumber, audioUrl); });
+                }
+
+                if(string.IsNullOrEmpty(responseMessage))
+                    responseMessage = "Notification sent successfully.";
+            }
+            else
             {
-                string callbackUrl = $"{req.Scheme}://{req.Host}/api/";
-                string audioUrl = data?.PhoneCall?.PlayAudioUrl;
-                var phoneCall = new Phonecall(callbackUrl);
-                Task.Run(() => { phoneCall.InitiatePhoneCall(sourceNumber, targetNumber, audioUrl); });
+                responseMessage = "Notification sent failed. Pass target/source number in the request body.";
             }
-
-            if(string.IsNullOrEmpty(responseMessage))
-                responseMessage = "Notification sent successfully.";
         }
         else
         {
-            responseMessage = "Notification sent failed. Pass target/source number in the request body.";
-        }
-    }
-    else
-    {
-        if (EventAuthHandler.Authorize(req))
-        {
-            // handling callbacks
-            if (!string.IsNullOrWhiteSpace(requestBody))
+            if (EventAuthHandler.Authorize(req))
             {
-                Task.Run(() =>
+                // handling callbacks
+                if (!string.IsNullOrWhiteSpace(requestBody))
                 {
-                    EventDispatcher.Instance.ProcessNotification(requestBody);
-                });
-                responseMessage = "OK";
+                    Task.Run(() =>
+                    {
+                        EventDispatcher.Instance.ProcessNotification(requestBody);
+                    });
+                    responseMessage = "OK";
+                }
             }
         }
+    }
+    catch(Exception ex)
+    {
+        responseMessage = ex.Message;
     }
 
     return new OkObjectResult(responseMessage);

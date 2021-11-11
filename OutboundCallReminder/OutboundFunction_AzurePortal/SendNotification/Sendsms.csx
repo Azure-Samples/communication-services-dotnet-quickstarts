@@ -15,7 +15,7 @@ class SendSMS
         smsClient = new SmsClient(connectionString);
     }
 
-    public async void SendOneToOneSms(string sourcePhoneNumber, string targetPhoneNumber, string message)
+    public async Task SendOneToOneSms(string sourcePhoneNumber, string targetPhoneNumber, string message)
     {
         try
         {
