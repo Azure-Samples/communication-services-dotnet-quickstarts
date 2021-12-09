@@ -8,9 +8,7 @@ products:
 ---
 
 
-# Manage phone numbers Quickstart
-
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Manage phone numbers](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivots=programming-language-csharp)
+# Get Relay Configuration Quickstart
 
 ## Prerequisites
 
@@ -21,15 +19,15 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 
 ## Code Structure
 
-- **./PhoneNumbers/Program.cs:** Core application code with manage phone numbers implementation.
-- **./PhoneNumbers/PhoneNumbers.csproj:** Project configuration file.
-- **./PhoneNumbers.sln:** Visual Studio solution.
+- **./GetRelayConfiguration/Program.cs:** Core application code to get a relay configuration.
+- **./GetRelayConfiguration/GetRelayConfiguration.csproj:** Project configuration file.
+- **./GetRelayConfiguration.sln:** Visual Studio solution.
 
 ## Before running sample code
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 2. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
-3. With the `Connection String` procured in pre-requisites, add it to the **PhoneNumbers/program.cs** file. Assign your connection string in line 3:
+3. With the `Connection String` procured in pre-requisites, add it to the **GetRelayConfiguration/program.cs** file. Assign your connection string in line 3:
   ```csharp
   var connectionString = "<connection_string>";
   ```
@@ -37,5 +35,5 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 
 ## Run Locally
 
-1. Open `PhoneNumbers.sln`
-2. Run the `PhoneNumbers` project
+1. Open `GetRelayConfiguration.sln`
+2. Run the `GetRelayConfiguration` project
