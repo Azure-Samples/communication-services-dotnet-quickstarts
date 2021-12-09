@@ -75,19 +75,28 @@ namespace IncomingCallRouting.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("CallingServerAPICallBacks")]
-        public IActionResult CallingServerAPICallBacks([FromBody] object request)
+        public IActionResult CallingServerAPICallBacks([FromBody] object request, [FromQuery] string secret)
         {
             try
             {
-                var httpContent = new BinaryData(request.ToString()).ToStream();
-                EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
-
-                if (cloudEvent != null)
+                if(EventAuthHandler.Authorize(secret))
                 {
-                    EventDispatcher.Instance.ProcessNotification(cloudEvent);
-                }
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallingServerAPICallBacks-------> {request.ToString()}");
 
-                return Ok();
+                    var httpContent = new BinaryData(request.ToString()).ToStream();
+                    EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
+
+                    if (cloudEvent != null)
+                    {
+                        EventDispatcher.Instance.ProcessNotification(cloudEvent);
+                    }
+
+                    return Ok();
+                }
+                else
+                {
+                    return Unauthorized();
+                }
             }
             catch (Exception ex)
             {

@@ -19,7 +19,7 @@ namespace IncomingCallRouting
         private CallConnection callConnection;
         private CancellationTokenSource reportCancellationTokenSource;
         private CancellationToken reportCancellationToken;
-        private Participants targetParticipants;
+        private string targetParticipant;
 
         private TaskCompletionSource<bool> callEstablishedTask;
         private TaskCompletionSource<bool> playAudioCompletedTask;
@@ -32,7 +32,7 @@ namespace IncomingCallRouting
         {
             this.callConfiguration = callConfiguration;
             this.callingServerClient = callingServerClient;
-            targetParticipants = callConfiguration.targetParticipants;
+            targetParticipant = callConfiguration.targetParticipant;
         }
 
         public async Task Report(string incomingCallContext)
@@ -71,8 +71,8 @@ namespace IncomingCallRouting
                     var toneReceivedComplete = await toneReceivedCompleteTask.Task.ConfigureAwait(false);
                     if (toneReceivedComplete)
                     {
-                        string participant = targetParticipants.getTargetParticipant(callConnection.CallConnectionId);
-                        Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant --> {participant}");
+                        string participant = targetParticipant;
+                        Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {participant}");
                         var transferToParticipantCompleted = await TransferToParticipant(participant);
                         if (!transferToParticipantCompleted)
                         {
@@ -206,9 +206,6 @@ namespace IncomingCallRouting
                 {
                     EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId);
                     reportCancellationTokenSource.Cancel();
-
-                    //Restore target participant in availaible particicpant list
-                    targetParticipants.UnRegisterParticipant(callStateChanged.CallConnectionId);
                     callTerminatedTask.SetResult(true);
                 }
             });
@@ -292,13 +289,13 @@ namespace IncomingCallRouting
 
                 if (identifierKind == CommunicationIdentifierKind.UserIdentity)
                 {
-                    var response = await callConnection.TransferToParticipantAsync(new CommunicationUserIdentifier(targetParticipant), operationContext).ConfigureAwait(false);
+                    var response = await callConnection.TransferToParticipantAsync(new CommunicationUserIdentifier(targetParticipant), null, null, operationContext).ConfigureAwait(false);
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"TransferParticipantAsync response --> {response.GetRawResponse()}, status: {response.Value.Status}  " +
                         $"OperationContext: {response.Value.OperationContext}, OperationId: {response.Value.OperationId}, ResultDetails: {response.Value.ResultDetails}");
                 }
                 else if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                 {
-                    var response = await callConnection.TransferToParticipantAsync(new PhoneNumberIdentifier(targetParticipant), operationContext).ConfigureAwait(false);
+                    var response = await callConnection.TransferToParticipantAsync(new PhoneNumberIdentifier(targetParticipant), null, null, operationContext).ConfigureAwait(false);
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"TransferParticipantAsync response --> {response}");
                 }
             }

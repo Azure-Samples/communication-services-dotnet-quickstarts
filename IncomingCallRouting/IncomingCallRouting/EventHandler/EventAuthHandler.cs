@@ -17,14 +17,12 @@ namespace IncomingCallRouting
             SecretValue = "h3llowW0rld";
         }
 
-        public static bool Authorize(HttpRequestMessage request)
+        public static bool Authorize(string query)
         {
-            if (request?.RequestUri?.Query == null)
+            if (query == null)
                 return false;
 
-            var keyValuePair = HttpUtility.ParseQueryString(request.RequestUri.Query);
-
-            return !string.IsNullOrEmpty(keyValuePair[SecretKey]) && keyValuePair[SecretKey].Equals(SecretValue);
+            return !string.IsNullOrEmpty(query) && query.Equals(SecretValue);
         }
 
         public static string GetSecretQuerystring => $"{SecretKey}={HttpUtility.UrlEncode(SecretValue)}";

@@ -11,12 +11,12 @@ namespace IncomingCallRouting
     public class CallConfiguration
     {
         public static CallConfiguration callConfiguration = null;
-        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string targetParticipant)
+        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant)
         {
             this.ConnectionString = connectionString;
             this.AppBaseUrl = appBaseUrl;
             this.AudioFileName = audioFileUri;
-            targetParticipants = new Participants(targetParticipant);
+            targetParticipant = participant;
         }
 
         public static CallConfiguration getCallConfiguration(IConfiguration configuration)
@@ -26,7 +26,7 @@ namespace IncomingCallRouting
                 callConfiguration = new CallConfiguration(configuration["ResourceConnectionString"],
                     configuration["AppCallBackUri"],
                     configuration["AudioFileUri"],
-                    configuration["TargetParticipants"]);
+                    configuration["TargetParticipant"]);
             }
 
             return callConfiguration;
@@ -57,6 +57,6 @@ namespace IncomingCallRouting
         /// </summary>
         public string AudioFileUrl => $"{AudioFileName}";
 
-        public Participants targetParticipants { get; private set; }
+        public string targetParticipant { get; private set; }
     }
 }
