@@ -4,7 +4,7 @@
 namespace IncomingCallRouting
 {
     using Azure.Communication.CallingServer;
-    using Azure.Messaging.EventGrid;
+    using Azure.Messaging;
     using System;
     using System.Collections.Concurrent;
     using System.Threading.Tasks;
@@ -45,9 +45,9 @@ namespace IncomingCallRouting
             }
         }
 
-        public void ProcessNotification(EventGridEvent cloudEvent)
+        public void ProcessNotification(string content)
         {
-            var callEvent = this.ExtractEvent(cloudEvent);
+            var callEvent = this.ExtractEvent(content);
 
             if (callEvent != null)
             {
@@ -103,24 +103,25 @@ namespace IncomingCallRouting
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>
-        public CallingServerEventBase ExtractEvent(EventGridEvent cloudEvent)
+        public CallingServerEventBase ExtractEvent(string content)
         {
+            CloudEvent cloudEvent = CloudEvent.Parse(BinaryData.FromString(content));
 
             if (cloudEvent != null && cloudEvent.Data != null)
             {
-                if (cloudEvent.EventType.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
+                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
                 {
                     return CallConnectionStateChangedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.EventType.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
                 {
                     return ToneReceivedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.EventType.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
                 {
                     return PlayAudioResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.EventType.Equals(CallingServerEventType.ParticipantsUpdatedEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.ParticipantsUpdatedEvent.ToString()))
                 {
                     return ParticipantsUpdatedEvent.Deserialize(cloudEvent.Data.ToString());
                 }

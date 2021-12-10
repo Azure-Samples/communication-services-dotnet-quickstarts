@@ -81,16 +81,10 @@ namespace IncomingCallRouting.Controllers
             {
                 if(EventAuthHandler.Authorize(secret))
                 {
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallingServerAPICallBacks-------> {request.ToString()}");
-
-                    var httpContent = new BinaryData(request.ToString()).ToStream();
-                    EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
-
-                    if (cloudEvent != null)
+                    if (request != null)
                     {
-                        EventDispatcher.Instance.ProcessNotification(cloudEvent);
+                        EventDispatcher.Instance.ProcessNotification(request.ToString());
                     }
-
                     return Ok();
                 }
                 else
