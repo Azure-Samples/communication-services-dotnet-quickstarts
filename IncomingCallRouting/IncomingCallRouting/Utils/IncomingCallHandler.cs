@@ -46,7 +46,8 @@ namespace IncomingCallRouting
                 var response = await callingServerClient.AnswerCallAsync(
                     incomingCallContext,
                     new List<CallMediaType> { CallMediaType.Audio },
-                    new List<CallingEventSubscriptionType> { CallingEventSubscriptionType.ParticipantsUpdated },
+                    new List<CallingEventSubscriptionType> { CallingEventSubscriptionType.ParticipantsUpdated,
+                    CallingEventSubscriptionType.ToneReceived},
                     new Uri(callConfiguration.AppCallbackUrl));
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
