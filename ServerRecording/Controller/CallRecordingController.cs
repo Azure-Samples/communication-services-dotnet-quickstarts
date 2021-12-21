@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure;
 using Newtonsoft.Json;
 
 namespace QuickStartApi.Controllers
@@ -52,9 +51,7 @@ namespace QuickStartApi.Controllers
                     //Passing RecordingContent initiates recording in specific format. audio/audiovideo
                     //RecordingChannel is used to pass the channel type. mixed/unmixed
                     //RecordingFormat is used to pass the format of the recording. mp4/mp3/wav
-                    var startRecordingResponse = await callingServerClient.StartRecordingAsync(
-                        new ServerCallLocator(serverCallId), 
-                        uri).ConfigureAwait(false);
+                    var startRecordingResponse = await callingServerClient.InitializeServerCall(serverCallId).StartRecordingAsync(uri).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
 
@@ -74,11 +71,16 @@ namespace QuickStartApi.Controllers
             }
             catch (Exception ex)
             {
-                return GetExceptionDetails(ex);
+                if (ex.Message.Contains(CallRecodingActiveErrorCode))
+                {
+                    return BadRequest(new { Message = CallRecodingActiveError });
+                }
+                return Json(new { Exception = ex });
             }
         }
 
-        //********** Replace above API with this if you want to start recording with additional arguments. *************
+
+//********** Replace above API with this if you want to start recording with additional arguments. *************
 
         /// <summary>
         /// Method to start call recording using given parameters
@@ -102,8 +104,9 @@ namespace QuickStartApi.Controllers
                     //Passing RecordingContent initiates recording in specific format. audio/audiovideo
                     //RecordingChannel is used to pass the channel type. mixed/unmixed
                     //RecordingFormat is used to pass the format of the recording. mp4/mp3/wav
-                    var startRecordingResponse = await callingServerClient.StartRecordingAsync(
-                            new ServerCallLocator(serverCallId),
+                    var startRecordingResponse = await callingServerClient
+                        .InitializeServerCall(serverCallId)
+                        .StartRecordingAsync(
                             new Uri(callbackUri),
                             Mapper.RecordingContentMap.TryGetValue(recordingContent, out recContentVal) ? recContentVal : RecordingContent.AudioVideo,
                             Mapper.RecordingChannelMap.TryGetValue(recordingChannel, out recChannelVal) ? recChannelVal : RecordingChannel.Mixed,
@@ -160,7 +163,7 @@ namespace QuickStartApi.Controllers
                             recordingData[serverCallId] = recordingId;
                         }
                     }
-                    var pauseRecording = await callingServerClient.PauseRecordingAsync(recordingId);
+                    var pauseRecording = await callingServerClient.InitializeServerCall(serverCallId).PauseRecordingAsync(recordingId);
                     Logger.LogInformation($"PauseRecordingAsync response -- > {pauseRecording}");
 
                     return Ok();
@@ -172,7 +175,7 @@ namespace QuickStartApi.Controllers
             }
             catch (Exception ex)
             {
-                return GetExceptionDetails(ex);
+                return Json(new { Exception = ex });
             }
         }
 
@@ -200,7 +203,7 @@ namespace QuickStartApi.Controllers
                             recordingData[serverCallId] = recordingId;
                         }
                     }
-                    var resumeRecording = await callingServerClient.ResumeRecordingAsync(recordingId);
+                    var resumeRecording = await callingServerClient.InitializeServerCall(serverCallId).ResumeRecordingAsync(recordingId);
                     Logger.LogInformation($"ResumeRecordingAsync response -- > {resumeRecording}");
 
                     return Ok();
@@ -212,7 +215,7 @@ namespace QuickStartApi.Controllers
             }
             catch (Exception ex)
             {
-                return GetExceptionDetails(ex);
+                return Json(new { Exception = ex });
             }
         }
 
@@ -242,7 +245,7 @@ namespace QuickStartApi.Controllers
                         }
                     }
 
-                    var stopRecording = await callingServerClient.StopRecordingAsync(recordingId).ConfigureAwait(false);
+                    var stopRecording = await callingServerClient.InitializeServerCall(serverCallId).StopRecordingAsync(recordingId).ConfigureAwait(false);
                     Logger.LogInformation($"StopRecordingAsync response -- > {stopRecording}");
 
                     if (recordingData.ContainsKey(serverCallId))
@@ -258,7 +261,7 @@ namespace QuickStartApi.Controllers
             }
             catch (Exception ex)
             {
-                return GetExceptionDetails(ex);
+                return Json(new { Exception = ex });
             }
         }
 
@@ -293,17 +296,11 @@ namespace QuickStartApi.Controllers
                         }
                     }
 
-                    var recordingState = await callingServerClient.GetRecordingStateAsync(recordingId).ConfigureAwait(false);
+                    var recordingState = await callingServerClient.InitializeServerCall(serverCallId).GetRecordingStateAsync(recordingId).ConfigureAwait(false);
 
+                    Logger.LogInformation($"GetRecordingStateAsync response -- > {recordingState}");
 
-                    var callRecordingProperties = (CallRecordingProperties)recordingState;
-                    if (callRecordingProperties != null)
-                    {
-                        Logger.LogInformation($"GetRecordingStateAsync response -- > {callRecordingProperties.RecordingState.ToString()}");
-                        return Json(callRecordingProperties.RecordingState.ToString());
-                    }
-
-                    return Json(new { Message = "RecordingState not found." });
+                    return Json(recordingState.Value.RecordingState);
                 }
                 else
                 {
@@ -312,7 +309,7 @@ namespace QuickStartApi.Controllers
             }
             catch (Exception ex)
             {
-                return GetExceptionDetails(ex);
+                return Json(new { Exception = ex });
             }
         }
 
@@ -323,7 +320,7 @@ namespace QuickStartApi.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("getRecordingFile")]
-        public async Task<IActionResult> GetRecordingFile([FromBody] object request)
+        public async Task<ActionResult> GetRecordingFile([FromBody] object request)
         {
             try
             {
@@ -374,7 +371,7 @@ namespace QuickStartApi.Controllers
             }
             catch (Exception ex)
             {
-                return GetExceptionDetails(ex);
+                return Json(new { Exception = ex });
             }
         }
 
@@ -420,28 +417,6 @@ namespace QuickStartApi.Controllers
             }
 
             return true;
-        }
-
-        private IActionResult GetExceptionDetails(Exception ex)
-        {
-            var message = string.IsNullOrEmpty(ex.Message) ? " Some error occoured" : ex.Message;
-            var stack = string.IsNullOrEmpty(ex.StackTrace) ? " Not available" : ex.StackTrace;
-            var output = "Error occoured while processing request :- " + "\n Message = " + message + "\n Stack = " + stack;
-
-            Logger.LogInformation(output);
-            if (ex.Message.Contains(CallRecodingActiveErrorCode))
-            {
-                return BadRequest(new { Message = CallRecodingActiveError });
-            }
-            if (ex.GetType().Name == "RequestFailedException")
-            {
-                var exp = (RequestFailedException)ex;
-                if ((exp.Status == 400) || (exp.Status == 404))
-                {
-                    return BadRequest(new { Message = exp.Message });
-                }
-            }
-            return Json(new { output });
         }
     }
 }
