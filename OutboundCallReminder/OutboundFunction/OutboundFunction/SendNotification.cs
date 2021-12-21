@@ -42,18 +42,18 @@ namespace OutboundFunction
                 string sourceNumber = data?.SourceNumber;
                 string targetNumber = data?.OutboundNumber;
 
-                if(!string.IsNullOrEmpty(targetNumber) && !string.IsNullOrEmpty(sourceNumber))
+                if(!string.IsNullOrWhiteSpace(targetNumber) && !string.IsNullOrWhiteSpace(sourceNumber))
                 {
                     string isSmsSend = data?.SMS?.Send;
 
                     log.LogInformation($"sourceNumber --> {sourceNumber}");
                     log.LogInformation($"targerNumber --> {targetNumber}");
 
-                    if (!string.IsNullOrEmpty(isSmsSend) && isSmsSend == "true")
+                    if (!string.IsNullOrWhiteSpace(isSmsSend) && isSmsSend.ToLower() == "true")
                     {
                         string message = data?.SMS?.Message;
 
-                        if (!string.IsNullOrEmpty(message))
+                        if (!string.IsNullOrWhiteSpace(message))
                         {
                             var sendSMS = new SendSMS();
                             Task.Run(() => { sendSMS.SendOneToOneSms(sourceNumber, targetNumber, message); });
@@ -65,7 +65,7 @@ namespace OutboundFunction
                     }
 
                     string isInitiatePhoneCall = data?.PhoneCall?.Send;
-                    if (!string.IsNullOrEmpty(isInitiatePhoneCall) && isInitiatePhoneCall == "true")
+                    if (!string.IsNullOrEmpty(isInitiatePhoneCall) && isInitiatePhoneCall.ToLower() == "true")
                     {
                         string callbackUrl = $"{req.Scheme}://{req.Host}/api/";
                         string audioUrl = data?.PhoneCall?.PlayAudioUrl;
