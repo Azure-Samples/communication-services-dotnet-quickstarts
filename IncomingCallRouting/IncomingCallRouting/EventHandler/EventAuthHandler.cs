@@ -3,21 +3,23 @@
 
 namespace IncomingCallRouting
 {
-    using System.Configuration;
-    using System.Net.Http;
+    /// <summary>
+    /// Authorize incoming callbacks.
+    /// </summary>
+
     using System.Web;
 
     public class EventAuthHandler
     {
         private static readonly string SecretKey = "secret";
-        private static readonly string SecretValue;
+        private readonly string SecretValue;
 
-        static EventAuthHandler()
+        public EventAuthHandler(string secretValue)
         {
-            SecretValue = "h3llowW0rld";
+            SecretValue = secretValue;
         }
 
-        public static bool Authorize(string query)
+        public bool Authorize(string query)
         {
             if (query == null)
                 return false;
@@ -25,6 +27,6 @@ namespace IncomingCallRouting
             return !string.IsNullOrEmpty(query) && query.Equals(SecretValue);
         }
 
-        public static string GetSecretQuerystring => $"{SecretKey}={HttpUtility.UrlEncode(SecretValue)}";
+        public string GetSecretQuerystring => $"{SecretKey}={HttpUtility.UrlEncode(SecretValue)}";
     }
 }

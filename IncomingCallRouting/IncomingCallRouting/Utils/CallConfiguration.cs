@@ -10,23 +10,26 @@ namespace IncomingCallRouting
     /// </summary>
     public class CallConfiguration
     {
-        public static CallConfiguration callConfiguration = null;
-        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant)
+        private static CallConfiguration callConfiguration = null;
+        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString)
         {
             this.ConnectionString = connectionString;
             this.AppBaseUrl = appBaseUrl;
-            this.AudioFileName = audioFileUri;
+            this.AudioFileUrl = audioFileUri;
+            this.AppCallbackUrl = $"{AppBaseUrl}/CallingServerAPICallBacks?{queryString}";
             targetParticipant = participant;
         }
 
-        public static CallConfiguration getCallConfiguration(IConfiguration configuration)
+        public static CallConfiguration GetCallConfiguration(IConfiguration configuration, string queryString)
         {
             if(callConfiguration == null)
             {
                 callConfiguration = new CallConfiguration(configuration["ResourceConnectionString"],
                     configuration["AppCallBackUri"],
                     configuration["AudioFileUri"],
-                    configuration["TargetParticipant"]);
+                    configuration["TargetParticipant"],
+                    queryString);
+
             }
 
             return callConfiguration;
@@ -43,20 +46,18 @@ namespace IncomingCallRouting
         private string AppBaseUrl;
 
         /// <summary>
-        /// The audio file name of the play prompt.
-        /// </summary>
-        private string AudioFileName;
-
-        /// <summary>
         /// The callback url of the application where notification would be received.
         /// </summary>
-        public string AppCallbackUrl => $"{AppBaseUrl}/CallingServerAPICallBacks?{EventAuthHandler.GetSecretQuerystring}";
+        public string AppCallbackUrl;
 
         /// <summary>
         /// The publicly available url of the audio file which would be played as a prompt.
         /// </summary>
-        public string AudioFileUrl => $"{AudioFileName}";
+        public string AudioFileUrl;
 
+        /// <summary>
+        /// The publicly available participant id to transfer the incoming call.
+        /// </summary>
         public string targetParticipant { get; private set; }
     }
 }

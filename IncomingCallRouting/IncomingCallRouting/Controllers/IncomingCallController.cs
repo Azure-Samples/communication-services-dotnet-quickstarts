@@ -17,12 +17,14 @@ namespace IncomingCallRouting.Controllers
         private readonly CallingServerClient callingServerClient;
         List<Task> incomingCalls;
         CallConfiguration callConfiguration;
+        EventAuthHandler eventAuthHandler;
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
             callingServerClient = new CallingServerClient(configuration["ResourceConnectionString"]);
             incomingCalls = new List<Task>();
-            callConfiguration = CallConfiguration.getCallConfiguration(configuration);
+            eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
+            callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
 
         /// Web hook to receive the incoming call Event
@@ -64,6 +66,7 @@ namespace IncomingCallRouting.Controllers
             }
             catch (Exception ex)
             {
+                Logger.LogMessage(Logger.MessageType.ERROR, $"Fails in OnIncomingCall ---> {ex.Message}");
                 return Json(new { Exception = ex });
             }
         }
@@ -79,7 +82,7 @@ namespace IncomingCallRouting.Controllers
         {
             try
             {
-                if(EventAuthHandler.Authorize(secret))
+                if(eventAuthHandler.Authorize(secret))
                 {
                     if (request != null)
                     {
@@ -94,6 +97,7 @@ namespace IncomingCallRouting.Controllers
             }
             catch (Exception ex)
             {
+                Logger.LogMessage(Logger.MessageType.ERROR, $"Fails with CallingServerAPICallBack ---> {ex.Message}");
                 return Json(new { Exception = ex });
             }
         }

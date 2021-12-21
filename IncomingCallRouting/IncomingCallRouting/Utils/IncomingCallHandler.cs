@@ -3,6 +3,11 @@
 
 namespace IncomingCallRouting
 {
+    /// <summary>
+    /// Handling different callback events
+    /// and perform operations
+    /// </summary>
+
     using Azure.Communication;
     using Azure.Communication.CallingServer;
     using Azure.Communication.CallingServer.Models;

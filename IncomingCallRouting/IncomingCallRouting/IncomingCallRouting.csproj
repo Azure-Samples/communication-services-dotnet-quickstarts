@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <Reference Include="Azure.Communication.CallingServer">
-      <HintPath>dependencies\Azure.Communication.CallingServer.dll</HintPath>
+      <HintPath>Dependencies\Azure.Communication.CallingServer.dll</HintPath>
     </Reference>
   </ItemGroup>
 
