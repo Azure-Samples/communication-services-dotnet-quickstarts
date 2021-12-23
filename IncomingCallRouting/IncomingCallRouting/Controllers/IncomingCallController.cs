@@ -15,14 +15,12 @@ namespace IncomingCallRouting.Controllers
     public class IncomingCallController : Controller
     {
         private readonly CallingServerClient callingServerClient;
-        List<Task> incomingCalls;
         CallConfiguration callConfiguration;
         EventAuthHandler eventAuthHandler;
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
             callingServerClient = new CallingServerClient(configuration["ResourceConnectionString"]);
-            incomingCalls = new List<Task>();
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
@@ -59,7 +57,7 @@ namespace IncomingCallRouting.Controllers
                     if (eventData != null)
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
-                        incomingCalls.Add(Task.Run(async () => await new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext)));
+                        _ = new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext);
                     }
                 }
                 return Ok();
