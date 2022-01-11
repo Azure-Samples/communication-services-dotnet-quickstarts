@@ -11,13 +11,14 @@ namespace IncomingCallRouting
     public class CallConfiguration
     {
         private static CallConfiguration callConfiguration = null;
-        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString)
+        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString, string ivrParticipant)
         {
             this.ConnectionString = connectionString;
             this.AppBaseUrl = appBaseUrl;
             this.AudioFileUrl = audioFileUri;
             this.AppCallbackUrl = $"{AppBaseUrl}/CallingServerAPICallBacks?{queryString}";
             targetParticipant = participant;
+            this.ivrParticipant = ivrParticipant;
         }
 
         public static CallConfiguration GetCallConfiguration(IConfiguration configuration, string queryString)
@@ -28,7 +29,8 @@ namespace IncomingCallRouting
                     configuration["AppCallBackUri"],
                     configuration["AudioFileUri"],
                     configuration["TargetParticipant"],
-                    queryString);
+                    queryString,
+                    configuration["IVRParticipant"]);
 
             }
 
@@ -59,5 +61,10 @@ namespace IncomingCallRouting
         /// The publicly available participant id to transfer the incoming call.
         /// </summary>
         public string targetParticipant { get; private set; }
+
+        /// <summary>
+        /// The publicly available participant id to transfer the incoming call.
+        /// </summary>
+        public string ivrParticipant { get; private set; }
     }
 }

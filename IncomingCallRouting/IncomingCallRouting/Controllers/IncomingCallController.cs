@@ -52,12 +52,18 @@ namespace IncomingCallRouting.Controllers
                 }
                 else if (cloudEvent.EventType.Equals("Microsoft.Communication.IncomingCall"))
                 {
-                    //Fetch incoming call context from request
+                    //Fetch incoming call context and ivr participant from request
                     var eventData = request.ToString();
                     if (eventData != null)
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
-                        _ = new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext);
+                        string ivrParticipnat = eventData.Split("\"to\":{\"rawId\":\"")[1].Split("\",\"")[0];
+
+                        if( (callConfiguration.ivrParticipant == ivrParticipnat || callConfiguration.ivrParticipant == "*")
+                            && callConfiguration.targetParticipant != ivrParticipnat)
+                        {
+                            _ = new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext);
+                        }
                     }
                 }
                 return Ok();
