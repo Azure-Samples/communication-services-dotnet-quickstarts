@@ -59,8 +59,8 @@ namespace IncomingCallRouting.Controllers
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
                         string ivrParticipnat = eventData.Split("\"to\":{\"rawId\":\"")[1].Split("\",\"")[0];
 
-                        if( (callConfiguration.ivrParticipant == ivrParticipnat || callConfiguration.ivrParticipant == "*")
-                            && callConfiguration.targetParticipant != ivrParticipnat)
+                        if( (callConfiguration.IvrParticipant == ivrParticipnat || callConfiguration.IvrParticipant == "*")
+                            && callConfiguration.TargetParticipant != ivrParticipnat)
                         {
                             _ = new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext);
                         }

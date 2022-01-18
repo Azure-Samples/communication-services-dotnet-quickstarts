@@ -37,7 +37,7 @@ namespace IncomingCallRouting
         {
             this.callConfiguration = callConfiguration;
             this.callingServerClient = callingServerClient;
-            targetParticipant = callConfiguration.targetParticipant;
+            targetParticipant = callConfiguration.TargetParticipant;
         }
 
         public async Task Report(string incomingCallContext)

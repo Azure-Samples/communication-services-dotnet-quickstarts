@@ -17,8 +17,8 @@ namespace IncomingCallRouting
             this.AppBaseUrl = appBaseUrl;
             this.AudioFileUrl = audioFileUri;
             this.AppCallbackUrl = $"{AppBaseUrl}/CallingServerAPICallBacks?{queryString}";
-            targetParticipant = participant;
-            this.ivrParticipant = ivrParticipant;
+            this.TargetParticipant = participant;
+            this.IvrParticipant = ivrParticipant;
         }
 
         public static CallConfiguration GetCallConfiguration(IConfiguration configuration, string queryString)
@@ -60,11 +60,11 @@ namespace IncomingCallRouting
         /// <summary>
         /// The publicly available participant id to transfer the incoming call.
         /// </summary>
-        public string targetParticipant { get; private set; }
+        public string TargetParticipant { get; private set; }
 
         /// <summary>
         /// The publicly available participant id to transfer the incoming call.
         /// </summary>
-        public string ivrParticipant { get; private set; }
+        public string IvrParticipant { get; private set; }
     }
 }
