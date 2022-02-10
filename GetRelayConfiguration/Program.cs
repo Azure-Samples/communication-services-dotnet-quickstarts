@@ -6,7 +6,6 @@ using Azure;
 using Azure.Communication;
 using Azure.Communication.Identity;
 using Azure.Communication.NetworkTraversal;
-using Azure.Communication.NetworkTraversal.Models;
 using Microsoft.MixedReality.WebRTC;
 
 namespace GetRelayConfiguration
@@ -42,7 +41,7 @@ namespace GetRelayConfiguration
         {
             Response<CommunicationRelayConfiguration> relayConfiguration = _communicationRelayClient.GetRelayConfiguration();
             DateTimeOffset turnTokenExpiresOn = relayConfiguration.Value.ExpiresOn;
-            IReadOnlyList<CommunicationIceServer> iceServers = relayConfiguration.Value.IceServers;
+            IReadOnlyList<CommunicationIceServer> iceServers = (IReadOnlyList<CommunicationIceServer>)relayConfiguration.Value.IceServers;
             
             Console.WriteLine($"Expires On: {turnTokenExpiresOn}");
             foreach (CommunicationIceServer iceServer in iceServers)
@@ -64,9 +63,9 @@ namespace GetRelayConfiguration
             Response<CommunicationUserIdentifier> response = _communicationIdentityClient.CreateUser();
             var user = response.Value;
 
-            Response<CommunicationRelayConfiguration> relayConfiguration = _communicationRelayClient.GetRelayConfiguration(new GetRelayConfigurationOptions { CommunicationUser = user });
+            Response<CommunicationRelayConfiguration> relayConfiguration = _communicationRelayClient.GetRelayConfiguration(communicationUser: user);
             DateTimeOffset turnTokenExpiresOn = relayConfiguration.Value.ExpiresOn;
-            IReadOnlyList<CommunicationIceServer> iceServers = relayConfiguration.Value.IceServers;
+            IReadOnlyList<CommunicationIceServer> iceServers = (IReadOnlyList<CommunicationIceServer>)relayConfiguration.Value.IceServers;
             Console.WriteLine($"Expires On: {turnTokenExpiresOn}");
             foreach (CommunicationIceServer iceServer in iceServers)
             {
@@ -84,10 +83,10 @@ namespace GetRelayConfiguration
 
         public static CommunicationRelayConfiguration GetRelayConfigurationWithNearestRouteType()
         {
-            Response<CommunicationRelayConfiguration> relayConfiguration = _communicationRelayClient.GetRelayConfiguration(new GetRelayConfigurationOptions { RouteType = RouteType.Nearest });
+            Response<CommunicationRelayConfiguration> relayConfiguration = _communicationRelayClient.GetRelayConfiguration(routeType : RouteType.Nearest );
             DateTimeOffset turnTokenExpiresOn = relayConfiguration.Value.ExpiresOn;
             
-            IReadOnlyList<CommunicationIceServer> iceServers = relayConfiguration.Value.IceServers;
+            IReadOnlyList<CommunicationIceServer> iceServers = (IReadOnlyList<CommunicationIceServer>)relayConfiguration.Value.IceServers;
             Console.WriteLine($"Expires On: {turnTokenExpiresOn}");
             foreach (CommunicationIceServer iceServer in iceServers)
             {
@@ -105,7 +104,7 @@ namespace GetRelayConfiguration
 
         public static PeerConnectionConfiguration GetPeerConnectionConfiguration(CommunicationRelayConfiguration relayConfiguration)
         {
-            IReadOnlyList<CommunicationIceServer> iceServers = relayConfiguration.IceServers;
+            IReadOnlyList<CommunicationIceServer> iceServers = (IReadOnlyList<CommunicationIceServer>)relayConfiguration.IceServers;
             var webRTCIceServers = new List<IceServer>();
 
             foreach (CommunicationIceServer iceServer in iceServers)
