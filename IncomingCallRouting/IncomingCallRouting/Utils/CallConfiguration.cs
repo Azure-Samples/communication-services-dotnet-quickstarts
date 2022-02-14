@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace IncomingCallRouting
 {
@@ -11,15 +13,15 @@ namespace IncomingCallRouting
     public class CallConfiguration
     {
         private static CallConfiguration callConfiguration = null;
-        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString, string ivrParticipant)
+        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString, string ivrParticipants)
         {
             this.ConnectionString = connectionString;
             this.AppBaseUrl = appBaseUrl;
             this.AudioFileUrl = audioFileUri;
             this.AppCallbackUrl = $"{AppBaseUrl}/CallingServerAPICallBacks?{queryString}";
             this.TargetParticipant = participant;
-            this.IvrParticipant = ivrParticipant;
-        }
+            this.IvrParticipants = ivrParticipants.Split(',').Select(p => p.Trim()).ToList();
+         }
 
         public static CallConfiguration GetCallConfiguration(IConfiguration configuration, string queryString)
         {
@@ -30,8 +32,7 @@ namespace IncomingCallRouting
                     configuration["AudioFileUri"],
                     configuration["TargetParticipant"],
                     queryString,
-                    configuration["IVRParticipant"]);
-
+                    configuration["IVRParticipants"]);
             }
 
             return callConfiguration;
@@ -63,8 +64,8 @@ namespace IncomingCallRouting
         public string TargetParticipant { get; private set; }
 
         /// <summary>
-        /// The publicly available participant id to transfer the incoming call.
+        /// The publicly available participants id to transfer the incoming call.
         /// </summary>
-        public string IvrParticipant { get; private set; }
+        public List<string> IvrParticipants { get; private set; }
     }
 }

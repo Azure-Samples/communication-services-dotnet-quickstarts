@@ -85,7 +85,6 @@ namespace IncomingCallRouting
                             await RetryTransferToParticipantAsync(async () => await TransferToParticipant(participant));
                         }
                     }
-                    await HangupAsync().ConfigureAwait(false);
                 }
 
                 // Wait for the call to terminate
@@ -276,35 +275,40 @@ namespace IncomingCallRouting
             EventDispatcher.Instance.Subscribe(CallingServerEventType.ToneReceivedEvent.ToString(), callConnectionId, dtmfReceivedEvent);
         }
 
+        private CommunicationIdentifier GetIdentifier(String targetParticipant)
+        {
+ 
+            if (GetIdentifierKind(targetParticipant) == CommunicationIdentifierKind.UserIdentity)
+            {
+                return new CommunicationUserIdentifier(targetParticipant);
+            }
+            else if (GetIdentifierKind(targetParticipant) == CommunicationIdentifierKind.PhoneIdentity)
+            {
+                return new PhoneNumberIdentifier(targetParticipant);
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         private async Task<bool> TransferToParticipant(string targetParticipant)
         {
             transferToParticipantCompleteTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var identifierKind = GetIdentifierKind(targetParticipant);
+            var identifier = GetIdentifier(targetParticipant);
 
-            if (identifierKind == CommunicationIdentifierKind.UnknownIdentity)
+            if (identifier == null)
             {
                 Logger.LogMessage(Logger.MessageType.INFORMATION, "Unknown identity provided. Enter valid phone number or communication user id");
-                transferToParticipantCompleteTask.TrySetResult(true);
+                return true;
             }
-            else
-            {
-                var operationContext = Guid.NewGuid().ToString();
+            var operationContext = Guid.NewGuid().ToString();
 
-                RegisterToTransferParticipantsResultEvent(operationContext);
+            var response = await callConnection.TransferToParticipantAsync(new CommunicationUserIdentifier(targetParticipant), null, null, operationContext).ConfigureAwait(false);
 
-                if (identifierKind == CommunicationIdentifierKind.UserIdentity)
-                {
-                    var response = await callConnection.TransferToParticipantAsync(new CommunicationUserIdentifier(targetParticipant), null, null, operationContext).ConfigureAwait(false);
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"TransferParticipantAsync response --> {response.GetRawResponse()}, status: {response.Value.Status}  " +
-                        $"OperationContext: {response.Value.OperationContext}, OperationId: {response.Value.OperationId}, ResultDetails: {response.Value.ResultDetails}");
-                }
-                else if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
-                {
-                    var response = await callConnection.TransferToParticipantAsync(new PhoneNumberIdentifier(targetParticipant), null, null, operationContext).ConfigureAwait(false);
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"TransferParticipantAsync response --> {response}");
-                }
-            }
+            Logger.LogMessage(Logger.MessageType.INFORMATION, $"TransferParticipantAsync response --> {response.GetRawResponse()}, status: {response.Value.Status}  " +
+        $"OperationContext: {response.Value.OperationContext}, OperationId: {response.Value.OperationId}, ResultDetails: {response.Value.ResultDetails}");
 
             var transferToParticipantCompleted = await transferToParticipantCompleteTask.Task.ConfigureAwait(false);
             return transferToParticipantCompleted;

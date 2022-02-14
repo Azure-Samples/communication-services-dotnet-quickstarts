@@ -39,6 +39,10 @@ The application is an app service application built on .Net Framework 4.7.2.
 	- AudioFileUri: public url of wav audio file
 	- TargetParticipant: Target participant to transfer the call.
 	- SecretValue: Query string for callback URL
+	- IVRParticipants list of participants  resource IDs separated by ',' or "*" for accepting all incoming calls)
+    For e.g. 8:acs:ab12b0ea-85ea-4f83-b0b6-84d90209c7c4_00000009-bce0-da09-54b7-xxxxxxxxxxxx)
+    eg 8:acs:ab12b0ea-85ea-4f83-b0b6-84d90209c7c4_00000009-bce0-da09-54b7-xxxxxxxxxxxx , 8:acs:ab12b0ea-85ea-4f83-b0b6-84d90209c7c4_00000009-bce0-da09-54b7-xxxxxxxxxxxx
+
 
 3. Run `IncomingCallRouting` project.
 4. Use postman or any debugging tool and open url - https://localhost:5001
