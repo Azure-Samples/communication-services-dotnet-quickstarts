@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Identity" Version="1.0.1" />
-    <PackageReference Include="Azure.Communication.NetworkTraversal" Version="1.0.0-beta.3" />
+    <PackageReference Include="Azure.Communication.NetworkTraversal" Version="1.1.0-beta.1" />
     <PackageReference Include="Microsoft.MixedReality.WebRTC" Version="2.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
