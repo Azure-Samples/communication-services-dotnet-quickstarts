@@ -1,0 +1,63 @@
+[
+  {
+    "Id": "1",
+    "TemplateName": "Single Reciepent",
+    "Subject": "Testing Email for Single Recipient",
+    "PlainText": "Test Email from Email Sample\n\n This email is part of testing of email communication service. \\n Best wishes",
+    "HTMLText": "<html><head><title>ACS Email as a Service</title></head><body><h1>ACS Email as a Service - Html body</h1><h2>This email is part of testing of email communication service</h2></body></html>",
+    "Sender": "TestEmail_NoReply@guid.azurecomm.net",
+    "Recipients": "alice@contoso.com, Alice",
+    "Importance": "High"
+  },
+  {
+    "Id": "2",
+    "TemplateName": "Single Reciepent with Attchment",
+    "Subject": "Testing Email for Single Recipient with Attchment",
+    "PlainText": "Test Email from Email Sample\n\n This email is part of testing of email communication service. \\n Best wishes",
+    "HTMLText": "<html><head><title>ACS Email as a Service</title></head><body><h1>ACS Email as a Service - Html body</h1><h2>This email is part of testing of email communication service</h2></body></html>",
+    "Sender": "TestEmail_NoReply@guid.azurecomm.net",
+    "Recipients": "alice@contoso.com, Alice",
+    "Importance": "High",
+    "Attachments": "data//attachment.pdf"
+  },
+  {
+    "Id": "3",
+    "TemplateName": "Single Reciepent with multiple Attchments",
+    "Subject": "Testing Email for Single Recipient with multiple Attchments",
+    "PlainText": "Test Email from Email Sample\n\n This email is part of testing of email communication service. \\n Best wishes",
+    "HTMLText": "<html><head><title>ACS Email as a Service</title></head><body><h1>ACS Email as a Service - Html body</h1><h2>This email is part of testing of email communication service</h2></body></html>",
+    "Sender": "TestEmail_NoReply@guid.azurecomm.net",
+    "Recipients": "alice@contoso.com, Alice",
+    "Importance": "High",
+    "Attachments": "data//attachment.pdf; data//attachment.txt"
+  },
+  {
+    "Id": "4",
+    "TemplateName": "Multiple Recipients with Attachment",
+    "Subject": "Testing Email for Multiple Recipients with Attachment",
+    "PlainText": "Test Email from Email Sample\n\n This email is part of testing of email communication service. \\n Best wishes",
+    "HTMLText": "<html><head><title>ACS Email as a Service Html title</title></head><body><h1>ACS Email as a Service - Html body</h1><h2>This email is part of testing of email communication service</h2></body></html>",
+    "Sender": "TestEmail_NoReply@guid.azurecomm.net",
+    "Recipients": "alice@contoso.com, Alice; bob@contoso.com, Bob",
+    "Importance": "High",
+    "Attachments": "data//attachment.pdf"
+  },
+  {
+    "Id": "5",
+    "TemplateName": "Single Reciepent having Plain text",
+    "Subject": "Testing Email for Single Reciepent having plain text",
+    "PlainText": "Test Email from Email Sample\n\n This email is part of testing of email communication service. \\n Best wishes",
+    "HTMLText": "",
+    "Sender": "TestEmail_NoReply@guid.azurecomm.net",
+    "Recipients": "alice@contoso.com, Alice"
+  },
+  {
+    "Id": "6",
+    "TemplateName": "Single Reciepent having HTML text",
+    "Subject": "Testing Email for Single Reciepent having HTML text",
+    "PlainText": "",
+    "HTMLText": "<html><head><title>ACS Email as a Service - Html title</title></head><body><h1>ACS Email as a Service - Html body</h1><h2>This email is part of testing of email communication service</h2></body></html>",
+    "Sender": "TestEmail_NoReply@guid.azurecomm.net",
+    "Recipients": "alice@contoso.com, Alice"
+  }
+]
