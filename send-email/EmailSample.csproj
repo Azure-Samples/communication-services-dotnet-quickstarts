@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Core" Version="1.24.0" />
-    <PackageReference Include="Azure.Communication.Email" Version="1.0.0-alpha.20220514.1" />
+    <PackageReference Include="Azure.Communication.Email" Version="1.0.0-alpha.20220518.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.4.0" />
   </ItemGroup>
