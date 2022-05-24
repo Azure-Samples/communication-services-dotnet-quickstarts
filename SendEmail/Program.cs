@@ -12,15 +12,15 @@ namespace SendEmail
         static async Task Main(string[] args)
         {
             // This code demonstrates how to send email using Azure Communication Services.
-            string connectionString = "<ACS_CONNECTION_STRING>";
+            var connectionString = "<ACS_CONNECTION_STRING>";
             EmailClient emailClient = new EmailClient(connectionString);
-            string subject = "Send email quick start - dotnet";
+            var subject = "Send email quick start - dotnet";
             var emailContent = new EmailContent(subject)
             {
                 PlainText = "This is plain mail send test body \n Best Wishes!!",
                 Html = "<html><body><h1>Quick send email test</h1><br/><h4>Communication email as a service mail send app working properly</h4><p>Happy Learning!!</p></body></html>"
             };
-            string sender = "<SENDER_EMAIL>";
+            var sender = "<SENDER_EMAIL>";
 
             EmailRecipients emailRecipients = new EmailRecipients(new List<EmailAddress> {
                 new EmailAddress("<RECIPIENT_EMAIL>") { DisplayName = "<RECIPINENT_DISPLAY_NAME>" }
@@ -30,16 +30,16 @@ namespace SendEmail
 
             try
             {
-                var sendEmailResponse = emailClient.Send(emailMessage);
+                SendEmailResult sendEmailResult = emailClient.Send(emailMessage);
 
-                string messageId = sendEmailResponse.Value.MessageId;
+                string messageId = sendEmailResult.MessageId;
                 if (!string.IsNullOrEmpty(messageId))
                 {
-                    Console.WriteLine($"Email Sent, MessageId = {messageId}");
+                    Console.WriteLine($"Email sent, MessageId = {messageId}");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to send Email, response: {sendEmailResponse.GetRawResponse()}");
+                    Console.WriteLine($"Failed to send email.");
                     return;
                 }
 
@@ -47,10 +47,10 @@ namespace SendEmail
                 var cancellationToken = new CancellationTokenSource(TimeSpan.FromMinutes(2));
                 do
                 {
-                    var sendStatus = emailClient.GetSendStatus(messageId);
-                    Console.WriteLine($"Send mail status for MessageId : <{messageId}>, Status: [{sendStatus.Value.Status}]");
+                    SendStatusResult sendStatus = emailClient.GetSendStatus(messageId);
+                    Console.WriteLine($"Send mail status for MessageId : <{messageId}>, Status: [{sendStatus.Status}]");
 
-                    if (sendStatus.Value.Status != SendStatus.Queued)
+                    if (sendStatus.Status != SendStatus.Queued)
                     {
                         break;
                     }
