@@ -14,6 +14,7 @@ namespace SendEmail
             // This code demonstrates how to send email using Azure Communication Services.
             var connectionString = "<ACS_CONNECTION_STRING>";
             var emailClient = new EmailClient(connectionString);
+
             var subject = "Send email quick start - dotnet";
             var emailContent = new EmailContent(subject)
             {
@@ -22,11 +23,11 @@ namespace SendEmail
             };
             var sender = "<SENDER_EMAIL>";
 
-            EmailRecipients emailRecipients = new EmailRecipients(new List<EmailAddress> {
+            var emailRecipients = new EmailRecipients(new List<EmailAddress> {
                 new EmailAddress("<RECIPIENT_EMAIL>") { DisplayName = "<RECIPINENT_DISPLAY_NAME>" }
             });
 
-            EmailMessage emailMessage = new EmailMessage(sender, emailContent, emailRecipients);
+            var emailMessage = new EmailMessage(sender, emailContent, emailRecipients);
 
             try
             {
