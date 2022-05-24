@@ -13,7 +13,7 @@ namespace SendEmail
         {
             // This code demonstrates how to send email using Azure Communication Services.
             var connectionString = "<ACS_CONNECTION_STRING>";
-            EmailClient emailClient = new EmailClient(connectionString);
+            var emailClient = new EmailClient(connectionString);
             var subject = "Send email quick start - dotnet";
             var emailContent = new EmailContent(subject)
             {
