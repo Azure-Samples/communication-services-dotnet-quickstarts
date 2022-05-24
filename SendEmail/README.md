@@ -9,8 +9,7 @@ products:
 
 # Email Sample
 
-This sample sends an email to the selected recipients of any domain using an [Email Communication Services resource](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/email/create-email-communication-resource). 
-Although the "recipients" field is technically required, it is not a requirement that you send an email to the recipients you select.
+This sample sends an email to the selected recipients of any domain using an [Email Communication Services resource](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/email/create-email-communication-resource).
 
 Additional documentation for this sample can be found on [Microsoft Docs](https://docs.microsoft.com/en-us/azure/communication-services/concepts/email/email-overview).
 
@@ -40,7 +39,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 2. Open the program.cs file to configure the following settings:
   - `connectionstring`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
   - `sender`: Replace `<SENDER_EMAIL>` with the sender email obtained from Azure Communication Service.
-  - `Line 26 - <RECIPIENT_EMAIL>`: Replace with the recipient email.
+  - `recipient`: Replace `<RECIPIENT_EMAIL>` with the recipient email.
   - `content`: Either use PlainText or Html to set the message content.
 3. Run `SendEmail` project.
 
