@@ -37,7 +37,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 
 1. Go to SendEmail folder and open `SendEmail.sln` solution in Visual Studio
 2. Open the program.cs file to configure the following settings
-	- `connectionstring`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
+  - `connectionstring`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
   - `sender`: Replace `<SENDER_EMAIL>` with sender email obtained from Azure Communication Service.
   - `Line 26 - <RECIPIENT_EMAIL>`: Replace with recipient email.
   - `content`: Either use PlainText or Html to set the message content.
