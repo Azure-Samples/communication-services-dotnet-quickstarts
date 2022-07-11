@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "IncomingCallRouting": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:14670;http://localhost:14671"
+    }
+  }
+}
