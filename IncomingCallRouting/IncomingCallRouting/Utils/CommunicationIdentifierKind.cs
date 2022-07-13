@@ -1,5 +1,4 @@
-﻿
-namespace IncomingCallRouting
+﻿namespace IncomingCallRouting
 {
     /// <summary>
     /// Type of communication identifiers.
@@ -8,6 +7,7 @@ namespace IncomingCallRouting
     {
         UserIdentity,
         PhoneIdentity,
+        TeamsIdentity,
         UnknownIdentity
     }
 }

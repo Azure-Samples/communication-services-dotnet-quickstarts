@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Collections.Generic;
+using Azure.Communication.CallingServer.Models;
 using IncomingCallRouting.Enums;
 using IncomingCallRouting.Events;
 
@@ -50,16 +52,12 @@ namespace IncomingCallRouting
 
             try
             {
-                // Answer Call
-                // var rejectResponse = await callingServerClient.RejectCallAsync(incomingCallContext, CallRejectReason.Busy);
+                // Redirect Call
+                // var redirectResponse = await callingServerClient.RedirectCallAsync(incomingCallContext, GetIdentifier(targetParticipant));
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"RedirectCallAsync Response -----> {redirectResponse}");
 
                 // Answer Call
-                var response = await callingServerClient.AnswerCallAsync(
-                    incomingCallContext,
-                    new Uri(callConfiguration.AppCallbackUrl));
-
-                var resp = await callingServerClient.RedirectCallAsync("", null);
-
+                var response = await callingServerClient.AnswerCallAsync(incomingCallContext, new Uri(callConfiguration.AppCallbackUrl));
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
 
                 callConnection = response.Value;
@@ -68,15 +66,21 @@ namespace IncomingCallRouting
                 //Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
 
-                // var call = await callConnection.GetCallAsync();
+                // var call = await callingServerClient.CreateCallAsync(new CallSource(GetIdentifier(from)),
+                //     new List<CommunicationIdentifier> { GetIdentifier(targetParticipant) },
+                //     new Uri(callConfiguration.AppCallbackUrl));
 
-                string participant = targetParticipant;
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {participant}");
-                var transferToParticipantCompleted = await TransferToParticipant(participant, from);
-                if (!transferToParticipantCompleted)
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
+                // var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, from);
+                // if (!transferToParticipantCompleted)
+                // {
+                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
+                // }
+
+                var addParticipantResponse = await callConnection.AddParticipantAsync(new List<CommunicationIdentifier>
                 {
-                    await RetryTransferToParticipantAsync(async () => await TransferToParticipant(participant, from));
-                }
+                    GetIdentifier(targetParticipant)
+                });
 
                 // Wait for the call to terminate
                 await callTerminatedTask.Task.ConfigureAwait(false);
@@ -268,7 +272,7 @@ namespace IncomingCallRouting
 
         private CommunicationIdentifier GetIdentifier(String targetParticipant)
         {
- 
+
             if (GetIdentifierKind(targetParticipant) == CommunicationIdentifierKind.UserIdentity)
             {
                 return new CommunicationUserIdentifier(targetParticipant);
@@ -276,6 +280,10 @@ namespace IncomingCallRouting
             else if (GetIdentifierKind(targetParticipant) == CommunicationIdentifierKind.PhoneIdentity)
             {
                 return new PhoneNumberIdentifier(targetParticipant);
+            }
+            else if (GetIdentifierKind(targetParticipant) == CommunicationIdentifierKind.TeamsIdentity)
+            {
+                return new MicrosoftTeamsUserIdentifier(targetParticipant);
             }
             else
             {
@@ -300,9 +308,6 @@ namespace IncomingCallRouting
                 new TransferCallOptions(
                     transfereeCallerId == null ? null : new PhoneNumberIdentifier(transfereeCallerId), null,
                     operationContext, null));
-
-            Logger.LogMessage(Logger.MessageType.INFORMATION, $"TransferParticipantAsync response --> {response}, status: {response.Status}  " +
-        $"OperationContext: {response.OperationContext}, OperationId: {response.OperationId}, ResultDetails: {response.ResultDetails}");
 
             var transferToParticipantCompleted = await transferToParticipantCompleteTask.Task.ConfigureAwait(false);
             return transferToParticipantCompleted;
@@ -338,6 +343,7 @@ namespace IncomingCallRouting
             //checks the identity type returns as string
             return Regex.Match(participantnumber, Constants.userIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.UserIdentity :
                    Regex.Match(participantnumber, Constants.phoneIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.PhoneIdentity :
+                   Regex.Match(participantnumber, Constants.teamsIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.TeamsIdentity :
                    CommunicationIdentifierKind.UnknownIdentity;
         }
     }
