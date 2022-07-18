@@ -25,7 +25,7 @@ namespace ManageTeamsIdentityMobileAndDesktop
                             .WithRedirectUri(redirectUri)
                             .Build();
 
-            List<string> scopes = new List<string> {
+            List<string> scopes = new() {
                 "https://auth.msft.communication.azure.com/Teams.ManageCalls",
                 "https://auth.msft.communication.azure.com/Teams.ManageChats"
             };
@@ -43,7 +43,7 @@ namespace ManageTeamsIdentityMobileAndDesktop
             // Instantiate the identity client
             var client = new CommunicationIdentityClient(connectionString);
 
-            //Exchange the Azure AD access token of the Teams User for a Communication Identity access token
+            // Exchange the Azure AD access token of the Teams User for a Communication Identity access token
             var options = new GetTokenForTeamsUserOptions(teamsUserAadToken, appId, userObjectId);
             var accessToken = await client.GetTokenForTeamsUserAsync(options);
             Console.WriteLine($"Token: {accessToken.Value.Token}");

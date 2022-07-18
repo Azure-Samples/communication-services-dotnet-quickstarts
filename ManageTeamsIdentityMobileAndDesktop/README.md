@@ -13,8 +13,7 @@ This code sample walks you through the process of acquiring a Communication Toke
 
 This sample application utilizes the [Microsoft.Identity.Client](https://docs.microsoft.com/dotnet/api/microsoft.identity.client?view=azure-dotnet) package for authentication against the Azure AD and acquisition of a token with delegated permissions. The token exchange itself is facilitated by the `Azure.Communication.Identity` package.
 
-The initialization of a Communication credential object that can be used for Calling is achieved by the `Azure.Communication.Common` package.
-
+To be able to use the token for Calling, use it to initialize the `Azure.Communication.CommunicationTokenCredential` from the `Azure.Communication.Common` package.
 
 ## Prerequisites
 
@@ -36,7 +35,7 @@ The initialization of a Communication credential object that can be used for Cal
 1. On the Authentication pane of your Azure AD App, add a new platform of the mobile and desktop application type with the Redirect URI of `http://localhost`.
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 1. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
-1. With the Communication Services procured in pre-requisites, add connection string,an AAD client ID and tenant ID to environment variable using below commands:
+1. With the Communication Services procured in pre-requisites, add connection string, an Azure AD client ID and tenant ID to environment variable using below commands:
 
 setx COMMUNICATION_SERVICES_CONNECTION_STRING <COMMUNICATION_SERVICES_CONNECTION_STRING>
 setx AAD_CLIENT_ID <CONTOSO_AZURE_AD_CLIENT_ID>
@@ -47,4 +46,4 @@ setx AAD_TENANT_ID <FABRIKAM_AZURE_AD_TENANT_ID>
 1. Open `ManageTeamsIdentityMobileAndDesktop.csproj`
 2. Run the `ManageTeamsIdentityMobileAndDesktop` project
 
-You should be navigated from your browser to a standard OAuth flow with Microsoft Authentication Library (MSAL). If authentication is successful, the application receives an Azure AD access token and will be redirected to `http://localhost` where the Azure AD access token will be exchanged for a Communication access token.
+You should be presented with a browser window and navigated to the Azure AD login form. If the authentication is successful, the application receives an Azure AD access token and exchanges it for a Communication access token.
