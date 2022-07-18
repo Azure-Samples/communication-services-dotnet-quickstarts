@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.Identity" Version="1.1.0-alpha.20220715.1" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.45.0" />
+	  <PackageReference Include="Azure.Communication.Identity" Version="1.1.0" />
+	  <PackageReference Include="Microsoft.Identity.Client" Version="4.45.0" />
   </ItemGroup>
 
 </Project>
