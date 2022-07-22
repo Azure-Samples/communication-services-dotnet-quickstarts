@@ -31,7 +31,15 @@ The private preview version of Azure Communiation Services Rooms .NET SDK is als
 
 - **./RoomsQuickStart/Program.cs:** Core application code with room operations implementation.
 - **./RoomsQuickStart/RoomsQuickStart.csproj:** Project configuration file.
+- **./RoomsQuickStart/RoomsQuickStart.sln:** Visual Studio solution.
 
 ## Before running sample code
-1. In Program.cs, add your Azure Communication Resource connection string.
-3. In Program.cs, add your Communication Users as room participants.
+1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
+2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git
+3. In Program.cs, replace `<ConnectionString>` with Azure Communication Resource connection string.
+4. In Program.cs, replace all the `<CommunicationIdentifier>` with different Communication Users as room participants.
+
+## Run Locally
+
+1. Open `RoomsQuickStart.sln`
+2. Run the `RoomsQuickStart` project
