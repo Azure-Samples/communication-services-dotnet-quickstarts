@@ -19,17 +19,10 @@ namespace IncomingCallRouting.Events
             _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        internal const string CallConnectionStateChangedEventValue = "Microsoft.Communication.CallConnectionStateChanged";
         internal const string ToneReceivedEventValue = "Microsoft.Communication.ToneReceived";
         internal const string PlayAudioResultEventValue = "Microsoft.Communication.PlayAudioResult";
         internal const string CallRecordingStateChangeEventValue = "Microsoft.Communication.CallRecordingStateChanged";
-        internal const string AddParticipantResultEventValue = "Microsoft.Communication.AddParticipantResult";
         internal const string ParticipantsUpdatedEventValue = "Microsoft.Communication.ParticipantsUpdated";
-
-        /// <summary>
-        /// The call connection state change event type.
-        /// </summary>
-        public static CallingServerEventType CallConnectionStateChangedEvent { get; } = new CallingServerEventType(CallConnectionStateChangedEventValue);
 
         /// <summary>
         /// The subscribe to tone event type.
@@ -45,11 +38,6 @@ namespace IncomingCallRouting.Events
         /// The call recording state change event type.
         /// </summary>
         public static CallingServerEventType CallRecordingStateChangeEvent { get; } = new CallingServerEventType(CallRecordingStateChangeEventValue);
-
-        /// <summary>
-        /// The add participant result event type.
-        /// </summary>
-        public static CallingServerEventType AddParticipantResultEvent { get; } = new CallingServerEventType(AddParticipantResultEventValue);
 
         /// <summary>
         /// The call state change event type.

@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Collections.Generic;
-using Azure.Communication.CallingServer.Models;
 using IncomingCallRouting.Enums;
 using IncomingCallRouting.Events;
 
@@ -25,6 +24,7 @@ namespace IncomingCallRouting
         private CallingServerClient callingServerClient;
         private CallConfiguration callConfiguration;
         private CallConnection callConnection;
+        private CallConnectionProperties callConnectionProperties;
         private CancellationTokenSource reportCancellationTokenSource;
         private CancellationToken reportCancellationToken;
         private string targetParticipant;
@@ -52,35 +52,23 @@ namespace IncomingCallRouting
 
             try
             {
-                // Redirect Call
-                // var redirectResponse = await callingServerClient.RedirectCallAsync(incomingCallContext, GetIdentifier(targetParticipant));
-                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"RedirectCallAsync Response -----> {redirectResponse}");
-
                 // Answer Call
                 var response = await callingServerClient.AnswerCallAsync(incomingCallContext, new Uri(callConfiguration.AppCallbackUrl));
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
-
-                callConnection = response.Value;
-                RegisterToCallStateChangeEvent(callConnection.CallConnectionId);
-
-                //Wait for the call to get connected
+                
+                callConnection = response.Value.CallConnection;
+                callConnectionProperties = response.Value.CallProperties;
+                RegisterToCallStateChangeEvent(callConnectionProperties.CallConnectionId);
+                
+                // //Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
-
-                // var call = await callingServerClient.CreateCallAsync(new CallSource(GetIdentifier(from)),
-                //     new List<CommunicationIdentifier> { GetIdentifier(targetParticipant) },
-                //     new Uri(callConfiguration.AppCallbackUrl));
-
-                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
-                // var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, from);
-                // if (!transferToParticipantCompleted)
-                // {
-                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
-                // }
-
-                var addParticipantResponse = await callConnection.AddParticipantAsync(new List<CommunicationIdentifier>
+                
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
+                var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, from);
+                if (!transferToParticipantCompleted)
                 {
-                    GetIdentifier(targetParticipant)
-                });
+                    await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
+                }
 
                 // Wait for the call to terminate
                 await callTerminatedTask.Task.ConfigureAwait(false);
@@ -110,47 +98,41 @@ namespace IncomingCallRouting
             }
         }
 
-        // private async Task PlayAudioAsync()
-        // {
-        //     try
-        //     {
-        //         // Preparing data for request
-        //         var playAudioOptions = new PlayAudioOptions()
-        //         {
-        //             CallbackUri = new Uri(callConfiguration.AppCallbackUrl),
-        //             OperationContext = Guid.NewGuid().ToString(),
-        //             Loop = true,
-        //         };
-        //
-        //         var response = await callConnection.PlayAudioAsync(new Uri(callConfiguration.AudioFileUrl),
-        //             playAudioOptions).ConfigureAwait(false);
-        //
-        //         Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.GetRawResponse()}, Id: {response.Value.OperationId}, Status: {response.Value.Status}, OperationContext: {response.Value.OperationContext}, ResultInfo: {response.Value.ResultDetails}");
-        //
-        //         if (response.Value.Status == CallingOperationStatus.Running)
-        //         {
-        //             Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio state: {response.Value.Status}");
-        //             // listen to play audio events
-        //             RegisterToPlayAudioResultEvent(playAudioOptions.OperationContext);
-        //
-        //             var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(30 * 1000)).ConfigureAwait(false);
-        //
-        //             if (completedTask != playAudioCompletedTask.Task)
-        //             {
-        //                 playAudioCompletedTask.TrySetResult(false);
-        //                 toneReceivedCompleteTask.TrySetResult(false);
-        //             }
-        //         }
-        //     }
-        //     catch (TaskCanceledException)
-        //     {
-        //         Logger.LogMessage(Logger.MessageType.ERROR, "Play audio operation cancelled");
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Logger.LogMessage(Logger.MessageType.ERROR, $"Failure occured while playing audio on the call. Exception: {ex.Message}");
-        //     }
-        // }
+        private async Task PlayAudioAsync()
+        {
+            try
+            {
+
+                var playSource = new FileSource(new Uri(callConfiguration.AudioFileUrl));
+
+                var operationContext = Guid.NewGuid().ToString();
+                var response = await callConnection.GetCallMedia().PlayToAllAsync(playSource, new PlayOptions{ OperationContext = operationContext}).ConfigureAwait(false);
+        
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.Status}, Id: {response.ClientRequestId}");
+        
+                if (response.Status == 202)
+                {
+                    // listen to play audio events
+                    RegisterToPlayAudioResultEvent(callConnectionProperties.CallConnectionId);
+        
+                    var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(30 * 1000)).ConfigureAwait(false);
+        
+                    if (completedTask != playAudioCompletedTask.Task)
+                    {
+                        playAudioCompletedTask.TrySetResult(false);
+                        toneReceivedCompleteTask.TrySetResult(false);
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                Logger.LogMessage(Logger.MessageType.ERROR, "Play audio operation cancelled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogMessage(Logger.MessageType.ERROR, $"Failure occured while playing audio on the call. Exception: {ex.Message}");
+            }
+        }
 
         private async Task HangupAsync()
         {
@@ -161,28 +143,28 @@ namespace IncomingCallRouting
             }
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing Hangup operation");
-            var hangupResponse = await callConnection.HangupAsync(reportCancellationToken).ConfigureAwait(false);
+            var hangupResponse = await callConnection.HangupAsync(false).ConfigureAwait(false);
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"HangupAsync response --> {hangupResponse}");
 
         }
 
-        // private async Task CancelAllMediaOperations()
-        // {
-        //     if (reportCancellationToken.IsCancellationRequested)
-        //     {
-        //         Logger.LogMessage(Logger.MessageType.INFORMATION, "Cancellation request, CancelMediaProcessing will not be performed");
-        //         return;
-        //     }
-        //
-        //     Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing cancel media processing operation to stop playing audio");
-        //
-        //     var operationContext = Guid.NewGuid().ToString();
-        //     var response = await callConnection.CancelAllMediaOperationsAsync(operationContext, reportCancellationToken).ConfigureAwait(false);
-        //
-        //     Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.ContentStream}, " +
-        //         $"Id: {response.Content}, Status: {response.Status}");
-        // }
+        private async Task CancelAllMediaOperations()
+        {
+            if (reportCancellationToken.IsCancellationRequested)
+            {
+                Logger.LogMessage(Logger.MessageType.INFORMATION, "Cancellation request, CancelMediaProcessing will not be performed");
+                return;
+            }
+        
+            Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing cancel media processing operation to stop playing audio");
+        
+            var operationContext = Guid.NewGuid().ToString();
+            var response = await callConnection.GetCallMedia().CancelAllMediaOperationsAsync(reportCancellationToken).ConfigureAwait(false);
+        
+            Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.ContentStream}, " +
+                $"Id: {response.Content}, Status: {response.Status}");
+        }
 
         private void RegisterToCallStateChangeEvent(string callConnectionId)
         {
@@ -194,24 +176,18 @@ namespace IncomingCallRouting
             //Set the callback method
             var callStateChangeNotificaiton = new NotificationCallback((CallingServerEventBase callEvent) =>
             {
-                var callStateChanged = (CallConnectionStateChangedEvent)callEvent;
+                var callStateChanged = (CallConnectedEvent)callEvent;
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to: {callStateChanged.CallConnectionState}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to connected");
 
-                if (callStateChanged.CallConnectionState == CallConnectionState.Connected)
+                if (callEvent is CallConnectedEvent callConnectedEvent)
                 {
                     callEstablishedTask.TrySetResult(true);
-                }
-                else if (callStateChanged.CallConnectionState == CallConnectionState.Disconnected)
-                {
-                    EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId);
-                    reportCancellationTokenSource.Cancel();
-                    callTerminatedTask.SetResult(true);
                 }
             });
 
             //Subscribe to the event
-            var eventId = EventDispatcher.Instance.Subscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId, callStateChangeNotificaiton);
+            var eventId = EventDispatcher.Instance.Subscribe(AcsEventType.CallConnected.ToString(), callConnectionId, callStateChangeNotificaiton);
         }
 
         private void RegisterToPlayAudioResultEvent(string operationContext)
@@ -224,17 +200,10 @@ namespace IncomingCallRouting
                 Task.Run(() =>
                 {
                     var playAudioResultEvent = (PlayAudioResultEvent)callEvent;
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: {playAudioResultEvent.Status}");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: {playAudioResultEvent}");
 
-                    if (playAudioResultEvent.Status == CallingOperationStatus.Completed)
-                    {
-                        playAudioCompletedTask.TrySetResult(true);
-                        EventDispatcher.Instance.Unsubscribe(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
-                    }
-                    else if (playAudioResultEvent.Status == CallingOperationStatus.Failed)
-                    {
-                        playAudioCompletedTask.TrySetResult(false);
-                    }
+                    playAudioCompletedTask.TrySetResult(true);
+                    EventDispatcher.Instance.Unsubscribe(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
                 });
             });
 
@@ -305,9 +274,12 @@ namespace IncomingCallRouting
             var operationContext = Guid.NewGuid().ToString();
 
             var response = await callConnection.TransferCallToParticipantAsync(identifier,
-                new TransferCallOptions(
-                    transfereeCallerId == null ? null : new PhoneNumberIdentifier(transfereeCallerId), null,
-                    operationContext, null));
+                new TransferCallToParticipantOptions
+                {
+                    OperationContext = operationContext,
+                    SourceCallerId = transfereeCallerId == null ? null : new PhoneNumberIdentifier(transfereeCallerId),
+                    UserToUserInformation = "user1",
+                });
 
             var transferToParticipantCompleted = await transferToParticipantCompleteTask.Task.ConfigureAwait(false);
             return transferToParticipantCompleted;
