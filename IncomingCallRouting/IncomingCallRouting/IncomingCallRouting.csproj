@@ -5,7 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-alpha.20220706.1" />
+    <PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-alpha.20220727.1" />
+    <PackageReference Include="Azure.Communication.Common" Version="1.1.0" />
+    <PackageReference Include="Azure.Core" Version="1.25.0" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.7.0" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="6.20.0" />
     <PackageReference Include="Microsoft.TypeScript.Compiler" Version="3.1.5">
@@ -18,10 +20,6 @@
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Enums\" />
   </ItemGroup>
 
 </Project>

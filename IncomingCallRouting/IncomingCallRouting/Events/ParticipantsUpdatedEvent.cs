@@ -1,26 +1,17 @@
 ﻿using System.Collections.Generic;
-using Azure.Communication.CallingServer;
+using Azure.Communication;
+using IncomingCallRouting.Enums;
 
 namespace IncomingCallRouting.Events
 {
-    /// <summary>
-    /// The participant update event
-    /// </summary>
-    public class ParticipantsUpdatedEvent : CallingServerEventBase
+    public class ParticipantsUpdatedEvent : AcsCallbackEvent
     {
         /// <summary>
-        /// The call connection id.
+        /// List of current participants in the call.
         /// </summary>
-        public string CallConnectionId { get; set; }
+        /// <value></value>
+        public IEnumerable<CommunicationIdentifier> Participants { get; set; }
 
-        /// <summary>
-        /// The server call locator.
-        /// </summary>
-        public CallLocator CallLocator { get; set; }
-
-        /// <summary>
-        /// The list of participants.
-        /// </summary>
-        public IEnumerable<CallParticipant> Participants { get; set; }
+        public override AcsEventType Type { get; set; } = AcsEventType.ParticipantsUpdated;
     }
 }

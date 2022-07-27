@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Text.Json;
+using IncomingCallRouting.Enums;
 using IncomingCallRouting.Events;
 using Newtonsoft.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -78,10 +79,10 @@ namespace IncomingCallRouting
 
         public string GetEventKey(CallingServerEventBase callEventBase)
         {
-            if (callEventBase is CallConnectionStateChangedEvent)
+            if (callEventBase is CallConnectedEvent)
             {
-                var callLegId = ((CallConnectionStateChangedEvent)callEventBase).CallConnectionId;
-                return BuildEventKey(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callLegId);;
+                var callLegId = ((CallConnectedEvent)callEventBase).CallConnectionId;
+                return BuildEventKey(AcsEventType.CallConnected.ToString(), callLegId);;
             }
             else if (callEventBase is ToneReceivedEvent)
             {
@@ -96,7 +97,12 @@ namespace IncomingCallRouting
             else if (callEventBase is ParticipantsUpdatedEvent)
             {
                 var callLegId = ((ParticipantsUpdatedEvent)callEventBase).CallConnectionId;
-                return BuildEventKey(CallingServerEventType.ParticipantsUpdatedEvent.ToString(), callLegId);
+                return BuildEventKey(AcsEventType.ParticipantsUpdated.ToString(), callLegId);
+            }
+            else if (callEventBase is AddParticipantsSucceededEvent)
+            {
+                var callLegId = ((AddParticipantsSucceededEvent)callEventBase).CallConnectionId;
+                return BuildEventKey(AcsEventType.AddParticipantsSucceeded.ToString(), callLegId);
             }
 
             return null;
@@ -118,9 +124,9 @@ namespace IncomingCallRouting
 
             if (cloudEvent != null && cloudEvent.Data != null)
             {
-                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
+                if (cloudEvent.Type.EndsWith(AcsEventType.CallConnected.ToString(), true, null))
                 {
-                    return JsonConvert.DeserializeObject<CallConnectionStateChangedEvent>(cloudEvent.Data.ToString());
+                    return JsonConvert.DeserializeObject<CallConnectedEvent>(cloudEvent.Data.ToString());
                 }
                 else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
                 {
@@ -130,7 +136,7 @@ namespace IncomingCallRouting
                 {
                     return JsonConvert.DeserializeObject<PlayAudioResultEvent>(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.ParticipantsUpdatedEvent.ToString()))
+                else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString(), true, null))
                 {
                     return JsonConvert.DeserializeObject<ParticipantsUpdatedEvent>(cloudEvent.Data.ToString());
                 }

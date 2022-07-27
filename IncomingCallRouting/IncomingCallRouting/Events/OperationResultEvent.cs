@@ -22,12 +22,6 @@ namespace IncomingCallRouting.Events
         public string OperationContext { get; set; }
 
         /// <summary>
-        /// The status of the operation.
-        /// </summary>
-        [Required]
-        public CallingOperationStatus Status { get; set; }
-
-        /// <summary>
         /// The server call locator.
         /// </summary>
         public CallLocator CallLocator { get; set; }
