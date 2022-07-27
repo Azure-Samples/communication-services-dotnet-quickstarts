@@ -26,6 +26,7 @@ namespace RoomsQuickstart
                 roomsClient = new RoomsClient(connectionString);
                 await CreateRoom();
                 await UpdateRoom(rooms[0]);
+                await UpdateParticipants(rooms[0]);
                 await AddParticipants(rooms[0], addeddParticipant);
                 await RemoveParticipants(rooms[0], addeddParticipant);
                 await DeleteRoom(rooms[0]);
@@ -60,6 +61,10 @@ namespace RoomsQuickstart
                     RoomModel roomInfo = await roomsClient.GetRoomAsync(createRoomResult.Id);
                     PrintRoom(roomInfo);
                 }
+                else
+                {
+                    throw new Exception("roomsClient is null");
+                }
             }
             catch (Exception ex)
             {
@@ -81,6 +86,10 @@ namespace RoomsQuickstart
                 {
                     RoomModel updatedRoom = await roomsClient.UpdateRoomAsync(roomId, validFrom, validUntil, RoomJoinPolicy.InviteOnly, null, cancellationToken);
                     PrintRoom(updatedRoom);
+                }
+                else
+                {
+                    throw new Exception("roomsClient is null");
                 }
             }
             catch (Exception ex)
@@ -107,8 +116,12 @@ namespace RoomsQuickstart
                 if (roomsClient is not null)
                 {
                     var addParticipantsResult = await roomsClient.AddParticipantsAsync(roomId, participants, cancellationToken);
-                    RoomModel roomInfo = await roomsClient.GetRoomAsync(roomId);
-                    PrintRoom(roomInfo);
+                    Console.WriteLine("Participants after AddParticipantsAsync:");
+                    await GetRoomParticipants(roomId);
+                }
+                else
+                {
+                    throw new Exception("roomsClient is null");
                 }
             }
             catch (Exception ex)
@@ -134,13 +147,43 @@ namespace RoomsQuickstart
                 {
                     CancellationToken cancellationToken = new CancellationTokenSource().Token;
                     var removeParticipantsResult = await roomsClient.RemoveParticipantsAsync(roomId, participants, cancellationToken);
-                    RoomModel roomInfo = await roomsClient.GetRoomAsync(roomId);
-                    PrintRoom(roomInfo);
+                    Console.WriteLine("Participants after RemoveParticipantsAsync:");
+                    await GetRoomParticipants(roomId);
+                }
+                else
+                {
+                    throw new Exception("roomsClient is null");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to remove participant from room, id: {roomId}, ex --> {ex}");
+            }
+        }
+
+        static async Task UpdateParticipants(string roomId)
+        {
+            try
+            {
+                Console.WriteLine("\n---------Update participants in Room---------\n");
+                CancellationToken cancellationToken = new CancellationTokenSource().Token;
+                List<RoomParticipant> participants = new List<RoomParticipant>();
+
+                if (roomsClient is not null)
+                {
+                    ParticipantsCollection existingParticipants = await roomsClient.GetParticipantsAsync(roomId, cancellationToken);
+                    var updateParticipant = await roomsClient.UpdateParticipantsAsync(roomId, existingParticipants.Participants);
+                    Console.WriteLine($"Successfully updated participants in room with id: {roomId}");
+                    await GetRoomParticipants(roomId);
+                }
+                else
+                {
+                    throw new Exception("roomsClient is null");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to Update participants in room with id: {roomId} ex --> {ex}");
             }
         }
 
@@ -154,6 +197,10 @@ namespace RoomsQuickstart
                 {
                     var deleteRoomResult = await roomsClient.DeleteRoomAsync(roomId, cancellationToken);
                     Console.WriteLine($"Successfully deleted room with id: {roomId}");
+                }
+                else
+                {
+                    throw new Exception("roomsClient is null");
                 }
             }
             catch(Exception ex)
@@ -171,6 +218,30 @@ namespace RoomsQuickstart
             foreach (RoomParticipant participant in roomInfo.Participants)
             {
                 Console.WriteLine($"-> {participant.CommunicationIdentifier.ToString()}");
+            }
+        }
+
+        static async Task GetRoomParticipants(string roomId)
+        {
+            try
+            {
+                if (roomsClient is not null)
+                {
+                    CancellationToken cancellationToken = new CancellationTokenSource().Token;
+                    ParticipantsCollection participants = await roomsClient.GetParticipantsAsync(roomId, cancellationToken);
+                    foreach (RoomParticipant participant in participants.Participants)
+                    {
+                        Console.WriteLine(participant.CommunicationIdentifier.ToString());
+                    }
+                }
+                else
+                {
+                    throw new Exception("roomsClient is null");
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"failed to get participants of room, with id: {roomId} --> Exception: {ex}");
             }
         }
     }
