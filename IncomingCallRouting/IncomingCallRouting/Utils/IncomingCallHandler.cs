@@ -63,8 +63,10 @@ namespace IncomingCallRouting
                 // //Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
                 
+                await PlayAudioAsync();
+
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
-                var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, from);
+                var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, "+18772171856");
                 if (!transferToParticipantCompleted)
                 {
                     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
