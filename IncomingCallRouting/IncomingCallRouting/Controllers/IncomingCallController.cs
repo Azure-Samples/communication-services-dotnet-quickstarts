@@ -1,14 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Communication.CallingServer;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using Microsoft.IdentityModel.JsonWebTokens;
+using IncomingCallRouting.Events;
+using Newtonsoft.Json;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -31,16 +30,15 @@ namespace IncomingCallRouting.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("OnIncomingCall")]
-        public IActionResult OnIncomingCall([FromBody] object request)
+        public IActionResult OnIncomingCall([FromBody] EventGridEvent[] eventGridEvents)
         {
             try
             {
-                var httpContent = new BinaryData(request.ToString()).ToStream();
-                EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
+                EventGridEvent eventGridEvent = eventGridEvents.FirstOrDefault();
 
-                if (cloudEvent.EventType == SystemEventNames.EventGridSubscriptionValidation)
+                if (eventGridEvents.FirstOrDefault().EventType == SystemEventNames.EventGridSubscriptionValidation)
                 {
-                    var eventData = cloudEvent.Data.ToObjectFromJson<SubscriptionValidationEventData>();
+                    var eventData = eventGridEvent.Data.ToObjectFromJson<SubscriptionValidationEventData>();
                     var responseData = new SubscriptionValidationResponse
                     {
                         ValidationResponse = eventData.ValidationCode
@@ -51,15 +49,15 @@ namespace IncomingCallRouting.Controllers
                         return Ok(responseData);
                     }
                 }
-                else if (cloudEvent.EventType.Equals("Microsoft.Communication.IncomingCall"))
+                else if (eventGridEvent.EventType.Equals("Microsoft.Communication.IncomingCall"))
                 {
                     //Fetch incoming call context and ivr participant from request
-                    var eventData = request.ToString();
+                    var eventData = JsonConvert.DeserializeObject<IncomingCallData>(eventGridEvent.Data.ToString());
                     if (eventData != null)
                     {
-                        string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0].Split("\"")[0];
-                        string ivrParticipant = eventData.Split("\"to\":{\"rawId\":\"")[1].Split("\",\"")[0].Trim();
-                        string from = eventData.Split("\"from\":{\"rawId\":\"")[1].Split("\",\"")[0].Trim();
+                        var incomingCallContext = eventData.IncomingCallContext;
+                        var ivrParticipant = eventData.To.RawId;
+                        var from = eventData.From.RawId;
 
                         if ( (callConfiguration.IvrParticipants.Contains(ivrParticipant) || callConfiguration.IvrParticipants[0] == "*")
                             && callConfiguration.TargetParticipant != ivrParticipant)
