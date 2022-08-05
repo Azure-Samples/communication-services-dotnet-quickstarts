@@ -126,19 +126,19 @@ namespace IncomingCallRouting
             {
                 if (cloudEvent.Type.EndsWith(AcsEventType.CallConnected.ToString(), true, null))
                 {
-                    return JsonConvert.DeserializeObject<CallConnected>(cloudEvent.Data.ToString());
+                    return CallConnected.Deserialize(cloudEvent.Data.ToString());
                 }
                 // else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
                 // {
-                //     return JsonConvert.DeserializeObject<ToneReceived>(cloudEvent.Data.ToString());
+                //     return ToneReceived.Deserialize(cloudEvent.Data.ToString());
                 // }
                 // else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
                 // {
-                //     return JsonConvert.DeserializeObject<PlayAudioResult>(cloudEvent.Data.ToString());
+                //     return PlayAudioResult.Deserialize(cloudEvent.Data.ToString());
                 // }
                 else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString(), true, null))
                 {
-                    return JsonConvert.DeserializeObject<ParticipantsUpdated>(cloudEvent.Data.ToString());
+                    return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
                 }
             }
 
