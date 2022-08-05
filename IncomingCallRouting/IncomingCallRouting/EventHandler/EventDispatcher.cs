@@ -79,29 +79,29 @@ namespace IncomingCallRouting
 
         public string GetEventKey(CallingServerEventBase callEventBase)
         {
-            if (callEventBase is CallConnectedEvent)
+            if (callEventBase is CallConnected)
             {
-                var callLegId = ((CallConnectedEvent)callEventBase).CallConnectionId;
+                var callLegId = ((CallConnected)callEventBase).CallConnectionId;
                 return BuildEventKey(AcsEventType.CallConnected.ToString(), callLegId);;
             }
-            else if (callEventBase is ToneReceivedEvent)
+            // else if (callEventBase is ToneReceived)
+            // {
+            //     var callLegId = ((ToneReceived)callEventBase).CallConnectionId;
+            //     return BuildEventKey(CallingServerEventType.ToneReceived.ToString(), callLegId);
+            // }
+            // else if (callEventBase is PlayAudioResult)
+            // {
+            //     var operationContext = ((PlayAudioResult)callEventBase).OperationContext;
+            //     return BuildEventKey(CallingServerEventType.PlayAudioResult.ToString(), operationContext);
+            // }
+            else if (callEventBase is ParticipantsUpdated)
             {
-                var callLegId = ((ToneReceivedEvent)callEventBase).CallConnectionId;
-                return BuildEventKey(CallingServerEventType.ToneReceivedEvent.ToString(), callLegId);
-            }
-            else if (callEventBase is PlayAudioResultEvent)
-            {
-                var operationContext = ((PlayAudioResultEvent)callEventBase).OperationContext;
-                return BuildEventKey(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
-            }
-            else if (callEventBase is ParticipantsUpdatedEvent)
-            {
-                var callLegId = ((ParticipantsUpdatedEvent)callEventBase).CallConnectionId;
+                var callLegId = ((ParticipantsUpdated)callEventBase).CallConnectionId;
                 return BuildEventKey(AcsEventType.ParticipantsUpdated.ToString(), callLegId);
             }
-            else if (callEventBase is AddParticipantsSucceededEvent)
+            else if (callEventBase is AddParticipantsSucceeded)
             {
-                var callLegId = ((AddParticipantsSucceededEvent)callEventBase).CallConnectionId;
+                var callLegId = ((AddParticipantsSucceeded)callEventBase).CallConnectionId;
                 return BuildEventKey(AcsEventType.AddParticipantsSucceeded.ToString(), callLegId);
             }
 
@@ -126,19 +126,19 @@ namespace IncomingCallRouting
             {
                 if (cloudEvent.Type.EndsWith(AcsEventType.CallConnected.ToString(), true, null))
                 {
-                    return JsonConvert.DeserializeObject<CallConnectedEvent>(cloudEvent.Data.ToString());
+                    return JsonConvert.DeserializeObject<CallConnected>(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
-                {
-                    return JsonConvert.DeserializeObject<ToneReceivedEvent>(cloudEvent.Data.ToString());
-                }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
-                {
-                    return JsonConvert.DeserializeObject<PlayAudioResultEvent>(cloudEvent.Data.ToString());
-                }
+                // else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
+                // {
+                //     return JsonConvert.DeserializeObject<ToneReceived>(cloudEvent.Data.ToString());
+                // }
+                // else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
+                // {
+                //     return JsonConvert.DeserializeObject<PlayAudioResult>(cloudEvent.Data.ToString());
+                // }
                 else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString(), true, null))
                 {
-                    return JsonConvert.DeserializeObject<ParticipantsUpdatedEvent>(cloudEvent.Data.ToString());
+                    return JsonConvert.DeserializeObject<ParticipantsUpdated>(cloudEvent.Data.ToString());
                 }
             }
 
