@@ -178,11 +178,11 @@ namespace IncomingCallRouting
             //Set the callback method
             var callStateChangeNotificaiton = new NotificationCallback((CallingServerEventBase callEvent) =>
             {
-                var callStateChanged = (CallConnectedEvent)callEvent;
+                var callStateChanged = (CallConnected)callEvent;
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to connected");
 
-                if (callEvent is CallConnectedEvent callConnectedEvent)
+                if (callEvent is CallConnected callConnectedEvent)
                 {
                     callEstablishedTask.TrySetResult(true);
                 }
@@ -291,7 +291,7 @@ namespace IncomingCallRouting
         {
             var transferToParticipantReceivedEvent = new NotificationCallback(async (CallingServerEventBase callEvent) =>
             {
-                var transferParticipantUpdatedEvent = (ParticipantsUpdatedEvent)callEvent;
+                var transferParticipantUpdatedEvent = (ParticipantsUpdated)callEvent;
                 if (transferParticipantUpdatedEvent.CallConnectionId != null)
                 {
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Transfer participant callconnection ID - {transferParticipantUpdatedEvent.CallConnectionId}");
