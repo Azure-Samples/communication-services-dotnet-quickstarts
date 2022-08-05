@@ -92,7 +92,6 @@ namespace RoomsQuickstart
             ParticipantsCollection roomParticipantsAfterRemovingParticipants = removeParticipantsResponse.Value;
 
             // Get Room Participants
-            RemoveRoomParticipants.Add(new CommunicationUserIdentifier(communicationUser6));
             Response<ParticipantsCollection> getParticipantsResponse = await roomsClient.GetParticipantsAsync(roomId);
             ParticipantsCollection roomParticipants = getParticipantsResponse.Value;
 
