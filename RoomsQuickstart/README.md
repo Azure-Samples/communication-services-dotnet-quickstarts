@@ -7,10 +7,10 @@ products:
 - azure-communication-services
 ---
 
-# Azure Communication Services - Rooms Private Preview
-**Private Repository - Contents shared under NDA and TAP Agreement**
+# Azure Communication Services - Rooms Public Preview
+**Public Repository - Contents shared under NDA and TAP Agreement**
 
-This is a private respository for the Azure Communication Services technology adoption program (TAP), colloquially called private preview. The documentation and artifacts listed below help you try out new features in development and provide feedback.
+This is a public respository for the Azure Communication Services technology adoption program (TAP), colloquially called public preview. The documentation and artifacts listed below help you try out new features in development and provide feedback.
 
 # Create and manage rooms
 
@@ -18,7 +18,7 @@ This code sample contains source code for a c# application that can create and m
 
 For full instructions on how to build this code sample, please refer to the accompanying [document](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/rooms/get-started-rooms?branch=master).
 
-The private preview version of Azure Communiation Services Rooms .NET SDK is also embedded.
+The pubic preview version of Azure Communiation Services Rooms .NET SDK is also embedded.
 
 ## Prerequisites
 - An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F).
