@@ -25,3 +25,5 @@ Azure Communication Services enable developers to add communication capabilities
 7. [Use managed identities](https://docs.microsoft.com/azure/communication-services/quickstarts/managed-identity?pivots=programming-language-csharp)
 
 8. [Send Email](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/email/send-email?pivots=programming-language-csharp)
+
+9. [Get started with Rooms](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/rooms/get-started-rooms?pivots=programming-language-csharp)
