@@ -21,7 +21,7 @@ namespace IncomingCallRouting
 
     public class IncomingCallHandler
     {
-        private CallingServerClient callingServerClient;
+        private CallAutomationClient callingServerClient;
         private CallConfiguration callConfiguration;
         private CallConnection callConnection;
         private CallConnectionProperties callConnectionProperties;
@@ -37,7 +37,7 @@ namespace IncomingCallRouting
         private TaskCompletionSource<bool> transferToParticipantCompleteTask;
         private readonly int maxRetryAttemptCount = 3;
 
-        public IncomingCallHandler(CallingServerClient callingServerClient, CallConfiguration callConfiguration)
+        public IncomingCallHandler(CallAutomationClient callingServerClient, CallConfiguration callConfiguration)
         {
             this.callConfiguration = callConfiguration;
             this.callingServerClient = callingServerClient;
@@ -63,14 +63,17 @@ namespace IncomingCallRouting
                 // //Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
                 
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {targetParticipant} to call");
+                var addParticipant = await callConnection.AddParticipantsAsync(new List<CommunicationIdentifier> { GetIdentifier(targetParticipant) });
+
                 await PlayAudioAsync();
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
-                var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, "+18772171856");
-                if (!transferToParticipantCompleted)
-                {
-                    await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
-                }
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
+                // var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, "+18772171856");
+                // if (!transferToParticipantCompleted)
+                // {
+                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
+                // }
 
                 // Wait for the call to terminate
                 await callTerminatedTask.Task.ConfigureAwait(false);
@@ -145,7 +148,7 @@ namespace IncomingCallRouting
             }
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing Hangup operation");
-            var hangupResponse = await callConnection.HangupAsync(false).ConfigureAwait(false);
+            var hangupResponse = await callConnection.HangUpAsync(false).ConfigureAwait(false);
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"HangupAsync response --> {hangupResponse}");
 
@@ -176,7 +179,7 @@ namespace IncomingCallRouting
             callTerminatedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             //Set the callback method
-            var callStateChangeNotificaiton = new NotificationCallback((CallingServerEventBase callEvent) =>
+            var callStateChangeNotificaiton = new NotificationCallback((CallAutomationEventBase callEvent) =>
             {
                 var callStateChanged = (CallConnected)callEvent;
 
@@ -197,7 +200,7 @@ namespace IncomingCallRouting
             playAudioCompletedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             reportCancellationToken.Register(() => playAudioCompletedTask.TrySetCanceled());
 
-            var playPromptResponseNotification = new NotificationCallback((CallingServerEventBase callEvent) =>
+            var playPromptResponseNotification = new NotificationCallback((CallAutomationEventBase callEvent) =>
             {
                 Task.Run(() =>
                 {
@@ -216,7 +219,7 @@ namespace IncomingCallRouting
         // private void RegisterToDtmfResultEvent(string callConnectionId)
         // {
         //     toneReceivedCompleteTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        //     var dtmfReceivedEvent = new NotificationCallback((CallingServerEventBase callEvent) =>
+        //     var dtmfReceivedEvent = new NotificationCallback((CallAutomationEventBase callEvent) =>
         //     {
         //         Task.Run(async () =>
         //         {
@@ -289,7 +292,7 @@ namespace IncomingCallRouting
 
         private void RegisterToTransferParticipantsResultEvent(string operationContext)
         {
-            var transferToParticipantReceivedEvent = new NotificationCallback(async (CallingServerEventBase callEvent) =>
+            var transferToParticipantReceivedEvent = new NotificationCallback(async (CallAutomationEventBase callEvent) =>
             {
                 var transferParticipantUpdatedEvent = (ParticipantsUpdated)callEvent;
                 if (transferParticipantUpdatedEvent.CallConnectionId != null)

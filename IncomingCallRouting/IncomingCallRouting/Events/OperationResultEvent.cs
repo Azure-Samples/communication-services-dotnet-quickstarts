@@ -4,7 +4,7 @@ using IncomingCallRouting.Enums;
 
 namespace IncomingCallRouting.Events
 {
-    public abstract class OperationResultEvent : CallingServerEventBase
+    public abstract class OperationResultEvent : CallAutomationEventBase
     {
         /// <summary>
         /// The result details.

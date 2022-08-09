@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
+using Azure.Communication.CallingServer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Azure.Communication.CallingServer;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using IncomingCallRouting.Events;
@@ -14,13 +14,13 @@ namespace IncomingCallRouting.Controllers
     [ApiController]
     public class IncomingCallController : Controller
     {
-        private readonly CallingServerClient callingServerClient;
+        private readonly CallAutomationClient callingServerClient;
         CallConfiguration callConfiguration;
         EventAuthHandler eventAuthHandler;
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
-            callingServerClient = new CallingServerClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"]);
+            callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"]);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
