@@ -8,7 +8,7 @@ namespace IncomingCallRouting.Events
     /// <summary>
     /// The call recording state change event.
     /// </summary>
-    public class CallRecordingStateChangeEvent : CallingServerEventBase
+    public class CallRecordingStateChangeEvent : CallAutomationEventBase
     {
         /// <summary>
         /// The call recording id

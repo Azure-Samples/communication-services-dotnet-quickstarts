@@ -77,7 +77,7 @@ namespace IncomingCallRouting
             }
         }
 
-        public string GetEventKey(CallingServerEventBase callEventBase)
+        public string GetEventKey(CallAutomationEventBase callEventBase)
         {
             if (callEventBase is CallConnected)
             {
@@ -118,7 +118,7 @@ namespace IncomingCallRouting
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>
-        public CallingServerEventBase ExtractEvent(string content)
+        public CallAutomationEventBase ExtractEvent(string content)
         {
             CloudEvent cloudEvent = CloudEvent.Parse(BinaryData.FromString(content));
 
