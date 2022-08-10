@@ -23,8 +23,8 @@ namespace ChatQuickstart
             CreateChatThreadResult createChatThreadResult = await chatClient.CreateChatThreadAsync(topic: "Hello world!", participants: new[] { chatParticipant });
 
             // <Get a chat thread client>
-            ChatThreadClient chatThreadClient = chatClient.GetChatThreadClient(threadId: createChatThreadResult.ChatThread.Id);
             string threadId = chatThreadClient.Id;
+            ChatThreadClient chatThreadClient = chatClient.GetChatThreadClient(threadId: createChatThreadResult.ChatThread.Id);
             
             // <List all chat threads>
             AsyncPageable<ChatThreadItem> chatThreadItems = chatClient.GetChatThreadsAsync();
