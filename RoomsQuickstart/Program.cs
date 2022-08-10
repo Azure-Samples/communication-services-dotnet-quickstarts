@@ -67,7 +67,7 @@ namespace RoomsQuickstart
                 DateTimeOffset validFrom = DateTimeOffset.UtcNow;
                 DateTimeOffset validUntil = DateTimeOffset.UtcNow.AddDays(10);
 
-                RoomModel createdRoom = await RoomCollection.CreateRoomAsync(validFrom, validUntil, RoomJoinPolicy.InviteOnly, roomParticipants, cancellationToken);
+                CommunicationRoom createdRoom = await RoomCollection.CreateRoomAsync(validFrom, validUntil, RoomJoinPolicy.InviteOnly, roomParticipants, cancellationToken);
                 rooms.Add(createdRoom.Id);
                 PrintRoom(createdRoom);
             }
@@ -86,7 +86,7 @@ namespace RoomsQuickstart
 
                 DateTimeOffset validFrom = DateTimeOffset.UtcNow;
                 DateTimeOffset validUntil = DateTimeOffset.UtcNow.AddDays(10);
-                RoomModel updatedRoom = await RoomCollection.UpdateRoomAsync(roomId, validFrom, validUntil, RoomJoinPolicy.InviteOnly, null, cancellationToken);
+                CommunicationRoom updatedRoom = await RoomCollection.UpdateRoomAsync(roomId, validFrom, validUntil, RoomJoinPolicy.InviteOnly, null, cancellationToken);
                 PrintRoom(updatedRoom);
             }
             catch (Exception ex)
@@ -190,10 +190,10 @@ namespace RoomsQuickstart
             }
         }
 
-        static void PrintRoom(RoomModel roomInfo)
+        static void PrintRoom(CommunicationRoom roomInfo)
         {
             Console.WriteLine($"room_id: {roomInfo.Id}");
-            Console.WriteLine($"created_date_time: {roomInfo.CreatedDateTime}");
+            Console.WriteLine($"created_date_time: {roomInfo.CreatedOn}");
             Console.WriteLine($"valid_from: {roomInfo.ValidFrom}, valid_until: {roomInfo.ValidUntil}");
             Console.WriteLine($"{roomInfo.Participants.Count} participants: ");
             foreach (RoomParticipant participant in roomInfo.Participants)
