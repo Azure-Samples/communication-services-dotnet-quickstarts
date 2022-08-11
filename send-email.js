@@ -3,7 +3,7 @@ require("dotenv").config();
 
 // This code demonstrates how to fetch your connection string
 // from an environment variable.
-const connectionString = process.env['https://verizann-media.communication.azure.com/;accesskey=EQHWAYFO9E0NNcj8OZEFHcVtFWUa1EBEV4tsgX1ej53kJjv4v9ZgBLVotnwhKRtjTxdIf2UEq4xoJ5n/on5IYA==
+const connectionString = process.env['EQHWAYFO9E0NNcj8OZEFHcVtFWUa1EBEV4tsgX1ej53kJjv4v9ZgBLVotnwhKRtjTxdIf2UEq4xoJ5n/on5IYA==
 '];
 async function main() {
     try {
@@ -53,4 +53,3 @@ async function main() {
       }
     }, 5000);
 
-    
