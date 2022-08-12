@@ -16,3 +16,14 @@ async function init() {
 }
 
 init();
+
+callPhoneButton.addEventListener("click", () => {
+    // start a call to phone
+    const phoneToCall = calleePhoneInput.value;
+    call = callAgent.startCall(
+      [{phoneNumber: phoneToCall}], { alternateCallerId: {phoneNumber: 'YOUR AZURE REGISTERED PHONE NUMBER HERE: +12223334444'}
+    });
+    // toggle button states
+    hangUpPhoneButton.disabled = false;
+    callPhoneButton.disabled = true;
+  });
