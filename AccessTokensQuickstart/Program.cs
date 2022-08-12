@@ -31,10 +31,10 @@ namespace AccessTokensQuickstart
     {
         static async System.Threading.Tasks.Task Main(string[] args)
         {
-            Console.WriteLine("Azure Communication Services - Access Tokens Quickstart");
+            Console.WriteLine("Azure Communication Services - Access Tokens Quickstart")}
 
             // Quickstart code goes here
-            ./AccessTokensQuickstart/Program.cs]
+            ./AccessTokensQuickstart/Program.cs;}
             ./AccessTokensQuickstart/AccessTokensQuickstart.csproj;
 
         }
