@@ -21,7 +21,7 @@ var token =  tokenResponse.Value.Token;
 var expiresOn = tokenResponse.Value.ExpiresOn;
 
 // Write the token details to the screen
-Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn08122023}:");
+Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn}:");
 Console.WriteLine(token);
 
 
