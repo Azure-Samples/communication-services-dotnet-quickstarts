@@ -4,6 +4,12 @@ using Azure;
 using Azure.Communication;
 using Azure.Communication.Sms;
 
+// This code retrieves your connection string
+// from an environment variable.
+string connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
+
+SmsClient smsClient = new SmsClient(connectionString);
+
 namespace SendSMS
 {
     internal class Program
