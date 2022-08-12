@@ -34,8 +34,8 @@ namespace AccessTokensQuickstart
             Console.WriteLine("Azure Communication Services - Access Tokens Quickstart");
 
             // Quickstart code goes here
-            ./AccessTokensQuickstart/Program.cs
-            ./AccessTokensQuickstart/AccessTokensQuickstart.csproj
+            ./AccessTokensQuickstart/Program.cs]
+            ./AccessTokensQuickstart/AccessTokensQuickstart.csproj;
 
         }
     }
