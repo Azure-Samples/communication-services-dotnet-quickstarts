@@ -6,7 +6,7 @@ using Azure.Communication.Identity;
 
 // This code demonstrates how to retrieve your connection string
 // from an environment variable.
-string connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
+string connectionString = Environment.GetEnvironmentVariable("https://verizann-media.communication.azure.com/;accesskey=EQHWAYFO9E0NNcj8OZEFHcVtFWUa1EBEV4tsgX1ej53kJjv4v9ZgBLVotnwhKRtjTxdIf2UEq4xoJ5n/on5IYA==");
 var client = new CommunicationIdentityClient(connectionString);
 
 var identityResponse = await client.CreateUserAsync();
@@ -21,7 +21,7 @@ var token =  tokenResponse.Value.Token;
 var expiresOn = tokenResponse.Value.ExpiresOn;
 
 // Write the token details to the screen
-Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn}:");
+Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn08122023}:");
 Console.WriteLine(token);
 
 
