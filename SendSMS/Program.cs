@@ -16,18 +16,19 @@ namespace SendSMS
     {
         private static void Main()
         {
-            var connectionString = "<connection-string>"; // Find your Communication Services resource in the Azure portal
+            var connectionString = "endpoint=https://verizann-media.communication.azure.com/;accesskey=EQHWAYFO9E0NNcj8OZEFHcVtFWUa1EBEV4tsgX1ej53kJjv4v9ZgBLVotnwhKRtjTxdIf2UEq4xoJ5n/on5IYA==
+            "; // Find your Communication Services resource in the Azure portal
             SmsClient smsClient = new SmsClient(connectionString);
 
             SmsSendResult sendResult = smsClient.Send(
-                from: "<from-phone-number>", // Your E.164 formatted from phone number used to send SMS
-                to: "<to-phone-number>", // E.164 formatted recipient phone number
+                from: "+18772178780", // Your E.164 formatted from phone number used to send SMS
+                to: "+14048386995", // E.164 formatted recipient phone number
                 message: "Hello 👋🏻");
             Console.WriteLine($"Message id {sendResult.MessageId}");
 
             Response<IReadOnlyList<SmsSendResult>> response = smsClient.Send(
-            from: "<from-phone-number>",
-            to: new string[] { "<to-phone-number-1>", "<to-phone-number-2>" }, // E.164 formatted recipient phone numbers
+            from: "+18772178780",
+            to: new string[] { "<+14048386995-1>", "+14045477873-2>" }, // E.164 formatted recipient phone numbers
             message: "Hello 👋🏻",
             options: new SmsSendOptions(enableDeliveryReport: true) // OPTIONAL
             {
