@@ -21,14 +21,15 @@ namespace IncomingCallRouting
 
     public class IncomingCallHandler
     {
-        private CallAutomationClient callingServerClient;
-        private CallConfiguration callConfiguration;
-        private CallConnection callConnection;
-        private CallConnectionProperties callConnectionProperties;
-        private CancellationTokenSource reportCancellationTokenSource;
-        private CancellationToken reportCancellationToken;
-        private string targetParticipant;
-        private string from;
+        private readonly CallAutomationClient _callingServerClient;
+        private readonly CallConfiguration _callConfiguration;
+        private readonly CallRecording _callRecording;
+        private CallConnection _callConnection;
+        private CallConnectionProperties _callConnectionProperties;
+        private CancellationTokenSource _reportCancellationTokenSource;
+        private CancellationToken _reportCancellationToken;
+        private readonly string _targetParticipant;
+        private string _from;
 
         private TaskCompletionSource<bool> callEstablishedTask;
         private TaskCompletionSource<bool> playAudioCompletedTask;
@@ -39,40 +40,46 @@ namespace IncomingCallRouting
 
         public IncomingCallHandler(CallAutomationClient callingServerClient, CallConfiguration callConfiguration)
         {
-            this.callConfiguration = callConfiguration;
-            this.callingServerClient = callingServerClient;
-            targetParticipant = callConfiguration.TargetParticipant;
-            from = callConfiguration.IvrParticipants[0];
+            _callConfiguration = callConfiguration;
+            _callingServerClient = callingServerClient;
+            _callRecording = callingServerClient.GetCallRecording();
+            _targetParticipant = callConfiguration.TargetParticipant;
+            _from = callConfiguration.IvrParticipants[0];
         }
 
         public async Task Report(string incomingCallContext)
         {
-            reportCancellationTokenSource = new CancellationTokenSource();
-            reportCancellationToken = reportCancellationTokenSource.Token;
+            _reportCancellationTokenSource = new CancellationTokenSource();
+            _reportCancellationToken = _reportCancellationTokenSource.Token;
 
             try
             {
                 // Answer Call
-                var response = await callingServerClient.AnswerCallAsync(incomingCallContext, new Uri(callConfiguration.AppCallbackUrl));
+                var response = await _callingServerClient.AnswerCallAsync(incomingCallContext, new Uri(_callConfiguration.AppCallbackUrl));
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
                 
-                callConnection = response.Value.CallConnection;
-                callConnectionProperties = response.Value.CallProperties;
-                RegisterToCallStateChangeEvent(callConnectionProperties.CallConnectionId);
+                _callConnection = response.Value.CallConnection;
+                _callConnectionProperties = response.Value.CallConnectionProperties;
+                RegisterToCallStateChangeEvent(_callConnectionProperties.CallConnectionId);
                 
                 // //Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
                 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {targetParticipant} to call");
-                var addParticipant = await callConnection.AddParticipantsAsync(new List<CommunicationIdentifier> { GetIdentifier(targetParticipant) });
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_targetParticipant} to call");
+                var addParticipant = await _callConnection.AddParticipantsAsync(
+                    new List<CommunicationIdentifier>
+                    {
+                        GetIdentifier(_targetParticipant),
+                    }, cancellationToken: _reportCancellationToken);
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant.GetRawResponse()}");
 
                 await PlayAudioAsync();
 
-                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {targetParticipant}");
-                // var transferToParticipantCompleted = await TransferToParticipant(targetParticipant, "+18772171856");
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {_targetParticipant}");
+                // var transferToParticipantCompleted = await TransferToParticipant(_targetParticipant);
                 // if (!transferToParticipantCompleted)
                 // {
-                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(targetParticipant, from));
+                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(_targetParticipant));
                 // }
 
                 // Wait for the call to terminate
@@ -108,17 +115,17 @@ namespace IncomingCallRouting
             try
             {
 
-                var playSource = new FileSource(new Uri(callConfiguration.AudioFileUrl));
+                var playSource = new FileSource(new Uri(_callConfiguration.AudioFileUrl));
 
                 var operationContext = Guid.NewGuid().ToString();
-                var response = await callConnection.GetCallMedia().PlayToAllAsync(playSource, new PlayOptions{ OperationContext = operationContext}).ConfigureAwait(false);
+                var response = await _callConnection.GetCallMedia().PlayToAllAsync(playSource, new PlayOptions{ OperationContext = operationContext}).ConfigureAwait(false);
         
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.Status}, Id: {response.ClientRequestId}");
         
                 if (response.Status == 202)
                 {
                     // listen to play audio events
-                    RegisterToPlayAudioResultEvent(callConnectionProperties.CallConnectionId);
+                    RegisterToPlayAudioResultEvent(_callConnectionProperties.CallConnectionId);
         
                     var completedTask = await Task.WhenAny(playAudioCompletedTask.Task, Task.Delay(30 * 1000)).ConfigureAwait(false);
         
@@ -141,14 +148,14 @@ namespace IncomingCallRouting
 
         private async Task HangupAsync()
         {
-            if (reportCancellationToken.IsCancellationRequested)
+            if (_reportCancellationToken.IsCancellationRequested)
             {
                 Logger.LogMessage(Logger.MessageType.INFORMATION, "Cancellation request, Hangup will not be performed");
                 return;
             }
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing Hangup operation");
-            var hangupResponse = await callConnection.HangUpAsync(false).ConfigureAwait(false);
+            var hangupResponse = await _callConnection.HangUpAsync(false).ConfigureAwait(false);
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"HangupAsync response --> {hangupResponse}");
 
@@ -156,7 +163,7 @@ namespace IncomingCallRouting
 
         private async Task CancelAllMediaOperations()
         {
-            if (reportCancellationToken.IsCancellationRequested)
+            if (_reportCancellationToken.IsCancellationRequested)
             {
                 Logger.LogMessage(Logger.MessageType.INFORMATION, "Cancellation request, CancelMediaProcessing will not be performed");
                 return;
@@ -165,7 +172,7 @@ namespace IncomingCallRouting
             Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing cancel media processing operation to stop playing audio");
         
             var operationContext = Guid.NewGuid().ToString();
-            var response = await callConnection.GetCallMedia().CancelAllMediaOperationsAsync(reportCancellationToken).ConfigureAwait(false);
+            var response = await _callConnection.GetCallMedia().CancelAllMediaOperationsAsync(_reportCancellationToken).ConfigureAwait(false);
         
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.ContentStream}, " +
                 $"Id: {response.Content}, Status: {response.Status}");
@@ -174,7 +181,7 @@ namespace IncomingCallRouting
         private void RegisterToCallStateChangeEvent(string callConnectionId)
         {
             callEstablishedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            reportCancellationToken.Register(() => callEstablishedTask.TrySetCanceled());
+            _reportCancellationToken.Register(() => callEstablishedTask.TrySetCanceled());
 
             callTerminatedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -198,7 +205,7 @@ namespace IncomingCallRouting
         private void RegisterToPlayAudioResultEvent(string operationContext)
         {
             playAudioCompletedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            reportCancellationToken.Register(() => playAudioCompletedTask.TrySetCanceled());
+            _reportCancellationToken.Register(() => playAudioCompletedTask.TrySetCanceled());
 
             var playPromptResponseNotification = new NotificationCallback((CallAutomationEventBase callEvent) =>
             {
@@ -278,7 +285,7 @@ namespace IncomingCallRouting
             }
             var operationContext = Guid.NewGuid().ToString();
 
-            var response = await callConnection.TransferCallToParticipantAsync(identifier,
+            var response = await _callConnection.TransferCallToParticipantAsync(identifier,
                 new TransferCallToParticipantOptions
                 {
                     OperationContext = operationContext,
