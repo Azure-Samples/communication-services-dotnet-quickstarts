@@ -34,7 +34,7 @@ callPhoneButton.addEventListener("click", () => {
     // start a call to phone
     const phoneToCall = calleePhoneInput.value;
     call = callAgent.startCall(
-      [{phoneNumber: phoneToCall}], { alternateCallerId: {phoneNumber: 'YOUR AZURE REGISTERED PHONE NUMBER HERE: +18772178780'}
+      [{phoneNumber: phoneToCall}], { alternateCallerId: {phoneNumber: '+18772178780'}
     });
     // toggle button states
     hangUpPhoneButton.disabled = false;
