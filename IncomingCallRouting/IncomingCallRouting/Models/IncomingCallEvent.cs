@@ -1,7 +1,6 @@
 ﻿using System;
-using Azure.Messaging.EventGrid;
 
-namespace IncomingCallRouting.Events
+namespace IncomingCallRouting.Models
 {
     public class IncomingCallEvent
     {

@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Configuration;
 
-namespace IncomingCallRouting
+namespace IncomingCallRouting.Utils
 {
     /// <summary>
     /// Configuration assoociated with the call.

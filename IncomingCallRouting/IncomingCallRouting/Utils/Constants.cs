@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-namespace IncomingCallRouting
+namespace IncomingCallRouting.Utils
 {
     /// <summary>
     /// All the contansts used in API.

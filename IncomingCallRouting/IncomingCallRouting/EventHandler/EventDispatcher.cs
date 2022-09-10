@@ -1,27 +1,21 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Text.Json;
+using System;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
+using Azure.Communication.CallingServer;
+using Azure.Messaging;
 using IncomingCallRouting.Enums;
-using IncomingCallRouting.Events;
-using Newtonsoft.Json;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
-namespace IncomingCallRouting
+namespace IncomingCallRouting.EventHandler
 {
-    /// <summary>
-    /// Maintaining callback events in dictionary
-    /// </summary>
-
-    using Azure.Communication.CallingServer;
-    using Azure.Messaging;
-    using System;
-    using System.Collections.Concurrent;
-    using System.Threading.Tasks;
-
     public class EventDispatcher
     {
         public static readonly EventDispatcher Instance;
+        /// <summary>
+        /// Maintaining callback events in dictionary
+        /// </summary>
         private readonly ConcurrentDictionary<string, NotificationCallback> NotificationCallback;
         private object SubscriptionLock = new object();
 
@@ -84,16 +78,21 @@ namespace IncomingCallRouting
                 var callLegId = ((CallConnected)callEventBase).CallConnectionId;
                 return BuildEventKey(AcsEventType.CallConnected.ToString(), callLegId);;
             }
-            // else if (callEventBase is ToneReceived)
-            // {
-            //     var callLegId = ((ToneReceived)callEventBase).CallConnectionId;
-            //     return BuildEventKey(CallingServerEventType.ToneReceived.ToString(), callLegId);
-            // }
-            // else if (callEventBase is PlayAudioResult)
-            // {
-            //     var operationContext = ((PlayAudioResult)callEventBase).OperationContext;
-            //     return BuildEventKey(CallingServerEventType.PlayAudioResult.ToString(), operationContext);
-            // }
+            else if (callEventBase is RecognizeCompleted)
+            {
+                var callLegId = ((RecognizeCompleted)callEventBase).CallConnectionId;
+                return BuildEventKey(AcsEventType.RecognizeCompleted.ToString(), callLegId);
+            }
+            else if (callEventBase is CallRecordingStateChanged)
+            {
+                var recordingId = ((CallRecordingStateChanged)callEventBase).RecordingId;
+                return BuildEventKey(AcsEventType.CallRecordingStateChanged.ToString(), recordingId);
+            }
+            else if (callEventBase is PlayCompleted)
+            {
+                var operationContext = ((PlayCompleted)callEventBase).OperationContext;
+                return BuildEventKey(AcsEventType.PlayCompleted.ToString(), operationContext);
+            }
             else if (callEventBase is ParticipantsUpdated)
             {
                 var callLegId = ((ParticipantsUpdated)callEventBase).CallConnectionId;
@@ -128,14 +127,22 @@ namespace IncomingCallRouting
                 {
                     return CallConnected.Deserialize(cloudEvent.Data.ToString());
                 }
-                // else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
-                // {
-                //     return ToneReceived.Deserialize(cloudEvent.Data.ToString());
-                // }
-                // else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
-                // {
-                //     return PlayAudioResult.Deserialize(cloudEvent.Data.ToString());
-                // }
+                else if (cloudEvent.Type.Equals(AcsEventType.RecognizeCompleted.ToString()))
+                {
+                    return RecognizeCompleted.Deserialize(cloudEvent.Data.ToString());
+                }
+                else if (cloudEvent.Type.Equals(AcsEventType.ParticipantsUpdated.ToString()))
+                {
+                    return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
+                }
+                else if (cloudEvent.Type.Equals(AcsEventType.CallRecordingStateChanged.ToString()))
+                {
+                    return CallRecordingStateChanged.Deserialize(cloudEvent.Data.ToString());
+                }
+                else if (cloudEvent.Type.Equals(AcsEventType.PlayCompleted.ToString()))
+                {
+                    return PlayCompleted.Deserialize(cloudEvent.Data.ToString());
+                }
                 else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString(), true, null))
                 {
                     return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());

@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace IncomingCallRouting
+namespace IncomingCallRouting.Utils
 {
     //Caution: Logging should be removed/disabled if you want to use this sample in production to avoid exposing sensitive information
     public static class Logger

@@ -1,8 +1,8 @@
 ﻿using System;
-using IncomingCallRouting.Utils;
+using IncomingCallRouting.Models;
 using Newtonsoft.Json;
 
-namespace IncomingCallRouting.Events
+namespace IncomingCallRouting.Models
 {
     public class IncomingCallData
     {

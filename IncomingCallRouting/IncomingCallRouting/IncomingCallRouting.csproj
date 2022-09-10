@@ -5,8 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-alpha.20220817.1" />
-    <PackageReference Include="Azure.Communication.Common" Version="1.1.0" />
+    <PackageReference Include="Azure.Communication.CallingServer" Version="1.0.0-alpha.20220905.1" />
     <PackageReference Include="Azure.Core" Version="1.25.0" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.7.0" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="6.20.0" />
