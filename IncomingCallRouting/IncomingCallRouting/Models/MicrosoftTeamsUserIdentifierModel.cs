@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace IncomingCallRouting.Utils
+namespace IncomingCallRouting.Models
 {
     public class MicrosoftTeamsUserIdentifierModel
     {

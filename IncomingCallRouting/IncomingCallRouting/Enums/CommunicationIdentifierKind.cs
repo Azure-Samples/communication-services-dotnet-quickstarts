@@ -1,4 +1,4 @@
-﻿namespace IncomingCallRouting
+﻿namespace IncomingCallRouting.Enums
 {
     /// <summary>
     /// Type of communication identifiers.

@@ -2,11 +2,14 @@
 using System;
 using System.Linq;
 using Azure.Communication.CallingServer;
+using Azure.Core.Pipeline;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using IncomingCallRouting.Events;
+using IncomingCallRouting.EventHandler;
+using IncomingCallRouting.Models;
+using IncomingCallRouting.Utils;
 using Newtonsoft.Json;
 
 namespace IncomingCallRouting.Controllers
@@ -20,7 +23,9 @@ namespace IncomingCallRouting.Controllers
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
-            callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"]);
+            var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
+            callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
+            //callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }

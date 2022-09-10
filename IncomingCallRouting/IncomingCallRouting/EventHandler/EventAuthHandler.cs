@@ -1,14 +1,13 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-namespace IncomingCallRouting
+using System.Web;
+
+namespace IncomingCallRouting.EventHandler
 {
     /// <summary>
     /// Authorize incoming callbacks.
     /// </summary>
-
-    using System.Web;
-
     public class EventAuthHandler
     {
         private static readonly string SecretKey = "secret";
