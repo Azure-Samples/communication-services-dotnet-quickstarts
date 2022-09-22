@@ -109,19 +109,19 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
 
             if (cloudEvent != null && cloudEvent.Data != null)
             {
-                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString()))
+                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     return CallConnectionStateChangedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     return ToneReceivedEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     return PlayAudioResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.AddParticipantResultEvent.ToString()))
+                else if (cloudEvent.Type.Equals(CallingServerEventType.AddParticipantResultEvent.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     return AddParticipantResultEvent.Deserialize(cloudEvent.Data.ToString());
                 }
