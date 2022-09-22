@@ -31,15 +31,17 @@ To be able to use the token for Calling, use it to initialize the `Azure.Communi
 ## Before running sample code
 
 1. Complete the [Administrator actions](https://docs.microsoft.com/azure/communication-services/quickstarts/manage-teams-identity?pivots=programming-language-csharp) from the [Manage access tokens for Teams users quickstart](https://docs.microsoft.com/azure/communication-services/quickstarts/manage-teams-identity).
-   - Take a not of Fabrikam's Azure AD Tenant ID and Contoso's Azure AD App Client ID. You'll need the values in the following steps.
+   - Take a note of Fabrikam's Azure AD Tenant ID and Contoso's Azure AD App Client ID. You'll need the values in the following steps.
 1. On the Authentication pane of your Azure AD App, add a new platform of the mobile and desktop application type with the Redirect URI of `http://localhost`.
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 1. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
 1. With the Communication Services procured in pre-requisites, add connection string, an Azure AD client ID and tenant ID to environment variable using below commands:
 
+```console
 setx COMMUNICATION_SERVICES_CONNECTION_STRING <COMMUNICATION_SERVICES_CONNECTION_STRING>
 setx AAD_CLIENT_ID <CONTOSO_AZURE_AD_CLIENT_ID>
 setx AAD_TENANT_ID <FABRIKAM_AZURE_AD_TENANT_ID>
+```
 
 ## Run Locally
 
