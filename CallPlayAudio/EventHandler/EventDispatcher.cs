@@ -70,28 +70,27 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
 
         public string GetEventKey(CallingServerEventBase callEventBase)
         {
-            if (callEventBase is CallConnectionStateChangedEvent)
+            string output = null;
+
+            switch (callEventBase)
             {
-                var callLegId = ((CallConnectionStateChangedEvent)callEventBase).CallConnectionId;
-                return BuildEventKey(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callLegId);;
-            }
-            else if (callEventBase is ToneReceivedEvent)
-            {
-                var callLegId = ((ToneReceivedEvent)callEventBase).CallConnectionId;
-                return BuildEventKey(CallingServerEventType.ToneReceivedEvent.ToString(), callLegId);
-            }
-            else if (callEventBase is PlayAudioResultEvent)
-            {
-                var operationContext = ((PlayAudioResultEvent)callEventBase).OperationContext;
-                return BuildEventKey(CallingServerEventType.PlayAudioResultEvent.ToString(), operationContext);
-            }
-            else if (callEventBase is AddParticipantResultEvent)
-            {
-                var operationContext = ((AddParticipantResultEvent)callEventBase).OperationContext;
-                return BuildEventKey(CallingServerEventType.AddParticipantResultEvent.ToString(), operationContext);
+                case CallConnectionStateChangedEvent callConnectionStateChangedEvent:
+                    output = BuildEventKey(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionStateChangedEvent.CallConnectionId);
+                    break;
+                case ToneReceivedEvent toneReceivedEvent:
+                    output = BuildEventKey(CallingServerEventType.ToneReceivedEvent.ToString(), toneReceivedEvent.CallConnectionId);
+                    break;
+                case PlayAudioResultEvent playAudioResultEvent:
+                    output = BuildEventKey(CallingServerEventType.PlayAudioResultEvent.ToString(), playAudioResultEvent.OperationContext);
+                    break;
+                case AddParticipantResultEvent addParticipantResultEvent:
+                    output = BuildEventKey(CallingServerEventType.AddParticipantResultEvent.ToString(), addParticipantResultEvent.OperationContext);
+                    break;
+                default:
+                    break;
             }
 
-            return null;
+            return output;
         }
 
         public string BuildEventKey(string eventType, string eventKey)

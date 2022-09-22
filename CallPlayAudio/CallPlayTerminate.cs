@@ -139,7 +139,6 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             var hangupResponse = await callConnection.HangupAsync(reportCancellationToken).ConfigureAwait(false);
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"HangupAsync response --> {hangupResponse}");
-
         }
 
         private void RegisterToCallStateChangeEvent(string callConnectionId)

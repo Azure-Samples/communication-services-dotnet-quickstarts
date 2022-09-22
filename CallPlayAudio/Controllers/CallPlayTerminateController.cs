@@ -31,6 +31,5 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
                 return StatusCode(HttpStatusCode.Unauthorized);
             }
         }
-
     }
 }

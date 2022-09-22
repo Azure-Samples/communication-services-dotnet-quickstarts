@@ -48,7 +48,6 @@ namespace Communication.CallingServer.Sample.CallPlayAudio.Ngrok
             var responseString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             return JsonConvert.DeserializeObject<Tunnels>(responseString).TunnelList;
         }
-
     }
 
     /// <summary>
@@ -94,7 +93,5 @@ namespace Communication.CallingServer.Sample.CallPlayAudio.Ngrok
         /// </summary>
         [JsonProperty("proto")]
         public string Protocol { get; set; }
-
-
     }
 }
