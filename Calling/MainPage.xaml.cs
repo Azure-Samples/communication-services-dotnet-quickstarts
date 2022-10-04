@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.Foundation;
+using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -20,6 +22,9 @@ namespace CallingQuickstart
         {
             this.InitializeComponent();
             Task.Run(() => this.InitCallAgentAndDeviceManagerAsync()).Wait();
+
+            ApplicationView.PreferredLaunchViewSize = new Size(800, 600);
+            ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.PreferredLaunchViewSize;
         }
 
         private async Task InitCallAgentAndDeviceManagerAsync()
@@ -96,7 +101,7 @@ namespace CallingQuickstart
         {
             var startCallOptions = new StartCallOptions();
 
-            if (this.deviceManager.Cameras?.Count > 0)
+            if ((LocalVideo.Source == null) && (this.deviceManager.Cameras?.Count > 0))
             {
                 var videoDeviceInfo = this.deviceManager.Cameras?.FirstOrDefault();
                 if (videoDeviceInfo != null)
@@ -114,11 +119,8 @@ namespace CallingQuickstart
                     startCallOptions.VideoOptions = new VideoOptions(new[] { localVideoStream });
                 }
             }
-            
-            var callees = new ICommunicationIdentifier[1]
-            {
-                new CommunicationUserIdentifier(CalleeTextBox.Text.Trim())
-            };
+
+            var callees = new ICommunicationIdentifier[1] { new CommunicationUserIdentifier(CalleeTextBox.Text.Trim()) };
 
             this.call = await this.callAgent.StartCallAsync(callees, startCallOptions);
             this.call.OnRemoteParticipantsUpdated += Call_OnRemoteParticipantsUpdatedAsync;
@@ -127,6 +129,9 @@ namespace CallingQuickstart
 
         private async void HangupButton_Click(object sender, RoutedEventArgs e)
         {
+            this.call.OnRemoteParticipantsUpdated -= Call_OnRemoteParticipantsUpdatedAsync;
+            this.call.OnStateChanged -= Call_OnStateChangedAsync;
+
             await this.call.HangUpAsync(new HangUpOptions());
         }
 
