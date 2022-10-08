@@ -8,9 +8,9 @@
     mc:Ignorable="d">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="80*"/>
-            <RowDefinition Height="400*"/>
-            <RowDefinition Height="120*"/>
+            <RowDefinition Height="60*"/>
+            <RowDefinition Height="200*"/>
+            <RowDefinition Height="60*"/>
         </Grid.RowDefinitions>
         <TextBox x:Name="CalleeTextBox" Text="Who would you like to call?" TextWrapping="Wrap" VerticalAlignment="Center" Height="40" Margin="10,10,10,10" />
         <Grid Grid.Row="1">
@@ -21,8 +21,8 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <MediaPlayerElement x:Name="LocalVideo" AutoPlay="True" HorizontalAlignment="Center" Stretch="UniformToFill" Grid.Column="0" VerticalAlignment="Center"/>
-            <MediaPlayerElement x:Name="RemoteVideo" AutoPlay="True" HorizontalAlignment="Center" Stretch="UniformToFill" Grid.Column="1" VerticalAlignment="Center"/>
+            <MediaPlayerElement x:Name="LocalVideo" HorizontalAlignment="Center" Stretch="UniformToFill" Grid.Column="0" VerticalAlignment="Center"/>
+            <MediaPlayerElement x:Name="RemoteVideo" HorizontalAlignment="Center" Stretch="UniformToFill" Grid.Column="1" VerticalAlignment="Center"/>
         </Grid>
         <StackPanel Grid.Row="2" Orientation="Horizontal">
             <Button x:Name="CallButton" Content="Start Call" Click="CallButton_Click" VerticalAlignment="Center" Margin="10,0,0,0" Height="40" Width="200"/>

@@ -133,6 +133,7 @@ namespace CallingQuickstart
             {
                 this.DispatcherQueue.TryEnqueue(async () => {
                     RemoteVideo.Source = MediaSource.CreateFromUri(await remoteVideoStream.Start());
+                    RemoteVideo.MediaPlayer.Play();
                 });
             }
 
