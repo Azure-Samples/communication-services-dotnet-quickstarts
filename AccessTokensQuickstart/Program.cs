@@ -35,37 +35,29 @@ namespace AccessTokensQuickstart
             var identity = identityResponse.Value;
             Console.WriteLine($"\nCreated an identity with ID: {identity.Id}");
 
-            // Issue an access token with validity of 24 hours and the "voip" scope for an identity
+            // Issue an access token with a validity of 24 hours and the "voip" scope for an identity
             var tokenResponse = await client.GetTokenAsync(identity, scopes: new[] { CommunicationTokenScope.VoIP });
             var token = tokenResponse.Value.Token;
             var expiresOn = tokenResponse.Value.ExpiresOn;
             Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn}:");
             Console.WriteLine(token);
 
-            // Issue an access token with validity of an hour and the "voip" scope for an identity 
+            // Issue an access token with a validity of an hour and the "voip" scope for an identity 
             TimeSpan tokenExpiresIn = TimeSpan.FromHours(1);
-            tokenResponse = await client.GetTokenAsync(identity, scopes: new [] { CommunicationTokenScope.VoIP }, tokenExpiresIn);
+            CommunicationTokenScope[] scopes = new[] { CommunicationTokenScope.VoIP };
+            tokenResponse = await client.GetTokenAsync(identity, scopes, tokenExpiresIn);
             token =  tokenResponse.Value.Token;
             expiresOn = tokenResponse.Value.ExpiresOn;
             Console.WriteLine($"\nIssued an access token with 'voip' scope and custom expiration time that expires at {expiresOn}:");
             Console.WriteLine(token);
 
-            // Issue an identity and an access token with validity of 24 hours and the "voip" scope for the new identity
+            // Issue an identity and an access token with a validity of 24 hours and the "voip" scope for the new identity
             var identityAndTokenResponse = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.VoIP });
             identity = identityAndTokenResponse.Value.User;
             token = identityAndTokenResponse.Value.AccessToken.Token;
             expiresOn = identityAndTokenResponse.Value.AccessToken.ExpiresOn;
             Console.WriteLine($"\nCreated an identity with ID: {identity.Id}");
             Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn}:");
-            Console.WriteLine(token);
-
-            // Issue an identity and an access token with validity of an hour and the "voip" scope for the new identity
-            identityAndTokenResponse = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.VoIP }, tokenExpiresIn);
-            identity = identityAndTokenResponse.Value.User;
-            token = identityAndTokenResponse.Value.AccessToken.Token;
-            expiresOn = identityAndTokenResponse.Value.AccessToken.ExpiresOn;
-            Console.WriteLine($"\nCreated an identity with ID: {identity.Id}");
-            Console.WriteLine($"\nIssued an access token with 'voip' scope and custom expiration time that expires at {expiresOn}:");
             Console.WriteLine(token);
 
             // Refresh access tokens
