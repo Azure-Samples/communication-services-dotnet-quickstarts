@@ -46,10 +46,6 @@ namespace AccessTokensQuickstart
             TimeSpan tokenExpiresIn = TimeSpan.FromHours(1);
             CommunicationTokenScope[] scopes = new[] { CommunicationTokenScope.VoIP };
             tokenResponse = await client.GetTokenAsync(identity, scopes, tokenExpiresIn);
-            token =  tokenResponse.Value.Token;
-            expiresOn = tokenResponse.Value.ExpiresOn;
-            Console.WriteLine($"\nIssued an access token with 'voip' scope and custom expiration time that expires at {expiresOn}:");
-            Console.WriteLine(token);
 
             // Issue an identity and an access token with a validity of 24 hours and the "voip" scope for the new identity
             var identityAndTokenResponse = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.VoIP });
