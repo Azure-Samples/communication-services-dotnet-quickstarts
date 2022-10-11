@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.Calling" Version="1.0.0-alpha.20220923.1" />
+    <PackageReference Include="Azure.Communication.Calling" Version="1.0.0-beta.33" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.2.220909.2-experimental2" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22000.194" />
     <Manifest Include="$(ApplicationManifest)" />
