@@ -153,9 +153,6 @@
     <PackageReference Include="Azure.Communication.Calling">
       <Version>1.0.0-beta.33</Version>
     </PackageReference>
-    <PackageReference Include="Azure.Communication.Common">
-      <Version>1.2.0</Version>
-    </PackageReference>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
       <Version>6.2.12</Version>
     </PackageReference>
