@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 namespace Calling.RecognizeDTMF
@@ -23,6 +23,7 @@ namespace Calling.RecognizeDTMF
         private TaskCompletionSource<bool> callTerminatedTask;
         private TaskCompletionSource<bool> toneReceivedCompleteTask;
         private DtmfTone toneInputValue = DtmfTone.Zero;
+        private int toneCount = 0;
 
         public RecognizeDtmf(CallConfiguration callConfiguration)
         {
@@ -40,7 +41,7 @@ namespace Calling.RecognizeDTMF
                 callConnection = await CreateCallAsync(targetPhoneNumber).ConfigureAwait(false);
                 RegisterToDtmfResultEvent(callConnection.CallConnectionId);
 
-                await PlayAudioAsync(targetPhoneNumber).ConfigureAwait(false);
+                await StartRecognizingDtmf(targetPhoneNumber).ConfigureAwait(false);
                 var playAudioCompleted = await playAudioCompletedTask.Task.ConfigureAwait(false);
 
                 if (!playAudioCompleted)
@@ -50,7 +51,7 @@ namespace Calling.RecognizeDTMF
                 else
                 {
                     var toneReceivedComplete = await toneReceivedCompleteTask.Task.ConfigureAwait(false);
-                    if (toneReceivedComplete)
+                    if (toneReceivedComplete && toneCount != 0)
                     {
                         Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio for input {toneInputValue.ToString()}");
                         await PlayAudioAsInput().ConfigureAwait(false);
@@ -104,7 +105,7 @@ namespace Calling.RecognizeDTMF
             }
         }
 
-        private async Task PlayAudioAsync(string targetPhoneNumber)
+        private async Task StartRecognizingDtmf(string targetPhoneNumber)
         {
             if (reportCancellationToken.IsCancellationRequested)
             {
@@ -127,6 +128,7 @@ namespace Calling.RecognizeDTMF
                 recognizeOptions.InterruptPrompt = true;
                 recognizeOptions.InterruptCallMediaOperation = true;
                 recognizeOptions.Prompt = audioFileUri;
+                recognizeOptions.StopTones = new List<DtmfTone> { DtmfTone.Pound };
 
                 var resp = await callConnection.GetCallMedia().StartRecognizingAsync(recognizeOptions, reportCancellationToken);
 
@@ -145,13 +147,12 @@ namespace Calling.RecognizeDTMF
             }
             catch (TaskCanceledException)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, " Play audio operation for Custom message got cancelled");
+                Logger.LogMessage(Logger.MessageType.ERROR, " Start recognizing with Play audio prompt for Custom message got cancelled");
             }
             catch (Exception ex)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, $"Failure occured while playing Custom message audio on the call. Exception: {ex.Message}");
+                Logger.LogMessage(Logger.MessageType.ERROR, $"Failure occured while start recognizing with Play audio prompt. Exception: {ex.Message}");
             }
-
         }
 
         private async Task HangupAsync()
@@ -164,7 +165,6 @@ namespace Calling.RecognizeDTMF
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing Hangup operation");
             var hangupResponse = await callConnection.HangUpAsync(true).ConfigureAwait(false);
-
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"HangupAsync response --> {hangupResponse}");
         }
 
@@ -253,14 +253,11 @@ namespace Calling.RecognizeDTMF
                     if (toneReceivedEvent.CollectTonesResult.Tones.Count != 0)
                     {
                         Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tone received --------- : {toneReceivedEvent.CollectTonesResult.Tones[0]}");
-                        this.toneInputValue = toneReceivedEvent.CollectTonesResult.Tones[0];
-                        toneReceivedCompleteTask.TrySetResult(true);
-                    }
-                    else
-                    {
-                        toneReceivedCompleteTask.TrySetResult(false);
+                        toneCount = toneReceivedEvent.CollectTonesResult.Tones.Count;
+                        toneInputValue = toneReceivedEvent.CollectTonesResult.Tones[0];
                     }
                     EventDispatcher.Instance.Unsubscribe("RecognizeCompleted", callConnectionId);
+                    toneReceivedCompleteTask.TrySetResult(true);
                     playAudioCompletedTask.TrySetResult(true);
                 });
             });
