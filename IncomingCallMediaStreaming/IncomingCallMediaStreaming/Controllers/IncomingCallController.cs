@@ -12,13 +12,13 @@ namespace IncomingCallMediaStreaming.Controllers
     [ApiController]
     public class IncomingCallController : Controller
     {
-        private readonly CallAutomationClient callingServerClient;
+        private readonly CallAutomationClient callAutomationClient;
         CallConfiguration callConfiguration;
         EventAuthHandler eventAuthHandler;
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
-            callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"]);
+            callAutomationClient = new CallAutomationClient(configuration["ResourceConnectionString"]);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
@@ -56,7 +56,7 @@ namespace IncomingCallMediaStreaming.Controllers
                     {
                         string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
                         Logger.LogMessage(Logger.MessageType.INFORMATION, incomingCallContext);
-                        _ = new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext);
+                        _ = new IncomingCallHandler(callAutomationClient, callConfiguration).Report(incomingCallContext);
                     }
                 }
                 return Ok();
@@ -74,8 +74,8 @@ namespace IncomingCallMediaStreaming.Controllers
         /// <param name="content"></param>
         /// <returns></returns>
         [HttpPost]
-        [Route("CallingServerAPICallBacks")]
-        public IActionResult CallingServerAPICallBacks([FromBody] object request, [FromQuery] string secret)
+        [Route("CallAutomationApiCallBack")]
+        public IActionResult CallAutomationApiCallBack([FromBody] object request, [FromQuery] string secret)
         {
             try
             {
@@ -94,7 +94,7 @@ namespace IncomingCallMediaStreaming.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, $"Fails with CallingServerAPICallBack ---> {ex.Message}");
+                Logger.LogMessage(Logger.MessageType.ERROR, $"CallAutomationApiCallBack fails : ---> {ex.Message}");
                 return Json(new { Exception = ex });
             }
         }

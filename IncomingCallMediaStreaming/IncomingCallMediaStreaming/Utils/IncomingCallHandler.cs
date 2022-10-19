@@ -15,7 +15,7 @@ namespace IncomingCallMediaStreaming
 
     public class IncomingCallHandler
     {
-        private CallAutomationClient callingServerClient;
+        private CallAutomationClient callAutomationClient;
         private CallConfiguration callConfiguration;
         private CallConnection callConnection;
         private CancellationTokenSource reportCancellationTokenSource;
@@ -24,10 +24,10 @@ namespace IncomingCallMediaStreaming
         private TaskCompletionSource<bool> callEstablishedTask;
         private TaskCompletionSource<bool> callTerminatedTask;
 
-        public IncomingCallHandler(CallAutomationClient callingServerClient, CallConfiguration callConfiguration)
+        public IncomingCallHandler(CallAutomationClient callAutomationClient, CallConfiguration callConfiguration)
         {
             this.callConfiguration = callConfiguration;
-            this.callingServerClient = callingServerClient;
+            this.callAutomationClient = callAutomationClient;
         }
 
         public async Task Report(string incomingCallContext)
@@ -41,13 +41,13 @@ namespace IncomingCallMediaStreaming
                     new Uri(callConfiguration.AppCallbackUrl));
 
                 answerCallOptions.MediaStreamingOptions = new MediaStreamingOptions
-                    (new Uri(callConfiguration.mediaStreamingTransportURI),
+                    (new Uri(callConfiguration.MediaStreamingTransportURI),
                     MediaStreamingTransport.Websocket, 
                     MediaStreamingContent.Audio, 
                     MediaStreamingAudioChannel.Unmixed);
 
                 // Answer Call
-                var response = await callingServerClient.AnswerCallAsync(answerCallOptions);
+                var response = await callAutomationClient.AnswerCallAsync(answerCallOptions);
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
 
@@ -68,10 +68,10 @@ namespace IncomingCallMediaStreaming
 
         private void RegisterToCallStateChangeEvent(string callConnectionId)
         {
-            callEstablishedTask = new TaskCompletionSource<bool>(TaskContinuationOptions.RunContinuationsAsynchronously);
+            callEstablishedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             reportCancellationToken.Register(() => callEstablishedTask.TrySetCanceled());
 
-            callTerminatedTask = new TaskCompletionSource<bool>(TaskContinuationOptions.RunContinuationsAsynchronously);
+            callTerminatedTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             //Set the callback method for call connected
             var callConnectedNotificaiton = new NotificationCallback((callEvent) =>
