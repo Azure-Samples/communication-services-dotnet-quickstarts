@@ -1,4 +1,4 @@
-﻿using Azure.Communication.CallingServer;
+﻿using Azure.Communication.CallAutomation;
 using Microsoft.AspNetCore.Mvc;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;

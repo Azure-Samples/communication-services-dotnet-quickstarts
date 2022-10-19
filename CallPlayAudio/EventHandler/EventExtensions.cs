@@ -3,14 +3,14 @@
 
 namespace Communication.CallingServer.Sample.CallPlayAudio
 {
-    using Azure.Communication.CallingServer;
+    using Azure.Communication.CallAutomation;
     using System;
 
     public class NotificationCallback
     {
-        public Action<CallingServerEventBase> Callback { get; set; }
+        public Action<CallAutomationEventBase> Callback { get; set; }
 
-        public NotificationCallback(Action<CallingServerEventBase> callBack)
+        public NotificationCallback(Action<CallAutomationEventBase> callBack)
         {
             this.Callback = callBack;
         }

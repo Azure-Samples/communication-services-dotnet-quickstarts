@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Azure.Communication.CallingServer;
+using Azure.Communication.CallAutomation;
 
 namespace QuickStartApi
 {

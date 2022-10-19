@@ -4,7 +4,7 @@
 namespace Communication.CallingServer.Sample.CallPlayAudio
 {
     using Azure.Communication;
-    using Azure.Communication.CallingServer;
+    using Azure.Communication.CallAutomation;
     using System;
     using System.Collections.Generic;
     using System.Threading;
@@ -13,7 +13,7 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
     public class CallPlayTerminate
     {
         private CallConfiguration callConfiguration;
-        private CallingServerClient callClient;
+        private CallAutomationClient callClient;
         private CallConnection callConnection;
         private CancellationTokenSource reportCancellationTokenSource;
         private CancellationToken reportCancellationToken;
@@ -23,7 +23,7 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
         public CallPlayTerminate(CallConfiguration callConfiguration)
         {
             this.callConfiguration = callConfiguration;
-            callClient = new CallingServerClient(this.callConfiguration.ConnectionString);
+            callClient = new CallAutomationClient(this.callConfiguration.ConnectionString);
         }
 
         public async Task Report(string targetPhoneNumber)
@@ -51,31 +51,27 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             try
             {
                 //Preparting request data
-                var source = new CommunicationUserIdentifier(callConfiguration.SourceIdentity);
+                CallSource source = new CallSource(new CommunicationUserIdentifier(callConfiguration.SourceIdentity));
+                source.CallerId = new PhoneNumberIdentifier(callConfiguration.SourcePhoneNumber);
                 var target = new PhoneNumberIdentifier(targetPhoneNumber);
-                var createCallOption = new CreateCallOptions(
-                    new Uri(callConfiguration.AppCallbackUrl),
-                    new List<MediaType> { MediaType.Audio },
-                    new List<EventSubscriptionType> { EventSubscriptionType.ParticipantsUpdated }
-                    );
-                createCallOption.AlternateCallerId = new PhoneNumberIdentifier(callConfiguration.SourcePhoneNumber);
+
+                var createCallOption = new CreateCallOptions(source,
+                    new List<CommunicationIdentifier>() { target },
+                    new Uri(callConfiguration.AppCallbackUrl));
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing CreateCall operation");
-                var call = await callClient.CreateCallConnectionAsync(source,
-                    new List<CommunicationIdentifier>() { target },
-                    createCallOption, reportCancellationToken)
-                    .ConfigureAwait(false);
+                var call = await callClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"CreateCallConnectionAsync response --> {call.GetRawResponse()}, Call Connection Id: { call.Value.CallConnectionId}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"CreateCallConnectionAsync response --> {call.GetRawResponse()}, Call Connection Id: { call.Value.CallConnection.CallConnectionId}");
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call initiated with Call Connection id: { call.Value.CallConnectionId}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call initiated with Call Connection id: { call.Value.CallConnection.CallConnectionId}");
 
-                RegisterToCallStateChangeEvent(call.Value.CallConnectionId);
+                RegisterToCallStateChangeEvent(call.Value.CallConnection.CallConnectionId);
 
                 //Wait for operation to complete
                 await callEstablishedTask.Task.ConfigureAwait(false);
 
-                return call.Value;
+                return call.Value.CallConnection;
             }
             catch (Exception ex)
             {
@@ -95,21 +91,23 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             try
             {
                 // Preparing data for request
-                var playAudioRequest = new PlayAudioOptions()
+                var playAudioRequest = new PlayOptions()
                 {
-                    AudioFileUri = new Uri(callConfiguration.AudioFileUrl),
                     OperationContext = Guid.NewGuid().ToString(),
                     Loop = true,
                 };
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing PlayAudio operation");
-                var response = await callConnection.PlayAudioAsync(playAudioRequest, reportCancellationToken).ConfigureAwait(false);
+                PlaySource audioFileUri = new FileSource(new Uri(callConfiguration.AudioFileUrl));
+                var response = await callConnection.GetCallMedia().PlayToAllAsync(audioFileUri, playAudioRequest,
+                    reportCancellationToken).ConfigureAwait(false);
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.GetRawResponse()}, Id: {response.Value.OperationId}, Status: {response.Value.Status}, OperationContext: {response.Value.OperationContext}, ResultInfo: {response.Value.ResultInfo}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> " +
+                   $"{response}, Id: {response.ClientRequestId}, Status: {response.Status}");
 
-                if (response.Value.Status == OperationStatus.Running)
+                if (response.Status == 202)
                 {
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio state: {response.Value.Status}");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio state: {response.Status}");
                 }
 
                 // wait for 10 seconds and then terminate the call              
@@ -136,7 +134,7 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             }
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing Hangup operation");
-            var hangupResponse = await callConnection.HangupAsync(reportCancellationToken).ConfigureAwait(false);
+            var hangupResponse = await callConnection.HangUpAsync(true).ConfigureAwait(false);
 
             Logger.LogMessage(Logger.MessageType.INFORMATION, $"HangupAsync response --> {hangupResponse}");
         }
@@ -148,27 +146,28 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
 
             callTerminatedTask = new TaskCompletionSource<bool>(TaskContinuationOptions.RunContinuationsAsynchronously);
 
-            //Set the callback method
-            var callStateChangeNotificaiton = new NotificationCallback((CallingServerEventBase callEvent) =>
+            //Set the callback method for call connected
+            var callConnectedNotificaiton = new NotificationCallback((callEvent) =>
             {
-                var callStateChanged = (CallConnectionStateChangedEvent)callEvent;
-
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to: {callStateChanged.CallConnectionState}");
-
-                if (callStateChanged.CallConnectionState == CallConnectionState.Connected)
-                {
-                    callEstablishedTask.TrySetResult(true);
-                }
-                else if (callStateChanged.CallConnectionState == CallConnectionState.Disconnected)
-                {
-                    EventDispatcher.Instance.Unsubscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId);
-                    reportCancellationTokenSource.Cancel();
-                    callTerminatedTask.SetResult(true);
-                }
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to Connected");
+                EventDispatcher.Instance.Unsubscribe("CallConnected", callConnectionId);
+                callEstablishedTask.TrySetResult(true);
             });
 
-            //Subscribe to the event
-            var eventId = EventDispatcher.Instance.Subscribe(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionId, callStateChangeNotificaiton);
+            //Set the callback method for call Disconnected
+            var callDisconnectedNotificaiton = new NotificationCallback((callEvent) =>
+            {
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Call State changed to Disconnected");
+                EventDispatcher.Instance.Unsubscribe("CallDisconnected", callConnectionId);
+                reportCancellationTokenSource.Cancel();
+                callTerminatedTask.SetResult(true);
+            });
+
+            //Subscribe to the call connected event
+            var eventId = EventDispatcher.Instance.Subscribe("CallConnected", callConnectionId, callConnectedNotificaiton);
+
+            //Subscribe to the call disconnected event
+            var eventIdDisconnected = EventDispatcher.Instance.Subscribe("CallDisconnected", callConnectionId, callDisconnectedNotificaiton);
         }
     }
 }

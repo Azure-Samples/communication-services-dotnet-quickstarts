@@ -3,9 +3,7 @@
 
 namespace Communication.CallingServer.Sample.CallPlayAudio
 {
-    using Azure.Communication.CallingServer;
-    using Azure.Messaging;
-    using Newtonsoft.Json;
+    using Azure.Communication.CallAutomation;
     using System;
     using System.Collections.Concurrent;
     using System.Threading.Tasks;
@@ -48,13 +46,14 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
 
         public void ProcessNotification(string request)
         {
-            var callEvent = this.ExtractEvent(request);
+            CallAutomationEventBase callEvent = CallAutomationEventParser.Parse(BinaryData.FromString(request));
 
             if (callEvent != null)
             {
                 lock (SubscriptionLock)
                 {
-                    if (NotificationCallback.TryGetValue(GetEventKey(callEvent), out NotificationCallback notificationCallback))
+                    var callLegId = callEvent.CallConnectionId;
+                    if (NotificationCallback.TryGetValue(BuildEventKey(callEvent.GetType().Name, callLegId), out NotificationCallback notificationCallback))
                     {
                         if (notificationCallback != null)
                         {
@@ -68,67 +67,11 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             }
         }
 
-        public string GetEventKey(CallingServerEventBase callEventBase)
-        {
-            string output = null;
-
-            switch (callEventBase)
-            {
-                case CallConnectionStateChangedEvent callConnectionStateChangedEvent:
-                    output = BuildEventKey(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), callConnectionStateChangedEvent.CallConnectionId);
-                    break;
-                case ToneReceivedEvent toneReceivedEvent:
-                    output = BuildEventKey(CallingServerEventType.ToneReceivedEvent.ToString(), toneReceivedEvent.CallConnectionId);
-                    break;
-                case PlayAudioResultEvent playAudioResultEvent:
-                    output = BuildEventKey(CallingServerEventType.PlayAudioResultEvent.ToString(), playAudioResultEvent.OperationContext);
-                    break;
-                case AddParticipantResultEvent addParticipantResultEvent:
-                    output = BuildEventKey(CallingServerEventType.AddParticipantResultEvent.ToString(), addParticipantResultEvent.OperationContext);
-                    break;
-                default:
-                    break;
-            }
-
-            return output;
-        }
-
         public string BuildEventKey(string eventType, string eventKey)
         {
             return $"{eventType}-{eventKey}";
         }
-
-        /// <summary>
-        /// Extracting event from the json.
-        /// </summary>
-        /// <param name="content"></param>
-        /// <returns></returns>
-        public CallingServerEventBase ExtractEvent(string content)
-        {
-            CloudEvent cloudEvent = CloudEvent.Parse(BinaryData.FromString(content));
-
-            if (cloudEvent != null && cloudEvent.Data != null)
-            {
-                if (cloudEvent.Type.Equals(CallingServerEventType.CallConnectionStateChangedEvent.ToString(), StringComparison.OrdinalIgnoreCase))
-                {
-                    return CallConnectionStateChangedEvent.Deserialize(cloudEvent.Data.ToString());
-                }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.ToneReceivedEvent.ToString(), StringComparison.OrdinalIgnoreCase))
-                {
-                    return ToneReceivedEvent.Deserialize(cloudEvent.Data.ToString());
-                }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.PlayAudioResultEvent.ToString(), StringComparison.OrdinalIgnoreCase))
-                {
-                    return PlayAudioResultEvent.Deserialize(cloudEvent.Data.ToString());
-                }
-                else if (cloudEvent.Type.Equals(CallingServerEventType.AddParticipantResultEvent.ToString(), StringComparison.OrdinalIgnoreCase))
-                {
-                    return AddParticipantResultEvent.Deserialize(cloudEvent.Data.ToString());
-                }
-            }
-
-            return null;
-        }
     }
+
 }
 
