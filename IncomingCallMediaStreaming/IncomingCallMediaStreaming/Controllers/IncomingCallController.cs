@@ -23,6 +23,13 @@ namespace IncomingCallMediaStreaming.Controllers
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
 
+        [HttpGet]
+        [Route("ApiCheck")]
+        public IActionResult ApiCheck()
+        {
+            return Ok("API is working fine...");
+        }
+
         /// Web hook to receive the incoming call Event
         /// <param name="request"></param>
         /// <returns></returns>
@@ -79,7 +86,7 @@ namespace IncomingCallMediaStreaming.Controllers
         {
             try
             {
-                if(eventAuthHandler.Authorize(secret))
+                if (eventAuthHandler.Authorize(secret))
                 {
                     if (request != null)
                     {
