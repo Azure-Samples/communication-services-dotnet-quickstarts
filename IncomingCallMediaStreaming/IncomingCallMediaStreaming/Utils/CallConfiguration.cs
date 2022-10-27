@@ -27,20 +27,14 @@ namespace IncomingCallMediaStreaming
         public string AppCallbackUrl { get; private set; }
 
         /// <summary>
-        /// The publicly available url of the audio file which would be played as a prompt.
-        /// </summary>
-        public string AudioFileUrl { get; private set; }
-
-        /// <summary>
         /// The publicly available participant id to transfer the incoming call.
         /// </summary>
         public string MediaStreamingTransportURI { get; private set; }
 
-        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string mediaStreamingTransportURI, string queryString)
+        public CallConfiguration(string connectionString, string appBaseUrl, string mediaStreamingTransportURI, string queryString)
         {
             ConnectionString = connectionString;
             AppBaseUrl = appBaseUrl;
-            AudioFileUrl = audioFileUri;
             AppCallbackUrl = $"{AppBaseUrl}/CallAutomationApiCallBack?{queryString}";
             MediaStreamingTransportURI = mediaStreamingTransportURI;
         }
@@ -51,7 +45,6 @@ namespace IncomingCallMediaStreaming
             {
                 callConfiguration = new CallConfiguration(configuration["ResourceConnectionString"],
                     configuration["AppCallBackUri"],
-                    configuration["AudioFileUri"],
                     configuration["MediaStreamingTransportURI"],
                     queryString);
             }
