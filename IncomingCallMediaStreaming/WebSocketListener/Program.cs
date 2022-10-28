@@ -2,17 +2,23 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using WebSocketListener.Ngrok;
 
-namespace MediaStreamingWebsocket // Note: actual namespace depends on the project name.
+namespace WebSocketListener
 {
     internal class Program
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            Console.WriteLine("WebSocket Listener starting for port 8080");
             HttpListener httpListener = new HttpListener();
             httpListener.Prefixes.Add("http://localhost:8080/");
             httpListener.Start();
+
+            Console.WriteLine("Ngrok starting for port 8080");
+            var ngrokExePath = "D:\\Code\\ngrok"; //update the ngrok.exe path before running
+            var ngrokUrl = NgrokService.Instance.StartNgrokService(ngrokExePath);
+            Console.WriteLine($"Ngrok started with URL {ngrokUrl}");
 
             while (true)
             {
@@ -68,17 +74,13 @@ namespace MediaStreamingWebsocket // Note: actual namespace depends on the proje
 
                                         if (data != null)
                                         {
-                                            AudioDataPackets json = JsonSerializer.Deserialize<AudioDataPackets>(data);
+                                            AudioDataPackets jsonData = JsonSerializer.Deserialize<AudioDataPackets>(data);
 
-                                            if (json != null && json.kind == "AudioData")
+                                            if (jsonData != null && jsonData.kind == "AudioData")
                                             {
-                                                AudioData audioData = json.audioData;
-                                                audioDataText = audioDataText + audioData?.data;
+                                                audioDataText = audioDataText + jsonData.audioData?.data;
                                             }
-                                            else
-                                            {
-                                                Console.WriteLine(data);
-                                            }
+                                            //Console.WriteLine(data);
                                         }
                                     }
                                 }
@@ -93,10 +95,14 @@ namespace MediaStreamingWebsocket // Note: actual namespace depends on the proje
                         }
                     }
                     catch (Exception ex)
-                    { Console.WriteLine($"Exception -> {ex}"); }
+                    {
+                        Console.WriteLine($"Exception -> {ex}");
+                    }
                 }
                 else
-                { httpListenerContext.Response.StatusCode = 400; httpListenerContext.Response.Close(); }
+                {
+                    httpListenerContext.Response.StatusCode = 400; httpListenerContext.Response.Close();
+                }
             }
         }
     }
@@ -107,11 +113,11 @@ namespace MediaStreamingWebsocket // Note: actual namespace depends on the proje
         public AudioData? audioData { set; get; }
     }
 
-    public class AudioData 
-    { public string? data { set; get; } // Base64 Encoded audio buffer data
-      public string? timestamp { set; get; } // In ISO 8601 format (yyyy-mm-ddThh:mm:ssZ)
-      public string? participantRawID { set; get; }
-      public bool silent { set; get; } // Indicates if the received audio buffer contains only silence.
+    public class AudioData
+    {
+        public string? data { set; get; } // Base64 Encoded audio buffer data
+        public string? timestamp { set; get; } // In ISO 8601 format (yyyy-mm-ddThh:mm:ssZ)
+        public string? participantRawID { set; get; }
+        public bool silent { set; get; } // Indicates if the received audio buffer contains only silence.
     }
-
-    }
+}

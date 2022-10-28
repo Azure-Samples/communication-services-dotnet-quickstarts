@@ -1,4 +1,3 @@
-using IncomingCallMediaStreaming.Ngrok;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -33,7 +32,6 @@ namespace IncomingCallMediaStreaming
         {
             if (env.IsDevelopment())
             {
-                NgrokService.Instance.StartNgrokService(Configuration["ngrokpath"]);
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "IncomingCallMediaStreaming v1"));

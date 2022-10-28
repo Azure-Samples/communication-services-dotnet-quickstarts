@@ -1,9 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-namespace IncomingCallMediaStreaming.Ngrok
+namespace WebSocketListener.Ngrok
 {
-    using IncomingCallMediaStreaming.Controllers;
     using Microsoft.Extensions.Logging;
     using System;
     using System.Diagnostics;
@@ -24,6 +23,8 @@ namespace IncomingCallMediaStreaming.Ngrok
         /// </summary>
         private static NgrokConnector Connector { set; get; }
 
+        private static ILogger Logger { get; set; } 
+
         private static readonly NgrokService instance = new NgrokService();
 
         public static NgrokService Instance
@@ -35,10 +36,8 @@ namespace IncomingCallMediaStreaming.Ngrok
         private NgrokService()
         {
             var logFacotry = new LoggerFactory();
-            Logger.SetLoggerInstance(logFacotry.CreateLogger<NgrokService>());
-
+            Logger = logFacotry.CreateLogger<NgrokService>();
             Connector = new NgrokConnector();
-
         }
 
         public string StartNgrokService(string ngrokPath, string authToken = null)
@@ -52,21 +51,21 @@ namespace IncomingCallMediaStreaming.Ngrok
             {
                 if (string.IsNullOrEmpty(ngrokPath))
                 {
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, "Ngrok path not provided");
-                    return null;
+                    Logger.LogInformation("Ngrok path not provided");
+                    return "";
                 }
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, "Fetching Ngrok Url");
+                Logger.LogInformation("Fetching Ngrok Url");
                 var ngrokUrl = GetNgrokUrl().Result;
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Ngrok Started with url: {ngrokUrl}");
+                Logger.LogInformation($"Ngrok Started with url: {ngrokUrl}");
 
                 return ngrokUrl;
             }
             catch (Exception ex)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, ex.Message);
-                return null;
+                Logger.LogError(ex.Message);
+                return "";
             }
         }
 
@@ -108,7 +107,7 @@ namespace IncomingCallMediaStreaming.Ngrok
             }
 
             startInfo.FileName = $@"{ngrokPath}\ngrok.exe";
-            startInfo.Arguments = $"http http://localhost:52432/ --host-header=\"localhost:52432\" {authTokenArgs}";
+            startInfo.Arguments = $"http http://localhost:8080/ --host-header=\"localhost:8080\" {authTokenArgs}";
             ngrokProcess.StartInfo = startInfo;
             ngrokProcess.Start();
         }
