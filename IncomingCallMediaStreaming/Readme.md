@@ -32,18 +32,18 @@ The application is an app service application built on .NET Framework 6.0.
 2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git.
 
 ### Locally running the media streaming WebSocket app
-Run the media streaming WebSocket console application and tunnel it with ngrok using following command:
-ngrok http {port-number} --host-header="localhost:{port-number}"
+1. Go to IncomingCallMediaStreaming folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio
+Run the WebSocketListener project, copy the ngrok URl for "MediaStreamingTransportURI" configuration.
 
 ### Locally deploying the Incoming call media streaming app
 
-1. Go to IncomingCallRouting folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio
+1. Go to IncomingCallMediaStreaming folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio
 2. Open the appsetting.json file to configure the following settings
 
 	- ResourceConnectionString: Azure Communication Service resource's connection string.
 	- AppCallBackUri: URI of the deployed app service
 	- SecretValue: Query string for callback URL
-	- MediaStreamingTransportURI: websocket URL in format "wss://{ngrok-URL}"
+	- MediaStreamingTransportURI: websocket URL in format "wss://{ngrok-URL of media streaming WebSocket sample}"
 
 3. Run `IncomingCallMediaStreaming` project.
 4. Use postman or any debugging tool and open url - https://localhost:5001
@@ -58,6 +58,16 @@ ngrok http {port-number} --host-header="localhost:{port-number}"
 	- AppCallBackUri: URI of the deployed app service.
 	- SecretValue: Query string for callback URL.
 	- MediaStreamingTransportURI: websocket URL in format "wss://{ngrok-URL}"
+
+### Create Webhook for incoming call event
+1. Configure webhook from ACS events tab for incoming call event.
+ 	- Manually configuring the webhook using this command. use above published "'https://<IncomingCallMediaStreaming-URL>/OnIncomingCall" URL as webhook URL.
+
+	```
+	armclient put "/subscriptions/<Subscriptin-ID>/resourceGroups/<resource group name>/providers/Microsoft.Communication/CommunicationServices/<CommunicationService Name>/providers/Microsoft.EventGrid/eventSubscriptions/<WebHookName>?api-version=2020-06-01" "{'properties':{'destination':{'properties':{'endpointUrl':'<webhookurl>'},'endpointType':'WebHook'},'filter':{'includedEventTypes': ['Microsoft.Communication.IncomingCall']}}}" -verbose
+
+	```
+
 
 
 4. Detailed instructions on publishing the app to Azure are available at [Publish a Web app](https://docs.microsoft.com/visualstudio/deployment/quickstart-deploy-to-azure?view=vs-2019).
