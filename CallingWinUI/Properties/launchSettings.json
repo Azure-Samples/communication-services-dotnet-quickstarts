@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "CallingQuickstart (WinUI) (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "CallingQuickstart (WinUI) (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
