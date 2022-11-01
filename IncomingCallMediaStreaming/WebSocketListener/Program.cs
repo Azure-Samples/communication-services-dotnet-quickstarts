@@ -41,8 +41,7 @@ namespace WebSocketListener
                     }
 
                     WebSocket webSocket = websocketContext.WebSocket;
-                    using FileStream fs = new FileStream("..//audiodata.txt", FileMode.Create, FileAccess.Write, FileShare.None);
-                    StreamWriter sw = new StreamWriter(fs);
+                    using FileStream audioDataFileStream = new FileStream("..//audiodata.txt", FileMode.Create, FileAccess.Write, FileShare.None);
 
                     try
                     {
@@ -71,7 +70,8 @@ namespace WebSocketListener
 
                                             if (jsonData != null && jsonData.kind == "AudioData")
                                             {
-                                                sw.Write(jsonData.audioData.data);
+                                                var byteArray = jsonData.audioData.data;
+                                                await audioDataFileStream.WriteAsync(byteArray, 0, byteArray.Length);
                                             }
                                             Console.WriteLine(data);
                                         }
@@ -92,7 +92,7 @@ namespace WebSocketListener
                     }
                     finally
                     {
-                        sw.Close();
+                        audioDataFileStream.Close();
                     }
                 }
                 else
@@ -111,7 +111,7 @@ namespace WebSocketListener
 
     public class AudioData
     {
-        public string? data { set; get; } // Base64 Encoded audio buffer data
+        public byte[]? data { set; get; } // Base64 Encoded audio buffer data
         public string? timestamp { set; get; } // In ISO 8601 format (yyyy-mm-ddThh:mm:ssZ)
         public string? participantRawID { set; get; }
         public bool silent { set; get; } // Indicates if the received audio buffer contains only silence.
