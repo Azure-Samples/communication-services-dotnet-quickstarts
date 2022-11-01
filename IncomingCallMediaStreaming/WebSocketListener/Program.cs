@@ -41,11 +41,13 @@ namespace WebSocketListener
                     }
 
                     WebSocket webSocket = websocketContext.WebSocket;
+                    using FileStream fs = new FileStream("..//audiodata.txt", FileMode.Create, FileAccess.Write, FileShare.None);
+                    StreamWriter sw = new StreamWriter(fs);
+
                     try
                     {
-                        string audioDataText = "";
                         string partialData = "";
-                        bool isPartialData = false;
+                        
                         while (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseSent)
                         {
                             byte[] receiveBuffer = new byte[2048];
@@ -58,19 +60,10 @@ namespace WebSocketListener
 
                                 try
                                 {
-                                    if (receiveResult.EndOfMessage == false)
+                                    if (receiveResult.EndOfMessage)
                                     {
-                                        partialData = partialData + data;
-                                        isPartialData = true;
-                                    }
-                                    else
-                                    {
-                                        if (isPartialData)
-                                        {
-                                            data = partialData + data;
-                                            partialData = "";
-                                            isPartialData = false;
-                                        }
+                                        data = partialData + data;
+                                        partialData = "";
 
                                         if (data != null)
                                         {
@@ -78,25 +71,28 @@ namespace WebSocketListener
 
                                             if (jsonData != null && jsonData.kind == "AudioData")
                                             {
-                                                audioDataText = audioDataText + jsonData.audioData?.data;
+                                                sw.Write(jsonData.audioData.data);
                                             }
-                                            //Console.WriteLine(data);
+                                            Console.WriteLine(data);
                                         }
+                                    }
+                                    else
+                                    {
+                                        partialData = partialData + data;
                                     }
                                 }
                                 catch (Exception ex)
                                 { Console.WriteLine($"Exception -> {ex}"); }
-                            }
-                            else
-                            {
-                                string file = "..//audiodata.txt";
-                                File.WriteAllText(file, audioDataText);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Exception -> {ex}");
+                    }
+                    finally
+                    {
+                        sw.Close();
                     }
                 }
                 else

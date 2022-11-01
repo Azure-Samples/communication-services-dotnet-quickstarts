@@ -5,9 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.CallAutomation" Version="1.0.0-alpha.20221011.4" />
-    <PackageReference Include="Azure.Communication.Common" Version="1.2.0" />
-    <PackageReference Include="Azure.Messaging.EventGrid" Version="4.11.0" />
+    <PackageReference Include="Azure.Communication.CallAutomation" Version="1.0.0-alpha.20221031.1" />
+    <PackageReference Include="Azure.Communication.Common" Version="1.3.0-alpha.20221005.1" />
+    <PackageReference Include="Azure.Messaging.EventGrid" Version="4.12.0-alpha.20221031.1" />
     <PackageReference Include="Microsoft.TypeScript.Compiler" Version="3.1.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
