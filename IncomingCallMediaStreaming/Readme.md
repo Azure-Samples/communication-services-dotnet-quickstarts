@@ -5,26 +5,32 @@ languages:
 products:
 - azure
 - azure-communication-services
+- azure-communication-callAutomation
 ---
 
 # Incoming call Media Streaming Sample
 
-This is a sample web app service, shows how the Azure Communication Services, Call automation SDK can be used to build IVR related solutions. This sample receives an incoming call request whenever a call made to a phone number or a communication identifier. API first answers the call and make PSTN external user say something.
-The audio is streamed to WebSocket server and generate log events to show media streaming is happening on the server.
+Get started with audio media streaming out, through Azure Communication Services. This QuickStart assumes you’ve already used the calling automation APIs to build an automated call routing solution, please refer [Incoming call Sample](https://link_of_incoming_call_sample/).
+
+In this sample a WebApp receives an incoming call request whenever a call is made to a phone number or a communication identifier. API first answers the call and makes PSTN external user say something.
+The audio is streamed to WebSocket server and generates log events to show media streaming is happening on the server.
 It supports Audio streaming only (mixed/unmixed format).
 
-The application is an app service application built on .NET Framework 6.0.
+This sample has 3 parts:
+1. ACS Resource IncomingCall Hook Settings, and ACS Phone Number.
+2. IncomingCall WebApp - for accepting the incoming call with Media Options settings.
+3. WebSocketListener – Listen to media stream on websocket.
+
+The application is an app service application built on .NET6.0.
 
 ## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
 - [Visual Studio (2022 and above)](https://visualstudio.microsoft.com/vs/)
-- [.NET Framework 4.8](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
+- [.NET6](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - [Configuring the webhook](https://docs.microsoft.com/en-us/azure/devops/service-hooks/services/webhooks?view=azure-devops) for **Microsoft.Communication.IncomingCall** event.
-- (Optional) Create Azure Speech resource for generating custom message to be played by application. Follow [here](https://docs.microsoft.com/azure/cognitive-services/speech-service/overview#try-the-speech-service-for-free) to create the resource.
 
-> Note: the samples make use of the Microsoft Cognitive Services Speech SDK. By downloading the Microsoft Cognitive Services Speech SDK, you acknowledge its license, see [Speech SDK license agreement](https://aka.ms/csspeech/license201809).
 
 ## Before running the sample for the first time
 
@@ -32,32 +38,20 @@ The application is an app service application built on .NET Framework 6.0.
 2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git.
 
 ### Locally running the media streaming WebSocket app
-1. Go to IncomingCallMediaStreaming folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio
-Run the WebSocketListener project, copy the ngrok URl for "MediaStreamingTransportURI" configuration.
+1. Go to IncomingCallMediaStreaming folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio.
+2. Select and run the `WebSocketListener` project, an application for listening media stream on websocket.
+3. Used the ngrok URl, get from `WebSocketListener` app, as a websocket URL needed for `MediaStreamingTransportURI` configuration.
 
-### Locally deploying the Incoming call media streaming app
-
-1. Go to IncomingCallMediaStreaming folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio
-2. Open the appsetting.json file to configure the following settings
-
-	- ResourceConnectionString: Azure Communication Service resource's connection string.
-	- AppCallBackUri: URI of the deployed app service
-	- SecretValue: Query string for callback URL
-	- MediaStreamingTransportURI: websocket URL in format "wss://{ngrok-URL of media streaming WebSocket sample}"
-
-3. Run `IncomingCallMediaStreaming` project.
-4. Use postman or any debugging tool and open url - https://localhost:5001
-
-### Publish to Azure
+### Publish  the Incoming call media streaming to Azure WebApp
 
 1. Right click the `IncomingCallMediaStreaming` project and select Publish.
-2. Create a new publish profile and select your app name, Azure subscription, resource group and etc.
+2. Create a new publish profile and select your app name, Azure subscription, resource group etc. (choose any unique name, as this URL needed for `AppCallBackUri` configuration settings)
 3. After publishing, add the following configurations on azure portal (under app service's configuration section).
 
 	- ResourceConnectionString: Azure Communication Service resource's connection string.
 	- AppCallBackUri: URI of the deployed app service.
 	- SecretValue: Query string for callback URL.
-	- MediaStreamingTransportURI: websocket URL in format "wss://{ngrok-URL}"
+	- MediaStreamingTransportURI: websocket URL got from `WebSocketListener`, format "wss://{ngrok-URL}",(Notice the url, it should wss:// and not https://)
 
 ### Create Webhook for incoming call event
 1. Configure webhook from ACS events tab for incoming call event.
@@ -76,6 +70,6 @@ Run the WebSocketListener project, copy the ngrok URl for "MediaStreamingTranspo
 
 ### Troubleshooting
 
-1. Solution doesn\'t build, it throws errors during build
+1. Solution doesn't build, it throws errors during build
 
 	Clean/rebuild the C# solution
