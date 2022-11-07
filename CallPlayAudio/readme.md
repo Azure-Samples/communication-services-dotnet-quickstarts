@@ -10,7 +10,7 @@ products:
 
 # Call - Play - Terminate Sample
 
-This sample application shows how the Azure Communication Services Server Calling SDK can be used to play custom messages to target phone numbers. This sample makes an outbound call to a phone number or a communication identifier and plays an audio message. This sample application is also capable of making multiple concurrent outbound calls.
+This sample application shows how the Azure Communication Services Call Automation SDK can be used to play custom messages to target phone numbers. This sample makes an outbound call to a phone number or a communication identifier and plays an audio message. This sample application is also capable of making multiple concurrent outbound calls.
 The application is a console based application built on .Net Framework 4.8.
 
 ## Prerequisites
@@ -19,7 +19,7 @@ The application is a console based application built on .Net Framework 4.8.
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/)
 - [.NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
-- Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivots=platform-azp)
+- Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=programming-language-csharp)
 - Download and install [Ngrok](https://www.ngrok.com/download). As the sample is run locally, Ngrok will enable the receiving of all the events.
 - (Optional) Create Azure Speech resource for generating custom message to be played by application. Follow [here](https://docs.microsoft.com/azure/cognitive-services/speech-service/overview#try-the-speech-service-for-free) to create the resource.
 
