@@ -33,11 +33,8 @@ namespace IncomingCallRouting.Controllers
         {
             Logger.SetLoggerInstance(logger);
             var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
-            // callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
-            // credential = new DefaultAzureCredential();
-            // callingServerClient = new CallAutomationClient(new Uri("https://acs-transcription-wzhao.communication.azure.com"), credential, options);
-            // CreateIdentityAndGetToken(new Uri("https://acs-transcription-wzhao.communication.azure.com"));
-            callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
+            callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
+            // callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
