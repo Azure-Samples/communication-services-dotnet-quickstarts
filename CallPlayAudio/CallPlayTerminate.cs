@@ -19,6 +19,7 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
         private CancellationToken reportCancellationToken;
 
         private TaskCompletionSource<bool> callEstablishedTask;
+        private TaskCompletionSource<bool> playAudioCompletedTask;
         private TaskCompletionSource<bool> callTerminatedTask;
         public CallPlayTerminate(CallConfiguration callConfiguration)
         {
@@ -35,8 +36,16 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             {
                 callConnection = await CreateCallAsync(targetPhoneNumber).ConfigureAwait(false);
 
+                RegisterToPlayAudioResultEvent(callConnection.CallConnectionId);
+
                 await PlayAudioAsync().ConfigureAwait(false);
               
+                // Wait for the call to play audio
+                await playAudioCompletedTask.Task.ConfigureAwait(false);
+
+                // Hang up the call
+                await HangupAsync().ConfigureAwait(false);
+
                 // Wait for the call to terminate
                 await callTerminatedTask.Task.ConfigureAwait(false);
             }
@@ -94,7 +103,7 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
                 var playAudioRequest = new PlayOptions()
                 {
                     OperationContext = Guid.NewGuid().ToString(),
-                    Loop = true,
+                    Loop = false,
                 };
 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, "Performing PlayAudio operation");
@@ -109,11 +118,6 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
                 {
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio state: {response.Status}");
                 }
-
-                // wait for 10 seconds and then terminate the call              
-                await Task.Delay(10 * 1000);
-
-                await HangupAsync().ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -168,6 +172,47 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
 
             //Subscribe to the call disconnected event
             var eventIdDisconnected = EventDispatcher.Instance.Subscribe("CallDisconnected", callConnectionId, callDisconnectedNotificaiton);
+        }
+
+        private void RegisterToPlayAudioResultEvent(string callConnectionId)
+        {
+            playAudioCompletedTask = new TaskCompletionSource<bool>(TaskContinuationOptions.RunContinuationsAsynchronously);
+            reportCancellationToken.Register(() => playAudioCompletedTask.TrySetCanceled());
+
+            var playCompletedNotification = new NotificationCallback((callEvent) =>
+            {
+                Task.Run(() =>
+                {
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Completed");
+                    playAudioCompletedTask.TrySetResult(true);
+                    EventDispatcher.Instance.Unsubscribe("PlayCompleted", callConnectionId);
+                });
+            });
+
+            var playFailedNotification = new NotificationCallback((callEvent) =>
+            {
+                Task.Run(() =>
+                {
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Failed");
+                    playAudioCompletedTask.TrySetResult(false);
+                    EventDispatcher.Instance.Unsubscribe("PlayFailed", callConnectionId);
+                });
+            });
+
+            var playCancelledNotification = new NotificationCallback((callEvent) =>
+            {
+                Task.Run(() =>
+                {
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Cancelled");
+                    playAudioCompletedTask.TrySetResult(false);
+                    EventDispatcher.Instance.Unsubscribe("PlayCancelled", callConnectionId);
+                });
+            });
+
+            //Subscribe to event
+            EventDispatcher.Instance.Subscribe("PlayCompleted", callConnectionId, playCompletedNotification);
+            EventDispatcher.Instance.Subscribe("PlayFailed", callConnectionId, playFailedNotification);
+            EventDispatcher.Instance.Subscribe("PlayCancelled", callConnectionId, playCancelledNotification);
         }
     }
 }
