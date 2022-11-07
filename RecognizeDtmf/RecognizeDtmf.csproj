@@ -87,10 +87,10 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Communication.CallAutomation">
-      <Version>1.0.0-alpha.20221007.1</Version>
+      <Version>1.0.0-beta.1</Version>
     </PackageReference>
     <PackageReference Include="Azure.Communication.Identity">
-      <Version>1.1.0</Version>
+      <Version>1.2.0</Version>
     </PackageReference>
     <PackageReference Include="Azure.Core">
       <Version>1.25.0</Version>
@@ -99,7 +99,7 @@
       <Version>5.2.9</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.CognitiveServices.Speech">
-      <Version>1.23.0</Version>
+      <Version>1.24.1</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.Owin.Host.HttpListener">
       <Version>4.2.2</Version>
@@ -118,15 +118,6 @@
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
       <Version>13.0.1</Version>
-    </PackageReference>
-    <PackageReference Include="System.Configuration.ConfigurationManager">
-      <Version>6.0.1</Version>
-    </PackageReference>
-    <PackageReference Include="System.Diagnostics.DiagnosticSource">
-      <Version>6.0.0</Version>
-    </PackageReference>
-    <PackageReference Include="System.Text.Json">
-      <Version>6.0.6</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
