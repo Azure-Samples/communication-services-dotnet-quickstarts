@@ -44,20 +44,16 @@ namespace Calling.RecognizeDTMF
                 await StartRecognizingDtmf(targetPhoneNumber).ConfigureAwait(false);
                 var recognizeDtmfCompleted = await recognizeDtmfCompletedTask.Task.ConfigureAwait(false);
 
-                if (!recognizeDtmfCompleted || toneCount == 0)
-                {
-                    // dtmf recognize failed, let's hang up.
-                    await HangupAsync().ConfigureAwait(false);
-                }
-                else
+                if (recognizeDtmfCompleted)
                 {
                     // dtmf tone found, let's play message based on key press.
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio for input {toneInputValue.ToString()}");
                     await PlayAudioAsInput().ConfigureAwait(false);
                     await playAudioCompletedTask.Task.ConfigureAwait(false);
-
-                    await HangupAsync().ConfigureAwait(false);
                 }
+                
+                // Hang up the call
+                await HangupAsync().ConfigureAwait(false);
 
                 // Wait for the call to terminate
                 await callTerminatedTask.Task.ConfigureAwait(false);
@@ -134,7 +130,7 @@ namespace Calling.RecognizeDTMF
             }
             catch (TaskCanceledException)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, " Start recognizing with Play audio prompt for Custom message got cancelled");
+                Logger.LogMessage(Logger.MessageType.ERROR, " Start recognizing with Play audio prompt for Custom message got canceled");
             }
             catch (Exception ex)
             {
@@ -211,20 +207,20 @@ namespace Calling.RecognizeDTMF
                 });
             });
 
-            var playCancelledNotification = new NotificationCallback((callEvent) =>
+            var playCanceledNotification = new NotificationCallback((callEvent) =>
             {
                 Task.Run(() =>
                 {
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Cancelled");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Canceled");
                     playAudioCompletedTask.TrySetResult(false);
-                    EventDispatcher.Instance.Unsubscribe("PlayCancelled", callConnectionId);
+                    EventDispatcher.Instance.Unsubscribe("PlayCanceled", callConnectionId);
                 });
             });
 
             //Subscribe to event
             EventDispatcher.Instance.Subscribe("PlayCompleted", callConnectionId, playCompletedNotification);
             EventDispatcher.Instance.Subscribe("PlayFailed", callConnectionId, playFailedNotification);
-            EventDispatcher.Instance.Subscribe("PlayCancelled", callConnectionId, playCancelledNotification);
+            EventDispatcher.Instance.Subscribe("PlayCanceled", callConnectionId, playCanceledNotification);
         }
 
         private void RegisterToDtmfResultEvent(string callConnectionId)
@@ -254,13 +250,24 @@ namespace Calling.RecognizeDTMF
                 {
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Failed to recognize any Dtmf tone");
                     recognizeDtmfCompletedTask.TrySetResult(false);
-                    EventDispatcher.Instance.Unsubscribe("Recognizefailed", callConnectionId);
+                    EventDispatcher.Instance.Unsubscribe("RecognizeFailed", callConnectionId);
+                });
+            });
+
+            var dtmfCanceledEvent = new NotificationCallback((callEvent) =>
+            {
+                Task.Run(() =>
+                {
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Dtmf recognize canceled.");
+                    recognizeDtmfCompletedTask.TrySetResult(false);
+                    EventDispatcher.Instance.Unsubscribe("RecognizeCanceled", callConnectionId);
                 });
             });
 
             //Subscribe to event
             EventDispatcher.Instance.Subscribe("RecognizeCompleted", callConnectionId, dtmfReceivedEvent);
-            EventDispatcher.Instance.Subscribe("Recognizefailed", callConnectionId, dtmfFailedEvent);
+            EventDispatcher.Instance.Subscribe("RecognizeFailed", callConnectionId, dtmfFailedEvent);
+            EventDispatcher.Instance.Subscribe("RecognizeCanceled", callConnectionId, dtmfCanceledEvent);
         }
 
         private async Task PlayAudioAsInput()
@@ -316,7 +323,7 @@ namespace Calling.RecognizeDTMF
             }
             catch (TaskCanceledException)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, "Play audio operation cancelled");
+                Logger.LogMessage(Logger.MessageType.ERROR, "Play audio operation canceled");
             }
             catch (Exception ex)
             {

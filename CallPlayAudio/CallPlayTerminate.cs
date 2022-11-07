@@ -121,7 +121,7 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
             }
             catch (TaskCanceledException)
             {
-                Logger.LogMessage(Logger.MessageType.ERROR, "Play audio operation cancelled");
+                Logger.LogMessage(Logger.MessageType.ERROR, "Play audio operation canceled");
             }
             catch (Exception ex)
             {
@@ -199,20 +199,20 @@ namespace Communication.CallingServer.Sample.CallPlayAudio
                 });
             });
 
-            var playCancelledNotification = new NotificationCallback((callEvent) =>
+            var playCanceledNotification = new NotificationCallback((callEvent) =>
             {
                 Task.Run(() =>
                 {
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Cancelled");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: Canceled");
                     playAudioCompletedTask.TrySetResult(false);
-                    EventDispatcher.Instance.Unsubscribe("PlayCancelled", callConnectionId);
+                    EventDispatcher.Instance.Unsubscribe("PlayCanceled", callConnectionId);
                 });
             });
 
             //Subscribe to event
             EventDispatcher.Instance.Subscribe("PlayCompleted", callConnectionId, playCompletedNotification);
             EventDispatcher.Instance.Subscribe("PlayFailed", callConnectionId, playFailedNotification);
-            EventDispatcher.Instance.Subscribe("PlayCancelled", callConnectionId, playCancelledNotification);
+            EventDispatcher.Instance.Subscribe("PlayCanceled", callConnectionId, playCanceledNotification);
         }
     }
 }
