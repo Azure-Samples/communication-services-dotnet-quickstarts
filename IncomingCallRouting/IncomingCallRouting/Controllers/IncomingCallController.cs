@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
-using Azure.Communication.CallingServer;
+using Azure;
+using Azure.Communication.Identity;
 using Azure.Core.Pipeline;
+using Azure.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Messaging.EventGrid;
@@ -11,6 +13,11 @@ using IncomingCallRouting.EventHandler;
 using IncomingCallRouting.Models;
 using IncomingCallRouting.Utils;
 using Newtonsoft.Json;
+using Azure.Core;
+using System.Threading.Tasks;
+using Azure.Communication.CallAutomation;
+using Microsoft.Identity.Client;
+using Logger = IncomingCallRouting.Utils.Logger;
 
 namespace IncomingCallRouting.Controllers
 {
@@ -20,12 +27,17 @@ namespace IncomingCallRouting.Controllers
         private readonly CallAutomationClient callingServerClient;
         CallConfiguration callConfiguration;
         EventAuthHandler eventAuthHandler;
+        private TokenCredential credential;
+
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
             var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
-            callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
-            //callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
+            // callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
+            // credential = new DefaultAzureCredential();
+            // callingServerClient = new CallAutomationClient(new Uri("https://acs-transcription-wzhao.communication.azure.com"), credential, options);
+            // CreateIdentityAndGetToken(new Uri("https://acs-transcription-wzhao.communication.azure.com"));
+            callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }

@@ -11,7 +11,7 @@
         PlayFailed,
         RecognizeCompleted,
         RecognizeFailed,
-        CallRecordingStateChanged,
+        RecordingStateChanged,
         AddParticipantsSucceeded,
         AddParticipantsFailed,
         ParticipantsUpdated,

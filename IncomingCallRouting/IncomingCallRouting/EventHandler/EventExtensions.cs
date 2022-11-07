@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
-using Azure.Communication.CallingServer;
+using Azure.Communication.CallAutomation;
 
 namespace IncomingCallRouting.EventHandler
 {
