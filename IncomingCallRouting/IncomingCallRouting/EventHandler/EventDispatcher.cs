@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-using Azure.Communication.CallingServer;
+using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using IncomingCallRouting.Enums;
 
@@ -83,10 +83,10 @@ namespace IncomingCallRouting.EventHandler
                 var callLegId = ((RecognizeCompleted)callEventBase).CallConnectionId;
                 return BuildEventKey(AcsEventType.RecognizeCompleted.ToString(), callLegId);
             }
-            else if (callEventBase is CallRecordingStateChanged)
+            else if (callEventBase is RecordingStateChanged)
             {
-                var recordingId = ((CallRecordingStateChanged)callEventBase).RecordingId;
-                return BuildEventKey(AcsEventType.CallRecordingStateChanged.ToString(), recordingId);
+                var recordingId = ((RecordingStateChanged)callEventBase).RecordingId;
+                return BuildEventKey(AcsEventType.RecordingStateChanged.ToString(), recordingId);
             }
             else if (callEventBase is PlayCompleted)
             {
@@ -127,19 +127,19 @@ namespace IncomingCallRouting.EventHandler
                 {
                     return CallConnected.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(AcsEventType.RecognizeCompleted.ToString()))
+                else if (cloudEvent.Type.EndsWith(AcsEventType.RecognizeCompleted.ToString()))
                 {
                     return RecognizeCompleted.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(AcsEventType.ParticipantsUpdated.ToString()))
+                else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString()))
                 {
                     return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(AcsEventType.CallRecordingStateChanged.ToString()))
+                else if (cloudEvent.Type.EndsWith(nameof(RecordingStateChanged)))
                 {
-                    return CallRecordingStateChanged.Deserialize(cloudEvent.Data.ToString());
+                    return RecordingStateChanged.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.Equals(AcsEventType.PlayCompleted.ToString()))
+                else if (cloudEvent.Type.EndsWith(AcsEventType.PlayCompleted.ToString()))
                 {
                     return PlayCompleted.Deserialize(cloudEvent.Data.ToString());
                 }

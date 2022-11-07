@@ -13,7 +13,7 @@ namespace IncomingCallRouting.Utils
     public class CallConfiguration
     {
         private static CallConfiguration callConfiguration = null;
-        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString, string ivrParticipants)
+        public CallConfiguration(string connectionString, string appBaseUrl, string audioFileUri, string participant, string queryString, string ivrParticipants, string consultTarget)
         {
             this.ConnectionString = connectionString;
             this.AppBaseUrl = appBaseUrl;
@@ -21,7 +21,8 @@ namespace IncomingCallRouting.Utils
             this.AppCallbackUrl = $"{AppBaseUrl}/CallingServerAPICallBacks?{queryString}";
             this.TargetParticipant = participant;
             this.IvrParticipants = ivrParticipants.Split(',').Select(p => p.Trim()).ToList();
-         }
+            this.ConsultTarget = consultTarget;
+        }
 
         public static CallConfiguration GetCallConfiguration(IConfiguration configuration, string queryString)
         {
@@ -32,7 +33,8 @@ namespace IncomingCallRouting.Utils
                     configuration["AudioFileUri"],
                     configuration["TargetParticipant"],
                     queryString,
-                    configuration["IVRParticipants"]);
+                    configuration["IVRParticipants"],
+                    configuration["ConsultTarget"]);
             }
 
             return callConfiguration;
@@ -62,6 +64,12 @@ namespace IncomingCallRouting.Utils
         /// The publicly available participant id to transfer the incoming call.
         /// </summary>
         public string TargetParticipant { get; private set; }
+
+
+        /// <summary>
+        /// The publicly available participant id to transfer the incoming call.
+        /// </summary>
+        public string ConsultTarget { get; private set; }
 
         /// <summary>
         /// The publicly available participants id to transfer the incoming call.
