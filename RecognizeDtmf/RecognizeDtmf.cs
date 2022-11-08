@@ -22,8 +22,7 @@ namespace Calling.RecognizeDTMF
         private TaskCompletionSource<bool> playAudioCompletedTask;
         private TaskCompletionSource<bool> callTerminatedTask;
         private TaskCompletionSource<bool> recognizeDtmfCompletedTask;
-        private DtmfTone toneInputValue = DtmfTone.Zero;
-        private int toneCount = 0;
+        private DtmfTone recognizedDtmfTone = DtmfTone.Zero;
 
         public RecognizeDtmf(CallConfiguration callConfiguration)
         {
@@ -47,7 +46,7 @@ namespace Calling.RecognizeDTMF
                 if (recognizeDtmfCompleted)
                 {
                     // dtmf tone found, let's play message based on key press.
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio for input {toneInputValue.ToString()}");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play Audio for input {recognizedDtmfTone.ToString()}");
                     await PlayAudioAsInput().ConfigureAwait(false);
                     await playAudioCompletedTask.Task.ConfigureAwait(false);
                 }
@@ -113,14 +112,13 @@ namespace Calling.RecognizeDTMF
                 PlaySource audioFileUri = new FileSource(new Uri(audioFilePath));
 
                 //Start recognizing Dtmf Tone
-                var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(targetPhoneNumber), 1)
+                var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(targetPhoneNumber), maxTonesToCollect: 1)
                 {
                     InitialSilenceTimeout = TimeSpan.FromSeconds(15),
                     InterToneTimeout = TimeSpan.FromSeconds(5),
                     InterruptPrompt = true,
                     InterruptCallMediaOperation = true,
-                    Prompt = audioFileUri,
-                    StopTones = new List<DtmfTone> { DtmfTone.Pound }
+                    Prompt = audioFileUri
                 };
 
                 var resp = await callConnection.GetCallMedia().StartRecognizingAsync(recognizeOptions, reportCancellationToken);
@@ -236,8 +234,7 @@ namespace Calling.RecognizeDTMF
                     if (toneReceivedEvent.CollectTonesResult.Tones.Count != 0)
                     {
                         Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tone received --------- : {toneReceivedEvent.CollectTonesResult.Tones[0]}");
-                        toneCount = toneReceivedEvent.CollectTonesResult.Tones.Count;
-                        toneInputValue = toneReceivedEvent.CollectTonesResult.Tones[0];
+                        recognizedDtmfTone = toneReceivedEvent.CollectTonesResult.Tones[0];
                     }
                     EventDispatcher.Instance.Unsubscribe("RecognizeCompleted", callConnectionId);
                     recognizeDtmfCompletedTask.TrySetResult(true);
@@ -282,15 +279,15 @@ namespace Calling.RecognizeDTMF
             {
                 var audioFileName = callConfiguration.InvalidAudioFileName;
 
-                if (toneInputValue == DtmfTone.One)
+                if (recognizedDtmfTone == DtmfTone.One)
                 {
                     audioFileName = callConfiguration.SalesAudioFileName;
                 }
-                else if (toneInputValue == DtmfTone.Two)
+                else if (recognizedDtmfTone == DtmfTone.Two)
                 {
                     audioFileName = callConfiguration.MarketingAudioFileName;
                 }
-                else if (toneInputValue == DtmfTone.Three)
+                else if (recognizedDtmfTone == DtmfTone.Three)
                 {
                     audioFileName = callConfiguration.CustomerCareAudioFileName;
                 }
