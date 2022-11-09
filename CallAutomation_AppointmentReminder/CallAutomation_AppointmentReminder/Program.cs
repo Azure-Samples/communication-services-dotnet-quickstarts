@@ -3,111 +3,99 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using CallAutomation_AppointmentReminder;
 using Microsoft.Extensions.FileProviders;
-using static CallAutomation_AppointmentReminder.Logger;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var sourceIdentity = await Identity.CreateUser(builder.Configuration["ConnectionString"]);
-var phoneNumberToAddToCall = builder.Configuration["TargetPhoneNumber"];
-builder.Services.AddSingleton(new CallAutomationClient(builder.Configuration["ConnectionString"]));
-builder.Services.AddSingleton(new CallConfiguration(builder.Configuration["ConnectionString"],
-    sourceIdentity.Id,
-    builder.Configuration["ApplicationPhoneNumber"],
-    builder.Configuration["AppBaseUri"]));
+//Fetch configuration and add call automation as singleton service
+var callConfigurationSection = builder.Configuration.GetSection(nameof(CallConfiguration));
+builder.Services.Configure<CallConfiguration>(callConfigurationSection);
+builder.Services.AddSingleton(new CallAutomationClient(callConfigurationSection["ConnectionString"]));
 
 var app = builder.Build();
 
-app.MapPost("/api/call", async (CallAutomationClient callAutomationClient, CallConfiguration callConfiguration) =>
+// Api to initiate out bound call
+app.MapPost("/api/call", async (CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
 {
-    var source = new CallSource(new CommunicationUserIdentifier(callConfiguration.SourceIdentity))
+    var source = new CallSource(new CommunicationUserIdentifier(callConfiguration.Value.SourceIdentity))
     {
-        CallerId = new PhoneNumberIdentifier(callConfiguration.SourcePhoneNumber)
+        CallerId = new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber)
     };
-    var target = new PhoneNumberIdentifier(phoneNumberToAddToCall);
+    var target = new PhoneNumberIdentifier(callConfiguration.Value.TargetPhoneNumber);
 
     var createCallOption = new CreateCallOptions(source,
         new List<CommunicationIdentifier>() { target },
-        new Uri(callConfiguration.CallbackEventUri));
+        new Uri(callConfiguration.Value.CallbackEventUri));
 
     var response = await callAutomationClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
 
-    Logger.LogMessage(MessageType.INFORMATION, $"Reponse from create call: {response.GetRawResponse()}" +
+    logger.LogInformation($"Reponse from create call: {response.GetRawResponse()}" +
         $"CallConnection Id : {response.Value.CallConnection.CallConnectionId}");
 });
 
-app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationClient callAutomationClient, CallConfiguration callConfiguration) =>
+//api to handle call back events
+app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
 {
-    // handle callbacks
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
+        var callConnection = callAutomationClient.GetCallConnection(@event.CallConnectionId);
+        var callConnectionMedia = callConnection.GetCallMedia();
         if (@event is CallConnected)
         {
-            Logger.LogMessage(MessageType.INFORMATION, $"CallConnected event recieved for callconnetion id: {@event.CallConnectionId}");
-
+            //Initiate recognition once call is connected
+            logger.LogInformation($"CallConnected event recieved for callconnetion id: {@event.CallConnectionId}");
             var recognizeOptions =
-            new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(phoneNumberToAddToCall), maxTonesToCollect: 1)
+            new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callConfiguration.Value.TargetPhoneNumber), maxTonesToCollect: 1)
             {
                 InterruptPrompt = true,
                 InterToneTimeout = TimeSpan.FromSeconds(10),
                 InitialSilenceTimeout = TimeSpan.FromSeconds(5),
-                Prompt = new FileSource(new Uri(callConfiguration.AppBaseUri + Constants.AppointmentReminderMenuAudio)),
+                Prompt = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AppointmentReminderMenuAudio)),
                 OperationContext = "AppointmentReminderMenu"
             };
-            await callAutomationClient.GetCallConnection(@event.CallConnectionId)
-                .GetCallMedia()
-                .StartRecognizingAsync(recognizeOptions);
+
+            //Start recognition 
+            await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
 
         }
         if (@event is RecognizeCompleted { OperationContext: "AppointmentReminderMenu" })
         {
-            Logger.LogMessage(MessageType.INFORMATION, $"RecognizeCompleted event recieved for callconnetion id: {@event.CallConnectionId}");
-
-            var recognizeEvent = (RecognizeCompleted)@event;
-            var toneDetected = recognizeEvent.CollectTonesResult.Tones[0];
-            FileSource playSource;
-
-            if (toneDetected.Equals(DtmfTone.One))
-            {
-                playSource = new FileSource(new Uri(callConfiguration.AppBaseUri + Constants.AppointmentConfirmedAudio));
-            }
-            else if (toneDetected.Equals(DtmfTone.Two))
-            {
-                playSource = new FileSource(new Uri(callConfiguration.AppBaseUri + Constants.AppointmentCancelledAudio));
-            }
-            else // Invalid Dtmf tone
-            {
-                playSource = new FileSource(new Uri(callConfiguration.AppBaseUri + Constants.InvalidToneAudio));
-            }
+            // Play audio once recognition is completed sucessfully
+            logger.LogInformation($"RecognizeCompleted event recieved for call connection id: {@event.CallConnectionId}");
+            var recognizeCompletedEvent = (RecognizeCompleted)@event;
+            var toneDetected = recognizeCompletedEvent.CollectTonesResult.Tones[0];
+            var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
 
             // Play audio for dtmf response
-            await callAutomationClient.GetCallConnection(@event.CallConnectionId)
-                .GetCallMedia()
-                .PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
+            await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
         }
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
         {
-            Logger.LogMessage(MessageType.INFORMATION, $"RecognizeFailed event recieved for callconnetion id: {@event.CallConnectionId}");
+            logger.LogInformation($"RecognizeFailed event recieved for call connection id: {@event.CallConnectionId}");
+            var recognizeFailedEvent = (RecognizeFailed)@event;
 
-            var playSource = new FileSource(new Uri(callConfiguration.AppBaseUri + Constants.InvalidToneAudio));
-            await callAutomationClient.GetCallConnection(@event.CallConnectionId)
-                .GetCallMedia()
-                .PlayToAllAsync(playSource);
+            // Check for time out, and then play audio message
+            if (recognizeFailedEvent.ReasonCode.Equals(ReasonCode.RecognizeInitialSilenceTimedOut))
+            {
+                logger.LogInformation($"Recognition timed out for call connection id: {@event.CallConnectionId}");
+                var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.TimedoutAudio));
+                
+                //Play audio for time out
+                await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
+            }
         }
         if (@event is PlayCompleted { OperationContext: "ResponseToDtmf" })
         {
-            Logger.LogMessage(MessageType.INFORMATION, $"PlayCompleted event recieved for callconnetion id: {@event.CallConnectionId}");
-
-            await callAutomationClient.GetCallConnection(@event.CallConnectionId).HangUpAsync(forEveryone: true);
+            logger.LogInformation($"PlayCompleted event recieved for callconnetion id: {@event.CallConnectionId}");
+            await callConnection.HangUpAsync(forEveryone: true);
         }
         if (@event is PlayFailed { OperationContext: "ResponseToDtmf" })
         {
-            Logger.LogMessage(MessageType.INFORMATION, $"PlayFailed event recieved for callconnetion id: {@event.CallConnectionId}");
-
-            await callAutomationClient.GetCallConnection(@event.CallConnectionId).HangUpAsync(forEveryone: true);
+            logger.LogInformation($"PlayFailed event recieved for callconnetion id: {@event.CallConnectionId}");
+            await callConnection.HangUpAsync(forEveryone: true);
         }
     }
     return Results.Ok();
@@ -128,9 +116,4 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
 app.Run();
