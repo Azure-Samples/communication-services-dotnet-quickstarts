@@ -19,11 +19,6 @@ namespace CallAutomation_AppointmentReminder
         public string ConnectionString { get; set; }
 
         /// <summary>
-        /// The source identity.
-        /// </summary>
-        public string SourceIdentity =>  CreateUser(this.ConnectionString).Result;
-
-        /// <summary>
         /// The phone number to add to the call
         /// </summary>
         public string TargetPhoneNumber { get; set; }
@@ -72,13 +67,5 @@ namespace CallAutomation_AppointmentReminder
         /// Time out audio file route
         /// </summary>
         public string TimedoutAudio { get; set; }
-
-
-        public async Task<string> CreateUser(string connectionString)
-        {
-            var client = new CommunicationIdentityClient(connectionString);
-            var user = await client.CreateUserAsync().ConfigureAwait(false);
-            return user.Value.Id;
-        }
     }
 }

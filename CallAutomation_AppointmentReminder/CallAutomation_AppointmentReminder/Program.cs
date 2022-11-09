@@ -16,10 +16,12 @@ builder.Services.AddSingleton(new CallAutomationClient(callConfigurationSection[
 
 var app = builder.Build();
 
+var sourceIdentity = await app.ProvisionAzureCommunicationServicesIdentity(callConfigurationSection["ConnectionString"]);
+
 // Api to initiate out bound call
 app.MapPost("/api/call", async (CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
 {
-    var source = new CallSource(new CommunicationUserIdentifier(callConfiguration.Value.SourceIdentity))
+    var source = new CallSource(new CommunicationUserIdentifier(sourceIdentity))
     {
         CallerId = new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber)
     };
@@ -45,7 +47,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         var callConnectionMedia = callConnection.GetCallMedia();
         if (@event is CallConnected)
         {
-            //Initiate recognition once call is connected
+            //Initiate recognition as call connected event is recieved
             logger.LogInformation($"CallConnected event recieved for callconnetion id: {@event.CallConnectionId}");
             var recognizeOptions =
             new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callConfiguration.Value.TargetPhoneNumber), maxTonesToCollect: 1)
@@ -59,7 +61,6 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
 
             //Start recognition 
             await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
-
         }
         if (@event is RecognizeCompleted { OperationContext: "AppointmentReminderMenu" })
         {
