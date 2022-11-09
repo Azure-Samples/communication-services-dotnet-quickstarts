@@ -7,6 +7,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,6 +104,7 @@ app.MapPost("/api/calls/{contextId}", async (
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Four)
             {
                 PlaySource agentAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["AgentAudio"]));
+                audioPlayOptions.OperationContext = "AgentConnect";
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(agentAudio, audioPlayOptions);
 
                 var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
@@ -124,17 +126,20 @@ app.MapPost("/api/calls/{contextId}", async (
                 PlaySource invalidAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["InvalidAudio"]));
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(invalidAudio, audioPlayOptions);
             }
-
-            // delay to complete the play audio.
-            await Task.Delay(10 * 1000);
-            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
-
         }
         if (@event is RecognizeFailed { OperationContext: "MainMenu" })
         {
 
             // play invalid audio
             await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(audioBaseUrl + builder.Configuration["InvalidAudio"])), new PlayOptions() { Loop = false });
+            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+        }
+        if (@event is PlayCompleted { OperationContext: "SimpleIVR" })
+        {
+            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+        }
+        if (@event is PlayFailed { OperationContext: "SimpleIVR" })
+        {
             await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
         }
     }
