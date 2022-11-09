@@ -59,7 +59,15 @@ app.MapPost("/api/calls/{contextId}", async (
         {
 
             PlaySource promptMessageUri = new FileSource(new Uri(builder.Configuration["CallbackUriBase"] + builder.Configuration["PromptMessageFile"]));
-            // play audio then recognize 3-digit DTMF input with pound (#) stop tone
+            // play audio then recognize 1-digit DTMF input with pound (#) stop tone
+
+            // Call recording
+            var serverCallId = client.GetCallConnection(@event.CallConnectionId).GetCallConnectionProperties().Value.ServerCallId;
+            StartRecordingOptions startRecordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
+            _ = Task.Run(async () => await client.GetCallRecording().StartRecordingAsync(startRecordingOptions));
+
+
+            // Start recognize prompt
             var recognizeOptions =
                 new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callerId), maxTonesToCollect: 1)
                 {
@@ -76,14 +84,33 @@ app.MapPost("/api/calls/{contextId}", async (
         }
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
-            // this RecognizeCompleted correlates to the previous action as per the OperationContext value
-            await client.GetCallConnection(@event.CallConnectionId)
-                .AddParticipantsAsync(new AddParticipantsOptions(
-                    new List<CommunicationIdentifier>()
-                    {
-                        new CommunicationUserIdentifier(builder.Configuration["ParticipantToAdd"])
-                    })
-                );
+            var recognizeCompleted = (RecognizeCompleted)@event;
+            if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.One)
+            {
+                // this RecognizeCompleted correlates to the previous action as per the OperationContext value
+                var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
+                        {
+                        new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
+                        });
+                addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+
+                await client.GetCallConnection(@event.CallConnectionId).AddParticipantsAsync(addParticipantOptions);
+            }
+            else
+            {
+                // Hangup for everyone
+                await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+            }
+
+        }
+        if (@event is RecognizeFailed { OperationContext: "MainMenu" })
+        {
+
+            // play invalid audio
+            PlaySource invalidMessageUri = new FileSource(new Uri(builder.Configuration["CallbackUriBase"] + builder.Configuration["InvlidMessageFile"]));
+            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(invalidMessageUri, new PlayOptions() { Loop = false });
+
+            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
         }
     }
     return Results.Ok();
@@ -102,8 +129,6 @@ app.UseStaticFiles(new StaticFileOptions
            Path.Combine(builder.Environment.ContentRootPath, "audio")),
     RequestPath = "/audio"
 });
-
-//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
