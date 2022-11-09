@@ -4,6 +4,7 @@ using Azure.Messaging;
 using CallAutomation_AppointmentReminder;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
@@ -42,6 +43,8 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
 {
     foreach (var cloudEvent in cloudEvents)
     {
+        logger.LogInformation($"Event recieved: {JsonConvert.SerializeObject(cloudEvent)}");
+
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         var callConnection = callAutomationClient.GetCallConnection(@event.CallConnectionId);
         var callConnectionMedia = callConnection.GetCallMedia();

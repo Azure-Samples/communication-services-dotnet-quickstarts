@@ -8,7 +8,7 @@ products:
 ---
 
 
-# Apoointment Reminder Call Sample
+# Call Automation - Appointment Reminder Sample
 
 This sample application shows how the Azure Communication Services  - Call Automation SDK can be used to build IVR related solutions. This sample makes an outbound call to a phone number performs dtmf recognition and the application plays next audio based on the key pressed by the callee. This sample application configured for accepting tone 1 (tone1), 2 (tone2) , If the callee pressed any other key than expected, an invalid audio tone will be played and then call will be disconnected.
 This sample application is also capable of making multiple concurrent outbound calls. The application is a web-based application built on .Net6 framework.
