@@ -17,7 +17,7 @@ builder.Services.AddSwaggerGen();
 
 
 var client = new CallAutomationClient(builder.Configuration["ConnectionString"]);
-var callbackUriBase = builder.Configuration["CallbackUriBase"]; // i.e. https://someguid.ngrok.io
+var callbackUriBase = builder.Configuration["CallbackUriBase"];
 
 var app = builder.Build();
 app.MapPost("/api/incomingCall", async (
