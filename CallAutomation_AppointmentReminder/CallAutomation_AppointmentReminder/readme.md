@@ -43,7 +43,7 @@ Open the appsetting.json file to configure the following settings
 ### Run app locally
 
 1. Run the `CallAutomation_AppointmentReminder` project in debug mode
-2. Browser should pop up with swagger UI, If using Visual studio dev note the app base url and update it in the appsetting.json file `(AppBaseUri)`
+2. Browser should pop up with swagger UI, If using Visual studio dev tunnels note the app base url and update it in the appsetting.json file `(AppBaseUri)`
 3. To initiate the call, from the swagger ui execute the `/api/call` endpoint or make a Http post request to `https://<AppBaseUri>/api/call`
 
 ### Publish the Call Automation Appointment Reminder to Azure WebApp
