@@ -19,6 +19,11 @@ This sample application is also capable of making multiple concurrent outbound c
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You will need to record your resource **connection string** for this sample.
 - Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=programming-language-csharp)
 - Enable Visual studio dev tunneling for local development. For details, see [Enable dev tunnel] (https://learn.microsoft.com/en-us/connectors/custom-connectors/port-tunneling)
+	- To enable dev tunneling, Click Tools, Options in Visual Studio 2022
+	- In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
+	![EnableDevTunnel](./data/EnableDevTunnel.png)
+	- Login into your account under `Dev Tunnels` -> `General`
+
 ## Before running the sample for the first time
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you would like to clone the sample to.
@@ -35,6 +40,7 @@ This sample application is also capable of making multiple concurrent outbound c
     - `AppBaseUri`: Base url of the app. (For local devlopment replace the dev tunnel url)
 
 ### How to run it locally
-	- Run the `CallAutomation_AppointmentReminder` project in debug mode
-	- Browser should pop up with swagger UI, If using Visual studio dev note the app base url and update it in the appsetting.json file `(AppBaseUri)`
-	- To initiate the call, from the swagger ui execute the `/api/call` endpoint or make a Http post request to `https://<AppBaseUri>/api/call`
+
+- Run the `CallAutomation_AppointmentReminder` project in debug mode
+- Browser should pop up with swagger UI, If using Visual studio dev note the app base url and update it in the appsetting.json file `(AppBaseUri)`
+- To initiate the call, from the swagger ui execute the `/api/call` endpoint or make a Http post request to `https://<AppBaseUri>/api/call`

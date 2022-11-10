@@ -43,15 +43,15 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
 {
     foreach (var cloudEvent in cloudEvents)
     {
-        logger.LogInformation($"Event recieved: {JsonConvert.SerializeObject(cloudEvent)}");
+        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent)}");
 
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         var callConnection = callAutomationClient.GetCallConnection(@event.CallConnectionId);
         var callConnectionMedia = callConnection.GetCallMedia();
         if (@event is CallConnected)
         {
-            //Initiate recognition as call connected event is recieved
-            logger.LogInformation($"CallConnected event recieved for callconnetion id: {@event.CallConnectionId}");
+            //Initiate recognition as call connected event is received
+            logger.LogInformation($"CallConnected event received for callconnetion id: {@event.CallConnectionId}");
             var recognizeOptions =
             new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callConfiguration.Value.TargetPhoneNumber), maxTonesToCollect: 1)
             {
@@ -68,7 +68,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         if (@event is RecognizeCompleted { OperationContext: "AppointmentReminderMenu" })
         {
             // Play audio once recognition is completed sucessfully
-            logger.LogInformation($"RecognizeCompleted event recieved for call connection id: {@event.CallConnectionId}");
+            logger.LogInformation($"RecognizeCompleted event received for call connection id: {@event.CallConnectionId}");
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
             var toneDetected = recognizeCompletedEvent.CollectTonesResult.Tones[0];
             var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
@@ -78,7 +78,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         }
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
         {
-            logger.LogInformation($"RecognizeFailed event recieved for call connection id: {@event.CallConnectionId}");
+            logger.LogInformation($"RecognizeFailed event received for call connection id: {@event.CallConnectionId}");
             var recognizeFailedEvent = (RecognizeFailed)@event;
 
             // Check for time out, and then play audio message
@@ -93,12 +93,12 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         }
         if (@event is PlayCompleted { OperationContext: "ResponseToDtmf" })
         {
-            logger.LogInformation($"PlayCompleted event recieved for callconnetion id: {@event.CallConnectionId}");
+            logger.LogInformation($"PlayCompleted event received for callconnetion id: {@event.CallConnectionId}");
             await callConnection.HangUpAsync(forEveryone: true);
         }
         if (@event is PlayFailed { OperationContext: "ResponseToDtmf" })
         {
-            logger.LogInformation($"PlayFailed event recieved for callconnetion id: {@event.CallConnectionId}");
+            logger.LogInformation($"PlayFailed event received for callconnetion id: {@event.CallConnectionId}");
             await callConnection.HangUpAsync(forEveryone: true);
         }
     }
