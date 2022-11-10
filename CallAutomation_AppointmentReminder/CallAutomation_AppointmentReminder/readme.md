@@ -33,20 +33,20 @@ This sample application is also capable of making multiple concurrent outbound c
 
 ### Configuring application
 
-- Open the appsetting.json file to configure the following settings
+Open the appsetting.json file to configure the following settings
 
-	1. `ConnectionString`: Azure Communication Service resource's connection string.
-	2. `SourcePhone`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
-	3. `TargetPhoneNumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA"
-    4. `AppBaseUri`: Base url of the app. (For local devlopment replace the dev tunnel url)
+1. `ConnectionString`: Azure Communication Service resource's connection string.
+2. `SourcePhone`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
+3. `TargetPhoneNumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA"
+4. `AppBaseUri`: Base url of the app. (For local devlopment replace the dev tunnel url)
 
-### How to run it locally
+### Run app locally
 
 1. Run the `CallAutomation_AppointmentReminder` project in debug mode
 2. Browser should pop up with swagger UI, If using Visual studio dev note the app base url and update it in the appsetting.json file `(AppBaseUri)`
 3. To initiate the call, from the swagger ui execute the `/api/call` endpoint or make a Http post request to `https://<AppBaseUri>/api/call`
 
-## Publish the Call Automation Appointment Reminder to Azure WebApp
+### Publish the Call Automation Appointment Reminder to Azure WebApp
 
 1. Right click the CallAutomation_SimpleIvr project and select Publish
 2. Create a new publish profile and select your app name, Azure subscription, resource group etc. (choose any unique name, as this URL needed for `AppBaseUri` configuration settings)
