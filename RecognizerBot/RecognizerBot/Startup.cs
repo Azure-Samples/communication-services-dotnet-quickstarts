@@ -4,10 +4,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using IncomingCallRouting.Services;
-using IncomingCallRouting.Interfaces;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Services;
 
-namespace IncomingCallRouting
+namespace RecognizerBot
 {
     public class Startup
     {

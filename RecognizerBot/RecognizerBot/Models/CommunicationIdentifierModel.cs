@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace IncomingCallRouting.Models
+﻿namespace RecognizerBot.Models
 {
     public class CommunicationIdentifierModel
     {

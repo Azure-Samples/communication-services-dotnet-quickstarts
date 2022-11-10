@@ -2,13 +2,12 @@
 using System.IO;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
-using IncomingCallRouting.Interfaces;
-using IncomingCallRouting.Utils;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.Extensions.Configuration;
-using static System.Net.Mime.MediaTypeNames;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Services
+namespace RecognizerBot.Services
 {
     public class BlobStorageService : IStorageService
     {

@@ -1,4 +1,4 @@
-﻿namespace IncomingCallRouting.Models
+﻿namespace RecognizerBot.Models
 {
     public class RecognizeRequest
     {

@@ -1,24 +1,15 @@
-﻿using Azure;
+﻿using System;
+using System.Threading.Tasks;
 using Azure.Communication.CallAutomation;
-using Azure.Storage.Blobs;
-using IncomingCallRouting.Utils;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Threading.Tasks;
-using IncomingCallRouting.Models;
-using IncomingCallRouting.Nuance.Models;
-using Azure.Core;
-using Microsoft.CognitiveServices.Speech.Intent;
-using IncomingCallRouting.Interfaces;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Models;
+using RecognizerBot.Nuance.Models;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Services
+namespace RecognizerBot.Services
 {
     public class SpeechService : ISpeechService
     {

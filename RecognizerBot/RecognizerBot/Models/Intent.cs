@@ -1,7 +1,4 @@
-﻿using IncomingCallRouting.Nuance.Models;
-using System.Collections.Generic;
-
-namespace IncomingCallRouting.Models
+﻿namespace RecognizerBot.Models
 {
     public class Intent
     {

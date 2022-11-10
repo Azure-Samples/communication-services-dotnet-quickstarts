@@ -1,12 +1,12 @@
-﻿using Microsoft.CognitiveServices.Speech.Audio;
-using Microsoft.CognitiveServices.Speech.Intent;
+﻿using System.Threading.Tasks;
 using Microsoft.CognitiveServices.Speech;
-using System.Threading.Tasks;
+using Microsoft.CognitiveServices.Speech.Audio;
+using Microsoft.CognitiveServices.Speech.Intent;
 using Microsoft.Extensions.Configuration;
-using IncomingCallRouting.Utils;
-using IncomingCallRouting.Interfaces;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Services
+namespace RecognizerBot.Services
 {
     public class RecognizeService : IRegonizeService
     {

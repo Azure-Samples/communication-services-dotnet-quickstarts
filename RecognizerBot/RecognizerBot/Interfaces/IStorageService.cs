@@ -1,9 +1,8 @@
 ﻿using System;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.CognitiveServices.Speech;
 
-namespace IncomingCallRouting.Interfaces
+namespace RecognizerBot.Interfaces
 {
     public interface IStorageService
     {

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IncomingCallRouting.Nuance.Models
+namespace RecognizerBot.Nuance.Models
 {
     public class TextRange
     {

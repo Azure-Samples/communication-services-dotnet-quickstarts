@@ -1,18 +1,16 @@
 ﻿using System;
-using System.Net.WebSockets;
 using System.Net;
-using System.Text.Json;
+using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
-using IncomingCallRouting.Models;
-using IncomingCallRouting.Utils;
 using Microsoft.Extensions.Hosting;
-using IncomingCallRouting.Controllers;
 using Microsoft.Extensions.Logging;
+using RecognizerBot.Models;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Services
+namespace RecognizerBot.Services
 {
     public class WebSocketListenerService : IHostedService
     {
@@ -29,7 +27,7 @@ namespace IncomingCallRouting.Services
             Task.Run(async () =>
             {
                 await WaitForAppStarted();
-                // ListenOnWebSocket();
+                ListenOnWebSocket();
             }, cancellationToken);
         }
 

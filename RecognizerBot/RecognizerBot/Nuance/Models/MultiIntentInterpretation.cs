@@ -1,4 +1,4 @@
-﻿namespace IncomingCallRouting.Nuance.Models
+﻿namespace RecognizerBot.Nuance.Models
 {
     public class MultiIntentInterpretation
     {

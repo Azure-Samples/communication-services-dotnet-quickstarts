@@ -7,12 +7,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using IncomingCallRouting.EventHandler;
-using IncomingCallRouting.Interfaces;
-using IncomingCallRouting.Utils;
 using Microsoft.Extensions.Configuration;
+using RecognizerBot.EventHandler;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Services
+namespace RecognizerBot.Services
 {
     /// <summary>
     /// Handling different callback events

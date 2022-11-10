@@ -2,7 +2,7 @@
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace IncomingCallRouting.Nuance.Models;
+namespace RecognizerBot.Nuance.Models;
 
 public class EntityNode
 {

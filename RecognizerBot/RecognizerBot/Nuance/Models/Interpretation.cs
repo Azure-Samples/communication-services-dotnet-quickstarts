@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IncomingCallRouting.Nuance.Models
+namespace RecognizerBot.Nuance.Models
 {
     /**
      * Candidate interpretation of the input. Included in InterpretResult.

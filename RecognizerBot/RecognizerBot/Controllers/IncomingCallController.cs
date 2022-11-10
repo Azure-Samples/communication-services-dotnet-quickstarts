@@ -1,17 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
+﻿using System;
 using System.Linq;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using IncomingCallRouting.EventHandler;
-using IncomingCallRouting.Models;
-using IncomingCallRouting.Utils;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using IncomingCallRouting.Interfaces;
+using RecognizerBot.EventHandler;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Models;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Controllers
+namespace RecognizerBot.Controllers
 {
     [ApiController]
     public class IncomingCallController : ControllerBase

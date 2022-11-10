@@ -1,10 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
-using IncomingCallRouting.Models;
-using IncomingCallRouting.Nuance.Models;
-using Microsoft.CognitiveServices.Speech;
+﻿using System.Threading.Tasks;
+using RecognizerBot.Models;
+using RecognizerBot.Nuance.Models;
 
-namespace IncomingCallRouting.Interfaces
+namespace RecognizerBot.Interfaces
 {
     public interface ISpeechService
     {

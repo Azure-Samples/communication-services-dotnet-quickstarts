@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace IncomingCallRouting.Nuance.Models
+namespace RecognizerBot.Nuance.Models
 {
     /**
      * Single-intent interpretation results. Included in Interpretation. Theses results include one or more alternative intents, complete with entities if they occur in the text. Each intent is shown with a confidence score and whether the match was done from a grammar file or an SSM (statistical) file.

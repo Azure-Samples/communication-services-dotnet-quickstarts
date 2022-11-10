@@ -1,7 +1,7 @@
 ﻿using Azure.Communication.CallAutomation;
-using IncomingCallRouting.Models;
+using RecognizerBot.Models;
 
-namespace IncomingCallRouting.Utils
+namespace RecognizerBot.Utils
 {
     public static class CurrentCall
     {

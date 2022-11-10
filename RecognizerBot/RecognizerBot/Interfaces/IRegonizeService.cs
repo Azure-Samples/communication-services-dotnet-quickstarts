@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace IncomingCallRouting.Interfaces
+namespace RecognizerBot.Interfaces
 {
     public interface IRegonizeService
     {

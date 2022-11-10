@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace IncomingCallRouting.Models
+namespace RecognizerBot.Models
 {
     public class EchoStream : MemoryStream
     {

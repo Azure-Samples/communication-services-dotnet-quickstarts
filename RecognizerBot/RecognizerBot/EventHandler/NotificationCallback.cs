@@ -4,7 +4,7 @@
 using System;
 using Azure.Communication.CallAutomation;
 
-namespace IncomingCallRouting.EventHandler
+namespace RecognizerBot.EventHandler
 {
     /// <summary>
     /// Maintaining callback object.

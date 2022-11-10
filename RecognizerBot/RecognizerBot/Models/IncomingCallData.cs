@@ -1,8 +1,4 @@
-﻿using System;
-using IncomingCallRouting.Models;
-using Newtonsoft.Json;
-
-namespace IncomingCallRouting.Models
+﻿namespace RecognizerBot.Models
 {
     public class IncomingCallData
     {

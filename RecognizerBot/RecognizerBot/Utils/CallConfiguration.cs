@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 
-namespace IncomingCallRouting.Utils
+namespace RecognizerBot.Utils
 {
     /// <summary>
     /// Configuration assoociated with the call.

@@ -1,13 +1,12 @@
-﻿using Azure.Communication.CallAutomation;
-using IncomingCallRouting.Utils;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
-using IncomingCallRouting.Models;
-using IncomingCallRouting.Nuance.Models;
-using IncomingCallRouting.Interfaces;
+using RecognizerBot.Interfaces;
+using RecognizerBot.Models;
+using RecognizerBot.Nuance.Models;
+using RecognizerBot.Utils;
 
-namespace IncomingCallRouting.Controllers
+namespace RecognizerBot.Controllers
 {
     [ApiController]
     [Route("[controller]")]

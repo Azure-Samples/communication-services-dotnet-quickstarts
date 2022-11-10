@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 
-namespace IncomingCallRouting.EventHandler
+namespace RecognizerBot.EventHandler
 {
     public class EventDispatcher
     {

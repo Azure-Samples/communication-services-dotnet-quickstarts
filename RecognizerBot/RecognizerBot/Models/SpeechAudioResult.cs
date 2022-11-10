@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.CognitiveServices.Speech;
 
-namespace IncomingCallRouting.Models
+namespace RecognizerBot.Models
 {
     public class SpeechAudioResult
     {

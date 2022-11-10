@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using Microsoft.CognitiveServices.Speech.Audio;
 
-namespace IncomingCallRouting.Models
+namespace RecognizerBot.Models
 {
     public class AudioStream : PullAudioInputStreamCallback
     {
