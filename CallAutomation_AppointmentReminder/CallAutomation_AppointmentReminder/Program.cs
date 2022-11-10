@@ -51,7 +51,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         if (@event is CallConnected)
         {
             //Initiate recognition as call connected event is received
-            logger.LogInformation($"CallConnected event received for callconnetion id: {@event.CallConnectionId}");
+            logger.LogInformation($"CallConnected event received for call connection id: {@event.CallConnectionId}");
             var recognizeOptions =
             new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callConfiguration.Value.TargetPhoneNumber), maxTonesToCollect: 1)
             {
