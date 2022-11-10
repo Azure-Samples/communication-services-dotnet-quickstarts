@@ -36,5 +36,5 @@ This sample application is also capable of making multiple concurrent outbound c
 
 ### How to run it locally
 	- Run the `CallAutomation_AppointmentReminder` project in debug mode
-	- Browser should pop up with swagger UI
+	- Browser should pop up with swagger UI, If using dev tunneing note the app base url and update it in the appsetting.json file `(AppBaseUri)`
 	- To initiate the call, from the swagger ui execute the `/api/call` endpoint or make a Http post request to `https://<AppBaseUri>/api/call`
