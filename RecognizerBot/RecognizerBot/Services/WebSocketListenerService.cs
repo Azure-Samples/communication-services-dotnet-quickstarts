@@ -29,7 +29,7 @@ namespace IncomingCallRouting.Services
             Task.Run(async () =>
             {
                 await WaitForAppStarted();
-                ListenOnWebSocket();
+                // ListenOnWebSocket();
             }, cancellationToken);
         }
 

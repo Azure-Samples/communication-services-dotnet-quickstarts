@@ -58,7 +58,7 @@ namespace IncomingCallRouting.Services
             {
                 // Answer Call
                 var response = await _callingServerClient.AnswerCallAsync(new AnswerCallOptions(incomingCallContext,
-                    new Uri("https://3a1c-167-220-2-8.ngrok.io"))
+                    new Uri(_callConfiguration.AppCallbackUrl))
                 {
                     MediaStreamingOptions = new MediaStreamingOptions(new Uri(_streamUri), MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed)
                 }, _reportCancellationToken);

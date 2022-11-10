@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "IncomingCallRouting": {
+    "RecognizerBot": {
       "commandName": "Project",
       "launchBrowser": false,
       "environmentVariables": {
