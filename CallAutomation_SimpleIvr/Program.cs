@@ -7,7 +7,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,14 +17,16 @@ builder.Services.AddSwaggerGen();
 
 
 var client = new CallAutomationClient(builder.Configuration["ConnectionString"]);
-var callbackUriBase = builder.Configuration["CallbackUriBase"]; // i.e. https://someguid.ngrok.io
+var callbackUriBase = builder.Configuration["CallbackUriBase"];
 
 var app = builder.Build();
 app.MapPost("/api/incomingCall", async (
-    [FromBody] EventGridEvent[] eventGridEvents) =>
+    [FromBody] EventGridEvent[] eventGridEvents,
+    ILogger<Program> logger) =>
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
+        logger.LogInformation($"Incoming Call event received : {JsonConvert.SerializeObject(eventGridEvent)}");
         // Handle system events
         if (eventGridEvent.TryGetSystemEventData(out object eventData))
         {
@@ -51,7 +53,8 @@ app.MapPost("/api/incomingCall", async (
 app.MapPost("/api/calls/{contextId}", async (
     [FromBody] CloudEvent[] cloudEvents,
     [FromRoute] string contextId,
-    [Required] string callerId) =>
+    [Required] string callerId,
+    ILogger<Program> logger) =>
 {
     var audioBaseUrl = builder.Configuration["CallbackUriBase"];
     var audioPlayOptions = new PlayOptions() { OperationContext = "SimpleIVR", Loop = false };
@@ -59,6 +62,7 @@ app.MapPost("/api/calls/{contextId}", async (
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
+        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
         if (@event is CallConnected)
         {
             // Start call recording
@@ -67,7 +71,7 @@ app.MapPost("/api/calls/{contextId}", async (
             _ = Task.Run(async () => await client.GetCallRecording().StartRecordingAsync(startRecordingOptions));
 
 
-            // Start recognize prompt - play audio then recognize 1-digit DTMF input with pound (#) stop tone
+            // Start recognize prompt - play audio and recognize 1-digit DTMF input
             var recognizeOptions =
                 new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callerId), maxTonesToCollect: 1)
                 {
@@ -75,7 +79,6 @@ app.MapPost("/api/calls/{contextId}", async (
                     InterToneTimeout = TimeSpan.FromSeconds(10),
                     InitialSilenceTimeout = TimeSpan.FromSeconds(5),
                     Prompt = new FileSource(new Uri(audioBaseUrl + builder.Configuration["MainMenuAudio"])),
-                    StopTones = new[] { DtmfTone.Pound },
                     OperationContext = "MainMenu"
                 };
             await client.GetCallConnection(@event.CallConnectionId)
