@@ -1,13 +1,6 @@
-﻿---
-page_type: sample
-languages:
-- csharp
-products:
-- azure
-- azure-communication-services
-- azure-communication-callAutomation
----
-
+﻿|page_type|languages|products
+|---|---|---|
+|sample|<table><tr><td>csharp</tr></td></table>|<table><tr><td>azure</td><td>azure-communication-services</td></tr></table>|
 
 # Call Automation - Appointment Reminder Sample
 
