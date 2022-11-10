@@ -93,12 +93,12 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         }
         if (@event is PlayCompleted { OperationContext: "ResponseToDtmf" })
         {
-            logger.LogInformation($"PlayCompleted event received for callconnetion id: {@event.CallConnectionId}");
+            logger.LogInformation($"PlayCompleted event received for call connection id: {@event.CallConnectionId}");
             await callConnection.HangUpAsync(forEveryone: true);
         }
         if (@event is PlayFailed { OperationContext: "ResponseToDtmf" })
         {
-            logger.LogInformation($"PlayFailed event received for callconnetion id: {@event.CallConnectionId}");
+            logger.LogInformation($"PlayFailed event received for call connection id: {@event.CallConnectionId}");
             await callConnection.HangUpAsync(forEveryone: true);
         }
     }
