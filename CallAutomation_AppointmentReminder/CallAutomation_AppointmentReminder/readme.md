@@ -48,7 +48,7 @@ Open the appsetting.json file to configure the following settings
 
 ### Publish the Call Automation Appointment Reminder to Azure WebApp
 
-1. Right click the CallAutomation_SimpleIvr project and select Publish
+1. Right click the CallAutomation_AppointmentReminder project and select Publish
 2. Create a new publish profile and select your app name, Azure subscription, resource group etc. (choose any unique name, as this URL needed for `AppBaseUri` configuration settings)
 3. After publishing, add the following configurations on azure portal (under app service's configuration section)
 	1. `ConnectionString`: Azure Communication Service resource's connection string.
