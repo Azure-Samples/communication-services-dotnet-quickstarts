@@ -18,7 +18,7 @@ namespace QuickStartApi.Controllers
     {
         private readonly string blobStorageConnectionString;
         private readonly string containerName;
-        private readonly CallAutomationClient callingAutomationClient;
+        private readonly CallAutomationClient callAutomationClient;
         private const string CallRecodingActiveErrorCode = "8553";
         private const string CallRecodingActiveError = "Recording is already in progress, one recording can be active at one time.";
         public ILogger<CallRecordingController> Logger { get; }
@@ -29,7 +29,7 @@ namespace QuickStartApi.Controllers
         {
             blobStorageConnectionString = configuration["BlobStorageConnectionString"];
             containerName = configuration["BlobContainerName"];
-            callingAutomationClient = new CallAutomationClient(configuration["ACSResourceConnectionString"]);
+            callAutomationClient = new CallAutomationClient(configuration["ACSResourceConnectionString"]);
             Logger = logger;
         }
 
@@ -49,7 +49,7 @@ namespace QuickStartApi.Controllers
                     //RecordingChannel is used to pass the channel type. mixed/unmixed
                     //RecordingFormat is used to pass the format of the recording. mp4/mp3/wav
                     StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
-                    var startRecordingResponse = await callingAutomationClient.GetCallRecording()
+                    var startRecordingResponse = await callAutomationClient.GetCallRecording()
                         .StartRecordingAsync(recordingOptions).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
@@ -108,7 +108,7 @@ namespace QuickStartApi.Controllers
                     recordingOptions.RecordingContent = Mapper.RecordingContentMap.TryGetValue(recordingContent, out recContentVal) ? recContentVal : RecordingContent.AudioVideo;
                     recordingOptions.RecordingFormat = Mapper.RecordingFormatMap.TryGetValue(recordingFormat, out recFormatVal) ? recFormatVal : RecordingFormat.Mp4;
                   
-                    var startRecordingResponse = await callingAutomationClient.GetCallRecording()
+                    var startRecordingResponse = await callAutomationClient.GetCallRecording()
                         .StartRecordingAsync(recordingOptions).ConfigureAwait(false);
 
                     Logger.LogInformation($"StartRecordingAudioAsync response -- >  {startRecordingResponse.GetRawResponse()}, Recording Id: {startRecordingResponse.Value.RecordingId}");
@@ -161,7 +161,7 @@ namespace QuickStartApi.Controllers
                             recordingData[serverCallId] = recordingId;
                         }
                     }
-                    var pauseRecording = await callingAutomationClient.GetCallRecording().PauseRecordingAsync(recordingId);
+                    var pauseRecording = await callAutomationClient.GetCallRecording().PauseRecordingAsync(recordingId);
                     Logger.LogInformation($"PauseRecordingAsync response -- > {pauseRecording}");
 
                     return Ok();
@@ -201,7 +201,7 @@ namespace QuickStartApi.Controllers
                             recordingData[serverCallId] = recordingId;
                         }
                     }
-                    var resumeRecording = await callingAutomationClient.GetCallRecording().ResumeRecordingAsync(recordingId);
+                    var resumeRecording = await callAutomationClient.GetCallRecording().ResumeRecordingAsync(recordingId);
                     Logger.LogInformation($"ResumeRecordingAsync response -- > {resumeRecording}");
 
                     return Ok();
@@ -243,7 +243,7 @@ namespace QuickStartApi.Controllers
                         }
                     }
 
-                    var stopRecording = await callingAutomationClient.GetCallRecording().StopRecordingAsync(recordingId).ConfigureAwait(false);
+                    var stopRecording = await callAutomationClient.GetCallRecording().StopRecordingAsync(recordingId).ConfigureAwait(false);
                     Logger.LogInformation($"StopRecordingAsync response -- > {stopRecording}");
 
                     if (recordingData.ContainsKey(serverCallId))
@@ -294,7 +294,7 @@ namespace QuickStartApi.Controllers
                         }
                     }
 
-                    var recordingState = await callingAutomationClient.GetCallRecording().GetRecordingStateAsync(recordingId).ConfigureAwait(false);
+                    var recordingState = await callAutomationClient.GetCallRecording().GetRecordingStateAsync(recordingId).ConfigureAwait(false);
 
                     Logger.LogInformation($"GetRecordingStateAsync response -- > {recordingState}");
 
@@ -376,7 +376,7 @@ namespace QuickStartApi.Controllers
         private async Task<bool> ProcessFile(string downloadLocation, string documentId, string fileFormat, string downloadType)
         {
             var recordingDownloadUri = new Uri(downloadLocation);
-            var response = await callingAutomationClient.GetCallRecording().DownloadStreamingAsync(recordingDownloadUri);
+            var response = await callAutomationClient.GetCallRecording().DownloadStreamingAsync(recordingDownloadUri);
 
             Logger.LogInformation($"Download {downloadType} response  -- >" + response.GetRawResponse());
             Logger.LogInformation($"Save downloaded {downloadType} -- >");
