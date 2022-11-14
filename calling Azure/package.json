@@ -1,0 +1,22 @@
+{
+  "name": "calling-azure-service",
+  "version": "1.0.0",
+  "description": "this will call by using azure",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "sunil pandey",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/communication-calling": "^1.4.4",
+    "@azure/communication-common": "^2.1.0",
+    "express": "^4.18.1"
+  },
+  "devDependencies": {
+    "parcel": "^2.7.0",
+    "webpack": "^4.42.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^4.10.0"
+  }
+}

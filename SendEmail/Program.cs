@@ -12,7 +12,8 @@ namespace SendEmail
         static async Task Main(string[] args)
         {
             // This code demonstrates how to send email using Azure Communication Services.
-            var connectionString = "<ACS_CONNECTION_STRING>";
+            string connectionString = "endpoint=https://verizann-media.communication.azure.com/;accesskey=EQHWAYFO9E0NNcj8OZEFHcVtFWUa1EBEV4tsgX1ej53kJjv4v9ZgBLVotnwhKRtjTxdIf2UEq4xoJ5n/on5IYA==";
+            ;
             var emailClient = new EmailClient(connectionString);
 
             var subject = "Send email quick start - dotnet";
@@ -21,10 +22,10 @@ namespace SendEmail
                 PlainText = "This is plain mail send test body \n Best Wishes!!",
                 Html = "<html><body><h1>Quick send email test</h1><br/><h4>Communication email as a service mail send app working properly</h4><p>Happy Learning!!</p></body></html>"
             };
-            var sender = "<SENDER_EMAIL>";
+            var sender = "DoNotReply@402eaf99-ad29-431c-94fb-389dd5ab257a.azurecomm.net";
 
             var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("<RECIPIENT_EMAIL>") { DisplayName = "<RECIPINENT_DISPLAY_NAME>" }
+                new EmailAddress("pandeysun.342@gmail.com") { DisplayName = "Sunil Pandey" }
             });
 
             var emailMessage = new EmailMessage(sender, emailContent, emailRecipients);
