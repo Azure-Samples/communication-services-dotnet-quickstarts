@@ -41,7 +41,7 @@ namespace WebSocketListener
                     }
 
                     WebSocket webSocket = websocketContext.WebSocket;
-                    using FileStream audioDataFileStream = new FileStream("..//audiodata.txt", FileMode.Create, FileAccess.Write, FileShare.None);
+                    Dictionary<string, FileStream> audioDataFiles = new Dictionary<string, FileStream>();
 
                     try
                     {
@@ -70,7 +70,20 @@ namespace WebSocketListener
 
                                             if (jsonData != null && jsonData.kind == "AudioData")
                                             {
-                                                var byteArray = jsonData.audioData.data;
+                                                byte[] ? byteArray = jsonData?.audioData?.data;
+
+                                                string fileName = string.Format("..//{0}.txt", jsonData?.audioData?.participantRawID).Replace(":","");
+                                                FileStream ? audioDataFileStream;
+
+                                                if (audioDataFiles.ContainsKey(fileName))
+                                                {
+                                                    audioDataFiles.TryGetValue(fileName, out audioDataFileStream);
+                                                }
+                                                else
+                                                {
+                                                    audioDataFileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
+                                                    audioDataFiles.Add(fileName, audioDataFileStream);
+                                                }
                                                 await audioDataFileStream.WriteAsync(byteArray, 0, byteArray.Length);
                                             }
                                             Console.WriteLine(data);
@@ -92,7 +105,10 @@ namespace WebSocketListener
                     }
                     finally
                     {
-                        audioDataFileStream.Close();
+                        foreach (KeyValuePair<string, FileStream> file in audioDataFiles)
+                        {
+                            file.Value.Close();
+                        }
                     }
                 }
                 else
