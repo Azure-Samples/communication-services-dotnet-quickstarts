@@ -20,7 +20,7 @@ namespace AccessTokensQuickstart
             var identity = identityResponse.Value;
             Console.WriteLine($"\nCreated an identity with ID: {identity.Id}");
 
-            // Issue an access token with the "voip" scope for an identity
+            // Issue an access token with a validity of 24 hours and the "voip" scope for an identity
             var tokenResponse = await client.GetTokenAsync(identity, scopes: new[] { CommunicationTokenScope.VoIP });
 
             // Get the token from the response
@@ -30,6 +30,7 @@ namespace AccessTokensQuickstart
             // Write the token details to the screen
             Console.WriteLine($"\nIssued an access token with 'voip' scope that expires at {expiresOn}:");
             Console.WriteLine(token);
+
 
 
         }
