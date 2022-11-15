@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using System.Text.Json.Nodes;
 
 namespace IncomingCallMediaStreaming.Controllers
 {
@@ -61,9 +62,15 @@ namespace IncomingCallMediaStreaming.Controllers
                     var eventData = request.ToString();
                     if (eventData != null)
                     {
-                        string incomingCallContext = eventData.Split("\"incomingCallContext\":\"")[1].Split("\"}")[0];
-                        Logger.LogMessage(Logger.MessageType.INFORMATION, incomingCallContext);
-                        _ = new IncomingCallHandler(callAutomationClient, callConfiguration).Report(incomingCallContext);
+                        var jsonObject = JsonNode.Parse(cloudEvent.Data).AsObject();
+                        var callerId = (string)(jsonObject["from"]["rawId"]);
+                        if((callerId != null && callConfiguration.AcceptCallsFrom.Contains(callerId)) || 
+                            callConfiguration.AcceptCallsFrom == "*")
+                        {
+                            string incomingCallContext = (string)jsonObject["incomingCallContext"];
+                            Logger.LogMessage(Logger.MessageType.INFORMATION, incomingCallContext);
+                            _ = new IncomingCallHandler(callAutomationClient, callConfiguration).Report(incomingCallContext);
+                        }
                     }
                 }
                 return Ok();

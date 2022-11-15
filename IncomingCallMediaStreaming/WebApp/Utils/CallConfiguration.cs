@@ -31,12 +31,18 @@ namespace IncomingCallMediaStreaming
         /// </summary>
         public string MediaStreamingTransportURI { get; private set; }
 
-        public CallConfiguration(string connectionString, string appBaseUrl, string mediaStreamingTransportURI, string queryString)
+        /// <summary>
+        /// Accept Calls From particular participant ID's
+        /// </summary>
+        public string AcceptCallsFrom { get; private set; }
+
+        public CallConfiguration(string connectionString, string appBaseUrl, string mediaStreamingTransportURI, string queryString, string acceptCallsFrom)
         {
             ConnectionString = connectionString;
             AppBaseUrl = appBaseUrl;
             AppCallbackUrl = $"{AppBaseUrl}/CallAutomationApiCallBack?{queryString}";
             MediaStreamingTransportURI = mediaStreamingTransportURI;
+            AcceptCallsFrom = acceptCallsFrom;
         }
 
         public static CallConfiguration GetCallConfiguration(IConfiguration configuration, string queryString)
@@ -46,7 +52,8 @@ namespace IncomingCallMediaStreaming
                 callConfiguration = new CallConfiguration(configuration["ResourceConnectionString"],
                     configuration["AppCallBackUri"],
                     configuration["MediaStreamingTransportURI"],
-                    queryString);
+                    queryString,
+                    configuration["AcceptCallsFrom"]);
             }
 
             return callConfiguration;
