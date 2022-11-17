@@ -2,7 +2,6 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using WebSocketListener.Ngrok;
 
 namespace WebSocketListener
 {
@@ -14,11 +13,7 @@ namespace WebSocketListener
             HttpListener httpListener = new HttpListener();
             httpListener.Prefixes.Add("http://localhost:8080/");
             httpListener.Start();
-
-            Console.WriteLine("Ngrok starting for port 8080");
-            var ngrokExePath = "D:\\Code\\ngrok"; //update the ngrok.exe path before running
-            var ngrokUrl = NgrokService.Instance.StartNgrokService(ngrokExePath);
-            Console.WriteLine($"Ngrok started with URL {ngrokUrl}");
+            Dictionary<string, FileStream> audioDataFiles = null;
 
             while (true)
             {
@@ -41,12 +36,15 @@ namespace WebSocketListener
                     }
 
                     WebSocket webSocket = websocketContext.WebSocket;
-                    Dictionary<string, FileStream> audioDataFiles = new Dictionary<string, FileStream>();
+                    if(audioDataFiles == null)
+                    {
+                        audioDataFiles = new Dictionary<string, FileStream>();
+                    }
 
                     try
                     {
                         string partialData = "";
-                        
+
                         while (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseSent)
                         {
                             byte[] receiveBuffer = new byte[2048];

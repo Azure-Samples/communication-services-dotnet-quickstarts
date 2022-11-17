@@ -30,6 +30,12 @@ The application is an app service application built on .NET6.0.
 - [.NET6](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - [Configuring the webhook](https://docs.microsoft.com/en-us/azure/devops/service-hooks/services/webhooks?view=azure-devops) for **Microsoft.Communication.IncomingCall** event.
+- Enable Visual studio dev tunneling for local development. For details, see [Enable dev tunnel] (https://learn.microsoft.com/en-us/connectors/custom-connectors/port-tunneling)
+	- To enable dev tunneling, Click `Tools` -> `Options` in Visual Studio 2022
+	- In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
+	![EnableDevTunnel](./Media/EnableDevTunnel.png)
+	- Login into your account under `Dev Tunnels` -> `General`
+	![LogInDevTunnel](./Media/AddAccountForTunnel.png)
 
 
 ## Before running the sample for the first time
@@ -40,7 +46,7 @@ The application is an app service application built on .NET6.0.
 ### Locally running the media streaming WebSocket app
 1. Go to IncomingCallMediaStreaming folder and open `IncomingCallMediaStreaming.sln` solution in Visual Studio.
 2. Select and run the `WebSocketListener` project, an application for listening media stream on websocket.
-3. Used the ngrok URl, get from `WebSocketListener` app, as a websocket URL needed for `MediaStreamingTransportURI` configuration.
+3. Used the dev tunnel URl, get from `WebSocketListener` app, as a websocket URL needed for `MediaStreamingTransportURI` configuration.
 
 ### Publish  the Incoming call media streaming to Azure WebApp
 
@@ -51,20 +57,24 @@ The application is an app service application built on .NET6.0.
 	- ResourceConnectionString: Azure Communication Service resource's connection string.
 	- AppCallBackUri: URI of the deployed app service.
 	- SecretValue: Query string for callback URL.
-	- MediaStreamingTransportURI: websocket URL got from `WebSocketListener`, format "wss://{ngrok-URL}",(Notice the url, it should wss:// and not https://)
+	- MediaStreamingTransportURI: websocket URL got from `WebSocketListener`, format "wss://{dev-tunner-url}",(Notice the url, it should wss:// and not https://)
 
 ### Create Webhook for incoming call event
-1. Configure webhook from ACS events tab for incoming call event.
- 	- Manually configuring the webhook using this command. use above published "'https://<IncomingCallMediaStreaming-URL>/OnIncomingCall" URL as webhook URL.
+IncomingCall is an Azure Event Grid event for notifying incoming calls to your Communication Services resource. To learn more about it, see [this guide](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
+1. Navigate to your resource on Azure portal and select `Events` from the left side menu.
 
-	```
-	armclient put "/subscriptions/<Subscriptin-ID>/resourceGroups/<resource group name>/providers/Microsoft.Communication/CommunicationServices/<CommunicationService Name>/providers/Microsoft.EventGrid/eventSubscriptions/<WebHookName>?api-version=2020-06-01" "{'properties':{'destination':{'properties':{'endpointUrl':'<webhookurl>'},'endpointType':'WebHook'},'filter':{'includedEventTypes': ['Microsoft.Communication.IncomingCall']}}}" -verbose
+2. Select `+ Event Subscription` to create a new subscription.
+3. Filter for Incoming Call event.
+4. Choose endpoint type as web hook and provide the public url generated for your application by ngrok. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <ngrok_url>/api/incomingCall.
 
-	```
+![Screenshot of portal page to create a new event subscription.](./Media/event-susbcription.png)
+![Screenshot of portal page to create a new event subscription.](./Media/event-webhook.png)
 
 
+5. Select create to start the creation of subscription and validation of your endpoint as mentioned previously. The subscription is ready when the provisioning status is marked as succeeded.
 
-4. Detailed instructions on publishing the app to Azure are available at [Publish a Web app](https://docs.microsoft.com/visualstudio/deployment/quickstart-deploy-to-azure?view=vs-2019).
+
+6. Detailed instructions on publishing the app to Azure are available at [Publish a Web app](https://docs.microsoft.com/visualstudio/deployment/quickstart-deploy-to-azure?view=vs-2019).
 
 **Note**: While you may use http://localhost for local testing, the sample when deployed will only work when served over https. The SDK [does not support http](https://docs.microsoft.com/azure/communication-services/concepts/voice-video-calling/calling-sdk-features#user-webrtc-over-https).
 
