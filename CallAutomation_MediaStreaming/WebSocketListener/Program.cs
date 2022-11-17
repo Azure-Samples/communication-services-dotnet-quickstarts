@@ -1,24 +1,19 @@
-﻿using System.Net;
-using System.Net.WebSockets;
+﻿using System.Net.WebSockets;
+using System.Net;
 using System.Text;
 using System.Text.Json;
-using WebSocketListener.Ngrok;
 
 namespace WebSocketListener
 {
     internal class Program
     {
-        private static async Task Main(string[] args)
+        static async Task Main(string[] args)
         {
             Console.WriteLine("WebSocket Listener starting for port 8080");
             HttpListener httpListener = new HttpListener();
             httpListener.Prefixes.Add("http://localhost:8080/");
             httpListener.Start();
-
-            Console.WriteLine("Ngrok starting for port 8080");
-            var ngrokExePath = "D:\\Code\\ngrok"; //update the ngrok.exe path before running
-            var ngrokUrl = NgrokService.Instance.StartNgrokService(ngrokExePath);
-            Console.WriteLine($"Ngrok started with URL {ngrokUrl}");
+            Dictionary<string, FileStream> audioDataFiles = null;
 
             while (true)
             {
@@ -41,7 +36,10 @@ namespace WebSocketListener
                     }
 
                     WebSocket webSocket = websocketContext.WebSocket;
-                    Dictionary<string, FileStream> audioDataFiles = new Dictionary<string, FileStream>();
+                    if(audioDataFiles == null)
+                    {
+                        audioDataFiles = new Dictionary<string, FileStream>();
+                    }
 
                     try
                     {
@@ -70,10 +68,10 @@ namespace WebSocketListener
 
                                             if (jsonData != null && jsonData.kind == "AudioData")
                                             {
-                                                byte[]? byteArray = jsonData?.audioData?.data;
+                                                byte[] ? byteArray = jsonData?.audioData?.data;
 
-                                                string fileName = string.Format("..//{0}.txt", jsonData?.audioData?.participantRawID).Replace(":", "");
-                                                FileStream? audioDataFileStream;
+                                                string fileName = string.Format("..//{0}.txt", jsonData?.audioData?.participantRawID).Replace(":","");
+                                                FileStream ? audioDataFileStream;
 
                                                 if (audioDataFiles.ContainsKey(fileName))
                                                 {
