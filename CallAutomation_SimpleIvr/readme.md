@@ -59,10 +59,9 @@ IncomingCall is an Azure Event Grid event for notifying incoming calls to your C
 1. Navigate to your resource on Azure portal and select `Events` from the left side menu.
 1. Select `+ Event Subscription` to create a new subscription. 
 1. Filter for Incoming Call event. 
-1. Choose endpoint type as web hook and provide the public url generated for your application by ngrok. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <ngrok_url>/api/incomingCall. 
-![Screenshot of portal page to create a new event subscription.](./media/event-susbcription.png)
-![Screenshot of portal page to create a new event subscription.](./media/MicrosoftTeams-image.png)
+1. Choose endpoint type as web hook and provide the public url generated for your application by ngrok. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <ngrok_url>/api/incomingCall.  
 
+	![Event Grid Subscription for Incoming Call](./data/EventgridSubscription-IncomingCall.png)
 
 1. Select create to start the creation of subscription and validation of your endpoint as mentioned previously. The subscription is ready when the provisioning status is marked as succeeded.
 
