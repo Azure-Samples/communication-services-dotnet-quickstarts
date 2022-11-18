@@ -44,7 +44,7 @@ namespace IncomingCallMediaStreaming
                     (new Uri(callConfiguration.MediaStreamingTransportURI),
                     MediaStreamingTransport.Websocket,
                     MediaStreamingContent.Audio,
-                    MediaStreamingAudioChannel.Mixed);
+                    MediaStreamingAudioChannel.Unmixed);
 
                 // Answer Call
                 var response = await callAutomationClient.AnswerCallAsync(answerCallOptions);
