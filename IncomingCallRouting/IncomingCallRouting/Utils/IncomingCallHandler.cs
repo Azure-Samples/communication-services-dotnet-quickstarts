@@ -3,14 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using IncomingCallRouting.Enums;
 using IncomingCallRouting.EventHandler;
 
 namespace IncomingCallRouting.Utils
@@ -21,7 +18,7 @@ namespace IncomingCallRouting.Utils
     /// </summary>
     public class IncomingCallHandler
     {
-        private readonly CallAutomationClient _callingServerClient;
+        private readonly CallAutomationClient _callAutomationClient;
         private readonly CallConfiguration _callConfiguration;
         private readonly CallRecording _callRecording;
         private CallConnection _callConnection;
@@ -39,11 +36,11 @@ namespace IncomingCallRouting.Utils
         private TaskCompletionSource<bool> transferToParticipantCompleteTask;
         private readonly int maxRetryAttemptCount = 3;
 
-        public IncomingCallHandler(CallAutomationClient callingServerClient, CallConfiguration callConfiguration)
+        public IncomingCallHandler(CallAutomationClient callAutomationClient, CallConfiguration callConfiguration)
         {
             _callConfiguration = callConfiguration;
-            _callingServerClient = callingServerClient;
-            _callRecording = callingServerClient.GetCallRecording();
+            _callAutomationClient = callAutomationClient;
+            _callRecording = callAutomationClient.GetCallRecording();
             _targetParticipant = callConfiguration.TargetParticipant;
             _consultTarget = callConfiguration.ConsultTarget;
             _from = callConfiguration.IvrParticipants[0];
@@ -57,9 +54,13 @@ namespace IncomingCallRouting.Utils
             try
             {
                 // Answer Call
-                var response = await _callingServerClient.AnswerCallAsync(incomingCallContext, new Uri(_callConfiguration.AppCallbackUrl));
+                var response = await _callAutomationClient.AnswerCallAsync(incomingCallContext, new Uri(_callConfiguration.AppCallbackUrl));
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
-                
+
+                var callConnection = await _callAutomationClient.CreateCallAsync(
+                    new CreateCallOptions(new CallSource(new CommunicationUserIdentifier("<source_MRI>")),
+                        new[] { new CommunicationUserIdentifier("<target_MRI>") }, new Uri("<nlu_callback>")));
+
                 _callConnection = response.Value.CallConnection;
                 _callConnectionProperties = response.Value.CallConnectionProperties;
                 RegisterToCallStateChangeEvent(_callConnectionProperties.CallConnectionId);
@@ -96,21 +97,23 @@ namespace IncomingCallRouting.Utils
                 var stop = await _callRecording.StopRecordingAsync(recording.Value.RecordingId);
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"Stop Recording Response -----> {stop.Status}");
 
-                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {_targetParticipant}");
-                // var transferToParticipantCompleted = await TransferToParticipant(_targetParticipant);
-                // if (!transferToParticipantCompleted)
-                // {
-                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(_targetParticipant));
-                // }
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {_targetParticipant}");
+                var transferToParticipantCompleted = await TransferToParticipant(_targetParticipant);
+                if (!transferToParticipantCompleted)
+                {
+                    await RetryTransferToParticipantAsync(async () => await TransferToParticipant(_targetParticipant));
+                }
 
-                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_consultTarget} to call");
-                // var addParticipant2 = await _callConnection.AddParticipantsAsync(
-                //     new List<CommunicationIdentifier>
-                //     {
-                //         GetIdentifier(_consultTarget),
-                //     }, cancellationToken: _reportCancellationToken);
-                // // await _callConnection.TransferCallToParticipantAsync(new MicrosoftTeamsUserIdentifier(_teamsGuid))
-                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant2.GetRawResponse()}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_consultTarget} to call");
+                var addParticipant2 = await _callConnection.AddParticipantsAsync(new AddParticipantsOptions(
+                    new List<CommunicationIdentifier>
+                    {
+                        GetIdentifier(_consultTarget),
+                    }), cancellationToken: _reportCancellationToken);
+                
+                // await _callConnection.TransferCallToParticipantAsync(new MicrosoftTeamsUserIdentifier(_teamsGuid))
+                
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant2.GetRawResponse()}");
 
                 // await _callConnection.HangUpAsync(false);
 
@@ -239,7 +242,7 @@ namespace IncomingCallRouting.Utils
             });
 
             //Subscribe to the event
-            var eventId = EventDispatcher.Instance.Subscribe(AcsEventType.CallConnected.ToString(), callConnectionId, callStateChangeNotificaiton);
+            var eventId = EventDispatcher.Instance.Subscribe(nameof(CallConnected), callConnectionId, callStateChangeNotificaiton);
         }
 
         private void RegisterToPlayAudioResultEvent(string operationContext)
@@ -255,12 +258,12 @@ namespace IncomingCallRouting.Utils
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Play audio status: {playAudioResultEvent}");
 
                     playAudioCompletedTask.TrySetResult(true);
-                    EventDispatcher.Instance.Unsubscribe(AcsEventType.PlayCompleted.ToString(), operationContext);
+                    EventDispatcher.Instance.Unsubscribe(nameof(PlayCompleted), operationContext);
                 });
             });
 
             //Subscribe to event
-            EventDispatcher.Instance.Subscribe(AcsEventType.PlayCompleted.ToString(), operationContext, playPromptResponseNotification);
+            EventDispatcher.Instance.Subscribe(nameof(PlayCompleted), operationContext, playPromptResponseNotification);
         }
 
         private void RegisterToDtmfResultEvent(string callConnectionId)
@@ -275,13 +278,13 @@ namespace IncomingCallRouting.Utils
 
                     toneReceivedCompleteTask.TrySetResult(recognizeCompletedEvent?.CollectTonesResult?.Tones[0] == DtmfTone.One);
 
-                    EventDispatcher.Instance.Unsubscribe(AcsEventType.RecognizeCompleted.ToString(), callConnectionId);
+                    EventDispatcher.Instance.Unsubscribe(nameof(RecognizeCompleted), callConnectionId);
                     // cancel playing audio
                     await CancelAllMediaOperations().ConfigureAwait(false);
                 });
             });
             //Subscribe to event
-            EventDispatcher.Instance.Subscribe(AcsEventType.RecognizeCompleted.ToString(), callConnectionId, dtmfReceivedEvent);
+            EventDispatcher.Instance.Subscribe(nameof(RecognizeCompleted), callConnectionId, dtmfReceivedEvent);
         }
 
         private CommunicationIdentifier GetIdentifier(string targetParticipant, string rawId = null)
@@ -322,7 +325,6 @@ namespace IncomingCallRouting.Utils
             {
                 OperationContext = operationContext,
                 SourceCallerId = transfereeCallerId == null ? null : new PhoneNumberIdentifier(transfereeCallerId),
-                UserToUserInformation = "user1"
             }, cancellationToken: _reportCancellationToken);
 
             var transferToParticipantCompleted = await transferToParticipantCompleteTask.Task.ConfigureAwait(false);
@@ -337,7 +339,7 @@ namespace IncomingCallRouting.Utils
                 if (transferParticipantUpdatedEvent.CallConnectionId != null)
                 {
                     Logger.LogMessage(Logger.MessageType.INFORMATION, $"Transfer participant callconnection ID - {transferParticipantUpdatedEvent.CallConnectionId}");
-                    EventDispatcher.Instance.Unsubscribe(AcsEventType.ParticipantsUpdated.ToString(), operationContext);
+                    EventDispatcher.Instance.Unsubscribe(nameof(ParticipantsUpdated), operationContext);
 
                     Logger.LogMessage(Logger.MessageType.INFORMATION, "Sleeping for 60 seconds before proceeding further");
                     await Task.Delay(60 * 1000);
@@ -351,7 +353,7 @@ namespace IncomingCallRouting.Utils
             });
 
             //Subscribe to event
-            EventDispatcher.Instance.Subscribe(AcsEventType.ParticipantsUpdated.ToString(), operationContext, transferToParticipantReceivedEvent);
+            EventDispatcher.Instance.Subscribe(nameof(ParticipantsUpdated), operationContext, transferToParticipantReceivedEvent);
         }
 
         private CommunicationIdentifierKind GetIdentifierKind(string participantnumber)
@@ -362,5 +364,16 @@ namespace IncomingCallRouting.Utils
                    Regex.Match(participantnumber, Constants.teamsIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.TeamsIdentity :
                    CommunicationIdentifierKind.UnknownIdentity;
         }
+    }
+
+    /// <summary>
+    /// Type of communication identifiers.
+    /// </summary>
+    public enum CommunicationIdentifierKind
+    {
+        UserIdentity,
+        PhoneIdentity,
+        TeamsIdentity,
+        UnknownIdentity
     }
 }

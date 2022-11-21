@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using IncomingCallRouting.Enums;
+using IncomingCallRouting.EventHandler;
 
 namespace IncomingCallRouting.EventHandler
 {
@@ -76,32 +76,32 @@ namespace IncomingCallRouting.EventHandler
             if (callEventBase is CallConnected)
             {
                 var callLegId = ((CallConnected)callEventBase).CallConnectionId;
-                return BuildEventKey(AcsEventType.CallConnected.ToString(), callLegId);;
+                return BuildEventKey(nameof(CallConnected), callLegId); ;
             }
             else if (callEventBase is RecognizeCompleted)
             {
                 var callLegId = ((RecognizeCompleted)callEventBase).CallConnectionId;
-                return BuildEventKey(AcsEventType.RecognizeCompleted.ToString(), callLegId);
+                return BuildEventKey(nameof(RecognizeCompleted), callLegId);
             }
             else if (callEventBase is RecordingStateChanged)
             {
                 var recordingId = ((RecordingStateChanged)callEventBase).RecordingId;
-                return BuildEventKey(AcsEventType.RecordingStateChanged.ToString(), recordingId);
+                return BuildEventKey(nameof(RecordingStateChanged), recordingId);
             }
             else if (callEventBase is PlayCompleted)
             {
                 var operationContext = ((PlayCompleted)callEventBase).OperationContext;
-                return BuildEventKey(AcsEventType.PlayCompleted.ToString(), operationContext);
+                return BuildEventKey(nameof(PlayCompleted), operationContext);
             }
             else if (callEventBase is ParticipantsUpdated)
             {
                 var callLegId = ((ParticipantsUpdated)callEventBase).CallConnectionId;
-                return BuildEventKey(AcsEventType.ParticipantsUpdated.ToString(), callLegId);
+                return BuildEventKey(nameof(ParticipantsUpdated), callLegId);
             }
             else if (callEventBase is AddParticipantsSucceeded)
             {
                 var callLegId = ((AddParticipantsSucceeded)callEventBase).CallConnectionId;
-                return BuildEventKey(AcsEventType.AddParticipantsSucceeded.ToString(), callLegId);
+                return BuildEventKey(nameof(AddParticipantsSucceeded), callLegId);
             }
 
             return null;
@@ -123,15 +123,15 @@ namespace IncomingCallRouting.EventHandler
 
             if (cloudEvent != null && cloudEvent.Data != null)
             {
-                if (cloudEvent.Type.EndsWith(AcsEventType.CallConnected.ToString(), true, null))
+                if (cloudEvent.Type.EndsWith(nameof(CallConnected), true, null))
                 {
                     return CallConnected.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.EndsWith(AcsEventType.RecognizeCompleted.ToString()))
+                else if (cloudEvent.Type.EndsWith(nameof(RecognizeCompleted)))
                 {
                     return RecognizeCompleted.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString()))
+                else if (cloudEvent.Type.EndsWith(nameof(ParticipantsUpdated)))
                 {
                     return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
                 }
@@ -139,11 +139,11 @@ namespace IncomingCallRouting.EventHandler
                 {
                     return RecordingStateChanged.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.EndsWith(AcsEventType.PlayCompleted.ToString()))
+                else if (cloudEvent.Type.EndsWith(nameof(PlayCompleted)))
                 {
                     return PlayCompleted.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.EndsWith(AcsEventType.ParticipantsUpdated.ToString(), true, null))
+                else if (cloudEvent.Type.EndsWith(nameof(ParticipantsUpdated), true, null))
                 {
                     return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
                 }
@@ -153,4 +153,3 @@ namespace IncomingCallRouting.EventHandler
         }
     }
 }
-

@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
-using Azure;
-using Azure.Communication.Identity;
-using Azure.Core.Pipeline;
-using Azure.Identity;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Messaging.EventGrid;
@@ -12,11 +9,7 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using IncomingCallRouting.EventHandler;
 using IncomingCallRouting.Models;
 using IncomingCallRouting.Utils;
-using Newtonsoft.Json;
-using Azure.Core;
-using System.Threading.Tasks;
 using Azure.Communication.CallAutomation;
-using Microsoft.Identity.Client;
 using Logger = IncomingCallRouting.Utils.Logger;
 
 namespace IncomingCallRouting.Controllers
@@ -24,17 +17,16 @@ namespace IncomingCallRouting.Controllers
     [ApiController]
     public class IncomingCallController : Controller
     {
-        private readonly CallAutomationClient callingServerClient;
+        private readonly CallAutomationClient callAutomationClient;
         CallConfiguration callConfiguration;
         EventAuthHandler eventAuthHandler;
-        private TokenCredential credential;
 
         public IncomingCallController(IConfiguration configuration, ILogger<IncomingCallController> logger)
         {
             Logger.SetLoggerInstance(logger);
             var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
-            callingServerClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
-            // callingServerClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
+            //callAutomationClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
+            callAutomationClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
@@ -66,17 +58,16 @@ namespace IncomingCallRouting.Controllers
                 else if (eventGridEvent.EventType.Equals("Microsoft.Communication.IncomingCall"))
                 {
                     //Fetch incoming call context and ivr participant from request
-                    var eventData = JsonConvert.DeserializeObject<IncomingCallData>(eventGridEvent.Data.ToString());
+                    var eventData = eventGridEvent.Data.ToObjectFromJson<IncomingCallData>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
                     if (eventData != null)
                     {
                         var incomingCallContext = eventData.IncomingCallContext;
                         var ivrParticipant = eventData.To.RawId;
-                        var from = eventData.From.RawId;
-
+                        
                         if ( (callConfiguration.IvrParticipants.Contains(ivrParticipant) || callConfiguration.IvrParticipants[0] == "*")
                             && callConfiguration.TargetParticipant != ivrParticipant)
                         {
-                            _ = new IncomingCallHandler(callingServerClient, callConfiguration).Report(incomingCallContext);
+                            _ = new IncomingCallHandler(callAutomationClient, callConfiguration).Report(incomingCallContext);
                         }
  
                     }
