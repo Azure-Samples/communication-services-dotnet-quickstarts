@@ -1,5 +1,5 @@
-﻿using System.Net.WebSockets;
-using System.Net;
+﻿using System.Net;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
@@ -7,7 +7,7 @@ namespace WebSocketListener
 {
     internal class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
             Console.WriteLine("WebSocket Listener starting for port 8080");
             HttpListener httpListener = new HttpListener();
@@ -36,7 +36,7 @@ namespace WebSocketListener
                     }
 
                     WebSocket webSocket = websocketContext.WebSocket;
-                    if(audioDataFiles == null)
+                    if (audioDataFiles == null)
                     {
                         audioDataFiles = new Dictionary<string, FileStream>();
                     }
@@ -68,10 +68,10 @@ namespace WebSocketListener
 
                                             if (jsonData != null && jsonData.kind == "AudioData")
                                             {
-                                                byte[] ? byteArray = jsonData?.audioData?.data;
+                                                byte[]? byteArray = jsonData?.audioData?.data;
 
-                                                string fileName = string.Format("..//{0}.txt", jsonData?.audioData?.participantRawID).Replace(":","");
-                                                FileStream ? audioDataFileStream;
+                                                string fileName = string.Format("..//{0}.txt", jsonData?.audioData?.participantRawID).Replace(":", "");
+                                                FileStream? audioDataFileStream;
 
                                                 if (audioDataFiles.ContainsKey(fileName))
                                                 {
@@ -107,6 +107,7 @@ namespace WebSocketListener
                         {
                             file.Value.Close();
                         }
+                        audioDataFiles.Clear();
                     }
                 }
                 else
