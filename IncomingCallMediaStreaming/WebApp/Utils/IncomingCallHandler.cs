@@ -52,6 +52,8 @@ namespace IncomingCallMediaStreaming
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
 
                 callConnection = response.Value.CallConnection;
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"CallConnection Id -----> {callConnection.CallConnectionId}");
+
                 RegisterToCallStateChangeEvent(callConnection.CallConnectionId);
 
                 //Wait for the call to get connected

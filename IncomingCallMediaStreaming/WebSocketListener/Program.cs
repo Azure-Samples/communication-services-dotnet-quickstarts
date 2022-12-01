@@ -107,6 +107,7 @@ namespace WebSocketListener
                         {
                             file.Value.Close();
                         }
+                        audioDataFiles.Clear();
                     }
                 }
                 else
