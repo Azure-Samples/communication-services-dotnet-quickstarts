@@ -32,7 +32,6 @@ and perform some basic sentiment analysis on the result using Azure Cognitive Se
 3. Replace the following strings with your own values:
   - ACS_CONNECTION_STRING your ACS connection string
   - NGROK_URI your ngrok Uri to expose
-  - WELCOME_WAV_FILE_URI an audio wav file to play when call is connected
   - COGNITIVE_SERVICE_URI endpoint uri of your cognitive services
   - COGNITIVE_SERVICE_KEY secret of your cognitive services
   - SPEECH_KEY key of your speech services

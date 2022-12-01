@@ -5,12 +5,12 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var client = new CallAutomationClient("<ACS_CONNECTION_STRING>");
 var callbackUriBase = "<NGROK_URI>";
-var mediaFileSource = new Uri("<WELCOME_WAV_FILE_URI>");
 var app = builder.Build();
 var serverCallId = "";
 
@@ -82,7 +82,7 @@ app.MapPost("/api/calls/{contextId}", async (
 
             await client.GetCallConnection(@event.CallConnectionId)
                 .GetCallMedia()
-                .PlayToAllAsync(new FileSource(mediaFileSource));
+                .PlayToAllAsync(new FileSource(new Uri($"{callbackUriBase}/audio/intro.wav")));
         }
 
     }
@@ -112,10 +112,12 @@ app.MapPost("/api/recordingDone", async ([FromBody] EventGridEvent[] eventGridEv
         }
 
         // Handle recording status updated event - download recording to local folder
-        var jsonObject = JsonNode.Parse(eventGridEvent.Data).AsObject();
-        var downloadUri = (string)jsonObject["recordingStorageInfo"]["recordingChunks"][0]["contentLocation"];
-        await using var fileStream = File.Create("unmixed_recording.wav");
-        await client.GetCallRecording().DownloadToAsync(new Uri(downloadUri), fileStream);
+        if (eventData is AcsRecordingFileStatusUpdatedEventData acsRecordingFileStatusUpdatedEventData)
+        {
+            var recordingDownloadUri = new Uri(acsRecordingFileStatusUpdatedEventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation);
+            await using var fileStream = File.Create("unmixed_recording.wav");
+            await client.GetCallRecording().DownloadToAsync(recordingDownloadUri, fileStream);
+        }
     }
     return Results.Ok();
 });
@@ -127,5 +129,11 @@ app.MapPost("/api/recordingDone", async ([FromBody] EventGridEvent[] eventGridEv
 app.MapGet("/api/sentimentAnalysis", async ([FromQuery] string filePath) => await SentimentAnalysis.AnalyzeSentiment(filePath));
 
 #endregion
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "audio")),
+    RequestPath = "/audio"
+});
 
 app.Run();
