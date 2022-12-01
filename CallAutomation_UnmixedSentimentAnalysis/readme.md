@@ -1,5 +1,10 @@
 ﻿# Unmixed Audio Recording - Sentiment Analysis Sample
 
+## Overview
+This sample demonstrates a sample end-to-end flow using Azure Communication Services Call Automation SDK 
+to answer an incoming call, start recording the unmixed audio, split the channels into separate file
+and perform some basic sentiment analysis on the result using Azure Cognitive Services.
+
 ## Prerequisites
 - [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
 - [Azure Communication Services resource](https://azure.microsoft.com/en-gb/products/communication-services/)
