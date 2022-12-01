@@ -6,8 +6,8 @@ using Microsoft.CognitiveServices.Speech.Audio;
 
 public class SentimentAnalysis
 {
-    private static readonly Uri CognitiveServicesUri = new ("<COGNITIVE_SERVICE_URI>");
-    private static readonly AzureKeyCredential CognitiveServicesKey = new ("<COGNITIVE_SERVICE_KEY>");
+    private static readonly Uri CognitiveServicesUri = new("<COGNITIVE_SERVICE_URI>");
+    private static readonly AzureKeyCredential CognitiveServicesKey = new("<COGNITIVE_SERVICE_KEY>");
     private static readonly string SpeechKey = "<SPEECH_KEY>";
     private static readonly string SpeechRegion = "<SPEECH_REGION>";
 

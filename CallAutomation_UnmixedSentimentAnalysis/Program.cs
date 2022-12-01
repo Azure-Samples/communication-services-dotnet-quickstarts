@@ -114,7 +114,7 @@ app.MapPost("/api/recordingDone", async ([FromBody] EventGridEvent[] eventGridEv
         // Handle recording status updated event - download recording to local folder
         var jsonObject = JsonNode.Parse(eventGridEvent.Data).AsObject();
         var downloadUri = (string)jsonObject["recordingStorageInfo"]["recordingChunks"][0]["contentLocation"];
-        await using var fileStream = File.Create("../../../unmixed_recording.wav");
+        await using var fileStream = File.Create("unmixed_recording.wav");
         await client.GetCallRecording().DownloadToAsync(new Uri(downloadUri), fileStream);
     }
     return Results.Ok();
