@@ -25,4 +25,4 @@
 1. Run the following ffmpeg commands:
   - Find number of channels: `ffprobe -v error -show_entries stream=channels,channel_layout -of default=nw=1 unmixed_recording.wav`
   - Split into 2 mono files: `ffmpeg -i unmixed_recording.wav -filter_complex "[0:a]channelsplit=channel_layout=stereo[left][right]" -map "[left]" channel0.wav -map "[right]" channel1.wav`
-1. Get the sentiment analysis by opening following URI in a browser: https://localhost:5001/api/sentimentAnalysis?filePath=channel1.wav
+1. Get the sentiment analysis by opening following URI in a browser: https://localhost:5001/api/sentimentAnalysis?filePath=channel0.wav
