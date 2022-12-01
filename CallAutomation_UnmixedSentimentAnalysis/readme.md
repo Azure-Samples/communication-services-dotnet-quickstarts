@@ -16,10 +16,10 @@ and perform some basic sentiment analysis on the result using Azure Cognitive Se
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
 - [Visual Studio (2022 and above)](https://visualstudio.microsoft.com/vs/)
 - [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
-- Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-
-- [Azure Cognitive Services resource](https://azure.microsoft.com/en-us/products/cognitive-services/)
-- [Azure Speech resource](https://azure.microsoft.com/en-us/products/cognitive-services/speech-services/)
-- [Ngrok](https://ngrok.com/download)
+- Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource connection string for this sample.
+- Create an [Azure Cognitive Services resource](https://azure.microsoft.com/en-us/products/cognitive-services/)
+- Create an [Azure Speech resource](https://azure.microsoft.com/en-us/products/cognitive-services/speech-services/)
+- Web tunnel [Ngrok](https://ngrok.com/download)
 - [FFMPeg](https://ffmpeg.org/download.html)
 
 ## Before running the sample for the first time
