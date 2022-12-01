@@ -1,12 +1,6 @@
-﻿---
-page_type: sample
-languages:
-- csharp
-products:
-- azure
-- azure-communication-services
-- azure-cognitive-services
----
+﻿|page_type|languages|products
+|---|---|---|
+|sample|<table><tr><td>csharp</tr></td></table>|<table><tr><td>azure</td><td>azure-communication-services</td><td>azure-cognitive-services</td></tr></table>|
 
 # Unmixed Audio Recording - Sentiment Analysis Sample
 
