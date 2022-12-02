@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
+using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
@@ -7,10 +8,11 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 
-var builder = WebApplication.CreateBuilder(args);
-
 var client = new CallAutomationClient("<ACS_CONNECTION_STRING>");
-var callbackUriBase = "<NGROK_URI>";
+
+var builder = WebApplication.CreateBuilder(args);
+var callbackUriBase = builder.Configuration["VS_TUNNEL_URL"];
+Console.WriteLine($"CALLBACK URI: {callbackUriBase}");
 var app = builder.Build();
 var serverCallId = "";
 
@@ -38,11 +40,11 @@ app.MapPost("/api/incomingCall", async (
         // Handle incoming call event
         var jsonObject = JsonNode.Parse(eventGridEvent.Data).AsObject();
         var callerId = (string)(jsonObject["from"]["rawId"]);
+        serverCallId = (string)(jsonObject["serverCallId"]);
         var incomingCallContext = (string)jsonObject["incomingCallContext"];
-        var callbackUri = new Uri(callbackUriBase + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
+        var callbackUri = new Uri(callbackUriBase + $"api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
-        AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
-        serverCallId = answerCallResult.CallConnectionProperties.ServerCallId;
+        await client.AnswerCallAsync(incomingCallContext, callbackUri);
     }
     return Results.Ok();
 });
@@ -60,13 +62,14 @@ app.MapPost("/api/calls/{contextId}", async (
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         
-        if (@event is CallConnected)
+        if (@event is CallConnected callConnected)
         {
             // Option 1: Record unmixed audio and automatically set participant ordering based on audio first detected
             await client.GetCallRecording().StartRecordingAsync(
                 new StartRecordingOptions(new ServerCallLocator(serverCallId))
                 {
                     RecordingChannel = RecordingChannel.Unmixed,
+
                 });
 
             // Option 2: Record unmixed audio and manually set the PSTN participant to be the first channel in the recording
@@ -82,7 +85,7 @@ app.MapPost("/api/calls/{contextId}", async (
 
             await client.GetCallConnection(@event.CallConnectionId)
                 .GetCallMedia()
-                .PlayToAllAsync(new FileSource(new Uri($"{callbackUriBase}/audio/intro.wav")));
+                .PlayToAllAsync(new FileSource(new Uri($"{callbackUriBase}audio/intro.wav")));
         }
 
     }
