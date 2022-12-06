@@ -6,6 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+   <ItemGroup>
+    <Content Include="audio\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.12.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
