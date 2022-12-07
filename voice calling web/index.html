@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Communication Client - Calling Sample</title>
+  </head>
+  <body>
+    <h4>Azure Communication Services</h4>
+    <h1>Calling Quickstart</h1>
+    <input 
+      id="token-input"
+      type="text"
+      placeholder="User access token"
+      style="margin-bottom:1em; width: 200px;"
+    />
+    </div>
+    <button id="token-submit" type="button">
+        Submit
+    </button>
+    <input 
+      id="callee-id-input"
+      type="text"
+      placeholder="Who would you like to call?"
+      style="margin-bottom:1em; width: 200px; display: block;"
+    />
+    <div>
+      <button id="call-button" type="button" disabled="true">
+        Start Call
+      </button>
+      &nbsp;
+      <button id="hang-up-button" type="button" disabled="true">
+        Hang Up
+      </button>
+    </div>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
