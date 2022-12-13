@@ -21,10 +21,17 @@ namespace CallingQuickstart
         public MainPage()
         {
             this.InitializeComponent();
-            Task.Run(() => this.InitCallAgentAndDeviceManagerAsync()).Wait();
+            this.Loaded += OnLoaded;
 
             ApplicationView.PreferredLaunchViewSize = new Size(800, 600);
             ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.PreferredLaunchViewSize;
+        }
+
+        private async void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            this.Loaded -= OnLoaded;
+
+            await this.InitCallAgentAndDeviceManagerAsync();
         }
 
         private async Task InitCallAgentAndDeviceManagerAsync()
@@ -32,7 +39,8 @@ namespace CallingQuickstart
             var callClient = new CallClient();
             this.deviceManager = await callClient.GetDeviceManager();
 
-            var tokenCredential = new CommunicationTokenCredential("<AUTHENTICATION_TOKEN>");
+            //var tokenCredential = new CommunicationTokenCredential("<AUTHENTICATION_TOKEN>");
+            var tokenCredential = new CommunicationTokenCredential("eyJhbGciOiJSUzI1NiIsImtpZCI6IjEwNiIsIng1dCI6Im9QMWFxQnlfR3hZU3pSaXhuQ25zdE5PU2p2cyIsInR5cCI6IkpXVCJ9.eyJza3lwZWlkIjoiYWNzOjE1YmIzOGE4LTRhNjYtNDA0Ni1iYjA0LWFiMTZiZTBhNDBmMF8wMDAwMDAxNS1hYTMwLTU4MjUtMDRjOC0zZTNhMGQwMDJjYjUiLCJzY3AiOjE3OTIsImNzaSI6IjE2NzA5MTUyMDgiLCJleHAiOjE2NzEwMDE2MDgsImFjc1Njb3BlIjoidm9pcCIsInJlc291cmNlSWQiOiIxNWJiMzhhOC00YTY2LTQwNDYtYmIwNC1hYjE2YmUwYTQwZjAiLCJyZXNvdXJjZUxvY2F0aW9uIjoidW5pdGVkc3RhdGVzIiwiaWF0IjoxNjcwOTE1MjA4fQ.LM_fLf-B5ozQjdZ94okSfq7KjjjJwzGWNmmZLaC6W0y3TWTKazUrh9TzRwOlQGbyWLOuFW6Tuu4dN3Ux4SKIVEWpfNZWYsqcY80rokLCmrM0cl9Dtm2DzsyvVbjLgbayDTBudnVQcuGDJTtp5UvCDuzLu2jckSJby_6EDozhaF7BuQggrFqJ_or77Q4JLPisLyi48PBAKSPObm9tkJJ4_UbtE0DoCCgiYgmSy2ktbTaGMnek6tCyL0zJt_uJ021vDJ5sz0wqzbmfiymqFcM8PKkma0Z1jFLxLQJeBOAPFdZcTHCp8oe4a5UY2Fnj0udgMNoVErZxvnIFB18wOkSEPg");
             var callAgentOptions = new CallAgentOptions()
             {
                 DisplayName = "<DISPLAY_NAME>"
