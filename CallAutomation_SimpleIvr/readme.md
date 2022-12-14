@@ -48,7 +48,7 @@ The application is an app service application built on .NET6.0.
 2. Create a new publish profile and select your app name, Azure subscription, resource group etc. (choose any unique name, as this URL needed for `CallbackUriBase` configuration settings)
 3. After publishing, add the following configurations on azure portal (under app service's configuration section).
 
-	- ResourceConnectionString: Azure Communication Service resource's connection string.
+    - ConnectionString: Azure Communication Service resource's connection string.
 	- ACSAlternatePhoneNumber: Azure Communication Service acquired phone number.
 	- CallbackUriBase: URI of the deployed app service or Visual studio dev tunnel url.
 	- ParticipantToAdd: Target phone number to add as participant.
