@@ -17,4 +17,10 @@
     <Folder Include="audio\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="audio\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
