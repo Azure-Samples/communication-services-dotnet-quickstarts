@@ -45,9 +45,9 @@ namespace CallAutomation
 
         public bool UpdateByRecordingId(string recordingId, string blobSASUri)
         {
-            foreach(KeyValuePair<string, LocalRecordingInfo> pair in serverCallIdRecordingInfoMap)
+            foreach (KeyValuePair<string, LocalRecordingInfo> pair in serverCallIdRecordingInfoMap)
             {
-                if(pair.Value.recordingId.Equals(recordingId))
+                if (pair.Value.recordingId.Equals(recordingId))
                 {
                     AddOrUpdate(pair.Key, recordingId, blobSASUri);
                     return true;

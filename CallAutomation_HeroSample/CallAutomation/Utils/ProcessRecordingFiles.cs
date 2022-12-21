@@ -1,13 +1,13 @@
-﻿using System;
-using System.Threading.Tasks;
-using CallAutomation.Controllers;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using System.IO;
-using Newtonsoft.Json;
-using System.Text.RegularExpressions;
+﻿using Azure.Communication.CallAutomation;
 using Azure.Messaging.EventGrid.SystemEvents;
-using Azure.Communication.CallAutomation;
+using CallAutomation.Controllers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System;
+using System.IO;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace CallAutomation
 {

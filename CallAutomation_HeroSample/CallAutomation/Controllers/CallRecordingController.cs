@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Azure.Communication.CallAutomation;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure.Communication.CallAutomation;
 
 namespace CallAutomation.Controllers
 {
@@ -102,7 +102,8 @@ namespace CallAutomation.Controllers
                     if (string.IsNullOrEmpty(recordingId))
                     {
                         LocalRecordingInfo recInfo = localRecordingInfoCache.Get(serverCallId);
-                        if (recInfo != null) {
+                        if (recInfo != null)
+                        {
                             recordingId = recInfo.recordingId;
                         }
                     }
@@ -227,12 +228,12 @@ namespace CallAutomation.Controllers
                 if (!string.IsNullOrWhiteSpace(serverCallId))
                 {
                     string downloadRecordingURL = null;
-                    
+
                     var recInfo = localRecordingInfoCache.Get(serverCallId);
                     if (recInfo != null)
                         downloadRecordingURL = recInfo.recordingUri;
 
-                    if(!string.IsNullOrWhiteSpace(downloadRecordingURL))
+                    if (!string.IsNullOrWhiteSpace(downloadRecordingURL))
                     {
                         Logger.LogInformation($"Recording download link -- > {downloadRecordingURL}");
 

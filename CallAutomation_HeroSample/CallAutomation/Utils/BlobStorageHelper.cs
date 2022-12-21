@@ -1,9 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using Azure.Storage.Blobs;
+﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace CallAutomation
 {
@@ -86,7 +86,7 @@ namespace CallAutomation
                 BlobContentInfo status = await blobClient.UploadAsync(uploadFileStream, true);
                 uploadFileStream.Close();
 
-                if(!filePath.EndsWith(RecordingFileFormat.Json))
+                if (!filePath.EndsWith(RecordingFileFormat.Json))
                 {
                     blobStorageHelperInfo.Uri = GetBlobSasUri(containerName, blobClient);
                 }
@@ -101,7 +101,7 @@ namespace CallAutomation
             }
         }
 
-        
+
         /// <summary>
         /// Returns a URI containing a SAS for the blob.
         /// </summary>

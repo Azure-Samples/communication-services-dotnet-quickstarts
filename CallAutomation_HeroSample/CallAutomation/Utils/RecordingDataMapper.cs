@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Azure.Communication.CallAutomation;
+﻿using Azure.Communication.CallAutomation;
+using System.Collections.Generic;
 
 namespace CallAutomation
 {

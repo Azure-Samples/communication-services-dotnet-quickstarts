@@ -1,16 +1,16 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Azure;
 using Azure.Communication;
 using Azure.Communication.Identity;
+using Azure.Communication.Rooms;
 using Azure.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
 using System.Threading;
-using Azure.Communication.Rooms;
+using System.Threading.Tasks;
 
 namespace CallAutomation
 {
@@ -37,7 +37,7 @@ namespace CallAutomation
         {
             try
             {
-                Response <CommunicationUserIdentifierAndToken> response = await _client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.VoIP });
+                Response<CommunicationUserIdentifierAndToken> response = await _client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.VoIP });
 
                 var responseValue = response.Value;
 
@@ -52,7 +52,7 @@ namespace CallAutomation
                     token = responseValue.AccessToken.Token,
                     expiresOn = responseValue.AccessToken.ExpiresOn
                 };
-                
+
                 return this.Ok(clientResponse);
             }
             catch (RequestFailedException ex)
