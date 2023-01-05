@@ -4,7 +4,7 @@ using Azure.AI.TextAnalytics;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 
-public class SentimentAnalysis
+public class CognitiveService
 {
     private static readonly Uri CognitiveServicesUri = new("<COGNITIVE_SERVICE_URI>");
     private static readonly AzureKeyCredential CognitiveServicesKey = new("<COGNITIVE_SERVICE_KEY>");
@@ -20,6 +20,11 @@ public class SentimentAnalysis
         var sentiments = GetSentiments(response.Value);
 
         return sentiments;
+    }
+
+    public static async Task<string> SpeechToText(string filePath)
+    {
+        return await SpeechToTextFromFile(filePath);
     }
 
     /**

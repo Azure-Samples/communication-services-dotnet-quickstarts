@@ -129,7 +129,13 @@ app.MapPost("/api/recordingDone", async ([FromBody] EventGridEvent[] eventGridEv
 
 #region Sentiment Analysis
 
-app.MapGet("/api/sentimentAnalysis", async ([FromQuery] string filePath) => await SentimentAnalysis.AnalyzeSentiment(filePath));
+app.MapGet("/api/sentimentAnalysis", async ([FromQuery] string filePath) => await CognitiveService.AnalyzeSentiment(filePath));
+
+#endregion
+
+#region Transcription
+
+app.MapGet("/api/speechToText", async ([FromQuery] string filePath) => await CognitiveService.SpeechToText(filePath));
 
 #endregion
 

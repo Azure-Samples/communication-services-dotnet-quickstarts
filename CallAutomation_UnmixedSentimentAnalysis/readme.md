@@ -42,3 +42,4 @@ and perform some basic sentiment analysis on the result using Azure Cognitive Se
   - Find number of channels: `ffprobe -v error -show_entries stream=channels,channel_layout -of default=nw=1 unmixed_recording.wav`
   - Split into 2 mono files: `ffmpeg -i unmixed_recording.wav -filter_complex "[0:a]channelsplit=channel_layout=stereo[left][right]" -map "[left]" channel0.wav -map "[right]" channel1.wav`
 6. Get the sentiment analysis by opening following URI in a browser: https://localhost:5001/api/sentimentAnalysis?filePath=channel0.wav
+7. (Optional) Get the text transcript by opening following URI in a browser: https://localhost:5001/api/speechToText?filePath=channel0.wav
