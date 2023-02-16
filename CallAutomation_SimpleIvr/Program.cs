@@ -1,13 +1,11 @@
-using Azure.Communication;
-using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
-using Newtonsoft.Json;
+using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
+using Newtonsoft.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
