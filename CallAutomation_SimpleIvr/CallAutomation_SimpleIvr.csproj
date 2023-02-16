@@ -22,5 +22,10 @@
   <ItemGroup>
     <Folder Include="data\" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="audio\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>
