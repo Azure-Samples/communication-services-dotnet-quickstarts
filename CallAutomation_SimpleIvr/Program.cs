@@ -1,4 +1,4 @@
-using Azure.Communication;	
+using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
