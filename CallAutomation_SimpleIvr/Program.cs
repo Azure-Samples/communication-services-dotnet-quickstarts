@@ -134,8 +134,7 @@ app.MapPost("/api/calls/{contextId}", async (
         {
 
             // play invalid audio
-            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(audioBaseUrl + builder.Configuration["InvalidAudio"])), new PlayOptions() { Loop = false });
-            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(audioBaseUrl + builder.Configuration["InvalidAudio"])), audioPlayOptions);
         }
         if (@event is PlayCompleted { OperationContext: "SimpleIVR" })
         {
