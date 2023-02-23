@@ -67,12 +67,6 @@ app.MapPost("/api/calls/{contextId}", async (
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
         if (@event is CallConnected)
         {
-            // Start call recording
-            var serverCallId = client.GetCallConnection(@event.CallConnectionId).GetCallConnectionProperties().Value.ServerCallId;
-            StartRecordingOptions startRecordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
-            _ = Task.Run(async () => await client.GetCallRecording().StartRecordingAsync(startRecordingOptions));
-
-
             // Start recognize prompt - play audio and recognize 1-digit DTMF input
             var recognizeOptions =
                 new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callerId), maxTonesToCollect: 1)
@@ -150,43 +144,6 @@ app.MapPost("/api/calls/{contextId}", async (
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
 
-app.MapPost("api/recording", async (
-    [FromBody] EventGridEvent[] eventGridEvents) =>
-{
-    foreach (var eventGridEvent in eventGridEvents)
-    {
-        // Handle system events
-        if (eventGridEvent.TryGetSystemEventData(out object eventData))
-        {
-            // Handle the subscription validation event.
-            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
-            {
-                var responseData = new SubscriptionValidationResponse
-                {
-                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                };
-                return Results.Ok(responseData);
-            }
-        }
-
-        if (eventData is AcsRecordingFileStatusUpdatedEventData acsRecordingFileStatusUpdatedEventData)
-        {
-            var recordingDownloadUri = new Uri(acsRecordingFileStatusUpdatedEventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation);
-            var downloadRespose = await client.GetCallRecording().DownloadStreamingAsync(recordingDownloadUri);
-
-            string filePath = $".\\recording\\{acsRecordingFileStatusUpdatedEventData.RecordingStorageInfo.RecordingChunks[0].DocumentId}.mp4";
-            using (Stream streamToReadFrom = downloadRespose.Value)
-            {
-                using (Stream streamToWriteTo = System.IO.File.Open(filePath, FileMode.Create))
-                {
-                    await streamToReadFrom.CopyToAsync(streamToWriteTo);
-                    await streamToWriteTo.FlushAsync();
-                }
-            }
-        }
-    }
-    return Results.Ok();
-});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
