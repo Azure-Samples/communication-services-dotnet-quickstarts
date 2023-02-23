@@ -10,10 +10,7 @@ products:
 
 # Call Automation - Simple IVR Solution
 
-This sample application shows how the Azure Communication Services - Call Automation SDK can be used to build IVR related solutions.  
-This sample makes an outbound call to a phone number performs dtmf recognition and the application plays next audio based on the key pressed by the callee.
-This sample application configured for accepting tone-1  through tone-5 , If the callee pressed any other key than expected, an invalid audio tone will be played and then call will be disconnected.
-The application is an app service application built on .NET6.0.
+The purpose of this sample application is to demonstrate the usage of the Azure Communication Services - Call Automation SDK for building solutions related to Interactive Voice Response (IVR). The application accepts an incoming call when an callee dialed in to either ACS Communication Identifier or ACS acquired phone number. Application prompt the Dual-Tone Multi-Frequency (DTMF) tones to select, and then plays the appropriate audio file based on the key pressed by the callee. The application has been configured to accept tone-1 through tone-5, and if any other key is pressed, the callee will hear an invalid tone and the call will be disconnected. This sample has been developed as an app service application using .NET7.
 
 # Design
 
@@ -25,13 +22,14 @@ The application is an app service application built on .NET6.0.
 - [Visual Studio (2022 and above)](https://visualstudio.microsoft.com/vs/)
 - [.NET7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
-- Enable Visual studio dev tunneling for local development. For details, see [Enable dev tunnel] (https://learn.microsoft.com/en-us/connectors/custom-connectors/port-tunneling)
-	- To enable dev tunneling, Click `Tools` -> `Options` in Visual Studio 2022
-	- In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
-	- ![EnableDevTunnel](./data/EnableDevTunnel.png) 
-	- Login into your account under `Dev Tunnels` -> `General`
-	- ![LogInDevTunnel](./data/AddAccountForTunnel.png) 
-[Recommended read for Dev Tunnels](https://learn.microsoft.com/en-us/aspnet/core/test/dev-tunnels?view=aspnetcore-7.0)
+- Enable Visual studio dev tunneling for local development. For details, see   [Enable dev tunnel] (https://learn.microsoft.com/en-us/connectors/custom-connectors/port-tunneling)
+	
+	- To enable dev tunneling, Click `Tools` -> `Options` in Visual Studio 2022.  In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
+	![EnableDevTunnel](./data/EnableDevTunnel.png) 
+	- Create `Dev Tunnels`, for more details about [Dev Tunnels.](https://learn.microsoft.com/en-us/aspnet/core/test/dev-tunnels?view=aspnetcore-7.0)  
+	![ViewDevTunnels](./data//ViewDevTunnel.png)   
+	![CreateDevTunnels](./data//CreateDevTunnel.png) 
+
 
 ## Before running the sample for the first time
 
@@ -45,12 +43,12 @@ The application is an app service application built on .NET6.0.
 ### Publish the Call Automation Simple IVR to Azure WebApp
 
 1. Right click the `CallAutomation_SimpleIvr` project and select Publish.
-2. Create a new publish profile and select your app name, Azure subscription, resource group etc. (choose any unique name, as this URL needed for `CallbackUriBase` configuration settings)
+2. Create a new publish profile and select your app name, Azure subscription, resource group etc. (choose any unique name, as this URL needed for `BaseUri` configuration settings)
 3. After publishing, add the following configurations on azure portal (under app service's configuration section).
 
     - ConnectionString: Azure Communication Service resource's connection string.
 	- ACSAlternatePhoneNumber: Azure Communication Service acquired phone number.
-	- CallbackUriBase: Url of the deployed app service.
+	- BaseUri: Url of the deployed app service.
 	- ParticipantToAdd: Target phone number to add as participant.
 	
 ### Create Webhook for Microsoft.Communication.IncomingCall event and Microsoft.Communication.RecordingFileStatusUpdated event

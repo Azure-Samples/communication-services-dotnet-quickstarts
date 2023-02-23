@@ -15,9 +15,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-
 var client = new CallAutomationClient(builder.Configuration["ConnectionString"]);
-var callbackUriBase = builder.Configuration["CallbackUriBase"];
+var baseUri = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
+if(string.IsNullOrEmpty(baseUri))
+{
+    baseUri = builder.Configuration["BaseUri"];
+}
 
 var app = builder.Build();
 app.MapPost("/api/incomingCall", async (
@@ -43,7 +46,7 @@ app.MapPost("/api/incomingCall", async (
         var jsonObject = JsonNode.Parse(eventGridEvent.Data).AsObject();
         var callerId = (string)(jsonObject["from"]["rawId"]);
         var incomingCallContext = (string)jsonObject["incomingCallContext"];
-        var callbackUri = new Uri(callbackUriBase + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
+        var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
     }
@@ -56,7 +59,6 @@ app.MapPost("/api/calls/{contextId}", async (
     [Required] string callerId,
     ILogger<Program> logger) =>
 {
-    var audioBaseUrl = builder.Configuration["CallbackUriBase"];
     var audioPlayOptions = new PlayOptions() { OperationContext = "SimpleIVR", Loop = false };
 
     foreach (var cloudEvent in cloudEvents)
@@ -78,7 +80,7 @@ app.MapPost("/api/calls/{contextId}", async (
                     InterruptPrompt = true,
                     InterToneTimeout = TimeSpan.FromSeconds(10),
                     InitialSilenceTimeout = TimeSpan.FromSeconds(5),
-                    Prompt = new FileSource(new Uri(audioBaseUrl + builder.Configuration["MainMenuAudio"])),
+                    Prompt = new FileSource(new Uri(baseUri + builder.Configuration["MainMenuAudio"])),
                     OperationContext = "MainMenu"
                 };
             await client.GetCallConnection(@event.CallConnectionId)
@@ -91,28 +93,28 @@ app.MapPost("/api/calls/{contextId}", async (
 
             if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.One)
             {
-                PlaySource salesAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["SalesAudio"]));
+                PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(salesAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Two)
             {
-                PlaySource marketingAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["MarketingAudio"]));
+                PlaySource marketingAudio = new FileSource(new Uri(baseUri + builder.Configuration["MarketingAudio"]));
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(marketingAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Three)
             {
-                PlaySource customerCareAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["CustomerCareAudio"]));
+                PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Four)
             {
-                PlaySource agentAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["AgentAudio"]));
+                PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(agentAudio, audioPlayOptions);
 
                 var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
                         {
-                        new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
+                            new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
                         });
                 addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
 
@@ -126,7 +128,7 @@ app.MapPost("/api/calls/{contextId}", async (
             }
             else
             {
-                PlaySource invalidAudio = new FileSource(new Uri(audioBaseUrl + builder.Configuration["InvalidAudio"]));
+                PlaySource invalidAudio = new FileSource(new Uri(baseUri + builder.Configuration["InvalidAudio"]));
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(invalidAudio, audioPlayOptions);
             }
         }
@@ -134,7 +136,7 @@ app.MapPost("/api/calls/{contextId}", async (
         {
 
             // play invalid audio
-            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(audioBaseUrl + builder.Configuration["InvalidAudio"])), audioPlayOptions);
+            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(baseUri + builder.Configuration["InvalidAudio"])), audioPlayOptions);
         }
         if (@event is PlayCompleted { OperationContext: "SimpleIVR" })
         {
