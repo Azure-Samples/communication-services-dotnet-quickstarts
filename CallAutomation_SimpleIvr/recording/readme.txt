@@ -1,1 +1,0 @@
-Recording placeholder, you can delete the old recordiings to free up space.
