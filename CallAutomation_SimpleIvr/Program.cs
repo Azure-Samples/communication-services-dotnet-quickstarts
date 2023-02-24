@@ -105,15 +105,6 @@ app.MapPost("/api/calls/{contextId}", async (
                 PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
                 await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(agentAudio, audioPlayOptions);
-
-                var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
-                        {
-                            new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
-                        });
-                addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
-
-                await client.GetCallConnection(@event.CallConnectionId).AddParticipantsAsync(addParticipantOptions);
-
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Five)
             {
@@ -135,6 +126,16 @@ app.MapPost("/api/calls/{contextId}", async (
         if (@event is PlayCompleted { OperationContext: "SimpleIVR" })
         {
             await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+        }
+        if(@event is PlayCompleted { OperationContext: "AgentConnect" })
+        {
+            var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
+                        {
+                            new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
+                        });
+            addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+
+            await client.GetCallConnection(@event.CallConnectionId).AddParticipantsAsync(addParticipantOptions);
         }
         if (@event is PlayFailed { OperationContext: "SimpleIVR" })
         {
