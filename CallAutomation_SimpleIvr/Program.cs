@@ -3,11 +3,11 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
+using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
-using Newtonsoft.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +17,7 @@ builder.Services.AddSwaggerGen();
 
 var client = new CallAutomationClient(builder.Configuration["ConnectionString"]);
 var baseUri = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
-if(string.IsNullOrEmpty(baseUri))
+if (string.IsNullOrEmpty(baseUri))
 {
     baseUri = builder.Configuration["BaseUri"];
 }
@@ -77,9 +77,7 @@ app.MapPost("/api/calls/{contextId}", async (
                     Prompt = new FileSource(new Uri(baseUri + builder.Configuration["MainMenuAudio"])),
                     OperationContext = "MainMenu"
                 };
-            await client.GetCallConnection(@event.CallConnectionId)
-                .GetCallMedia()
-                .StartRecognizingAsync(recognizeOptions);
+            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().StartRecognizingAsync(recognizeOptions);
         }
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
@@ -119,26 +117,29 @@ app.MapPost("/api/calls/{contextId}", async (
         }
         if (@event is RecognizeFailed { OperationContext: "MainMenu" })
         {
-
             // play invalid audio
             await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(baseUri + builder.Configuration["InvalidAudio"])), audioPlayOptions);
         }
-        if (@event is PlayCompleted { OperationContext: "SimpleIVR" })
+        if (@event is PlayCompleted)
         {
-            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
-        }
-        if(@event is PlayCompleted { OperationContext: "AgentConnect" })
-        {
-            var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
-                        {
-                            new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
-                        });
-            addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+            if (@event.OperationContext == "AgentConnect")
+            {
+                var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
+                {
+                    new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
+                });
 
-            await client.GetCallConnection(@event.CallConnectionId).AddParticipantsAsync(addParticipantOptions);
+                addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+                await client.GetCallConnection(@event.CallConnectionId).AddParticipantsAsync(addParticipantOptions);
+            }
+            if (@event.OperationContext == "SimpleIVR")
+            {
+                await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+            }
         }
-        if (@event is PlayFailed { OperationContext: "SimpleIVR" })
+        if (@event is PlayFailed)
         {
+            logger.LogInformation($"PlayFaild Event: {JsonConvert.SerializeObject(@event)}");
             await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
         }
     }
