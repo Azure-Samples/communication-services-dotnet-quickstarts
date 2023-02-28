@@ -139,7 +139,7 @@ app.MapPost("/api/calls/{contextId}", async (
         }
         if (@event is PlayFailed)
         {
-            logger.LogInformation($"PlayFaild Event: {JsonConvert.SerializeObject(@event)}");
+            logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
             await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
         }
     }
