@@ -65,6 +65,15 @@ app.MapPost("/api/calls/{contextId}", async (
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
+
+        var callConnection = client.GetCallConnection(@event.CallConnectionId);
+        var callMedia = callConnection?.GetCallMedia();
+
+        if (callConnection == null || callMedia == null)
+        {
+            return Results.BadRequest($"Call objects failed to get for connection id {@event.CallConnectionId}.");
+        }
+
         if (@event is CallConnected)
         {
             // Start recognize prompt - play audio and recognize 1-digit DTMF input
@@ -77,7 +86,7 @@ app.MapPost("/api/calls/{contextId}", async (
                     Prompt = new FileSource(new Uri(baseUri + builder.Configuration["MainMenuAudio"])),
                     OperationContext = "MainMenu"
                 };
-            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().StartRecognizingAsync(recognizeOptions);
+            await callMedia.StartRecognizingAsync(recognizeOptions);
         }
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
@@ -86,39 +95,39 @@ app.MapPost("/api/calls/{contextId}", async (
             if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.One)
             {
                 PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
-                await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(salesAudio, audioPlayOptions);
+                await callMedia.PlayToAllAsync(salesAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Two)
             {
                 PlaySource marketingAudio = new FileSource(new Uri(baseUri + builder.Configuration["MarketingAudio"]));
-                await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(marketingAudio, audioPlayOptions);
+                await callMedia.PlayToAllAsync(marketingAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Three)
             {
                 PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
-                await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(customerCareAudio, audioPlayOptions);
+                await callMedia.PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Four)
             {
                 PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
-                await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(agentAudio, audioPlayOptions);
+                await callMedia.PlayToAllAsync(agentAudio, audioPlayOptions);
             }
             else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Five)
             {
                 // Hangup for everyone
-                await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+                await callConnection.HangUpAsync(true);
             }
             else
             {
                 PlaySource invalidAudio = new FileSource(new Uri(baseUri + builder.Configuration["InvalidAudio"]));
-                await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(invalidAudio, audioPlayOptions);
+                await callMedia.PlayToAllAsync(invalidAudio, audioPlayOptions);
             }
         }
         if (@event is RecognizeFailed { OperationContext: "MainMenu" })
         {
             // play invalid audio
-            await client.GetCallConnection(@event.CallConnectionId).GetCallMedia().PlayToAllAsync(new FileSource(new Uri(baseUri + builder.Configuration["InvalidAudio"])), audioPlayOptions);
+            await callMedia.PlayToAllAsync(new FileSource(new Uri(baseUri + builder.Configuration["InvalidAudio"])), audioPlayOptions);
         }
         if (@event is PlayCompleted)
         {
@@ -130,17 +139,17 @@ app.MapPost("/api/calls/{contextId}", async (
                 });
 
                 addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
-                await client.GetCallConnection(@event.CallConnectionId).AddParticipantsAsync(addParticipantOptions);
+                await callConnection.AddParticipantsAsync(addParticipantOptions);
             }
             if (@event.OperationContext == "SimpleIVR")
             {
-                await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+                await callConnection.HangUpAsync(true);
             }
         }
         if (@event is PlayFailed)
         {
             logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
-            await client.GetCallConnection(@event.CallConnectionId).HangUpAsync(true);
+            await callConnection.HangUpAsync(true);
         }
     }
     return Results.Ok();
