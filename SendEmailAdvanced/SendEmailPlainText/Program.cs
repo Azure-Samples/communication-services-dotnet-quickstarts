@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
+﻿using Azure.Communication.Email;
+using System;
 using System.Threading.Tasks;
-using Azure.Communication.Email;
-using Azure.Communication.Email.Models;
 
 namespace SendEmailPlainText
 {
@@ -19,50 +16,29 @@ namespace SendEmailPlainText
             var emailContent = new EmailContent(subject)
             {
                 PlainText = "This is plain text mail send test body \n Best Wishes!!",
-                Html = ""
             };
             var sender = "<SENDER_EMAIL>";
+            var recipient = "<RECIPIENT_EMAIL>";
 
-            var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("<alice@contoso.com>") { DisplayName = "Alice" }
-            });
-
-            var emailMessage = new EmailMessage(sender, emailContent, emailRecipients);
-            emailMessage.Importance = EmailImportance.Low;
+            var emailMessage = new EmailMessage(sender, recipient, emailContent);
 
             try
             {
-                SendEmailResult sendEmailResult = emailClient.Send(emailMessage);
+                Console.WriteLine("Sending email with plain text content...");
+                EmailSendOperation emailSendOperation = await emailClient.SendAsync(Azure.WaitUntil.Completed, emailMessage);
+                EmailSendResult statusMonitor = emailSendOperation.Value;
 
-                string messageId = sendEmailResult.MessageId;
-                if (!string.IsNullOrEmpty(messageId))
+                string operationId = emailSendOperation.Id;
+                var emailSendStatus = statusMonitor.Status;
+
+                if (emailSendStatus == EmailSendStatus.Succeeded)
                 {
-                    Console.WriteLine($"Email sent, MessageId = {messageId}");
+                    Console.WriteLine($"Email sent. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to send email.");
+                    Console.WriteLine($"Failed to send email. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
                     return;
-                }
-
-                // wait max 2 minutes to check the send status for mail.
-                var cancellationToken = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-                do
-                {
-                    SendStatusResult sendStatus = emailClient.GetSendStatus(messageId);
-                    Console.WriteLine($"Send mail status for MessageId : <{messageId}>, Status: [{sendStatus.Status}]");
-
-                    if (sendStatus.Status != SendStatus.Queued)
-                    {
-                        break;
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                    
-                } while (!cancellationToken.IsCancellationRequested);
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine($"Looks like we timed out for email");
                 }
             }
             catch (Exception ex)

@@ -1,9 +1,7 @@
-﻿using System;
+﻿using Azure.Communication.Email;
+using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
-using Azure.Communication.Email;
-using Azure.Communication.Email.Models;
 
 namespace SendEmailToMultipleRecipients
 {
@@ -25,46 +23,40 @@ namespace SendEmailToMultipleRecipients
 
 
             var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-            new EmailAddress("alice@contoso.com") { DisplayName = "Alice" },
-            new EmailAddress("bob@contoso.com") { DisplayName = "Bob" },
+                new EmailAddress("alice@contoso.com", "Alice"),
+                new EmailAddress("bob@contoso.com", "Bob"),
             });
 
-            var emailMessage = new EmailMessage(sender, emailContent, emailRecipients);
-            emailMessage.Importance = EmailImportance.High;
+            var emailMessage = new EmailMessage(sender, emailRecipients, emailContent)
+            {
+                // Header name is "x-priority" or "x-msmail-priority"
+                // Header value is a number from 1 to 5. 1 or 2 = High, 3 = Normal, 4 or 5 = Low
+                // Not all email clients recognize this header directly (outlook client does recognize)
+                Headers =
+                {
+                    // Set Email Importance to High
+                    { "x-priority", "1" },
+                    { "", "" }
+                }
+            };
 
             try
             {
-                SendEmailResult sendEmailResult = emailClient.Send(emailMessage);
+                Console.WriteLine("Sending email to multiple recipients...");
+                EmailSendOperation emailSendOperation = await emailClient.SendAsync(Azure.WaitUntil.Completed, emailMessage);
+                EmailSendResult statusMonitor = emailSendOperation.Value;
 
-                string messageId = sendEmailResult.MessageId;
-                if (!string.IsNullOrEmpty(messageId))
+                string operationId = emailSendOperation.Id;
+                var emailSendStatus = statusMonitor.Status;
+
+                if (emailSendStatus == EmailSendStatus.Succeeded)
                 {
-                    Console.WriteLine($"Email sent, MessageId = {messageId}");
+                    Console.WriteLine($"Email sent. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to send email.");
+                    Console.WriteLine($"Failed to send email. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
                     return;
-                }
-
-                // wait max 2 minutes to check the send status for mail.
-                var cancellationToken = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-                do
-                {
-                    SendStatusResult sendStatus = emailClient.GetSendStatus(messageId);
-                    Console.WriteLine($"Send mail status for MessageId : <{messageId}>, Status: [{sendStatus.Status}]");
-
-                    if (sendStatus.Status != SendStatus.Queued)
-                    {
-                        break;
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                    
-                } while (!cancellationToken.IsCancellationRequested);
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine($"Looks like we timed out for email");
                 }
             }
             catch (Exception ex)

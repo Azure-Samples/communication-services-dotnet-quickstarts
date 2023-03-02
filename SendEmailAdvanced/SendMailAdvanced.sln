@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.32428.217
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33403.182
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendEmailPlainText", "SendEmailPlainText\SendEmailPlainText.csproj", "{065C8522-F4CA-4365-9753-B660792387FA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendEmailToMultipleRecipients", "SendEmailToMultipleRecipients\SendEmailToMultipleRecipients.csproj", "{95D276CE-0F74-419E-8BC6-B8778772DB1F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendHighImportanceEmailToMultipleRecipients", "SendEmailToMultipleRecipients\SendHighImportanceEmailToMultipleRecipients.csproj", "{95D276CE-0F74-419E-8BC6-B8778772DB1F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendEmailWithAttachments", "SendEmailWithAttachments\SendEmailWithAttachments.csproj", "{7539DBAD-B2EA-44D3-903C-742E42B318BD}"
 EndProject

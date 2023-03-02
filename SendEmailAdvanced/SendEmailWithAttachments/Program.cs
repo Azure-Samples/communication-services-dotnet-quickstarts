@@ -1,10 +1,9 @@
-﻿using System;
+﻿using Azure.Communication.Email;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
+using System.Net.Mime;
 using System.Threading.Tasks;
-using Azure.Communication.Email;
-using Azure.Communication.Email.Models;
 
 namespace SendEmailWithAttachments
 {
@@ -25,60 +24,34 @@ namespace SendEmailWithAttachments
             var sender = "<SENDER_EMAIL>";
 
             var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("<RECIPIENT_EMAIL>") { DisplayName = "<RECIPINENT_DISPLAY_NAME>" }
+                new EmailAddress("<RECIPIENT_EMAIL>", "<RECIPINENT_DISPLAY_NAME>")
             });
 
-            var emailMessage = new EmailMessage(sender, emailContent, emailRecipients);
-            emailMessage.Importance = EmailImportance.Normal;
+            var emailMessage = new EmailMessage(sender, emailRecipients, emailContent);
 
             // Add Email Pdf Attchament
             byte[] bytes = File.ReadAllBytes("attachment.pdf");
-            string attachmentFileInBytes = Convert.ToBase64String(bytes);
-            var emailAttachment = new EmailAttachment("attachment.pdf", EmailAttachmentType.Pdf, attachmentFileInBytes);
-
-            emailMessage.Attachments.Add(emailAttachment);
-
-
-            // Add Email Txt Attchament
-            bytes = File.ReadAllBytes("attachment.txt");
-            attachmentFileInBytes = Convert.ToBase64String(bytes);
-            emailAttachment = new EmailAttachment("attachment.txt", EmailAttachmentType.Txt, attachmentFileInBytes);
-
+            var contentBinaryData = new BinaryData(bytes);
+            var emailAttachment = new EmailAttachment("attachment.pdf", MediaTypeNames.Application.Pdf, contentBinaryData);
             emailMessage.Attachments.Add(emailAttachment);
 
             try
             {
-                SendEmailResult sendEmailResult = emailClient.Send(emailMessage);
+                Console.WriteLine("Sending email with attachments...");
+                EmailSendOperation emailSendOperation = await emailClient.SendAsync(Azure.WaitUntil.Completed, emailMessage);
+                EmailSendResult statusMonitor = emailSendOperation.Value;
 
-                string messageId = sendEmailResult.MessageId;
-                if (!string.IsNullOrEmpty(messageId))
+                string operationId = emailSendOperation.Id;
+                var emailSendStatus = statusMonitor.Status;
+
+                if (emailSendStatus == EmailSendStatus.Succeeded)
                 {
-                    Console.WriteLine($"Email sent, MessageId = {messageId}");
+                    Console.WriteLine($"Email sent. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to send email.");
+                    Console.WriteLine($"Failed to send email. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
                     return;
-                }
-
-                // wait max 2 minutes to check the send status for mail.
-                var cancellationToken = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-                do
-                {
-                    SendStatusResult sendStatus = emailClient.GetSendStatus(messageId);
-                    Console.WriteLine($"Send mail status for MessageId : <{messageId}>, Status: [{sendStatus.Status}]");
-
-                    if (sendStatus.Status != SendStatus.Queued)
-                    {
-                        break;
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                    
-                } while (!cancellationToken.IsCancellationRequested);
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine($"Looks like we timed out for email");
                 }
             }
             catch (Exception ex)
