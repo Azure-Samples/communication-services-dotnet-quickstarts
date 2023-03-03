@@ -33,7 +33,7 @@ namespace SendEmailPlainText
 
                 if (emailSendStatus == EmailSendStatus.Succeeded)
                 {
-                    Console.WriteLine($"Email sent. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
+                    Console.WriteLine($"Email send operation succeeded with OperationId = {operationId}.\nEmail is out for delivery.");
                 }
                 else
                 {

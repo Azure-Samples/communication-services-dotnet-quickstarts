@@ -1,5 +1,6 @@
 ﻿using Azure.Communication.Email;
 using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -39,6 +40,7 @@ namespace SendEmailPlainText
                     {
                         break;
                     }
+                    Console.WriteLine("Email send operation is still running. Rechecking after 1 second...");
                     await Task.Delay(1000);
                 }
 
@@ -50,7 +52,7 @@ namespace SendEmailPlainText
 
                     if (emailSendStatus == EmailSendStatus.Succeeded)
                     {
-                        Console.WriteLine($"Email sent. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
+                        Console.WriteLine($"Email send operation succeeded with OperationId = {operationId}.\nEmail is out for delivery.");
                     }
                     else
                     {

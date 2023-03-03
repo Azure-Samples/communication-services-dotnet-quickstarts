@@ -26,8 +26,9 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 ## Code structure
 
 - ./SendEmailPlainText/Program.cs: Entry point for sending plain text email.
-- ./SendEmailToMultipleRecipients/Program.cs: Entry point for sending email to multiple recipients.
 - ./SendEmailWithAttachments/Program.cs: Entry point for sending email with attachments.
+- ./SendEmailWithManualPollingForStatus/Program.cs: Entry point for sending emails and manually poll for the email send status.
+- ./SendHighImportanceEmailToMultipleRecipients/Program.cs: Entry point for sending high importance email to multiple recipients.
 
 ## Before running the sample for the first time
 
@@ -41,7 +42,6 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
     - `connectionstring`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
     - `sender`: Replace `<SENDER_EMAIL>` with the sender email obtained from Azure Communication Service.
     - `recipient`: Replace `<RECIPIENT_EMAIL>` with the recipient email.
-    - `content`: Either use PlainText or Html to set the message content.
 3. Run respective project.
 
 ## ❤️ Feedback
