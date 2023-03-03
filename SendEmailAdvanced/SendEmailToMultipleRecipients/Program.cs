@@ -1,6 +1,7 @@
 ﻿using Azure.Communication.Email;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SendEmailToMultipleRecipients
@@ -21,10 +22,9 @@ namespace SendEmailToMultipleRecipients
             };
             var sender = "<SENDER_EMAIL>";
 
-
             var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("alice@contoso.com", "Alice"),
-                new EmailAddress("bob@contoso.com", "Bob"),
+                new EmailAddress("<RECIPIENT_EMAIL_1>", "Alice"),
+                new EmailAddress("<RECIPIENT_EMAIL_2>", "Bob"),
             });
 
             var emailMessage = new EmailMessage(sender, emailRecipients, emailContent)
@@ -36,7 +36,7 @@ namespace SendEmailToMultipleRecipients
                 {
                     // Set Email Importance to High
                     { "x-priority", "1" },
-                    { "", "" }
+                    { "EmailTrackingHeader", "MyCustomEmailTrackingID" }
                 }
             };
 
@@ -55,7 +55,9 @@ namespace SendEmailToMultipleRecipients
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to send email. \n OperationId = {operationId}. \n Status = {emailSendStatus}");
+                    var error = statusMonitor.Error;
+                    Console.WriteLine($"Failed to send email.\n OperationId = {operationId}.\n Status = {emailSendStatus}.");
+                    Console.WriteLine($"Error Code = {error.Code}, Message = {error.Message}");
                     return;
                 }
             }
