@@ -31,7 +31,7 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 2. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
 3. With the `Connection String` procured in pre-requisites, add it to the **DirectRouting/program.cs** file. Assign your connection string in line 3:
   ```csharp
-  var connectionString = "<connection_string>";
+  var connectionString = ""endpoint=https://<RESOURCE_NAME>.communication.azure.com/;accesskey=<ACCESS_KEY>"";
   ```
 
 
