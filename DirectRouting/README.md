@@ -15,7 +15,6 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 ## Prerequisites
 
 - An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F).
-- Install [Visual Studio](https://visualstudio.microsoft.com/downloads/)
 - The latest version [.NET Core client library](https://dotnet.microsoft.com/download/dotnet-core) for your operating system.
 - An active Communication Services resource and connection string. [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource?tabs=windows&pivots=platform-net).
 
@@ -23,7 +22,6 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 
 - **./DirectRouting/Program.cs:** Core application code with manage phone numbers implementation.
 - **./DirectRouting/DirectRouting.csproj:** Project configuration file.
-- **./DirectRouting.sln:** Visual Studio solution.
 
 ## Before running sample code
 
@@ -37,5 +35,6 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 
 ## Run Locally
 
-1. Open `DirectRouting.sln`
-2. Run the `DirectRouting` project
+```console
+dotnet run
+```
