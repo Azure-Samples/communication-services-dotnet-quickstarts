@@ -6,7 +6,7 @@
     <AssemblyName>SendEmailToMultipleRecipients</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.Email" Version="1.0.0-alpha.20230302.1" />
+    <PackageReference Include="Azure.Communication.Email" Version="1.0.0-beta.2" />
   </ItemGroup>
 
 </Project>
