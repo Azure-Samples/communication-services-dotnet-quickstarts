@@ -32,7 +32,6 @@ For full instructions on how to build this code sample from scratch, look at [Qu
   var connectionString = "endpoint=https://<RESOURCE_NAME>.communication.azure.com/;accesskey=<ACCESS_KEY>";
   ```
 
-
 ## Run Locally
 
 ```console
