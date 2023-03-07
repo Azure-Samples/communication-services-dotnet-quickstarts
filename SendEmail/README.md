@@ -40,7 +40,6 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
   - `connectionstring`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
   - `sender`: Replace `<SENDER_EMAIL>` with the sender email obtained from Azure Communication Service.
   - `recipient`: Replace `<RECIPIENT_EMAIL>` with the recipient email.
-  - `content`: Either use PlainText or Html to set the message content.
 3. Run `SendEmail` project.
 
 
