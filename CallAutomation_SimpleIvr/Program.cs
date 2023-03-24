@@ -92,28 +92,28 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             var recognizeCompleted = (RecognizeCompleted)@event;
 
-            if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.One)
+            if (((Azure.Communication.CallAutomation.CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.One)
             {
                 PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
                 await callMedia.PlayToAllAsync(salesAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Two)
+             else if (((Azure.Communication.CallAutomation.CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Two)
             {
                 PlaySource marketingAudio = new FileSource(new Uri(baseUri + builder.Configuration["MarketingAudio"]));
                 await callMedia.PlayToAllAsync(marketingAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Three)
+            else if (((Azure.Communication.CallAutomation.CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Three)
             {
                 PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
                 await callMedia.PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Four)
-            {
+            else if (((Azure.Communication.CallAutomation.CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Four)
+                {
                 PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
                 await callMedia.PlayToAllAsync(agentAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Five)
+            else if(((Azure.Communication.CallAutomation.CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Five)
             {
                 // Hangup for everyone
                 await callConnection.HangUpAsync(true);
@@ -133,13 +133,11 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             if (@event.OperationContext == "AgentConnect")
             {
-                var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
-                {
-                    new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
-                });
-
-                addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
-                await callConnection.AddParticipantsAsync(addParticipantOptions);
+                var Target = new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"]);
+                var SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+                var CallInvite = new CallInvite(Target, SourceCallerId);
+                var addParticipantOptions = new AddParticipantOptions(CallInvite);
+                await callConnection.AddParticipantAsync(addParticipantOptions);
             }
             if (@event.OperationContext == "SimpleIVR")
             {

@@ -22,15 +22,11 @@ var sourceIdentity = await app.ProvisionAzureCommunicationServicesIdentity(callC
 // Api to initiate out bound call
 app.MapPost("/api/call", async (CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
 {
-    var source = new CallSource(new CommunicationUserIdentifier(sourceIdentity))
-    {
-        CallerId = new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber)
-    };
+    var CallerId = new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber);
     var target = new PhoneNumberIdentifier(callConfiguration.Value.TargetPhoneNumber);
+    var callInvite = new CallInvite(target, CallerId);
 
-    var createCallOption = new CreateCallOptions(source,
-        new List<CommunicationIdentifier>() { target },
-        new Uri(callConfiguration.Value.CallbackEventUri));
+    var createCallOption = new CreateCallOptions(callInvite,new Uri(callConfiguration.Value.CallbackEventUri));
 
     var response = await callAutomationClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
 
@@ -70,7 +66,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             // Play audio once recognition is completed sucessfully
             logger.LogInformation($"RecognizeCompleted event received for call connection id: {@event.CallConnectionId}");
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
-            var toneDetected = recognizeCompletedEvent.CollectTonesResult.Tones[0];
+            var toneDetected = ((Azure.Communication.CallAutomation.CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
             var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
 
             // Play audio for dtmf response
