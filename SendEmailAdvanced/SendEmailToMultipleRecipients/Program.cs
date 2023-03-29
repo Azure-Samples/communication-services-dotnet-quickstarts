@@ -55,9 +55,7 @@ namespace SendEmailToMultipleRecipients
                 }
                 else
                 {
-                    var error = statusMonitor.Error;
                     Console.WriteLine($"Failed to send email.\n OperationId = {operationId}.\n Status = {emailSendStatus}.");
-                    Console.WriteLine($"Error Code = {error.Code}, Message = {error.Message}");
                     return;
                 }
             }

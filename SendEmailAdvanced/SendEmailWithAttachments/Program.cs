@@ -24,16 +24,22 @@ namespace SendEmailWithAttachments
             var sender = "<SENDER_EMAIL>";
 
             var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("<RECIPIENT_EMAIL>", "<RECIPINENT_DISPLAY_NAME>")
+                new EmailAddress("<RECIPIENT_EMAIL>", "<RECIPIENT_DISPLAY_NAME>")
             });
 
             var emailMessage = new EmailMessage(sender, emailRecipients, emailContent);
 
-            // Add Email Pdf Attchament
-            byte[] bytes = File.ReadAllBytes("attachment.pdf");
-            var contentBinaryData = new BinaryData(bytes);
-            var emailAttachment = new EmailAttachment("attachment.pdf", MediaTypeNames.Application.Pdf, contentBinaryData);
-            emailMessage.Attachments.Add(emailAttachment);
+            // Add pdf attachment
+            byte[] pdfBytes = File.ReadAllBytes("attachment.pdf");
+            var pdfContentBinaryData = new BinaryData(pdfBytes);
+            var pdfEmailAttachment = new EmailAttachment("attachment.pdf", MediaTypeNames.Application.Pdf, pdfContentBinaryData);
+            emailMessage.Attachments.Add(pdfEmailAttachment);
+
+            // Add txt attachment
+            byte[] txtBytes = File.ReadAllBytes("attachment.txt");
+            var txtContentBinaryData = new BinaryData(txtBytes);
+            var txtEmailAttachment = new EmailAttachment("attachment.txt", MediaTypeNames.Application.Pdf, txtContentBinaryData);
+            emailMessage.Attachments.Add(txtEmailAttachment);
 
             try
             {
@@ -50,9 +56,7 @@ namespace SendEmailWithAttachments
                 }
                 else
                 {
-                    var error = statusMonitor.Error;
                     Console.WriteLine($"Failed to send email.\n OperationId = {operationId}.\n Status = {emailSendStatus}.");
-                    Console.WriteLine($"Error Code = {error.Code}, Message = {error.Message}");
                     return;
                 }
             }
