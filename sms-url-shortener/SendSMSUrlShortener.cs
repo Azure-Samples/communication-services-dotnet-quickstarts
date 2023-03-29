@@ -22,9 +22,9 @@ namespace Company.Function
 
     public static class SendSMSUrlShortener
     {
-        const string connectionString = "INSERT AZURE COMMUNICATION SERVICES CONNECTION STRING";
-        const string phoneNumberFrom = "INSERT AZURE COMMUNICATION SERVICES PHONE NUMBER"; // Ex. +15555555555
-        const string urlShortener = "INSERT AZURE URL SHORTENER ENDPOINT"; // Ex. https://<Azure Function URL>/api/UrlCreate
+        static string connectionString = Environment.GetEnvironmentVariable("ACS_CONNECTIONSTRING", EnvironmentVariableTarget.Process);
+        static string phoneNumberFrom = Environment.GetEnvironmentVariable("ACS_PHONE_NUMBER", EnvironmentVariableTarget.Process); // Ex. +15555555555
+        static string urlShortener = Environment.GetEnvironmentVariable("URL_SHORTENER", EnvironmentVariableTarget.Process); // Ex. https://<Azure Function URL>/api/UrlCreate
         [FunctionName("SendSMSUrlShortener")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
@@ -41,7 +41,7 @@ namespace Company.Function
             
             var requestData = new
             {
-                Url = "https://microsoft.com"
+                Url = urlToShorten
             };
 
             var requestBody = JsonSerializer.Serialize(requestData);
