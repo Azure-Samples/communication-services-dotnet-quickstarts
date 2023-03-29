@@ -21,7 +21,7 @@ To be able to use the token for Calling, use it to initialize the `Azure.Communi
 - Install [Visual Studio](https://visualstudio.microsoft.com/downloads/)
 - The latest version .NET Core SDK for your operating system.
 - An active Communication Services resource and connection string. [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource/).
-- Azure Active Directory tenant with users that have a Teams license.
+- Azure Active Directory tenant with users that have a Teams enterprise license. 
 
 ## Code Structure
 
