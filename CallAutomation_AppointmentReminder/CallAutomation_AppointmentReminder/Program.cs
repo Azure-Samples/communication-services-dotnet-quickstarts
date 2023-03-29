@@ -5,6 +5,7 @@ using CallAutomation_AppointmentReminder;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
@@ -20,22 +21,39 @@ var app = builder.Build();
 var sourceIdentity = await app.ProvisionAzureCommunicationServicesIdentity(callConfigurationSection["ConnectionString"]);
 
 // Api to initiate out bound call
-app.MapPost("/api/call", async (CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
+app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
 {
-    var source = new CallSource(new CommunicationUserIdentifier(sourceIdentity))
+    var acsAcquiredNumber = new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber);
+    if (!string.IsNullOrEmpty(targetNo))
     {
-        CallerId = new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber)
-    };
-    var target = new PhoneNumberIdentifier(callConfiguration.Value.TargetPhoneNumber);
+        var identities = targetNo.Split(';');
+        foreach (var indentity in identities)
+        {
+            var target = new PhoneNumberIdentifier(indentity);
+            var callInvite = new CallInvite(target, acsAcquiredNumber);
 
-    var createCallOption = new CreateCallOptions(source,
-        new List<CommunicationIdentifier>() { target },
-        new Uri(callConfiguration.Value.CallbackEventUri));
+            var createCallOption = new CreateCallOptions(callInvite, new Uri(callConfiguration.Value.CallbackEventUri));
 
-    var response = await callAutomationClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
+            var response = await callAutomationClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
 
-    logger.LogInformation($"Reponse from create call: {response.GetRawResponse()}" +
-        $"CallConnection Id : {response.Value.CallConnection.CallConnectionId}");
+            logger.LogInformation($"Reponse from create call: {response.GetRawResponse()}" +
+                $"CallConnection Id : {response.Value.CallConnection.CallConnectionId}");
+        }
+
+    }
+    else
+    {
+        var target = new PhoneNumberIdentifier(callConfiguration.Value.TargetPhoneNumber);
+        var callInvite = new CallInvite(target, acsAcquiredNumber);
+
+        var createCallOption = new CreateCallOptions(callInvite, new Uri(callConfiguration.Value.CallbackEventUri));
+
+        var response = await callAutomationClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
+
+        logger.LogInformation($"Reponse from create call: {response.GetRawResponse()}" +
+            $"CallConnection Id : {response.Value.CallConnection.CallConnectionId}");
+    }
+
 });
 
 //api to handle call back events
@@ -70,7 +88,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             // Play audio once recognition is completed sucessfully
             logger.LogInformation($"RecognizeCompleted event received for call connection id: {@event.CallConnectionId}");
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
-            var toneDetected = recognizeCompletedEvent.CollectTonesResult.Tones[0];
+            var toneDetected = ((CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
             var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
 
             // Play audio for dtmf response
@@ -86,7 +104,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             {
                 logger.LogInformation($"Recognition timed out for call connection id: {@event.CallConnectionId}");
                 var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.TimedoutAudio));
-                
+
                 //Play audio for time out
                 await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
             }
