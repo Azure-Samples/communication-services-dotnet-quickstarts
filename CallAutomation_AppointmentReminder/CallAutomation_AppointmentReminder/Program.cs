@@ -95,10 +95,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
 
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
             var toneDetected = ((CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
-            var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
-
-            // Play audio for dtmf response
-            await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
+         
             if (toneDetected == DtmfTone.Three)
             {
 
@@ -136,7 +133,10 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                 }
             }
 
-            
+            var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
+
+            // Play audio for dtmf response
+            await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
         }
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
         {
