@@ -89,16 +89,22 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         }
         if (@event is RecognizeCompleted { OperationContext: "AppointmentReminderMenu" })
         {
+            logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
             // Play audio once recognition is completed sucessfully
             logger.LogInformation($"RecognizeCompleted event received for call connection id: {@event.CallConnectionId}");
+
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
             var toneDetected = ((CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
+            var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
+
+            // Play audio for dtmf response
+            await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
             if (toneDetected == DtmfTone.Three)
             {
 
                 var target = callConfiguration.Value.TargetParticipant;
                 var Participants = target.Split(';');
-
+                var count=0;
                 foreach (var Participantindentity in Participants)
                 {
                     var Participanttarget = new PhoneNumberIdentifier(Participantindentity);
@@ -109,23 +115,28 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                     logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"Addparticipant call: {response.Value.Participant}"
                         + $"get response fron participat : {response.GetRawResponse}");
                     Thread.Sleep(10);
+                    count++;
 
                 }
-                //to remove first Participant
-                Thread.Sleep(10);
-                var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[0]));
-                var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
-                //to remove Second Participant
-                Thread.Sleep(10);
-                RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[1]));
-                RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
-
+                logger.LogInformation($"List of Participants: {count}" + $"List of Participant ID's: {target}");
+                if (Participants.Length>=2)
+                {
+                    //to remove first Participant
+                    Thread.Sleep(10);
+                    var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[0]));
+                    var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                    logger.LogInformation($"Removeparticipant call: {Participants[0]}"
+                    + $"get response fron participants : {RemoveParticipantResult.GetRawResponse}");
+                    //to remove Second Participant
+                    Thread.Sleep(10);
+                    RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[1]));
+                    RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                    logger.LogInformation($"Removeparticipant call: {Participants[1]}"
+                    + $"get response fron participat : {RemoveParticipantResult.GetRawResponse}");
+                }
             }
 
-            var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
-
-            // Play audio for dtmf response
-            await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
+            
         }
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
         {
