@@ -15,7 +15,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var client = new CallAutomationClient(builder.Configuration["ConnectionString"]);
+var callAutomationClient = new CallAutomationClient(builder.Configuration["ConnectionString"]);
 var baseUri = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 if (string.IsNullOrEmpty(baseUri))
 {
@@ -48,7 +48,7 @@ app.MapPost("/api/incomingCall", async (
         var incomingCallContext = (string)jsonObject["incomingCallContext"];
         var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
-        AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
+        AnswerCallResult answerCallResult = await callAutomationClient.AnswerCallAsync(incomingCallContext, callbackUri);
     }
     return Results.Ok();
 });
@@ -66,7 +66,10 @@ app.MapPost("/api/calls/{contextId}", async (
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
 
-        var callConnection = client.GetCallConnection(@event.CallConnectionId);
+        // CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
+        var callConnection = callAutomationClient.GetCallConnection(@event.CallConnectionId);
+
+        // var callConnection = client.GetCallConnection(@event.CallConnectionId);
         var callMedia = callConnection?.GetCallMedia();
 
         if (callConnection == null || callMedia == null)
@@ -92,28 +95,28 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             var recognizeCompleted = (RecognizeCompleted)@event;
 
-            if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.One)
+            if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.One)
             {
                 PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
                 await callMedia.PlayToAllAsync(salesAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Two)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Two)
             {
                 PlaySource marketingAudio = new FileSource(new Uri(baseUri + builder.Configuration["MarketingAudio"]));
                 await callMedia.PlayToAllAsync(marketingAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Three)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Three)
             {
                 PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
                 await callMedia.PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Four)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Four)
             {
                 PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
                 await callMedia.PlayToAllAsync(agentAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Five)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Five)
             {
                 // Hangup for everyone
                 await callConnection.HangUpAsync(true);
@@ -131,15 +134,47 @@ app.MapPost("/api/calls/{contextId}", async (
         }
         if (@event is PlayCompleted)
         {
+            //if (@event.OperationContext == "AgentConnect")
+            //{
+            //    var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
+            //    {
+            //        new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
+            //    });
+
+            //    addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+            //    await callConnection.AddParticipantsAsync(addParticipantOptions);
+            //}
             if (@event.OperationContext == "AgentConnect")
             {
-                var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
+                var SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+                var target = builder.Configuration["ParticipantToAdd"];
+                var Participants = target.Split(';');
+                var count = 0;
+                foreach (var Participantindentity in Participants)
                 {
-                    new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
-                });
+                    var Target = new PhoneNumberIdentifier(Participantindentity);
 
-                addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
-                await callConnection.AddParticipantsAsync(addParticipantOptions);
+                    var CallInvite = new CallInvite(Target, SourceCallerId);
+                    var addParticipantOptions = new AddParticipantOptions(CallInvite);
+                    await callConnection.AddParticipantAsync(addParticipantOptions);
+                    count++;
+                    logger.LogInformation($"Add Participant: {JsonConvert.SerializeObject(@event)}" + $"participant id :{Participantindentity}");
+                }
+                logger.LogInformation($"List of Participants: {count}" + $"  participant ids :{target}");
+                //to remove first Participant
+                if (Participants.Length >= 2)
+                {
+                    for (var i = 0; i < 2; i++)
+                    {
+                        Thread.Sleep(30);
+                        var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[i]));
+                        var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                        logger.LogInformation($"Removeparticipant call: {Participants[i]}"
+                        + $"get response fron participat : {RemoveParticipantResult.GetRawResponse}");
+                    }
+                }
+                Thread.Sleep(30);
+                await callConnection.HangUpAsync(forEveryone: true);
             }
             if (@event.OperationContext == "SimpleIVR")
             {
