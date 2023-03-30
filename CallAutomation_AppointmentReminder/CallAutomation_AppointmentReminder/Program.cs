@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
@@ -89,54 +90,27 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         }
         if (@event is RecognizeCompleted { OperationContext: "AppointmentReminderMenu" })
         {
-            logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
             // Play audio once recognition is completed sucessfully
             logger.LogInformation($"RecognizeCompleted event received for call connection id: {@event.CallConnectionId}");
-
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
             var toneDetected = ((CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
-         
             if (toneDetected == DtmfTone.Three)
             {
 
-                var target = callConfiguration.Value.TargetParticipant;
-                var Participants = target.Split(';');
-                var count=0;
-                foreach (var Participantindentity in Participants)
-                {
-                    var Participanttarget = new PhoneNumberIdentifier(Participantindentity);
-                    var callInvite = new CallInvite(Participanttarget, new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber));
-                    var addParticipantOptions = new AddParticipantOptions(callInvite);
-                    var response = await callConnection.AddParticipantAsync(addParticipantOptions);
+                var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
 
-                    logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"Addparticipant call: {response.Value.Participant}"
-                        + $"get response fron participat : {response.GetRawResponse}");
-                    Thread.Sleep(10);
-                    count++;
+                // Play audio for dtmf response
+                await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "AgentConnect", Loop = false });
 
-                }
-                logger.LogInformation($"List of Participants: {count}" + $"List of Participant ID's: {target}");
-                if (Participants.Length>=2)
-                {
-                    //to remove first Participant
-                    Thread.Sleep(10);
-                    var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[0]));
-                    var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
-                    logger.LogInformation($"Removeparticipant call: {Participants[0]}"
-                    + $"get response fron participants : {RemoveParticipantResult.GetRawResponse}");
-                    //to remove Second Participant
-                    Thread.Sleep(10);
-                    RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[1]));
-                    RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
-                    logger.LogInformation($"Removeparticipant call: {Participants[1]}"
-                    + $"get response fron participat : {RemoveParticipantResult.GetRawResponse}");
-                }
             }
+            else
+            {
 
-            var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
+                var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
 
-            // Play audio for dtmf response
-            await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
+                // Play audio for dtmf response
+                await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
+            }
         }
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
         {
@@ -152,6 +126,38 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                 //Play audio for time out
                 await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
             }
+        }
+        if (@event is PlayCompleted { OperationContext: "AgentConnect" })
+        {
+            var target = callConfiguration.Value.TargetParticipant;
+            var Participants = target.Split(';');
+            var count = 0;
+            foreach (var Participantindentity in Participants)
+            {
+                var Participanttarget = new PhoneNumberIdentifier(Participantindentity);
+                var callInvite = new CallInvite(Participanttarget, new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber));
+                var addParticipantOptions = new AddParticipantOptions(callInvite);
+                var response = await callConnection.AddParticipantAsync(addParticipantOptions);
+                logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
+                    + $"  get response fron participat : {response.GetRawResponse}");
+                Thread.Sleep(30);
+                count++;
+            }
+            logger.LogInformation($"List of Participants: {count}" + $"List of Participant ID's: {target}");
+            //to remove first Participant
+            if (Participants.Length >= 2)
+            {
+                for (var i = 0; i < 2; i++)
+                {
+                    Thread.Sleep(30);
+                    var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[i]));
+                    var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                    logger.LogInformation($"Removeparticipant call: {Participants[i]}"
+                            + $"get response fron participat : {RemoveParticipantResult.GetRawResponse}");
+                }
+            }
+            Thread.Sleep(30);
+            await callConnection.HangUpAsync(forEveryone: true);
         }
         if (@event is PlayCompleted { OperationContext: "ResponseToDtmf" })
         {

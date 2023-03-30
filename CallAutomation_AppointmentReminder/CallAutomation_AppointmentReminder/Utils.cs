@@ -17,6 +17,10 @@ namespace CallAutomation_AppointmentReminder
             {
                 playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AppointmentCancelledAudio));
             }
+            else if (toneDetected.Equals(DtmfTone.Three))
+            {
+                playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AgentAudio));
+            }
            
             else // Invalid Dtmf tone
             {
