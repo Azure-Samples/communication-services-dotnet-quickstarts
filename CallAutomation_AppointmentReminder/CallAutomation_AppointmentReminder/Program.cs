@@ -4,7 +4,9 @@ using Azure.Messaging;
 using CallAutomation_AppointmentReminder;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
+using System.Collections;
 using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,7 +19,7 @@ builder.Services.Configure<CallConfiguration>(callConfigurationSection);
 builder.Services.AddSingleton(new CallAutomationClient(callConfigurationSection["ConnectionString"]));
 
 var app = builder.Build();
-
+var TargetIdentity = "";
 var sourceIdentity = await app.ProvisionAzureCommunicationServicesIdentity(callConfigurationSection["ConnectionString"]);
 
 // Api to initiate out bound call
@@ -29,6 +31,7 @@ app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient
         var identities = targetNo.Split(';');
         foreach (var indentity in identities)
         {
+            TargetIdentity = indentity;
             var target = new PhoneNumberIdentifier(indentity);
             var callInvite = new CallInvite(target, acsAcquiredNumber);
 
@@ -43,7 +46,8 @@ app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient
     }
     else
     {
-        var target = new PhoneNumberIdentifier(callConfiguration.Value.TargetPhoneNumber);
+        TargetIdentity = callConfiguration.Value.TargetPhoneNumber;
+        var target = new PhoneNumberIdentifier(TargetIdentity);
         var callInvite = new CallInvite(target, acsAcquiredNumber);
 
         var createCallOption = new CreateCallOptions(callInvite, new Uri(callConfiguration.Value.CallbackEventUri));
@@ -71,7 +75,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             //Initiate recognition as call connected event is received
             logger.LogInformation($"CallConnected event received for call connection id: {@event.CallConnectionId}");
             var recognizeOptions =
-            new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callConfiguration.Value.TargetPhoneNumber), maxTonesToCollect: 1)
+            new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(TargetIdentity), maxTonesToCollect: 1)
             {
                 InterruptPrompt = true,
                 InterToneTimeout = TimeSpan.FromSeconds(10),
@@ -89,6 +93,35 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             logger.LogInformation($"RecognizeCompleted event received for call connection id: {@event.CallConnectionId}");
             var recognizeCompletedEvent = (RecognizeCompleted)@event;
             var toneDetected = ((CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
+            if (toneDetected == DtmfTone.Three)
+            {
+
+                var target = callConfiguration.Value.TargetParticipant;
+                var Participants = target.Split(';');
+
+                foreach (var Participantindentity in Participants)
+                {
+                    var Participanttarget = new PhoneNumberIdentifier(Participantindentity);
+                    var callInvite = new CallInvite(Participanttarget, new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber));
+                    var addParticipantOptions = new AddParticipantOptions(callInvite);
+                    var response = await callConnection.AddParticipantAsync(addParticipantOptions);
+
+                    logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"Addparticipant call: {response.Value.Participant}"
+                        + $"get response fron participat : {response.GetRawResponse}");
+                    Thread.Sleep(10);
+
+                }
+                //to remove first Participant
+                Thread.Sleep(10);
+                var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[0]));
+                var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                //to remove Second Participant
+                Thread.Sleep(10);
+                RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[1]));
+                RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+
+            }
+
             var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
 
             // Play audio for dtmf response
