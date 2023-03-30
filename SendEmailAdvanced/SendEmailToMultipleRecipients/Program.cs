@@ -22,10 +22,38 @@ namespace SendEmailToMultipleRecipients
             };
             var sender = "<SENDER_EMAIL>";
 
-            var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("<RECIPIENT_EMAIL_1>", "Alice"),
-                new EmailAddress("<RECIPIENT_EMAIL_2>", "Bob"),
-            });
+            // Create the To list
+            var toRecipients = new List<EmailAddress>
+            {
+                new EmailAddress(
+                    address: "<RECIPIENT_EMAIL_1>",
+                    displayName: "<RECIPIENT_DISPLAY_NAME_1>"),
+                new EmailAddress(
+                    address: "<RECIPIENT_EMAIL_2>",
+                    displayName: "<RECIPIENT_DISPLAY_NAME_2>")
+            };
+
+            // Create the CC list
+            var ccRecipients = new List<EmailAddress>
+            {
+                new EmailAddress(
+                    address: "<RECIPIENT_EMAIL_1>",
+                    displayName: "<RECIPIENT_DISPLAY_NAME_1>"),
+                new EmailAddress(
+                    address: "<RECIPIENT_EMAIL_2>",
+                    displayName: "<RECIPIENT_DISPLAY_NAME_2>")
+            };
+
+            // Create the BCC list
+            var bccRecipients = new List<EmailAddress>
+            {
+                new EmailAddress(
+                    address: "<RECIPIENT_EMAIL_1>",
+                    displayName: "<RECIPIENT_DISPLAY_NAME_1>"),
+                new EmailAddress(
+                    address: "<RECIPIENT_EMAIL_2>",
+                    displayName: "<RECIPIENT_DISPLAY_NAME_2>")
+            };
 
             var emailMessage = new EmailMessage(sender, emailRecipients, emailContent)
             {
@@ -42,22 +70,12 @@ namespace SendEmailToMultipleRecipients
 
             try
             {
-                Console.WriteLine("Sending email to multiple recipients...");
-                EmailSendOperation emailSendOperation = await emailClient.SendAsync(Azure.WaitUntil.Completed, emailMessage);
-                EmailSendResult statusMonitor = emailSendOperation.Value;
+                EmailSendOperation emailSendOperation = emailClient.Send(WaitUntil.Completed, emailMessage);
+                Console.WriteLine($"Email Sent. Status = {emailSendOperation.Value.Status}");
 
+                /// Get the OperationId so that it can be used for tracking the message for troubleshooting
                 string operationId = emailSendOperation.Id;
-                var emailSendStatus = statusMonitor.Status;
-
-                if (emailSendStatus == EmailSendStatus.Succeeded)
-                {
-                    Console.WriteLine($"Email send operation succeeded with OperationId = {operationId}.\nEmail is out for delivery.");
-                }
-                else
-                {
-                    Console.WriteLine($"Failed to send email.\n OperationId = {operationId}.\n Status = {emailSendStatus}.");
-                    return;
-                }
+                Console.WriteLine($"Email operation id = {operationId}");
             }
             catch (RequestFailedException ex)
             {
