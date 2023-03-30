@@ -36,9 +36,10 @@ namespace SendEmail
                     return;
                 }
             }
-            catch (Exception ex)
+            catch (RequestFailedException ex)
             {
-                Console.WriteLine($"Error in sending email, {ex}");
+                /// OperationID is contained in the exception message and can be used for troubleshooting purposes
+                Console.WriteLine($"Email send operation failed with error code: {ex.ErrorCode}, message: {ex.Message}");
             }
         }
     }
