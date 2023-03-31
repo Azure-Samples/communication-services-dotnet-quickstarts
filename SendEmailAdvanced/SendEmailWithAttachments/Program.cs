@@ -24,41 +24,37 @@ namespace SendEmailWithAttachments
             var sender = "<SENDER_EMAIL>";
 
             var emailRecipients = new EmailRecipients(new List<EmailAddress> {
-                new EmailAddress("<RECIPIENT_EMAIL>", "<RECIPINENT_DISPLAY_NAME>")
+                new EmailAddress("<RECIPIENT_EMAIL>", "<RECIPIENT_DISPLAY_NAME>")
             });
 
             var emailMessage = new EmailMessage(sender, emailRecipients, emailContent);
 
-            // Add Email Pdf Attchament
-            byte[] bytes = File.ReadAllBytes("attachment.pdf");
-            var contentBinaryData = new BinaryData(bytes);
-            var emailAttachment = new EmailAttachment("attachment.pdf", MediaTypeNames.Application.Pdf, contentBinaryData);
-            emailMessage.Attachments.Add(emailAttachment);
+            // Add pdf attachment
+            byte[] pdfBytes = File.ReadAllBytes("attachment.pdf");
+            var pdfContentBinaryData = new BinaryData(pdfBytes);
+            var pdfEmailAttachment = new EmailAttachment("attachment.pdf", MediaTypeNames.Application.Pdf, pdfContentBinaryData);
+            emailMessage.Attachments.Add(pdfEmailAttachment);
+
+            // Add txt attachment
+            byte[] txtBytes = File.ReadAllBytes("attachment.txt");
+            var txtContentBinaryData = new BinaryData(txtBytes);
+            var txtEmailAttachment = new EmailAttachment("attachment.txt", MediaTypeNames.Application.Pdf, txtContentBinaryData);
+            emailMessage.Attachments.Add(txtEmailAttachment);
 
             try
             {
                 Console.WriteLine("Sending email with attachments...");
-                EmailSendOperation emailSendOperation = await emailClient.SendAsync(Azure.WaitUntil.Completed, emailMessage);
-                EmailSendResult statusMonitor = emailSendOperation.Value;
+                EmailSendOperation emailSendOperation = emailClient.Send(WaitUntil.Completed, emailMessage);
+                Console.WriteLine($"Email Sent. Status = {emailSendOperation.Value.Status}");
 
+                /// Get the OperationId so that it can be used for tracking the message for troubleshooting
                 string operationId = emailSendOperation.Id;
-                var emailSendStatus = statusMonitor.Status;
-
-                if (emailSendStatus == EmailSendStatus.Succeeded)
-                {
-                    Console.WriteLine($"Email send operation succeeded with OperationId = {operationId}.\nEmail is out for delivery.");
-                }
-                else
-                {
-                    var error = statusMonitor.Error;
-                    Console.WriteLine($"Failed to send email.\n OperationId = {operationId}.\n Status = {emailSendStatus}.");
-                    Console.WriteLine($"Error Code = {error.Code}, Message = {error.Message}");
-                    return;
-                }
+                Console.WriteLine($"Email operation id = {operationId}");
             }
-            catch (Exception ex)
+            catch (RequestFailedException ex)
             {
-                Console.WriteLine($"Error in sending email, {ex}");
+                /// OperationID is contained in the exception message and can be used for troubleshooting purposes
+                Console.WriteLine($"Email send operation failed with error code: {ex.ErrorCode}, message: {ex.Message}");
             }
         }
     }

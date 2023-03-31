@@ -12,36 +12,34 @@ namespace SendEmail
             var connectionString = "<ACS_CONNECTION_STRING>";
             var emailClient = new EmailClient(connectionString);
 
-            var subject = "Send email quick start - dotnet";
-            var htmlContent = "<html><body><h1>Quick send email test</h1><br/><h4>Communication email as a service mail send app working properly</h4><p>Happy Learning!!</p></body></html>";
             var sender = "<SENDER_EMAIL>";
             var recipient = "<RECIPIENT_EMAIL>";
-
+            var subject = "Send email quick start - dotnet";
+            var htmlContent = "<html><body><h1>Quick send email test</h1><br/><h4>Communication email as a service mail send app working properly</h4><p>Happy Learning!!</p></body></html>";
+            
             try
             {
-                Console.WriteLine("Sending email...");
-                EmailSendOperation emailSendOperation = await emailClient.SendAsync(Azure.WaitUntil.Completed, sender, recipient, subject, htmlContent);
-                EmailSendResult statusMonitor = emailSendOperation.Value;
+                var emailSendOperation = emailClient.Send(
+                    wait: WaitUntil.Completed,
+                    senderAddress: sender, // The email address of the domain registered with the Communication Services resource
+                    recipientAddress: recipient,
+                    subject: subject,
+                    htmlContent: htmlContent);
+                Console.WriteLine($"Email Sent. Status = {emailSendOperation.Value.Status}");
 
+                /// Get the OperationId so that it can be used for tracking the message for troubleshooting
                 string operationId = emailSendOperation.Id;
-                var emailSendStatus = statusMonitor.Status;
-
-                if (emailSendStatus == EmailSendStatus.Succeeded)
-                {
-                    Console.WriteLine($"Email send operation succeeded with OperationId = {operationId}.\nEmail is out for delivery.");
-                }
-                else
-                {
-                    var error = statusMonitor.Error;
-                    Console.WriteLine($"Failed to send email.\n OperationId = {operationId}.\n Status = {emailSendStatus}.");
-                    Console.WriteLine($"Error Code = {error.Code}, Message = {error.Message}");
-                    return;
-                }
+                Console.WriteLine($"Email operation id = {operationId}");
             }
-            catch (Exception ex)
+            catch (RequestFailedException ex)
             {
-                Console.WriteLine($"Error in sending email, {ex}");
+                /// OperationID is contained in the exception message and can be used for troubleshooting purposes
+                Console.WriteLine($"Email send operation failed with error code: {ex.ErrorCode}, message: {ex.Message}");
             }
+
+            /// Get the OperationId so that it can be used for tracking the message for troubleshooting
+            string operationId = emailSendOperation.Id;
+            Console.WriteLine($"Email operation id = {operationId}");
         }
     }
 }
