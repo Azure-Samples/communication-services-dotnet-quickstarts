@@ -1,4 +1,5 @@
-﻿using Azure.Communication.Email;
+﻿using Azure;
+using Azure.Communication.Email;
 using System;
 using System.Threading.Tasks;
 
@@ -25,7 +26,7 @@ namespace SendEmailPlainText
 
             try
             {
-                var emailSendOperation = emailClient.Send(
+                var emailSendOperation = await emailClient.SendAsync(
                     wait: WaitUntil.Completed,
                     message: emailMessage);
 
@@ -40,10 +41,6 @@ namespace SendEmailPlainText
                 /// OperationID is contained in the exception message and can be used for troubleshooting purposes
                 Console.WriteLine($"Email send operation failed with error code: {ex.ErrorCode}, message: {ex.Message}");
             }
-
-            /// Get the OperationId so that it can be used for tracking the message for troubleshooting
-            string operationId = emailSendOperation.Id;
-            Console.WriteLine($"Email operation id = {operationId}");
         }
     }
 }
