@@ -51,6 +51,10 @@ namespace SendEmailPlainText
             {
                 Console.WriteLine($"Email send failed with Code = {ex.ErrorCode} and Message = {ex.Message}");
             }
+
+            /// Get the OperationId so that it can be used for tracking the message for troubleshooting
+            string operationId = emailSendOperation.Id;
+            Console.WriteLine($"Email operation id = {operationId}");
         }
     }
 }
