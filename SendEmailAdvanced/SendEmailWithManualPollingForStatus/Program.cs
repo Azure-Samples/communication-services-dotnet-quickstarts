@@ -1,7 +1,6 @@
-﻿using Azure.Communication.Email;
+﻿using Azure;
+using Azure.Communication.Email;
 using System;
-using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace SendEmailPlainText
@@ -30,8 +29,7 @@ namespace SendEmailPlainText
                 wait: WaitUntil.Started,
                 message: emailMessage);
 
-            /// Call UpdateStatus on the email send operation to poll for the status
-            /// manually.
+            /// Call UpdateStatus on the email send operation to poll for the status manually.
             try
             {
                 while (true)
@@ -53,10 +51,6 @@ namespace SendEmailPlainText
             {
                 Console.WriteLine($"Email send failed with Code = {ex.ErrorCode} and Message = {ex.Message}");
             }
-
-            /// Get the OperationId so that it can be used for tracking the message for troubleshooting
-            string operationId = emailSendOperation.Id;
-            Console.WriteLine($"Email operation id = {operationId}");
         }
     }
 }

@@ -1,7 +1,7 @@
-﻿using Azure.Communication.Email;
+﻿using Azure;
+using Azure.Communication.Email;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace SendEmailToMultipleRecipients
@@ -55,6 +55,7 @@ namespace SendEmailToMultipleRecipients
                     displayName: "<RECIPIENT_DISPLAY_NAME_2>")
             };
 
+            var emailRecipients = new EmailRecipients(toRecipients, ccRecipients, bccRecipients);
             var emailMessage = new EmailMessage(sender, emailRecipients, emailContent)
             {
                 // Header name is "x-priority" or "x-msmail-priority"
@@ -70,7 +71,7 @@ namespace SendEmailToMultipleRecipients
 
             try
             {
-                EmailSendOperation emailSendOperation = emailClient.Send(WaitUntil.Completed, emailMessage);
+                EmailSendOperation emailSendOperation = await emailClient.SendAsync(WaitUntil.Completed, emailMessage);
                 Console.WriteLine($"Email Sent. Status = {emailSendOperation.Value.Status}");
 
                 /// Get the OperationId so that it can be used for tracking the message for troubleshooting

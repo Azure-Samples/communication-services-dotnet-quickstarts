@@ -1,4 +1,5 @@
-﻿using Azure.Communication.Email;
+﻿using Azure;
+using Azure.Communication.Email;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -44,7 +45,7 @@ namespace SendEmailWithAttachments
             try
             {
                 Console.WriteLine("Sending email with attachments...");
-                EmailSendOperation emailSendOperation = emailClient.Send(WaitUntil.Completed, emailMessage);
+                EmailSendOperation emailSendOperation = await emailClient.SendAsync(WaitUntil.Completed, emailMessage);
                 Console.WriteLine($"Email Sent. Status = {emailSendOperation.Value.Status}");
 
                 /// Get the OperationId so that it can be used for tracking the message for troubleshooting
