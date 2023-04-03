@@ -61,9 +61,21 @@ app.MapPost("/api/calls/{contextId}", async (
 {
     var audioPlayOptions = new PlayOptions() { OperationContext = "SimpleIVR", Loop = false };
 
+
+    if (cloudEvents == null)
+    {
+        logger.LogWarning("cloudEvents parameter is null.");
+        return Results.BadRequest("cloudEvents parameter is null.");
+    }
+
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
+        if (@event ==null)
+        {
+            logger.LogWarning($"Failed to parse event : {cloudEvent.Data}");
+            continue;
+        }
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
 
         var callConnection = client.GetCallConnection(@event.CallConnectionId);
@@ -92,28 +104,28 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             var recognizeCompleted = (RecognizeCompleted)@event;
 
-            if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.One)
+            if (((CollectTonesResult )recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.One)
             {
                 PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
                 await callMedia.PlayToAllAsync(salesAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Two)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Two)
             {
                 PlaySource marketingAudio = new FileSource(new Uri(baseUri + builder.Configuration["MarketingAudio"]));
                 await callMedia.PlayToAllAsync(marketingAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Three)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Three)
             {
                 PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
                 await callMedia.PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Four)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Four)
             {
                 PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
                 await callMedia.PlayToAllAsync(agentAudio, audioPlayOptions);
             }
-            else if (recognizeCompleted.CollectTonesResult.Tones[0] == DtmfTone.Five)
+            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Five)
             {
                 // Hangup for everyone
                 await callConnection.HangUpAsync(true);
@@ -133,13 +145,51 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             if (@event.OperationContext == "AgentConnect")
             {
-                var addParticipantOptions = new AddParticipantsOptions(new List<CommunicationIdentifier>()
-                {
-                    new PhoneNumberIdentifier(builder.Configuration["ParticipantToAdd"])
-                });
+                //var SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+                //var target = builder.Configuration["ParticipantToAdd"];
+                //var Target = new PhoneNumberIdentifier(target);
+                //var CallInvite = new CallInvite(Target, SourceCallerId);
+                //var addParticipantOptions = new AddParticipantOptions(CallInvite);
+                //var ParticipantResult = await callConnection.AddParticipantAsync(addParticipantOptions);
 
-                addParticipantOptions.SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
-                await callConnection.AddParticipantsAsync(addParticipantOptions);
+
+
+                var SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
+                var target = builder.Configuration["ParticipantToAdd"];
+                var Participants = target.Split(';');
+                var count = 0;
+                foreach (var Participantindentity in Participants)
+                {
+                    var Target = new PhoneNumberIdentifier(Participantindentity);
+                    var CallInvite = new CallInvite(Target, SourceCallerId);
+                    var addParticipantOptions = new AddParticipantOptions(CallInvite);
+                    var ParticipantResult = await callConnection.AddParticipantAsync(addParticipantOptions);
+
+                    count++;
+                    logger.LogInformation($"Add Participant: {JsonConvert.SerializeObject(@event)}" + $"participant id :{Participantindentity}");
+                }
+                logger.LogInformation($"List of Participants: {count}" + $"  participant ids :{target}");
+                //to remove first Participant
+                if (Participants.Length >= 2)
+                {
+                    for (var i = 0; i < 2; i++)
+                    {
+                        Thread.Sleep(30);
+                        var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[i]));
+                        var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                        logger.LogInformation($"Removeparticipant call: {Participants[i]}"
+                        + $"get response fron participat : {RemoveParticipantResult.GetRawResponse}");
+                    }
+                }
+                Thread.Sleep(30);
+                logger.LogInformation($"Hang Up Call : {JsonConvert.SerializeObject(@event)}");
+                await callConnection.HangUpAsync(forEveryone: true);
+
+
+
+
+
+
             }
             if (@event.OperationContext == "SimpleIVR")
             {
