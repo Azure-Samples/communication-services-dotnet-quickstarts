@@ -24,14 +24,14 @@ namespace CallAutomation_AppointmentReminder
         public string TargetPhoneNumber { get; set; }
 
         /// <summary>
-        /// The phone number to add to the call
-        /// </summary>
-        public string TargetParticipant { get; set; }
-
-        /// <summary>
         /// The phone number associated with the source. 
         /// </summary>
         public string SourcePhoneNumber { get; set; }
+
+        /// <summary>
+        /// The phone number to add Participant to the call. 
+        /// </summary>
+        public string AddParticipantNumber { get; set; }
 
         /// <summary>
         /// The base url of the applicaiton.
@@ -64,9 +64,19 @@ namespace CallAutomation_AppointmentReminder
         public string AppointmentCancelledAudio { get; set; }
 
         /// <summary>
-        /// Add Participant audio file route
+        /// Appointment to add AgentAudio audio file route
         /// </summary>
         public string AgentAudio { get; set; }
+
+        /// <summary>
+        /// Appointment to AddParticipant audio file route
+        /// </summary>
+        public string AddParticipant { get; set; }
+
+        /// <summary>
+        /// Appointment to remove RemoveParticipant audio file route
+        /// </summary>
+        public string RemoveParticipant { get; set; }
 
         /// <summary>
         /// Invalid input audio file route

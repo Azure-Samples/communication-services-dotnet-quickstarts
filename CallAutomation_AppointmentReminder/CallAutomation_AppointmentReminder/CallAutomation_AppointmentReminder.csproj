@@ -20,7 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="audio\agent.wav" />
+    <None Remove="audio\AddParticipant.wav" />
+    <None Remove="audio\AgentAudio.wav" />
+    <None Remove="audio\RemoveParticipant.wav" />
   </ItemGroup>
 
 </Project>

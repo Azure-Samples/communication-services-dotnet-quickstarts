@@ -21,7 +21,6 @@ namespace CallAutomation_AppointmentReminder
             {
                 playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AgentAudio));
             }
-           
             else // Invalid Dtmf tone
             {
                 playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.InvalidInputAudio));
