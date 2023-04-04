@@ -175,8 +175,8 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                         // Play audio for dtmf response
                         await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "addParticipant", Loop = false });
 
-                        TimeSpan InterToneTimeout = TimeSpan.FromSeconds(10);
-                        TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(5);
+                        TimeSpan InterToneTimeout = TimeSpan.FromSeconds(20);
+                        TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(10);
                         logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
                              + $"  get response fron participat : {response.GetRawResponse}");
                     }
@@ -191,8 +191,8 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                         var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AddParticipant));
                         // Play audio for dtmf response
                         await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "addParticipant", Loop = false });
-                        TimeSpan InterToneTimeout = TimeSpan.FromSeconds(10);
-                        TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(5);
+                        TimeSpan InterToneTimeout = TimeSpan.FromSeconds(20);
+                        TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(10);
                         logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
                              + $"  get response fron participat : {response.GetRawResponse}");
                     }
