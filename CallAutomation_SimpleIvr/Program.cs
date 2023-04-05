@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.FileProviders;
 using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +22,13 @@ var baseUri = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 if (string.IsNullOrEmpty(baseUri))
 {
     baseUri = builder.Configuration["BaseUri"];
+}
+CommunicationIdentifierKind GetIdentifierKind(string participantnumber)
+{
+    //checks the identity type returns as string
+    return Regex.Match(participantnumber, Constants.userIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.UserIdentity :
+ Regex.Match(participantnumber, Constants.phoneIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.PhoneIdentity :
+ CommunicationIdentifierKind.UnknownIdentity;
 }
 
 var app = builder.Build();
@@ -71,7 +80,7 @@ app.MapPost("/api/calls/{contextId}", async (
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
-        if (@event ==null)
+        if (@event == null)
         {
             logger.LogWarning($"Failed to parse event : {cloudEvent.Data}");
             continue;
@@ -104,7 +113,7 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             var recognizeCompleted = (RecognizeCompleted)@event;
 
-            if (((CollectTonesResult )recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.One)
+            if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.One)
             {
                 PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
                 await callMedia.PlayToAllAsync(salesAudio, audioPlayOptions);
@@ -145,62 +154,135 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             if (@event.OperationContext == "AgentConnect")
             {
-                //var SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
-                //var target = builder.Configuration["ParticipantToAdd"];
-                //var Target = new PhoneNumberIdentifier(target);
-                //var CallInvite = new CallInvite(Target, SourceCallerId);
-                //var addParticipantOptions = new AddParticipantOptions(CallInvite);
-                //var ParticipantResult = await callConnection.AddParticipantAsync(addParticipantOptions);
+
+               
 
 
 
-                var SourceCallerId = new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]);
                 var target = builder.Configuration["ParticipantToAdd"];
                 var Participants = target.Split(';');
-                var count = 0;
                 foreach (var Participantindentity in Participants)
                 {
-                    var Target = new PhoneNumberIdentifier(Participantindentity);
-                    var CallInvite = new CallInvite(Target, SourceCallerId);
-                    var addParticipantOptions = new AddParticipantOptions(CallInvite);
-                    var ParticipantResult = await callConnection.AddParticipantAsync(addParticipantOptions);
 
-                    count++;
-                    logger.LogInformation($"Add Participant: {JsonConvert.SerializeObject(@event)}" + $"participant id :{Participantindentity}");
-                }
-                logger.LogInformation($"List of Participants: {count}" + $"  participant ids :{target}");
-                //to remove first Participant
-                if (Participants.Length >= 2)
-                {
-                    for (var i = 0; i < 2; i++)
+                    var identifierKind = GetIdentifierKind(Participantindentity);
+                    CallInvite? callInvite = null;
+                    if (!string.IsNullOrEmpty(Participantindentity))
                     {
-                        Thread.Sleep(30);
-                        var RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(Participants[i]));
-                        var RemoveParticipantResult = await callConnection.RemoveParticipantAsync(RemoveParticipant);
-                        logger.LogInformation($"Removeparticipant call: {Participants[i]}"
-                        + $"get response fron participat : {RemoveParticipantResult.GetRawResponse}");
+
+                        if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
+                        {
+                            var Participanttarget = new PhoneNumberIdentifier(Participantindentity);
+                            callInvite = new CallInvite(Participanttarget, new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]));
+                        }
                     }
+                    else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
+                    {
+
+
+                        var Participanttarget = new CommunicationUserIdentifier(Participantindentity);
+
+                        callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity));
+
+                    }
+
+
+
+                    var addParticipantOptions = new AddParticipantOptions(callInvite);
+                    var response = await callConnection.AddParticipantAsync(addParticipantOptions);
+                    //var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AddParticipant));
+                    PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AddParticipant"]));
+                    audioPlayOptions.OperationContext = "addParticipant";
+                    await callMedia.PlayToAllAsync(agentAudio, audioPlayOptions);
+
+                    TimeSpan InterToneTimeout = TimeSpan.FromSeconds(20);
+                    TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(10);
+                    logger.LogInformation($"AddParticipant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
+                    logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
+                         + $"  get response fron participat : {response.GetRawResponse()}");
+
+
+
+
+
+
+
+
+
+
                 }
-                Thread.Sleep(30);
-                logger.LogInformation($"Hang Up Call : {JsonConvert.SerializeObject(@event)}");
-                await callConnection.HangUpAsync(forEveryone: true);
+                if (@event is AddParticipantFailed)
+                {
+                    AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
+                    logger.LogInformation($"Add participant failed RawId:{addParticipantFailed.Participant.RawId}");
+                }
+               
 
 
-
-
-
-
-            }
-            if (@event.OperationContext == "SimpleIVR")
-            {
-                await callConnection.HangUpAsync(true);
             }
         }
+        if (@event is AddParticipantSucceeded obj)
+        {
+            var participantlist = "";
+            IReadOnlyList<CallParticipant> participantsList = callConnection.GetParticipantsAsync().Result.Value;
+            foreach (var Participant in participantsList)
+            {
+                logger.LogInformation($"participant ID :{Participant.Identifier.RawId}");
+                if (participantlist == "")
+                { participantlist = Participant.Identifier.RawId; }
+                else { participantlist = participantlist + ";" + Participant.Identifier.RawId; }
+            }
+            logger.LogInformation($"Total participants in the call : {participantsList.Count}");
+
+            if (participantsList.Count >= 4)
+            {
+                var removeparticipat = participantlist.Split(';');
+                for (int i = 2; i <= removeparticipat.Length - 2; i++)
+                {
+                    if (!string.IsNullOrEmpty(removeparticipat[i]))
+                    {
+                        RemoveParticipantOptions RemoveParticipant = null;
+                        var identifierKind = GetIdentifierKind(removeparticipat[i]);
+                        if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
+                        {
+                            RemoveParticipant = new RemoveParticipantOptions(new PhoneNumberIdentifier(removeparticipat[i]));
+                        }
+
+                        else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
+                        {
+                            RemoveParticipant = new RemoveParticipantOptions(new CommunicationUserIdentifier(removeparticipat[i]));
+                        }
+                        await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                        // Log success
+                        logger.LogInformation($"remove Participant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
+                    }
+
+                }
+
+            }
+        }
+        if (@event is RemoveParticipantSucceeded)
+        {
+            RemoveParticipantSucceeded RemoveParticipantSucceeded = (RemoveParticipantSucceeded)@event;
+
+            logger.LogInformation($"Remove Participant Succeeded RawId : {RemoveParticipantSucceeded.Participant.RawId}");
+        }
+        if (@event is RemoveParticipantFailed)
+        {
+            RemoveParticipantFailed removeParticipantFailed = (RemoveParticipantFailed)@event;
+            logger.LogInformation($"Remove participant failed RawId:{removeParticipantFailed.Participant.RawId}");
+        }
+
+        if (@event.OperationContext == "SimpleIVR")
+        {
+            await callConnection.HangUpAsync(true);
+        }
+
         if (@event is PlayFailed)
         {
             logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
             await callConnection.HangUpAsync(true);
         }
+
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
@@ -225,3 +307,20 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+public enum CommunicationIdentifierKind
+{
+    PhoneIdentity,
+    UserIdentity,
+    UnknownIdentity
+
+
+
+}
+public class Constants
+{
+    public const string userIdentityRegex = @"8:acs:[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}_[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}";
+    public const string phoneIdentityRegex = @"^\+\d{10,14}$";
+
+
+
+}
