@@ -211,8 +211,8 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             {
                 logger.LogInformation($"participant ID :{Participant.Identifier.RawId}");
                 if (participantlist == "")
-                { participantlist = Participant.Identifier.RawId; }
-                else { participantlist = participantlist + ";" + Participant.Identifier; }
+                { participantlist = Participant.Identifier.ToString(); }
+                else { participantlist = participantlist + ";" + Participant.Identifier.ToString(); }
             }
             logger.LogInformation($"Total participants in the call : {participantsList.Count}");
 
