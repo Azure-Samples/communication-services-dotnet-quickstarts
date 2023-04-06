@@ -166,15 +166,17 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                     var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AddParticipant));
                     await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "addParticipant", Loop = false });
                     await Task.Delay(TimeSpan.FromSeconds(10));
+                   
                     logger.LogInformation($"AddParticipant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
-                    logger.LogInformation($"Addparticipant call : {response.Value.Participant}" + $"Status of is mute :{response.Value.Participant.IsMuted}"
-                        + $"  participant ID: {Participantindentity}" + $"  get response fron participat : {response.GetRawResponse()}");
-                                      
+                    logger.LogInformation($"Add participant call : {response.Value.Participant}" + $"  Status of call :{response.GetRawResponse().Status}"
+                        + $"  participant ID: {response.Value.Participant.Identifier}" + $" participat is muted : {response.Value.Participant.IsMuted}"+$"  call Reason Phrase: {response.GetRawResponse().ReasonPhrase}");
+
                 }
 
             }           
            
-        }
+        } 
+        
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
         {
             logger.LogInformation($"RecognizeFailed event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
@@ -210,21 +212,23 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                 logger.LogInformation($"participant ID :{Participant.Identifier.RawId}");
                 if (participantlist == "")
                 { participantlist = Participant.Identifier.RawId; }
-                else { participantlist = participantlist + ";" + Participant.Identifier.RawId; }
+                else { participantlist = participantlist + ";" + Participant.Identifier; }
             }
             logger.LogInformation($"Total participants in the call : {participantsList.Count}");
 
              if (participantsList.Count >= 4)
                 {
-                    var removeparticipat = participantlist.Split(';');
-                    for (int i = 1; i <= removeparticipat.Length - 2; i++)
+              //  List<CallParticipant> participantsToRemove = await callConnection.GetParticipantsAsync().Result.Value;
+                var removeparticipat = participantlist.Split(';');
+                
+                for (int i = 1; i <= removeparticipat.Length - 2; i++)
                     {
                     await Task.Delay(TimeSpan.FromSeconds(30));
+                    
                     if (!string.IsNullOrEmpty(removeparticipat[i]))
                         {
-
-                            CommunicationIdentifier RemoveParticipants = null;
-                            var identifierKind = GetIdentifierKind(removeparticipat[i]);
+                        CommunicationIdentifier RemoveParticipants = null;
+                        var identifierKind = GetIdentifierKind(removeparticipat[i]);
                             if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                             {
                             RemoveParticipants= new PhoneNumberIdentifier(removeparticipat[i]);
@@ -238,10 +242,10 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
                             await callConnection.RemoveParticipantAsync(RemoveParticipant);
                             // Log success
                             logger.LogInformation($"remove Participant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
-                        }
+                     }
                        
 
-                    }
+                 }
 
 
                 await callConnection.HangUpAsync(false);
