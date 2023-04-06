@@ -58,6 +58,7 @@ app.MapPost("/api/incomingCall", async (
         var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
+        
     }
     return Results.Ok();
 });
@@ -79,10 +80,11 @@ app.MapPost("/api/calls/{contextId}", async (
 
     foreach (var cloudEvent in cloudEvents)
     {
+        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent)}");
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         if (@event == null)
         {
-            logger.LogWarning($"Failed to parse event : {cloudEvent.Data}");
+            
             continue;
         }
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
@@ -97,6 +99,7 @@ app.MapPost("/api/calls/{contextId}", async (
 
         if (@event is CallConnected)
         {
+            logger.LogInformation($"CallConnected event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
             // Start recognize prompt - play audio and recognize 1-digit DTMF input
             var recognizeOptions =
                 new CallMediaRecognizeDtmfOptions(CommunicationIdentifier.FromRawId(callerId), maxTonesToCollect: 1)
@@ -108,6 +111,7 @@ app.MapPost("/api/calls/{contextId}", async (
                     OperationContext = "MainMenu"
                 };
             await callMedia.StartRecognizingAsync(recognizeOptions);
+            
         }
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
@@ -136,8 +140,14 @@ app.MapPost("/api/calls/{contextId}", async (
             }
             else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Five)
             {
+               
+
                 // Hangup for everyone
                 await callConnection.HangUpAsync(true);
+
+                logger.LogInformation($"Call disconnected event received call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
+
+
             }
             else
             {
@@ -198,7 +208,7 @@ app.MapPost("/api/calls/{contextId}", async (
                     TimeSpan InitialSilenceTimeout = TimeSpan.FromSeconds(10);
                     logger.LogInformation($"AddParticipant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
                     logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
-                         + $"  get response fron participat : {response.GetRawResponse()}");
+                         + $"  get response fron participant : {response.GetRawResponse()}" +$" call reason : {response.GetRawResponse().ReasonPhrase}");
 
 
 
@@ -214,7 +224,9 @@ app.MapPost("/api/calls/{contextId}", async (
                 {
                     AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
                     logger.LogInformation($"Add participant failed RawId:{addParticipantFailed.Participant.RawId}");
+                      
                 }
+                
                
 
 
@@ -282,7 +294,7 @@ app.MapPost("/api/calls/{contextId}", async (
             logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
             await callConnection.HangUpAsync(true);
         }
-
+       
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
