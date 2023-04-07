@@ -48,7 +48,18 @@ app.MapPost("/api/incomingCall", async (
         var incomingCallContext = (string)jsonObject["incomingCallContext"];
         var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
-        AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
+        var t = Convert.ToBoolean(builder.Configuration["declinecall"]);
+
+        if (t)
+        {
+            client.RejectCallAsync(incomingCallContext);
+
+        }
+        else
+        {
+            AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
+        }
+
     }
     return Results.Ok();
 });
