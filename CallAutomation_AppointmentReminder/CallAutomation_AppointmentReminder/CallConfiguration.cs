@@ -91,6 +91,6 @@ namespace CallAutomation_AppointmentReminder
         /// <summary>
         /// Scenario for hanging up the call
         /// </summary>
-        public int HandUpScenarios { get; set; }
+        public int HangUpScenarios { get; set; }
     }
 }
