@@ -87,5 +87,10 @@ namespace CallAutomation_AppointmentReminder
         /// Time out audio file route
         /// </summary>
         public string TimedoutAudio { get; set; }
+
+        /// <summary>
+        /// Scenario for hanging up the call
+        /// </summary>
+        public int HandUpScenarios { get; set; }
     }
 }
