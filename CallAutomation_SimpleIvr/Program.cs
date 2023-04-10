@@ -62,11 +62,12 @@ app.MapPost("/api/incomingCall", async (
         var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
         
-        var t = Convert.ToBoolean(builder.Configuration["declinecall"]);
+        var rejectcall = Convert.ToBoolean(builder.Configuration["declinecall"]);
 
-        if (t)
+        if (rejectcall)
         {
-            client.RejectCallAsync(incomingCallContext);
+          var response =   client.RejectCallAsync(incomingCallContext);
+            logger.LogInformation($"{response.Result}");
 
         }
         else
@@ -236,7 +237,7 @@ app.MapPost("/api/calls/{contextId}", async (
                 }
                 if (@event is AddParticipantFailed failedParticipant)
                 {
-
+                    declineParticipantsCount++;
                     AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
                     logger.LogInformation($"Failed participant Reason -------> {failedParticipant.ResultInformation?.Message}");
                     if ((addedParticipantsCount + declineParticipantsCount) == Participants.Count())
