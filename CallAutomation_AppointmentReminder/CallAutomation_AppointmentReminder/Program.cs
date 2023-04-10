@@ -4,15 +4,9 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using CallAutomation_AppointmentReminder;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
-using Microsoft.VisualBasic;
 using Newtonsoft.Json;
-using System.Collections;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Security.Principal;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +21,11 @@ builder.Services.AddSingleton(new CallAutomationClient(callConfigurationSection[
 var app = builder.Build();
 var TargetIdentity = "";
 var sourceIdentity = await app.ProvisionAzureCommunicationServicesIdentity(callConfigurationSection["ConnectionString"]);
+var target = callConfigurationSection["AddParticipantNumber"];
+var addedParticipants = target.Split(';');
+int addedParticipantsCount = 0;
+int declineParticipantsCount = 0;
+
 CommunicationIdentifierKind GetIdentifierKind(string participantnumber)
 {
     //checks the identity type returns as string
@@ -34,7 +33,7 @@ CommunicationIdentifierKind GetIdentifierKind(string participantnumber)
           Regex.Match(participantnumber, Constants.phoneIdentityRegex, RegexOptions.IgnoreCase).Success ? CommunicationIdentifierKind.PhoneIdentity :
           CommunicationIdentifierKind.UnknownIdentity;
 }
-var TotalParticipants = false;
+
 // Api to initiate out bound call
 app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient callAutomationClient, IOptions<CallConfiguration> callConfiguration, ILogger<Program> logger) =>
 {
@@ -48,9 +47,9 @@ app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient
             if (!string.IsNullOrEmpty(target))
             {
                 TargetIdentity = target;
-                //var target = new PhoneNumberIdentifier(indentity);
                 CallInvite? callInvite = null;
                 var identifierKind = GetIdentifierKind(target);
+
                 if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                 {
                     callInvite = new CallInvite(new PhoneNumberIdentifier(target), acsAcquiredNumber);
@@ -59,14 +58,13 @@ app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient
                 {
                     callInvite = new CallInvite(new CommunicationUserIdentifier(target));
                 }
+
                 var createCallOption = new CreateCallOptions(callInvite, new Uri(callConfiguration.Value.CallbackEventUri));
                 var response = await callAutomationClient.CreateCallAsync(createCallOption).ConfigureAwait(false);
                 logger.LogInformation($"Reponse from create call: {response.GetRawResponse()}" +
                     $"CallConnection Id : {response.Value.CallConnection.CallConnectionId}");
             }
-
         }
-
     }
     else
     {
@@ -90,7 +88,6 @@ app.MapPost("/api/call", async ([Required] string targetNo, CallAutomationClient
                 $"CallConnection Id : {response.Value.CallConnection.CallConnectionId}");
         }
     }
-
 });
 
 //api to handle call back events
@@ -128,15 +125,12 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             var toneDetected = ((CollectTonesResult)recognizeCompletedEvent.RecognizeResult).Tones[0];
             if (toneDetected == DtmfTone.Three)
             {
-
                 var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
                 // Play audio for dtmf response
                 await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "AgentConnect", Loop = false });
-
             }
             else
             {
-
                 var playSource = Utils.GetAudioForTone(toneDetected, callConfiguration);
                 // Play audio for dtmf response
                 await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "ResponseToDtmf", Loop = false });
@@ -144,47 +138,31 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
         }
         if (@event is PlayCompleted { OperationContext: "AgentConnect" })
         {
-            var target = callConfiguration.Value.AddParticipantNumber;
-            var Participants = target.Split(';');
-            var Count = 0;
-            foreach (var Participantindentity in Participants)
+            foreach (var Participantindentity in addedParticipants)
             {
                 CallInvite? callInvite = null;
                 if (!string.IsNullOrEmpty(Participantindentity))
                 {
-                    var identifierKind = GetIdentifierKind(Participantindentity);
+                    var identifierKind = GetIdentifierKind(Participantindentity.Trim());
                     if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                     {
-                        callInvite = new CallInvite(new PhoneNumberIdentifier(Participantindentity), new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber));
+                        callInvite = new CallInvite(new PhoneNumberIdentifier(Participantindentity.Trim()), new PhoneNumberIdentifier(callConfiguration.Value.SourcePhoneNumber));
                     }
 
                     else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
                     {
-                        callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity));
+                        callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity.Trim()));
                     }
-
                     var addParticipantOptions = new AddParticipantOptions(callInvite);
                     var response = await callConnection.AddParticipantAsync(addParticipantOptions);
                     var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AddParticipant));
                     await callConnectionMedia.PlayToAllAsync(playSource, new PlayOptions { OperationContext = "addParticipant", Loop = false });
                     await Task.Delay(TimeSpan.FromSeconds(10));
 
-
-                    logger.LogInformation($"AddParticipant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
                     logger.LogInformation($"Add participant call : {response.Value.Participant}" + $"  Status of call :{response.GetRawResponse().Status}"
                         + $"  participant ID: {response.Value.Participant.Identifier}" + $" participat is muted : {response.Value.Participant.IsMuted}");
-
-                    Count++;
                 }
-
             }
-
-
-            if (Count == Participants.Length)
-            {
-                TotalParticipants = true;
-            }
-
         }
 
         if (@event is RecognizeFailed { OperationContext: "AppointmentReminderMenu" })
@@ -213,106 +191,29 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             logger.LogInformation($"PlayFailed event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
             await callConnection.HangUpAsync(forEveryone: true);
         }
-        if (@event is AddParticipantSucceeded)
+        if (@event is AddParticipantSucceeded participant)
         {
+            addedParticipantsCount++;
+            logger.LogInformation($"participant added ---> {participant.Participant.RawId}");
 
-            IReadOnlyList<CallParticipant> participantsList = callConnection.GetParticipantsAsync().Result.Value;
-            foreach (var Participant in participantsList)
+            if ((addedParticipantsCount + declineParticipantsCount) == addedParticipants.Length)
             {
-                logger.LogInformation($"participant ID :{Participant.Identifier.RawId}");
+                await PerformHangUp(callConnection);
             }
-            logger.LogInformation($"Total participants in the call : {participantsList.Count}");
-           
-
-            List<CallParticipant> participantsToRemoveAll = (await callConnection.GetParticipantsAsync()).Value.ToList();
-            if (TotalParticipants)
-            {
-
-                //await callConnection.HangUpAsync(false);
-                //logger.LogInformation($"CA is hangup the call." + $"Information of Call:{callConnection.GetCallConnectionProperties()}");
-
-                foreach (CallParticipant participantToRemove in participantsToRemoveAll)
-                {
-                   
-                    // await Task.Delay(TimeSpan.FromSeconds(30));
-                    var Plist = callConfiguration.Value.AddParticipantNumber;
-                    if (!string.IsNullOrEmpty(participantToRemove.Identifier.ToString()))
-                    {
-                        if (Plist.Contains(participantToRemove.Identifier.ToString()))
-                        {
-                            CommunicationIdentifier RemoveParticipants = null;
-                            var RemoveId = participantToRemove.Identifier;
-                            var identifierKind = GetIdentifierKind(RemoveId.RawId);
-                            if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
-                            {
-                                RemoveParticipants = new PhoneNumberIdentifier(participantToRemove.Identifier.ToString());
-                            }
-
-                            else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
-                            {
-                                RemoveParticipants = new CommunicationUserIdentifier(RemoveId.RawId);
-                            }
-                            var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
-                            await callConnection.RemoveParticipantAsync(RemoveParticipant);
-
-                        }
-                    }
-
-                }
-
-            }
-
-
         }
-        if (@event is AddParticipantFailed)
+        if (@event is AddParticipantFailed failedParticipant)
         {
-            AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
-            logger.LogInformation($"Add participant failed RawId:{addParticipantFailed.Participant.RawId}" + $"Result Information:{addParticipantFailed.ResultInformation.Message}");
-            
-            List<CallParticipant> participantsToRemoveAll = (await callConnection.GetParticipantsAsync()).Value.ToList();
-            if (TotalParticipants)
+            declineParticipantsCount++;
+            logger.LogInformation($"Failed participant Reason -------> {failedParticipant.ResultInformation?.Message}");
+
+            if ((addedParticipantsCount + declineParticipantsCount) == addedParticipants.Count())
             {
-
-                //await callConnection.HangUpAsync(false);
-                //logger.LogInformation($"CA is hangup the call." + $"Information of Call:{callConnection.GetCallConnectionProperties()}");
-
-                foreach (CallParticipant participantToRemove in participantsToRemoveAll)
-                {
-
-                    // await Task.Delay(TimeSpan.FromSeconds(30));
-                    var Plist = callConfiguration.Value.AddParticipantNumber;
-                    if (!string.IsNullOrEmpty(participantToRemove.Identifier.ToString()))
-                    {
-                        if (Plist.Contains(participantToRemove.Identifier.ToString()))
-                        {
-                            CommunicationIdentifier RemoveParticipants = null;
-                            var RemoveId = participantToRemove.Identifier;
-                            var identifierKind = GetIdentifierKind(RemoveId.RawId);
-                            if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
-                            {
-                                RemoveParticipants = new PhoneNumberIdentifier(participantToRemove.Identifier.ToString());
-                            }
-
-                            else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
-                            {
-                                RemoveParticipants = new CommunicationUserIdentifier(RemoveId.RawId);
-                            }
-                            var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
-                            await callConnection.RemoveParticipantAsync(RemoveParticipant);
-
-                        }
-                    }
-
-                }
-
+               await PerformHangUp(callConnection);
             }
-
         }
-
         if (@event is RemoveParticipantSucceeded)
         {
             RemoveParticipantSucceeded RemoveParticipantSucceeded = (RemoveParticipantSucceeded)@event;
-
             logger.LogInformation($"Remove Participant Succeeded RawId : {RemoveParticipantSucceeded.Participant.RawId}");
         }
         if (@event is RemoveParticipantFailed)
@@ -320,8 +221,72 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
             RemoveParticipantFailed removeParticipantFailed = (RemoveParticipantFailed)@event;
             logger.LogInformation($"Remove participant failed RawId:{removeParticipantFailed.Participant.RawId}");
         }
-
     }
+
+    //Perform HangUp
+    async Task PerformHangUp(CallConnection callConnection)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(10));
+
+        var participantlistResponse = await callConnection.GetParticipantsAsync();
+        logger.LogInformation("-------Participant List----- ");
+        logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
+
+        int hangupScenario = callConfiguration.Value.HangUpScenarios;
+        if (hangupScenario == 1)
+        {
+            logger.LogInformation($"CA hanging up the call for everyone." + $"Information of Call:{callConnection.GetCallConnectionProperties()}");
+            var response = await callConnection.HangUpAsync(true);
+            logger.LogInformation($"Hang up response : {response}");
+        }
+        else if (hangupScenario == 2)
+        {
+            logger.LogInformation($"CA hang up the call." + $"Information of Call:{callConnection.GetCallConnectionProperties()}");
+            var response = await callConnection.HangUpAsync(false);
+            logger.LogInformation($"Hang up response : {response}");
+        }
+        else if (hangupScenario == 3)
+        {
+            if(addedParticipantsCount == 0)
+            {
+                logger.LogInformation($"No participants got addedd to remove");
+            }
+            else
+            {
+                logger.LogInformation($"Going to remove added partipants.");
+                List<CallParticipant> participantsToRemoveAll = (await callConnection.GetParticipantsAsync()).Value.ToList();
+                foreach (CallParticipant participantToRemove in participantsToRemoveAll)
+                {
+                    var Plist = callConfiguration.Value.AddParticipantNumber;
+                    if (!string.IsNullOrEmpty(participantToRemove.Identifier.ToString()) &&
+                            Plist.Contains(participantToRemove.Identifier.ToString()))
+                    {
+                        CommunicationIdentifier RemoveParticipants = null;
+                        var RemoveId = participantToRemove.Identifier;
+                        var identifierKind = GetIdentifierKind(RemoveId.RawId);
+
+                        if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
+                        {
+                            RemoveParticipants = new PhoneNumberIdentifier(participantToRemove.Identifier.ToString());
+                        }
+                        else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
+                        {
+                            RemoveParticipants = new CommunicationUserIdentifier(RemoveId.RawId);
+                        }
+                        var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
+                        await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                    }
+                }
+            }
+        }
+        if (@event is AddParticipantFailed)
+        {
+            AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
+            logger.LogInformation($"Add participant failed RawId:{addParticipantFailed.Participant.RawId}" + $"Result Information:{addParticipantFailed.ResultInformation.Message}");
+
+        }
+
+
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
 
