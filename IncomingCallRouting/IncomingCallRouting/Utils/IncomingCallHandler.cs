@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,19 +52,23 @@ namespace IncomingCallRouting.Utils
 
             try
             {
+                // var create = await _callAutomationClient.CreateCallAsync(
+                //     new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)),
+                //     new Uri(_callConfiguration.AppCallbackUrl));
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"CreateCallAsync Response -----> {create.GetRawResponse()}");
+
+                // var redirect = await _callAutomationClient.RedirectCallAsync(incomingCallContext, new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)));
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"RedirectCallAsync Response -----> {redirect.Status}");
+
                 // Answer Call
                 var response = await _callAutomationClient.AnswerCallAsync(incomingCallContext, new Uri(_callConfiguration.AppCallbackUrl));
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AnswerCallAsync Response -----> {response.GetRawResponse()}");
-
-                var callConnection = await _callAutomationClient.CreateCallAsync(
-                    new CreateCallOptions(new CallSource(new CommunicationUserIdentifier("<source_MRI>")),
-                        new[] { new CommunicationUserIdentifier("<target_MRI>") }, new Uri("<nlu_callback>")));
 
                 _callConnection = response.Value.CallConnection;
                 _callConnectionProperties = response.Value.CallConnectionProperties;
                 RegisterToCallStateChangeEvent(_callConnectionProperties.CallConnectionId);
                 
-                // //Wait for the call to get connected
+                // Wait for the call to get connected
                 await callEstablishedTask.Task.ConfigureAwait(false);
 
                 // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Transferring to participant {_targetParticipant}");
@@ -74,46 +77,58 @@ namespace IncomingCallRouting.Utils
 
                 // RegisterToDtmfResultEvent(_callConnectionProperties.CallConnectionId);
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_targetParticipant} to call");
-                var addParticipant = await _callConnection.AddParticipantsAsync(
-                    new AddParticipantsOptions(new List<CommunicationIdentifier>
-                    {
-                        GetIdentifier(_targetParticipant),
-                    }), cancellationToken: _reportCancellationToken);
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant.GetRawResponse()}");
-
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Start recording call");
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_targetParticipant} to call");
+                // var addParticipant = await _callConnection.AddParticipantAsync(
+                //     new CallInvite(new CommunicationUserIdentifier(_targetParticipant))
+                //     {
+                //         SourceDisplayName = "William"
+                //     }, cancellationToken: _reportCancellationToken);
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant.GetRawResponse()}");
+                
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Start recording call on serverCallId: {_callConnectionProperties.ServerCallId}");
                 var recording = await _callRecording.StartRecordingAsync(
                     new StartRecordingOptions(new ServerCallLocator(_callConnectionProperties.ServerCallId))
                     {
                         RecordingChannel = RecordingChannel.Mixed,
+                        // RecordingStorageType = RecordingStorageType.External,
                         RecordingStateCallbackEndpoint = new Uri(_callConfiguration.AppCallbackUrl),
                         // AudioChannelParticipantOrdering = { new CommunicationUserIdentifier(_targetParticipant), new CommunicationUserIdentifier("abc") }
                     }, _reportCancellationToken);
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"Start Recording Response -----> {recording.GetRawResponse()}");
 
-                await PlayAudioAsync(_targetParticipant);
+                // var pause = await _callRecording.PauseRecordingAsync(recording.Value.RecordingId);
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Pause Recording Response -----> {pause.Status}");
+                //
+                // var resume = await _callRecording.ResumeRecordingAsync(recording.Value.RecordingId);
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Resume Recording Response -----> {resume.Status}");
+                //
+                // var stop = await _callRecording.StopRecordingAsync(recording.Value.RecordingId);
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Stop Recording Response -----> {stop.Status}");
 
-                var stop = await _callRecording.StopRecordingAsync(recording.Value.RecordingId);
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Stop Recording Response -----> {stop.Status}");
+                //
+                // Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {_targetParticipant}");
+                // var transferToParticipantCompleted = await TransferToParticipant(_targetParticipant);
+                // if (!transferToParticipantCompleted)
+                // {
+                //     await RetryTransferToParticipantAsync(async () => await TransferToParticipant(_targetParticipant));
+                // }
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tranferring call to participant {_targetParticipant}");
-                var transferToParticipantCompleted = await TransferToParticipant(_targetParticipant);
-                if (!transferToParticipantCompleted)
-                {
-                    await RetryTransferToParticipantAsync(async () => await TransferToParticipant(_targetParticipant));
-                }
+                // var participants = await _callConnection.GetParticipantsAsync();
+                // await _callConnection.TransferCallToParticipantAsync(
+                //     new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)));
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_consultTarget} to call");
-                var addParticipant2 = await _callConnection.AddParticipantsAsync(new AddParticipantsOptions(
-                    new List<CommunicationIdentifier>
+                // await _callConnection.RemoveParticipantAsync(new MicrosoftTeamsUserIdentifier(_consultTarget));Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_consultTarget} to call");
+
+                var addParticipant2 = await _callConnection.AddParticipantAsync(
+                    new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget))
                     {
-                        GetIdentifier(_consultTarget),
-                    }), cancellationToken: _reportCancellationToken);
-                
-                // await _callConnection.TransferCallToParticipantAsync(new MicrosoftTeamsUserIdentifier(_teamsGuid))
-                
+                        SourceDisplayName = "Jack (Contoso Tech Support)"
+                    }, cancellationToken: _reportCancellationToken);
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant2.GetRawResponse()}");
+
+                // await PlayAudioAsync(_targetParticipant);
+
+                // await _callConnection.TransferCallToParticipantAsync(new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)), _reportCancellationToken);
 
                 // await _callConnection.HangUpAsync(false);
 
@@ -162,14 +177,14 @@ namespace IncomingCallRouting.Utils
                 //     OperationContext = operationContext
                 // }).ConfigureAwait(false);
 
-                Logger.LogMessage(Logger.MessageType.INFORMATION, $"StartRecognizeAsync response --> {response.Status}, Id: {response.ClientRequestId}");
+                Logger.LogMessage(Logger.MessageType.INFORMATION, $"StartRecognizeAsync response --> {response.GetRawResponse().Status}, Id: {response.GetRawResponse().ClientRequestId}");
         
-                if (response.Status == 202)
+                if (response.GetRawResponse().Status == 202)
                 {
                     // listen to play audio events
                     // RegisterToDtmfResultEvent(operationContext);
         
-                    var completedTask = await Task.WhenAny(toneReceivedCompleteTask.Task, Task.Delay(10 * 1000)).ConfigureAwait(false);
+                    // var completedTask = await Task.WhenAny(toneReceivedCompleteTask.Task, Task.Delay(10 * 1000)).ConfigureAwait(false);
         
                     // if (completedTask != toneReceivedCompleteTask.Task)
                     // {
@@ -217,8 +232,8 @@ namespace IncomingCallRouting.Utils
             var operationContext = Guid.NewGuid().ToString();
             var response = await _callConnection.GetCallMedia().CancelAllMediaOperationsAsync(_reportCancellationToken).ConfigureAwait(false);
         
-            Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.ContentStream}, " +
-                $"Id: {response.Content}, Status: {response.Status}");
+            Logger.LogMessage(Logger.MessageType.INFORMATION, $"PlayAudioAsync response --> {response.GetRawResponse().ContentStream}, " +
+                $"Status: {response.GetRawResponse().Status}");
         }
 
         private void RegisterToCallStateChangeEvent(string callConnectionId)
@@ -274,9 +289,9 @@ namespace IncomingCallRouting.Utils
                 Task.Run(async () =>
                 {
                     var recognizeCompletedEvent = (RecognizeCompleted)callEvent;
-                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tone received ---------> : {recognizeCompletedEvent.CollectTonesResult?.Tones}");
+                    Logger.LogMessage(Logger.MessageType.INFORMATION, $"Tone received ---------> : {recognizeCompletedEvent?.RecognizeResult}");
 
-                    toneReceivedCompleteTask.TrySetResult(recognizeCompletedEvent?.CollectTonesResult?.Tones[0] == DtmfTone.One);
+                    // toneReceivedCompleteTask.TrySetResult(recognizeCompletedEvent?.RecognizeResult);
 
                     EventDispatcher.Instance.Unsubscribe(nameof(RecognizeCompleted), callConnectionId);
                     // cancel playing audio
@@ -308,28 +323,28 @@ namespace IncomingCallRouting.Utils
             }
         }
 
-        private async Task<bool> TransferToParticipant(string targetParticipant, string transfereeCallerId = null)
-        {
-            transferToParticipantCompleteTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-            var identifier = GetIdentifier(targetParticipant);
-
-            if (identifier == null)
-            {
-                Logger.LogMessage(Logger.MessageType.INFORMATION, "Unknown identity provided. Enter valid phone number or communication user id");
-                return true;
-            }
-            var operationContext = Guid.NewGuid().ToString();
-
-            var response = await _callConnection.TransferCallToParticipantAsync(new TransferToParticipantOptions(identifier)
-            {
-                OperationContext = operationContext,
-                SourceCallerId = transfereeCallerId == null ? null : new PhoneNumberIdentifier(transfereeCallerId),
-            }, cancellationToken: _reportCancellationToken);
-
-            var transferToParticipantCompleted = await transferToParticipantCompleteTask.Task.ConfigureAwait(false);
-            return transferToParticipantCompleted;
-        }
+        // private async Task<bool> TransferToParticipant(string targetParticipant, string transfereeCallerId = null)
+        // {
+        //     transferToParticipantCompleteTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        //
+        //     var identifier = GetIdentifier(targetParticipant);
+        //
+        //     if (identifier == null)
+        //     {
+        //         Logger.LogMessage(Logger.MessageType.INFORMATION, "Unknown identity provided. Enter valid phone number or communication user id");
+        //         return true;
+        //     }
+        //     var operationContext = Guid.NewGuid().ToString();
+        //
+        //     var response = await _callConnection.TransferCallToParticipantAsync(new TransferToParticipantOptions(identifier)
+        //     {
+        //         OperationContext = operationContext,
+        //         SourceCallerId = transfereeCallerId == null ? null : new PhoneNumberIdentifier(transfereeCallerId),
+        //     }, cancellationToken: _reportCancellationToken);
+        //
+        //     var transferToParticipantCompleted = await transferToParticipantCompleteTask.Task.ConfigureAwait(false);
+        //     return transferToParticipantCompleted;
+        // }
 
         private void RegisterToTransferParticipantsResultEvent(string operationContext)
         {

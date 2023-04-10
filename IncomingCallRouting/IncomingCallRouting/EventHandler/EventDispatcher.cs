@@ -98,10 +98,10 @@ namespace IncomingCallRouting.EventHandler
                 var callLegId = ((ParticipantsUpdated)callEventBase).CallConnectionId;
                 return BuildEventKey(nameof(ParticipantsUpdated), callLegId);
             }
-            else if (callEventBase is AddParticipantsSucceeded)
+            else if (callEventBase is AddParticipantSucceeded)
             {
-                var callLegId = ((AddParticipantsSucceeded)callEventBase).CallConnectionId;
-                return BuildEventKey(nameof(AddParticipantsSucceeded), callLegId);
+                var callLegId = ((AddParticipantSucceeded)callEventBase).CallConnectionId;
+                return BuildEventKey(nameof(AddParticipantSucceeded), callLegId);
             }
 
             return null;
@@ -131,7 +131,7 @@ namespace IncomingCallRouting.EventHandler
                 {
                     return RecognizeCompleted.Deserialize(cloudEvent.Data.ToString());
                 }
-                else if (cloudEvent.Type.EndsWith(nameof(ParticipantsUpdated)))
+                else if (cloudEvent.Type.EndsWith(nameof(ParticipantsUpdated), true, null))
                 {
                     return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
                 }
@@ -142,10 +142,6 @@ namespace IncomingCallRouting.EventHandler
                 else if (cloudEvent.Type.EndsWith(nameof(PlayCompleted)))
                 {
                     return PlayCompleted.Deserialize(cloudEvent.Data.ToString());
-                }
-                else if (cloudEvent.Type.EndsWith(nameof(ParticipantsUpdated), true, null))
-                {
-                    return ParticipantsUpdated.Deserialize(cloudEvent.Data.ToString());
                 }
             }
 

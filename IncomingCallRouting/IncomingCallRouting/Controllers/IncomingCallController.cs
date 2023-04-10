@@ -25,8 +25,8 @@ namespace IncomingCallRouting.Controllers
         {
             Logger.SetLoggerInstance(logger);
             var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
-            //callAutomationClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
-            callAutomationClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
+            callAutomationClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
+            // callAutomationClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
@@ -62,7 +62,7 @@ namespace IncomingCallRouting.Controllers
                     if (eventData != null)
                     {
                         var incomingCallContext = eventData.IncomingCallContext;
-                        var ivrParticipant = eventData.To.RawId;
+                        var ivrParticipant = eventData?.To?.RawId;
                         
                         if ( (callConfiguration.IvrParticipants.Contains(ivrParticipant) || callConfiguration.IvrParticipants[0] == "*")
                             && callConfiguration.TargetParticipant != ivrParticipant)
@@ -77,7 +77,7 @@ namespace IncomingCallRouting.Controllers
             catch (Exception ex)
             {
                 Logger.LogMessage(Logger.MessageType.ERROR, $"Fails in OnIncomingCall ---> {ex.Message}");
-                return Json(new { Exception = ex });
+                return BadRequest(ex.Message);
             }
         }
 
@@ -108,7 +108,7 @@ namespace IncomingCallRouting.Controllers
             catch (Exception ex)
             {
                 Logger.LogMessage(Logger.MessageType.ERROR, $"Fails with CallingServerAPICallBack ---> {ex.Message}");
-                return Json(new { Exception = ex });
+                return BadRequest(ex.Message);
             }
         }
 
