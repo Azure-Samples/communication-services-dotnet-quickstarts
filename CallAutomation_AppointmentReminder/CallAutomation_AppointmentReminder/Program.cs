@@ -230,7 +230,10 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, CallAutomationCli
 
         var participantlistResponse = await callConnection.GetParticipantsAsync();
         logger.LogInformation("-------Participant List----- ");
-        logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
+        foreach(var participant in participantlistResponse.Value)
+        {
+            logger.LogInformation($"{participant.Identifier.RawId}");
+        }
 
         int hangupScenario = callConfiguration.Value.HangUpScenarios;
         if (hangupScenario == 1)
