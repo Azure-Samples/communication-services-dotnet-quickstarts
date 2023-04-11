@@ -131,29 +131,30 @@ app.MapPost("/api/calls/{contextId}", async (
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
             var recognizeCompleted = (RecognizeCompleted)@event;
+            CollectTonesResult collectedTones = (CollectTonesResult)recognizeCompleted.RecognizeResult;
 
-            if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.One)
+            if (collectedTones.Tones[0] == DtmfTone.One)
             {
                 PlaySource salesAudio = new FileSource(new Uri(baseUri + builder.Configuration["SalesAudio"]));
                 await callMedia.PlayToAllAsync(salesAudio, audioPlayOptions);
             }
-            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Two)
+            else if (collectedTones.Tones[0] == DtmfTone.Two)
             {
                 PlaySource marketingAudio = new FileSource(new Uri(baseUri + builder.Configuration["MarketingAudio"]));
                 await callMedia.PlayToAllAsync(marketingAudio, audioPlayOptions);
             }
-            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Three)
+            else if (collectedTones.Tones[0] == DtmfTone.Three)
             {
                 PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
                 await callMedia.PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
-            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Four)
+            else if (collectedTones.Tones[0] == DtmfTone.Four)
             {
                 PlaySource agentAudio = new FileSource(new Uri(baseUri + builder.Configuration["AgentAudio"]));
                 audioPlayOptions.OperationContext = "AgentConnect";
                 await callMedia.PlayToAllAsync(agentAudio, audioPlayOptions);
             }
-            else if (((CollectTonesResult)recognizeCompleted.RecognizeResult).Tones[0] == DtmfTone.Five)
+            else if (collectedTones.Tones[0] == DtmfTone.Five)
             {
                
 
@@ -337,7 +338,12 @@ app.MapPost("/api/calls/{contextId}", async (
                                 RemoveParticipants = new CommunicationUserIdentifier(RemoveId.RawId);
                             }
                             var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
-                            await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                             await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                           
+                            
+                                logger.LogInformation($"participant removed : {participantToRemove.Identifier}");
+                            
+
                         }
                     }
                 }
