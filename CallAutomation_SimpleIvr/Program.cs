@@ -156,8 +156,6 @@ app.MapPost("/api/calls/{contextId}", async (
             }
             else if (collectedTones.Tones[0] == DtmfTone.Five)
             {
-               
-
                 // Hangup for everyone
                 await callConnection.HangUpAsync(true);
 
@@ -181,9 +179,8 @@ app.MapPost("/api/calls/{contextId}", async (
             if (@event.OperationContext == "AgentConnect")
             {
 
-                var target = builder.Configuration["ParticipantToAdd"];
+                var target = builder.Configuration["ParticipantToAdd"];               
                 
-                var  Count = 0;
                 foreach (var Participantindentity in Participants)
                 {
 
@@ -193,23 +190,16 @@ app.MapPost("/api/calls/{contextId}", async (
                     {
 
                         if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
+                        {                           
+                            callInvite = new CallInvite(new PhoneNumberIdentifier(Participantindentity), new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]));
+                        }
+                        if (identifierKind == CommunicationIdentifierKind.UserIdentity)
                         {
-                            var Participanttarget = new PhoneNumberIdentifier(Participantindentity);
-                            callInvite = new CallInvite(Participanttarget, new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]));
+                            callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity));
+
                         }
                     }
-                    else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
-                    {
-
-
-                        var Participanttarget = new CommunicationUserIdentifier(Participantindentity);
-
-                        callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity));
-
-                    }
-
-
-
+                    
                     var addParticipantOptions = new AddParticipantOptions(callInvite);
                     var response = await callConnection.AddParticipantAsync(addParticipantOptions);
                     //var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AddParticipant));
@@ -223,24 +213,17 @@ app.MapPost("/api/calls/{contextId}", async (
                     logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
                          + $"  get response fron participant : {response.GetRawResponse()}" +$" call reason : {response.GetRawResponse().ReasonPhrase}");
 
-                    Count++;
-
-
-                    //if (Count == Participants.Length)
-                    //{
-                    //    TotalParticipants = true;
-                    //}
-
-                    //logger.LogInformation($"Total participants in the call : {Count}");
-
-
-
                 }
-               
-                
-               
+            }
+        }
+        if (@event is AddParticipantSucceeded participant)
+        {
+            addedParticipantsCount++;
+            logger.LogInformation($"participant added ---> {participant.Participant.RawId}");
 
-
+            if ((addedParticipantsCount + declineParticipantsCount) == Participants.Length)
+            {
+                await PerformHangUp(callConnection);
             }
         }
         if (@event is AddParticipantFailed failedParticipant)
@@ -253,24 +236,7 @@ app.MapPost("/api/calls/{contextId}", async (
                 await PerformHangUp(callConnection);
             }
         }
-        if (@event is AddParticipantSucceeded participant)
-        {
-
-
-            addedParticipantsCount++;
-            logger.LogInformation($"participant added ---> {participant.Participant.RawId}");
-
-            if ((addedParticipantsCount + declineParticipantsCount) == Participants.Length)
-            {
-                await PerformHangUp(callConnection);
-            }
-
-
-
-
-
-
-        }
+       
         if (@event is RemoveParticipantSucceeded)
         {
             RemoveParticipantSucceeded RemoveParticipantSucceeded = (RemoveParticipantSucceeded)@event;
@@ -288,14 +254,24 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             await callConnection.HangUpAsync(true);
         }
-
+        if (@event is PlayFailed)
+        {
+            logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
+            await callConnection.HangUpAsync(true);
+        }
         async Task PerformHangUp(CallConnection callConnection)
         {
             await Task.Delay(TimeSpan.FromSeconds(10));
 
             var participantlistResponse = await callConnection.GetParticipantsAsync();
             logger.LogInformation("-------Participant List----- ");
-            logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
+            //logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
+            //logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
+            foreach (var participant in participantlistResponse.Value)
+            {
+                logger.LogInformation($"Participant Raw ID : {participant.Identifier.RawId}");
+            }
+            logger.LogInformation($"Number of Participants : {participantlistResponse.Value.Count}");
 
             int hangupScenario = Convert.ToInt32(builder.Configuration["HangUpScenarios"]);
             if (hangupScenario == 1)
@@ -340,25 +316,13 @@ app.MapPost("/api/calls/{contextId}", async (
                             }
                             var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
                              await callConnection.RemoveParticipantAsync(RemoveParticipant);
-                           
-                            
-                                logger.LogInformation($"participant removed : {participantToRemove.Identifier}");
-                            
 
                         }
                     }
                 }
             }
         }
-
-
-
-
-        if (@event is PlayFailed)
-        {
-            logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
-            await callConnection.HangUpAsync(true);
-        }
+       
        
     }
     return Results.Ok();
