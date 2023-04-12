@@ -10,6 +10,8 @@
 
         public Uri HoldMusicPromptUri { get; set; }
 
+        public Uri TransferParticipantApi { get; set; }
+
         public string ACS_DirectOffer_Phonenumber { get; set; }
     }
 }

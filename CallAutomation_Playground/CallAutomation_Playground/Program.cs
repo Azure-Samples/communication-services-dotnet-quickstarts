@@ -20,7 +20,8 @@ PlaygroundConfig playgroundConfig = new PlaygroundConfig
     ACS_DirectOffer_Phonenumber = builder.Configuration["PlaygroundConfig:ACS_DirectOffer_Phonenumber"],
     InitialPromptUri = new Uri(builder.Configuration["PlaygroundConfig:InitialPromptUri"]),
     AddParticipantPromptUri = new Uri(builder.Configuration["PlaygroundConfig:AddParticipantPromptUri"]),
-    HoldMusicPromptUri = new Uri(builder.Configuration["PlaygroundConfig:HoldMusicPromptUri"])
+    HoldMusicPromptUri = new Uri(builder.Configuration["PlaygroundConfig:HoldMusicPromptUri"]),
+    TransferParticipantApi = new Uri(builder.Configuration["PlaygroundConfig:TransferParticipantApi"])
 };
 //builder.Configuration.Bind(playgroundConfig);
 builder.Services.AddSingleton(playgroundConfig);
