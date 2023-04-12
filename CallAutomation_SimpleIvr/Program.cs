@@ -226,30 +226,31 @@ app.MapPost("/api/calls/{contextId}", async (
                     Count++;
 
 
-                    if (Count == Participants.Length)
-                    {
-                        TotalParticipants = true;
-                    }
+                    //if (Count == Participants.Length)
+                    //{
+                    //    TotalParticipants = true;
+                    //}
 
-                    logger.LogInformation($"Total participants in the call : {Count}");
+                    //logger.LogInformation($"Total participants in the call : {Count}");
 
 
 
                 }
-                if (@event is AddParticipantFailed failedParticipant)
-                {
-                    declineParticipantsCount++;
-                    AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
-                    logger.LogInformation($"Failed participant Reason -------> {failedParticipant.ResultInformation?.Message}");
-                    if ((addedParticipantsCount + declineParticipantsCount) == Participants.Count())
-                    {
-                        await PerformHangUp(callConnection);
-                    }
-                }
+               
                 
                
 
 
+            }
+        }
+        if (@event is AddParticipantFailed failedParticipant)
+        {
+            declineParticipantsCount++;
+            AddParticipantFailed addParticipantFailed = (AddParticipantFailed)@event;
+            logger.LogInformation($"Failed participant Reason -------> {failedParticipant.ResultInformation?.Message}");
+            if ((addedParticipantsCount + declineParticipantsCount) == Participants.Count())
+            {
+                await PerformHangUp(callConnection);
             }
         }
         if (@event is AddParticipantSucceeded participant)
@@ -293,9 +294,9 @@ app.MapPost("/api/calls/{contextId}", async (
             await Task.Delay(TimeSpan.FromSeconds(10));
 
             var participantlistResponse = await callConnection.GetParticipantsAsync();
-            //logger.LogInformation("-------Participant List----- ");
-            //logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
-            
+            logger.LogInformation("-------Participant List----- ");
+            logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
+
             int hangupScenario = Convert.ToInt32(builder.Configuration["HangUpScenarios"]);
             if (hangupScenario == 1)
             {
