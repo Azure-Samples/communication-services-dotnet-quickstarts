@@ -9,7 +9,7 @@
     }
   },
   "profiles": {
-    "Contoso_Ivr": {
+    "CallAutomationTests": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

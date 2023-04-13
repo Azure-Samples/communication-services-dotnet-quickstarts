@@ -8,9 +8,9 @@ namespace CallAutomation.Scenarios.Handlers
 
     public class EventGridAuthOptions : AuthenticationSchemeOptions
     {
-        public string Secret { get; set; }
-        public string HeaderName { get; set; }
-        public string QueryParameter { get; set; }
+        public string? Secret { get; set; }
+        public string? HeaderName { get; set; }
+        public string? QueryParameter { get; set; }
     }
 
 

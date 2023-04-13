@@ -13,7 +13,7 @@ namespace CallAutomation.Scenarios.Controllers
 {
     [Route("/callbacks")]
     [ApiController]
-    public class CallEventsController : ControllerBase
+    public class CallbacksController : ControllerBase
     {
         private readonly ILogger _logger;
         private readonly IEventCloudEventHandler<AddParticipantFailed> _addParticipantFailedEventHandler;
@@ -33,7 +33,7 @@ namespace CallAutomation.Scenarios.Controllers
         private readonly ICallContextService _callContextService;
         private readonly ICallAutomationService _callAutomationService;
 
-        public CallEventsController(ILogger<EventsController> logger,
+        public CallbacksController(ILogger<EventsController> logger,
             IEventCloudEventHandler<AddParticipantFailed> addParticipantFailedEventHandler,
             IEventCloudEventHandler<AddParticipantSucceeded> addParticipantSucceededEventHandler,
             IEventCloudEventHandler<CallConnected> callConnectedEventHandler,

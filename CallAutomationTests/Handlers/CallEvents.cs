@@ -1,5 +1,7 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
+using Azure.Messaging.EventGrid.SystemEvents;
+
 namespace CallAutomation.Scenarios.Handlers
 {
     public class IncomingCallEvent
@@ -11,7 +13,22 @@ namespace CallAutomation.Scenarios.Handlers
         public string? IncomingCallContext { get; set; }
     }
 
-    // TODO: investigate why we can't parse using the SDK CommunicationUserIdentifier, out of date?
+    public class RecordingFileStatusUpdatedEvent
+    {
+        public AcsRecordingStorageInfoProperties RecordingStorageInfo { get; }
+        /// <summary> The time at which the recording started. </summary>
+        public DateTimeOffset? RecordingStartTime { get; }
+        /// <summary> The recording duration in milliseconds. </summary>
+        public long? RecordingDurationMs { get; }
+        /// <summary> The recording content type- AudioVideo, or Audio. </summary>
+        public AcsRecordingContentType? ContentType { get; }
+        /// <summary> The recording  channel type - Mixed, Unmixed. </summary>
+        public AcsRecordingChannelType? ChannelType { get; }
+        /// <summary> The recording format type - Mp4, Mp3, Wav. </summary>
+        public AcsRecordingFormatType? FormatType { get; }
+        /// <summary> The reason for ending recording session. </summary>
+        public string SessionEndReason { get; }
+    }
 
     public class CommunicationIdentifierModel
     {

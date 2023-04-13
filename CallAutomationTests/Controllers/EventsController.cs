@@ -19,18 +19,21 @@ namespace CallAutomation.Scenarios.Controllers
         private readonly ILogger _logger;
         private readonly EventConverter _eventConverter;
         private readonly IEventGridEventHandler<IncomingCallEvent> _incomingCallEventHandler;
+        private readonly IEventGridEventHandler<RecordingFileStatusUpdatedEvent> _recordingFileStatusUpdatedEventHandler;
 
         public EventsController(ILogger<EventsController> logger,
             EventConverter eventConverter,
-            IEventGridEventHandler<IncomingCallEvent> incomingCallEventHandler)
+            IEventGridEventHandler<IncomingCallEvent> incomingCallEventHandler,
+            IEventGridEventHandler<RecordingFileStatusUpdatedEvent> recordingFileStatusUpdatedEventHandler)
         {
             _logger = logger;
             _eventConverter = eventConverter;
             _incomingCallEventHandler = incomingCallEventHandler;
+            _recordingFileStatusUpdatedEventHandler = recordingFileStatusUpdatedEventHandler;
         }
 
         [HttpPost(Name = "Receive_ACS_Events")]
-        [Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
+        //[Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
         public async Task<ActionResult> Handle([FromBody] EventGridEvent[] eventGridEvents)
         {
             Request.Headers.TryGetValue("Aeg-Event-Type", out var eventType);
@@ -53,7 +56,10 @@ namespace CallAutomation.Scenarios.Controllers
                     {
                         await _incomingCallEventHandler.Handle(eventData as IncomingCallEvent);
                     }
-
+                    if (eventData.GetType() == typeof(RecordingFileStatusUpdatedEvent))
+                    {
+                        await _recordingFileStatusUpdatedEventHandler.Handle(eventData as RecordingFileStatusUpdatedEvent);
+                    }
                 }
                 catch (Exception ex)
                 {

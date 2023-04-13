@@ -21,6 +21,7 @@ namespace CallAutomation.Scenarios.Handlers
 {
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
+        IEventGridEventHandler<RecordingFileStatusUpdatedEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
         IEventCloudEventHandler<CallConnected>,
@@ -36,26 +37,21 @@ namespace CallAutomation.Scenarios.Handlers
         IEventCloudEventHandler<RecognizeCanceled>,
         IEventCloudEventHandler<RecordingStateChanged>
     {
-        private readonly string _partitionKey;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CallEventHandler> _logger;
         private readonly ICallAutomationService _callAutomationService;
         private readonly ICallContextService _callContextService;
-        private readonly IMapper _mapper;
 
         public CallEventHandler(
             IConfiguration configuration,
             ILogger<CallEventHandler> logger,
             ICallAutomationService callAutomationService,
-            ICallContextService callContextService,
-            IMapper mapper)
+            ICallContextService callContextService)
         {
-            _partitionKey = configuration.GetSection("Db:PartitionKey").Value;
             _configuration = configuration;
             _logger = logger;
             _callAutomationService = callAutomationService;
             _callContextService = callContextService;
-            _mapper = mapper;
         }
 
         public async Task Handle(IncomingCallEvent incomingCallEvent)
@@ -100,9 +96,6 @@ namespace CallAutomation.Scenarios.Handlers
                     _logger.LogInformation($"AddParticipantFailed received");
 
                     _logger.LogError($"Failed to add agent to the call");
-
-                    // TODO: inform UI that agent unassigned
-
 
                     if (addParticipantFailed.OperationContext == Constants.OperationContext.AgentJoining)
                     {
@@ -931,6 +924,11 @@ namespace CallAutomation.Scenarios.Handlers
             {
                 return ImmutableDictionary<string, object>.Empty;
             }
+        }
+
+        public Task Handle(RecordingFileStatusUpdatedEvent eventName)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion
