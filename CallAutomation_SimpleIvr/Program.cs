@@ -99,11 +99,11 @@ app.MapPost("/api/calls/{contextId}", async (
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         if (@event == null)
         {
-            
+            logger.LogWarning("cloudEvents param is null");
             continue;
         }
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event)}");
-
+        
         var callConnection = client.GetCallConnection(@event.CallConnectionId);
         var callMedia = callConnection?.GetCallMedia();
 
@@ -114,6 +114,10 @@ app.MapPost("/api/calls/{contextId}", async (
 
         if (@event is CallConnected)
         {
+            TotalParticipants = false;
+            addedParticipantsCount = 0;
+            declineParticipantsCount = 0;
+
             logger.LogInformation($"CallConnected event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
             // Start recognize prompt - play audio and recognize 1-digit DTMF input
             var recognizeOptions =
