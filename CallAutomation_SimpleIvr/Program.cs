@@ -57,22 +57,25 @@ app.MapPost("/api/incomingCall", async (
             }
         }
         var jsonObject = JsonNode.Parse(eventGridEvent.Data).AsObject();
+        var targetId = (string)(jsonObject["to"]["rawId"]);
         var callerId = (string)(jsonObject["from"]["rawId"]);
         var incomingCallContext = (string)jsonObject["incomingCallContext"];
         var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
 
-        
+        string caSourceId = builder.Configuration["TargetId"];
         var rejectcall = Convert.ToBoolean(builder.Configuration["declinecall"]);
 
-        if (rejectcall)
+        if (caSourceId.Contains(targetId))
         {
-          var response =   client.RejectCallAsync(incomingCallContext);
-            logger.LogInformation($"{response.Result}");
-
-        }
-        else
-        {
-            AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
+            if (rejectcall)
+            {
+                var response = client.RejectCallAsync(incomingCallContext);
+                logger.LogInformation($"{response.Result}");
+            }
+            else
+            {
+                AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
+            }
         }
     }
     return Results.Ok();
@@ -158,10 +161,7 @@ app.MapPost("/api/calls/{contextId}", async (
             {
                 // Hangup for everyone
                 await callConnection.HangUpAsync(true);
-
                 logger.LogInformation($"Call disconnected event received call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
-
-
             }
             else
             {
@@ -196,7 +196,6 @@ app.MapPost("/api/calls/{contextId}", async (
                         if (identifierKind == CommunicationIdentifierKind.UserIdentity)
                         {
                             callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity));
-
                         }
                     }
                     
@@ -212,7 +211,6 @@ app.MapPost("/api/calls/{contextId}", async (
                     logger.LogInformation($"AddParticipant event received for call connection id: {@event.CallConnectionId}" + $" Correlation id: {@event.CorrelationId}");
                     logger.LogInformation($"Addparticipant call: {response.Value.Participant}" + $"  Addparticipant ID: {Participantindentity}"
                          + $"  get response fron participant : {response.GetRawResponse()}" +$" call reason : {response.GetRawResponse().ReasonPhrase}");
-
                 }
             }
         }
@@ -240,7 +238,6 @@ app.MapPost("/api/calls/{contextId}", async (
         if (@event is RemoveParticipantSucceeded)
         {
             RemoveParticipantSucceeded RemoveParticipantSucceeded = (RemoveParticipantSucceeded)@event;
-
             logger.LogInformation($"Remove Participant Succeeded RawId : {RemoveParticipantSucceeded.Participant.RawId}");
         }
 
