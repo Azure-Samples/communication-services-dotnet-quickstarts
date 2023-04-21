@@ -89,7 +89,6 @@ app.MapPost("/api/calls/{contextId}", async (
 {
     var audioPlayOptions = new PlayOptions() { OperationContext = "SimpleIVR", Loop = false };
 
-
     if (cloudEvents == null)
     {
         logger.LogWarning("cloudEvents parameter is null.");
@@ -133,7 +132,6 @@ app.MapPost("/api/calls/{contextId}", async (
                     OperationContext = "MainMenu"
                 };
             await callMedia.StartRecognizingAsync(recognizeOptions);
-            
         }
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
@@ -153,6 +151,7 @@ app.MapPost("/api/calls/{contextId}", async (
             else if (collectedTones.Tones[0] == DtmfTone.Three)
             {
                 PlaySource customerCareAudio = new FileSource(new Uri(baseUri + builder.Configuration["CustomerCareAudio"]));
+                audioPlayOptions.OperationContext = "CustomerCare";
                 await callMedia.PlayToAllAsync(customerCareAudio, audioPlayOptions);
             }
             else if (collectedTones.Tones[0] == DtmfTone.Four)
@@ -182,17 +181,14 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             if (@event.OperationContext == "AgentConnect")
             {
+                var target = builder.Configuration["ParticipantToAdd"];
 
-                var target = builder.Configuration["ParticipantToAdd"];               
-                
                 foreach (var Participantindentity in Participants)
                 {
-
                     var identifierKind = GetIdentifierKind(Participantindentity);
                     CallInvite? callInvite = null;
                     if (!string.IsNullOrEmpty(Participantindentity))
                     {
-
                         if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
                         {                           
                             callInvite = new CallInvite(new PhoneNumberIdentifier(Participantindentity), new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]));
@@ -202,7 +198,7 @@ app.MapPost("/api/calls/{contextId}", async (
                             callInvite = new CallInvite(new CommunicationUserIdentifier(Participantindentity));
                         }
                     }
-                    
+
                     var addParticipantOptions = new AddParticipantOptions(callInvite);
                     var response = await callConnection.AddParticipantAsync(addParticipantOptions);
                     //var playSource = new FileSource(new Uri(callConfiguration.Value.AppBaseUri + callConfiguration.Value.AddParticipant));
@@ -217,11 +213,31 @@ app.MapPost("/api/calls/{contextId}", async (
                          + $"  get response fron participant : {response.GetRawResponse()}" +$" call reason : {response.GetRawResponse().ReasonPhrase}");
                 }
             }
+            else if(@event.OperationContext == "CustomerCare")
+            {
+                var customerCareIdentity = builder.Configuration["customerCareIdentity"];
+                var identifierKind = GetIdentifierKind(customerCareIdentity);
+                CallInvite? callInvite = null;
+                if (!string.IsNullOrEmpty(customerCareIdentity))
+                {
+                    if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
+                    {
+                        callInvite = new CallInvite(new PhoneNumberIdentifier(customerCareIdentity), new PhoneNumberIdentifier(builder.Configuration["ACSAlternatePhoneNumber"]));
+                    }
+                    if (identifierKind == CommunicationIdentifierKind.UserIdentity)
+                    {
+                        callInvite = new CallInvite(new CommunicationUserIdentifier(customerCareIdentity));
+                    }
+                }
+                var transferResponse = await callConnection.TransferCallToParticipantAsync(callInvite);
+                logger.LogInformation($"Call Transfered to : {customerCareIdentity}");
+                logger.LogInformation($"Transfer call result : {transferResponse.GetRawResponse()}");
+            }
         }
-        if (@event is AddParticipantSucceeded participant)
+        if (@event is AddParticipantSucceeded addedParticipant)
         {
             addedParticipantsCount++;
-            logger.LogInformation($"participant added ---> {participant.Participant.RawId}");
+            logger.LogInformation($"participant added ---> {addedParticipant.Participant.RawId}");
 
             if ((addedParticipantsCount + declineParticipantsCount) == Participants.Length)
             {
@@ -238,19 +254,16 @@ app.MapPost("/api/calls/{contextId}", async (
                 await PerformHangUp(callConnection);
             }
         }
-       
         if (@event is RemoveParticipantSucceeded)
         {
             RemoveParticipantSucceeded RemoveParticipantSucceeded = (RemoveParticipantSucceeded)@event;
             logger.LogInformation($"Remove Participant Succeeded RawId : {RemoveParticipantSucceeded.Participant.RawId}");
         }
-
         if (@event is RemoveParticipantFailed)
         {
             RemoveParticipantFailed removeParticipantFailed = (RemoveParticipantFailed)@event;
             logger.LogInformation($"Remove participant failed RawId:{removeParticipantFailed.Participant.RawId}");
         }
-
         if (@event.OperationContext == "SimpleIVR")
         {
             await callConnection.HangUpAsync(true);
@@ -260,14 +273,30 @@ app.MapPost("/api/calls/{contextId}", async (
             logger.LogInformation($"PlayFailed Event: {JsonConvert.SerializeObject(@event)}");
             await callConnection.HangUpAsync(true);
         }
+        if (@event is ParticipantsUpdated updatedParticipantEvent)
+        {
+            logger.LogInformation($"Participant Updated Event Recieved");
+            logger.LogInformation("-------Updated Participant List----- ");
+            foreach (var participant in updatedParticipantEvent.Participants)
+            {
+                logger.LogInformation($"Participant Raw ID : {participant.Identifier.RawId}");
+            }
+            await callConnection.HangUpAsync(true);
+        }
+        if (@event is CallTransferAccepted callTransferAccepted)
+        {
+            logger.LogInformation($"Transfer call accepted");
+        }
+        if (@event is CallTransferFailed callTransferFailed)
+        {
+            logger.LogInformation($"Transfer call Failed ----> {callTransferFailed.ResultInformation.Message}");
+        }
+
         async Task PerformHangUp(CallConnection callConnection)
         {
             await Task.Delay(TimeSpan.FromSeconds(10));
-
             var participantlistResponse = await callConnection.GetParticipantsAsync();
             logger.LogInformation("-------Participant List----- ");
-            //logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
-            //logger.LogInformation($"{participantlistResponse.GetRawResponse()}");
             foreach (var participant in participantlistResponse.Value)
             {
                 logger.LogInformation($"Participant Raw ID : {participant.Identifier.RawId}");
@@ -303,28 +332,28 @@ app.MapPost("/api/calls/{contextId}", async (
                         if (!string.IsNullOrEmpty(participantToRemove.Identifier.ToString()) &&
                                 Plist.Contains(participantToRemove.Identifier.ToString()))
                         {
-                            CommunicationIdentifier RemoveParticipants = null;
                             var RemoveId = participantToRemove.Identifier;
                             var identifierKind = GetIdentifierKind(RemoveId.RawId);
-
-                            if (identifierKind == CommunicationIdentifierKind.PhoneIdentity)
-                            {
-                                RemoveParticipants = new PhoneNumberIdentifier(participantToRemove.Identifier.ToString());
-                            }
-                            else if (identifierKind == CommunicationIdentifierKind.UserIdentity)
-                            {
-                                RemoveParticipants = new CommunicationUserIdentifier(RemoveId.RawId);
-                            }
                             var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
                              await callConnection.RemoveParticipantAsync(RemoveParticipant);
-
                         }
                     }
                 }
             }
+            else if (hangupScenario == 4)
+            {
+                foreach (var participant in participantlistResponse.Value)
+                {
+                    if(participant.Identifier.RawId.Contains(builder.Configuration["TargetId"]) )
+                    {
+                        logger.LogInformation($"Removing participant Raw ID : {participant.Identifier.RawId}");
+                        var RemoveParticipant = new RemoveParticipantOptions(participant.Identifier);
+                        var removeParticipantResponse = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                        logger.LogInformation($"Removing participant Response : {removeParticipantResponse.Value.ToString}");
+                    }
+                }
+            }
         }
-       
-       
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
@@ -349,20 +378,16 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
 public enum CommunicationIdentifierKind
 {
     PhoneIdentity,
     UserIdentity,
     UnknownIdentity
-
-
-
 }
+
 public class Constants
 {
     public const string userIdentityRegex = @"8:acs:[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}_[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}";
     public const string phoneIdentityRegex = @"^\+\d{10,14}$";
-
-
-
 }
