@@ -282,7 +282,6 @@ app.MapPost("/api/calls/{contextId}", async (
             {
                 logger.LogInformation($"Participant Raw ID : {participant.Identifier.RawId}");
             }
-            await callConnection.HangUpAsync(true);
         }
         if (@event is CallTransferAccepted callTransferAccepted)
         {
