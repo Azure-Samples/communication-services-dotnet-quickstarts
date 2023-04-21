@@ -34,6 +34,7 @@ var TotalParticipants = false;
 int addedParticipantsCount = 0;
 int declineParticipantsCount = 0;
 var target = builder.Configuration["ParticipantToAdd"];
+string sourceCallerID = null;
 var Participants = target.Split(';');
 var app = builder.Build();
 app.MapPost("/api/incomingCall", async (
@@ -58,9 +59,9 @@ app.MapPost("/api/incomingCall", async (
         }
         var jsonObject = JsonNode.Parse(eventGridEvent.Data).AsObject();
         var targetId = (string)(jsonObject["to"]["rawId"]);
-        var callerId = (string)(jsonObject["from"]["rawId"]);
+        sourceCallerID = (string)(jsonObject["from"]["rawId"]);
         var incomingCallContext = (string)jsonObject["incomingCallContext"];
-        var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={callerId}");
+        var callbackUri = new Uri(baseUri + $"/api/calls/{Guid.NewGuid()}?callerId={sourceCallerID}");
 
         string caSourceId = builder.Configuration["TargetId"];
         var rejectcall = Convert.ToBoolean(builder.Configuration["declinecall"]);
@@ -316,7 +317,7 @@ app.MapPost("/api/calls/{contextId}", async (
                 var response = await callConnection.HangUpAsync(false);
                 logger.LogInformation($"Hang up response : {response}");
             }
-            else if (hangupScenario == 3)
+            else if (hangupScenario == 3 || hangupScenario == 3)
             {
                 if (addedParticipantsCount == 0)
                 {
@@ -330,26 +331,13 @@ app.MapPost("/api/calls/{contextId}", async (
                     {
                         var Plist = builder.Configuration["ParticipantToAdd"];
                         if (!string.IsNullOrEmpty(participantToRemove.Identifier.ToString()) &&
-                                Plist.Contains(participantToRemove.Identifier.ToString()))
+                                Plist.Contains(participantToRemove.Identifier.ToString()) ||
+                                (hangupScenario == 4 && participantToRemove.Identifier.RawId.Contains(sourceCallerID)))
                         {
-                            var RemoveId = participantToRemove.Identifier;
-                            var identifierKind = GetIdentifierKind(RemoveId.RawId);
                             var RemoveParticipant = new RemoveParticipantOptions(participantToRemove.Identifier);
-                             await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                            var removeParticipantResponse = await callConnection.RemoveParticipantAsync(RemoveParticipant);
+                            logger.LogInformation($"Removing participant Response : {removeParticipantResponse.Value.ToString}");
                         }
-                    }
-                }
-            }
-            else if (hangupScenario == 4)
-            {
-                foreach (var participant in participantlistResponse.Value)
-                {
-                    if(participant.Identifier.RawId.Contains(builder.Configuration["TargetId"]) )
-                    {
-                        logger.LogInformation($"Removing participant Raw ID : {participant.Identifier.RawId}");
-                        var RemoveParticipant = new RemoveParticipantOptions(participant.Identifier);
-                        var removeParticipantResponse = await callConnection.RemoveParticipantAsync(RemoveParticipant);
-                        logger.LogInformation($"Removing participant Response : {removeParticipantResponse.Value.ToString}");
                     }
                 }
             }
