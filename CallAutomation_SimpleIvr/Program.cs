@@ -316,7 +316,7 @@ app.MapPost("/api/calls/{contextId}", async (
                 var response = await callConnection.HangUpAsync(false);
                 logger.LogInformation($"Hang up response : {response}");
             }
-            else if (hangupScenario == 3 || hangupScenario == 3)
+            else if (hangupScenario == 3 || hangupScenario == 4)
             {
                 if (addedParticipantsCount == 0)
                 {
