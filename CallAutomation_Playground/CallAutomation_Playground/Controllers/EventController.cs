@@ -1,6 +1,5 @@
 ﻿using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CallAutomation_Playground.Controllers

@@ -1,5 +1,4 @@
-﻿using Azure.Communication.CallAutomation;
-using Azure.Communication;
+﻿using Azure.Communication;
 
 namespace CallAutomation_Playground.Interfaces
 {

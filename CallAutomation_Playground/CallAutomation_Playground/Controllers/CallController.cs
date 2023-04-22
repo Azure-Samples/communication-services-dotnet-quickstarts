@@ -1,7 +1,6 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using CallAutomation_Playground.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CallAutomation_Playground.Controllers
@@ -16,8 +15,8 @@ namespace CallAutomation_Playground.Controllers
 
 
         public CallController(
-            CallAutomationClient callAutomationClient, 
-            PlaygroundConfig playgroundConfig, 
+            CallAutomationClient callAutomationClient,
+            PlaygroundConfig playgroundConfig,
             ITopLevelMenuService topLevelMenuService)
         {
             _callAutomationClient = callAutomationClient;
