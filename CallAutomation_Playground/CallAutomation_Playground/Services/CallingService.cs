@@ -1,28 +1,26 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using CallAutomation_Playground.Interfaces;
 
 namespace CallAutomation_Playground.Services;
 
-public class CallingService : ICallingService
+public abstract class CallingService
 {
     private readonly CallAutomationClient _callAutomationClient;
 
-    public CallingService(CallAutomationClient callAutomationClient)
+    protected CallingService(CallAutomationClient callAutomationClient)
     {
         _callAutomationClient = callAutomationClient;
     }
 
-    public async Task<CallConnectionProperties> GetCallConnectionProperties(string callConnectionId) =>
-        _callAutomationClient.GetCallConnection(callConnectionId).GetCallConnectionPropertiesAsync().Result;
-
-    public async Task AddParticipant(CallConnectionProperties callConnectionProperties, Func<AddParticipantSucceeded, Task>? success, Func<AddParticipantFailed, Task>? failed, CallInvite callInvite)
+    protected async Task AddParticipant(CallConnectionProperties callConnectionProperties, Func<Task>? executeWhileWaiting, Func<AddParticipantSucceeded, Task>? success, Func<AddParticipantFailed, Task>? failed, CallInvite callInvite, CancellationToken cancellationToken = default)
     {
         var result = await _callAutomationClient
             .GetCallConnection(callConnectionProperties.CallConnectionId)
-            .AddParticipantAsync(callInvite);
+            .AddParticipantAsync(callInvite, cancellationToken);
 
-        var response = await result.Value.WaitForEventProcessorAsync();
+        if (executeWhileWaiting is not null) await executeWhileWaiting();
+
+        var response = await result.Value.WaitForEventProcessorAsync(cancellationToken);
 
         switch (response.IsSuccessEvent)
         {
@@ -35,13 +33,15 @@ public class CallingService : ICallingService
         }
     }
 
-    public async Task RemoveParticipant(CallConnectionProperties callConnectionProperties, Func<RemoveParticipantSucceeded, Task>? success, Func<RemoveParticipantFailed, Task>? failed, CommunicationIdentifier target)
+    protected async Task RemoveParticipant(CallConnectionProperties callConnectionProperties, Func<Task>? executeWhileWaiting, Func<RemoveParticipantSucceeded, Task>? success, Func<RemoveParticipantFailed, Task>? failed, CommunicationIdentifier target, CancellationToken cancellationToken = default)
     {
         var result = await _callAutomationClient
             .GetCallConnection(callConnectionProperties.CallConnectionId)
-            .RemoveParticipantAsync(target);
+            .RemoveParticipantAsync(target, null, cancellationToken);
 
-        var response = await result.Value.WaitForEventProcessorAsync();
+        if (executeWhileWaiting is not null) await executeWhileWaiting();
+
+        var response = await result.Value.WaitForEventProcessorAsync(cancellationToken);
 
         switch (response.IsSuccessEvent)
         {
@@ -60,23 +60,23 @@ public class CallingService : ICallingService
         }
     }
 
-    public async Task<IReadOnlyList<CallParticipant>> GetCallParticipantList(CallConnectionProperties callConnectionProperties)
+    protected async Task<IReadOnlyList<CallParticipant>> GetCallParticipantList(CallConnectionProperties callConnectionProperties, CancellationToken cancellationToken = default)
     {
         var result =await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId)
-            .GetParticipantsAsync();
+            .GetParticipantsAsync(cancellationToken);
 
         return result.Value;
     }
 
-    public async Task RecognizeDtmfInput(CallConnectionProperties callConnectionProperties,
-        Func<CollectTonesResult?, Task>? success, Func<RecognizeFailed, Task>? failed,
-        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions)
+    public async Task RecognizeDtmfInput(CallConnectionProperties callConnectionProperties,Func<Task>? executeWhileWaiting, Func<CollectTonesResult?, Task>? success, Func<RecognizeFailed, Task>? failed, CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions, CancellationToken cancellationToken = default)
     {
         var result = await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId)
             .GetCallMedia()
-            .StartRecognizingAsync(callMediaRecognizeDtmfOptions);
+            .StartRecognizingAsync(callMediaRecognizeDtmfOptions, cancellationToken);
 
-        var response = await result.Value.WaitForEventProcessorAsync();
+        if (executeWhileWaiting is not null) await executeWhileWaiting();
+
+        var response = await result.Value.WaitForEventProcessorAsync(cancellationToken);
 
         switch (response.IsSuccessEvent)
         {
@@ -96,32 +96,34 @@ public class CallingService : ICallingService
         }
     }
 
-    public async Task PlayHoldMusic(CallConnectionProperties callConnectionProperties, Uri fileUri, CommunicationIdentifier? target, bool loop = false)
+    protected async Task PlayHoldMusic(CallConnectionProperties callConnectionProperties, Uri fileUri, CommunicationIdentifier? target, bool loop, CancellationToken cancellationToken = default)
     {
         if (target is null)
         {
             await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId)
                 .GetCallMedia()
-                .PlayToAllAsync(new FileSource(fileUri), new PlayOptions() { Loop = loop });
+                .PlayToAllAsync(new FileSource(fileUri), new PlayOptions() { Loop = loop }, cancellationToken);
         }
         else
         {
             await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId)
                 .GetCallMedia()
-                .PlayAsync(new FileSource(fileUri), new[] { target }, new PlayOptions() { Loop = loop });
+                .PlayAsync(new FileSource(fileUri), new[] { target }, new PlayOptions() { Loop = loop }, cancellationToken);
         }
     }
 
-    public async Task StartRecording(CallConnectionProperties callConnectionProperties) =>
+    protected async Task StartRecording(CallConnectionProperties callConnectionProperties, CancellationToken cancellationToken = default) =>
         await _callAutomationClient.GetCallRecording()
-            .StartRecordingAsync(new StartRecordingOptions(new ServerCallLocator(callConnectionProperties.ServerCallId)));
+            .StartRecordingAsync(new StartRecordingOptions(new ServerCallLocator(callConnectionProperties.ServerCallId)), cancellationToken);
 
-    public async Task TransferCallLeg(CallConnectionProperties callConnectionProperties, Func<CallTransferAccepted, Task>? success, Func<CallTransferFailed, Task>? failed, CallInvite callInvite)
+    protected async Task TransferCallLeg(CallConnectionProperties callConnectionProperties, Func<Task>? executeWhileWaiting, Func<CallTransferAccepted, Task>? success, Func<CallTransferFailed, Task>? failed, CallInvite callInvite, CancellationToken cancellationToken = default)
     {
         var result = await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId)
-            .TransferCallToParticipantAsync(callInvite);
+            .TransferCallToParticipantAsync(callInvite, cancellationToken);
 
-        var response = await result.Value.WaitForEventProcessorAsync();
+        if (executeWhileWaiting is not null) await executeWhileWaiting();
+
+        var response = await result.Value.WaitForEventProcessorAsync(cancellationToken);
 
         switch (response.IsSuccessEvent)
         {
@@ -140,10 +142,10 @@ public class CallingService : ICallingService
         }
     }
 
-    public async Task CancelMedia(CallConnectionProperties callConnectionProperties) =>
-        await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId).GetCallMedia().CancelAllMediaOperationsAsync();
+    protected async Task CancelMedia(CallConnectionProperties callConnectionProperties, CancellationToken cancellationToken = default) =>
+        await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId).GetCallMedia().CancelAllMediaOperationsAsync(cancellationToken);
 
-    public async Task HangUp(CallConnectionProperties callConnectionProperties, bool terminateCall) =>
+    protected async Task HangUp(CallConnectionProperties callConnectionProperties, bool terminateCall, CancellationToken cancellationToken = default) =>
         await _callAutomationClient.GetCallConnection(callConnectionProperties.CallConnectionId)
-            .HangUpAsync(terminateCall);
+            .HangUpAsync(terminateCall, cancellationToken);
 }

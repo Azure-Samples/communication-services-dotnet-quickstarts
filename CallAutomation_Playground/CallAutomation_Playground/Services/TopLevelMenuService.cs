@@ -6,48 +6,49 @@ namespace CallAutomation_Playground.Services
 {
     public class TopLevelMenuService : ITopLevelMenuService
     {
-        private readonly ICallingService _callingService;
+        private readonly CallAutomationClient _callAutomationClient;
         private readonly PlaygroundConfig _playgroundConfig;
 
-        public TopLevelMenuService(
-            ICallingService callingService, PlaygroundConfig playgroundConfig)
+        public TopLevelMenuService(CallAutomationClient callAutomationClient, PlaygroundConfig playgroundConfig)
         {
-            _callingService = callingService;
+            _callAutomationClient = callAutomationClient;
             _playgroundConfig = playgroundConfig;
         }
 
         public async Task InvokeTopLevelMenu(CommunicationIdentifier target, string callConnectionId)
         {
-            CallConnectionProperties callConnectionProperties = await _callingService.GetCallConnectionProperties(callConnectionId);
+            CallConnectionProperties callConnectionProperties = await _callAutomationClient.GetCallConnection(callConnectionId).GetCallConnectionPropertiesAsync();
 
             // Top Level DTMF Menu
-            CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new CallMediaRecognizeDtmfOptions(target, 1);
-            callMediaRecognizeDtmfOptions.Prompt = new FileSource(_playgroundConfig.InitialPromptUri);
-            callMediaRecognizeDtmfOptions.InterruptPrompt = true;
+            CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new (target, 1)
+            {
+                Prompt = new FileSource(_playgroundConfig.InitialPromptUri),
+                InterruptPrompt = true
+            };
 
-            IvrMenu mainMenu = new PlaygroundMainMenu(_callingService, _playgroundConfig);
+            IvrMenu mainMenu = new PlaygroundMainMenu(_callAutomationClient, _playgroundConfig);
 
             for (int i = 0; i < 3; i++)
             {
-                await _callingService.RecognizeDtmfInput(callConnectionProperties,
+                await mainMenu.RecognizeDtmfInput(callConnectionProperties, null,
                     async success =>
                     {
-                        if (success.Tones.FirstOrDefault() == DtmfTone.One)
+                        if (success?.Tones.FirstOrDefault() == DtmfTone.One)
                         {
                             await mainMenu.OnPressOne(callConnectionProperties, target);
                         }
 
-                        if (success.Tones.FirstOrDefault() == DtmfTone.Two)
+                        if (success?.Tones.FirstOrDefault() == DtmfTone.Two)
                         {
                             await mainMenu.OnPressTwo(callConnectionProperties, target);
                         }
 
-                        if (success.Tones.FirstOrDefault() == DtmfTone.Three)
+                        if (success?.Tones.FirstOrDefault() == DtmfTone.Three)
                         {
                             await mainMenu.OnPressThree(callConnectionProperties, target);
                         }
 
-                        if (success.Tones.FirstOrDefault() == DtmfTone.Four)
+                        if (success?.Tones.FirstOrDefault() == DtmfTone.Four)
                         {
                             await mainMenu.OnPressFour(callConnectionProperties, target);
                         }

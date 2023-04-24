@@ -13,7 +13,6 @@ CallAutomationEventProcessor eventProcessor = callAutomationClient.GetEventProce
 builder.Services.AddSingleton(callAutomationClient);
 builder.Services.AddSingleton(eventProcessor);
 builder.Services.AddSingleton<ITopLevelMenuService, TopLevelMenuService>();
-builder.Services.AddSingleton<ICallingService, CallingService>();
 
 // get Visual Studio dev tunnel uri
 PlaygroundConfig playgroundConfig = new PlaygroundConfig
