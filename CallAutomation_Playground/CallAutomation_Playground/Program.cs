@@ -2,6 +2,7 @@
 using Azure.Communication.CallAutomation;
 using CallAutomation_Playground;
 using CallAutomation_Playground.Interfaces;
+using CallAutomation_Playground.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ CallAutomationEventProcessor eventProcessor = callAutomationClient.GetEventProce
 builder.Services.AddSingleton(callAutomationClient);
 builder.Services.AddSingleton(eventProcessor);
 builder.Services.AddSingleton<ITopLevelMenuService, TopLevelMenuService>();
+builder.Services.AddSingleton<ICallingService, CallingService>();
 
 // get Visual Studio dev tunnel uri
 PlaygroundConfig playgroundConfig = new PlaygroundConfig
@@ -20,8 +22,7 @@ PlaygroundConfig playgroundConfig = new PlaygroundConfig
     ACS_DirectOffer_Phonenumber = builder.Configuration["PlaygroundConfig:ACS_DirectOffer_Phonenumber"],
     InitialPromptUri = new Uri(builder.Configuration["PlaygroundConfig:InitialPromptUri"]),
     AddParticipantPromptUri = new Uri(builder.Configuration["PlaygroundConfig:AddParticipantPromptUri"]),
-    HoldMusicPromptUri = new Uri(builder.Configuration["PlaygroundConfig:HoldMusicPromptUri"]),
-    TransferParticipantApi = new Uri(builder.Configuration["PlaygroundConfig:TransferParticipantApi"])
+    HoldMusicPromptUri = new Uri(builder.Configuration["PlaygroundConfig:HoldMusicPromptUri"])
 };
 //builder.Configuration.Bind(playgroundConfig);
 builder.Services.AddSingleton(playgroundConfig);
