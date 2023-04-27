@@ -136,8 +136,8 @@ app.MapPost("/api/calls/{contextId}", async (
         }
         if (@event is RecognizeCompleted { OperationContext: "MainMenu" })
         {
-            var recognizeCompleted = (RecognizeCompleted)@event;
-            CollectTonesResult collectedTones = (CollectTonesResult)recognizeCompleted.RecognizeResult;
+            var recognizeCompleted = (RecognizeCompleted)@event;         
+            DtmfResult collectedTones = recognizeCompleted.RecognizeResult as DtmfResult;
 
             if (collectedTones.Tones[0] == DtmfTone.One)
             {
