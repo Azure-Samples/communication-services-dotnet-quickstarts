@@ -68,6 +68,8 @@ namespace SendEmailToMultipleRecipients
                     { "EmailTrackingHeader", "MyCustomEmailTrackingID" }
                 }
             };
+
+            // Add optional ReplyTo address which is where any replies to the email will go to.
             emailMessage.ReplyTo.Add(new EmailAddress("<REPLY_TO_EMAIL>", "<REPLY_TO_DISPLAY_NAME>"));
 
             try
