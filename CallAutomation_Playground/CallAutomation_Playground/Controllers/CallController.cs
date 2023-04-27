@@ -1,9 +1,9 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using CallAutomation_Playground.Interfaces;
+using CallAutomation.Playground.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CallAutomation_Playground.Controllers
+namespace CallAutomation.Playground.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -29,7 +29,7 @@ namespace CallAutomation_Playground.Controllers
         {
             // prepare the target and caller in CallInvite
             PhoneNumberIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-            PhoneNumberIdentifier caller = new PhoneNumberIdentifier(_playgroundConfig.ACS_DirectOffer_Phonenumber);
+            PhoneNumberIdentifier caller = new PhoneNumberIdentifier(_playgroundConfig.PhoneNumber);
             CallInvite callInvite = new CallInvite(target, caller);
 
             // create an outbound call to target using caller number

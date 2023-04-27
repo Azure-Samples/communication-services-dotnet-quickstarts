@@ -1,6 +1,6 @@
 ﻿using Azure.Communication;
 
-namespace CallAutomation_Playground.Interfaces
+namespace CallAutomation.Playground.Interfaces
 {
     public interface ITopLevelMenuService
     {

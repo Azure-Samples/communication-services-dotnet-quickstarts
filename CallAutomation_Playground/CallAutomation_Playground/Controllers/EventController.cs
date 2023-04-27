@@ -2,7 +2,7 @@
 using Azure.Messaging;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CallAutomation_Playground.Controllers
+namespace CallAutomation.Playground.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

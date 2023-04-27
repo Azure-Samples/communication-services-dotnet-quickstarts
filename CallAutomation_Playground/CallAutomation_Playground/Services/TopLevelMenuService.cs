@@ -1,68 +1,78 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using CallAutomation_Playground.Interfaces;
+using CallAutomation.Playground.Exceptions;
+using CallAutomation.Playground.Interfaces;
 
-namespace CallAutomation_Playground.Services
+namespace CallAutomation.Playground.Services;
+
+public class TopLevelMenuService : ITopLevelMenuService
 {
-    public class TopLevelMenuService : ITopLevelMenuService
+    private readonly CallAutomationClient _callAutomationClient;
+    private readonly PlaygroundConfig _playgroundConfig;
+    private readonly ILogger<TopLevelMenuService> _logger;
+
+    private readonly IvrMenu _ivrMenu;
+
+    public TopLevelMenuService(CallAutomationClient callAutomationClient, PlaygroundConfig playgroundConfig, IvrMenuRegistry ivrMenuRegistry, ILogger<TopLevelMenuService> logger)
     {
-        private readonly CallAutomationClient _callAutomationClient;
-        private readonly PlaygroundConfig _playgroundConfig;
+        _callAutomationClient = callAutomationClient;
+        _playgroundConfig = playgroundConfig;
+        _logger = logger;
 
-        public TopLevelMenuService(CallAutomationClient callAutomationClient, PlaygroundConfig playgroundConfig)
+        ivrMenuRegistry.IvrMenus.TryGetValue(playgroundConfig.MainMenuName, out var ivrMenu);
+        _ivrMenu = ivrMenu ?? throw new ApplicationException("Could not find valid main menu");
+    }
+
+    public async Task InvokeTopLevelMenu(CommunicationIdentifier target, string callConnectionId)
+    {
+        CallConnectionProperties callConnectionProperties = await _callAutomationClient.GetCallConnection(callConnectionId).GetCallConnectionPropertiesAsync();
+        
+        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new (target, 1)
         {
-            _callAutomationClient = callAutomationClient;
-            _playgroundConfig = playgroundConfig;
-        }
+            Prompt = new FileSource(_playgroundConfig.InitialPromptUri),
+            InterruptPrompt = true
+        };
 
-        public async Task InvokeTopLevelMenu(CommunicationIdentifier target, string callConnectionId)
+        for (var i = 0; i < 3; i++)
         {
-            CallConnectionProperties callConnectionProperties = await _callAutomationClient.GetCallConnection(callConnectionId).GetCallConnectionPropertiesAsync();
-
-            // Top Level DTMF Menu
-            CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new (target, 1)
+            try
             {
-                Prompt = new FileSource(_playgroundConfig.InitialPromptUri),
-                InterruptPrompt = true
-            };
-
-            IvrMenu mainMenu = new PlaygroundMainMenu(_callAutomationClient, _playgroundConfig);
-
-            for (int i = 0; i < 3; i++)
-            {
-                await mainMenu.RecognizeDtmfInput(callConnectionProperties, null,
+                await _ivrMenu.RecognizeDtmfInput(callConnectionProperties, null,
                     async success =>
                     {
                         if (success?.Tones.FirstOrDefault() == DtmfTone.One)
                         {
-                            await mainMenu.OnPressOne(callConnectionProperties, target);
+                            await _ivrMenu.OnPressOne(callConnectionProperties, target);
                         }
 
                         if (success?.Tones.FirstOrDefault() == DtmfTone.Two)
                         {
-                            await mainMenu.OnPressTwo(callConnectionProperties, target);
+                            await _ivrMenu.OnPressTwo(callConnectionProperties, target);
                         }
 
                         if (success?.Tones.FirstOrDefault() == DtmfTone.Three)
                         {
-                            await mainMenu.OnPressThree(callConnectionProperties, target);
+                            await _ivrMenu.OnPressThree(callConnectionProperties, target);
                         }
 
                         if (success?.Tones.FirstOrDefault() == DtmfTone.Four)
                         {
-                            await mainMenu.OnPressFour(callConnectionProperties, target);
+                            await _ivrMenu.OnPressFour(callConnectionProperties, target);
                         }
 
                         i = 0;
-
                     },
                     async failed =>
                     {
                         if (failed.ReasonCode.Equals(ReasonCode.RecognizeInitialSilenceTimedOut))
                         {
-                            // TODO: add retry logic
+                            await _ivrMenu.PlayAudio(callConnectionProperties, _playgroundConfig.NoOptionSelectedUri, target);
                         }
                     }, callMediaRecognizeDtmfOptions);
+            }
+            catch (InvalidEntryException e)
+            {
+                _logger.LogError(e.Message);
             }
         }
     }

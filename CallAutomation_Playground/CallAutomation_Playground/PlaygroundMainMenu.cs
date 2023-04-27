@@ -1,14 +1,14 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 
-namespace CallAutomation_Playground;
+namespace CallAutomation.Playground;
 
 public class PlaygroundMainMenu : IvrMenu
 {
     private readonly PlaygroundConfig _playgroundConfig;
 
     public PlaygroundMainMenu(CallAutomationClient callAutomationClient, PlaygroundConfig playgroundConfig)
-        :base(callAutomationClient)
+        :base(callAutomationClient, playgroundConfig)
     {
         _playgroundConfig = playgroundConfig;
     }
@@ -29,14 +29,14 @@ public class PlaygroundMainMenu : IvrMenu
                 var phoneNumber = "+1" + collectTonesResult?.ConvertToString();
 
                 PhoneNumberIdentifier addTarget = new (phoneNumber);
-                PhoneNumberIdentifier source = new (_playgroundConfig.ACS_DirectOffer_Phonenumber);
+                PhoneNumberIdentifier source = new (_playgroundConfig.PhoneNumber);
                 CallInvite callInvite = new (addTarget, source);
 
                 // add the participant and play hold music while waiting, then cancel the hold music and start recording
                 await AddParticipant(callConnectionProperties,
                     async () =>
                     {
-                        await PlayHoldMusic(callConnectionProperties, _playgroundConfig.HoldMusicPromptUri, null, true, cancellationToken);
+                        await PlayAudio(callConnectionProperties, _playgroundConfig.HoldMusicPromptUri, null, true, cancellationToken);
                     },
                     async success =>
                     {
@@ -80,7 +80,7 @@ public class PlaygroundMainMenu : IvrMenu
 
                 // transfer participant option
                 PhoneNumberIdentifier addTarget = new (phoneNumber);
-                PhoneNumberIdentifier source = new (_playgroundConfig.ACS_DirectOffer_Phonenumber);
+                PhoneNumberIdentifier source = new (_playgroundConfig.PhoneNumber);
                 CallInvite callInvite = new (addTarget, source);
                 
                 await TransferCallLeg(callConnectionProperties, null, null, null, callInvite, cancellationToken);

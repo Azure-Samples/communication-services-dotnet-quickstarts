@@ -1,17 +1,23 @@
-﻿namespace CallAutomation_Playground
+﻿namespace CallAutomation.Playground
 {
     public class PlaygroundConfig
     {
-        public Uri CallbackUri { get; set; }
+        public const string Name = "PlaygroundConfiguration";
 
-        public Uri InitialPromptUri { get; set; }
+        public string MainMenuName { get; set; } = string.Empty;
 
-        public Uri AddParticipantPromptUri { get; set; }
+        public Uri? CallbackUri { get; set; }
 
-        public Uri HoldMusicPromptUri { get; set; }
+        public Uri? InitialPromptUri { get; set; }
 
-        public Uri TransferParticipantApi { get; set; }
+        public Uri? InvalidEntryUri { get; set; }
 
-        public string ACS_DirectOffer_Phonenumber { get; set; }
+        public Uri? NoOptionSelectedUri { get; set; }
+
+        public Uri? AddParticipantPromptUri { get; set; }
+
+        public Uri? HoldMusicPromptUri { get; set; }
+
+        public string PhoneNumber { get; set; } = string.Empty;
     }
 }
