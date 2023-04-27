@@ -1,4 +1,6 @@
-﻿namespace CallAutomation.Playground;
+﻿using CallAutomation.Playground.Menus;
+
+namespace CallAutomation.Playground.Services;
 
 public class IvrMenuRegistry
 {

@@ -1,25 +1,25 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 
-namespace CallAutomation.Playground;
+namespace CallAutomation.Playground.Menus;
 
 public class PlaygroundMainMenu : IvrMenu
 {
     private readonly PlaygroundConfig _playgroundConfig;
 
     public PlaygroundMainMenu(CallAutomationClient callAutomationClient, PlaygroundConfig playgroundConfig)
-        :base(callAutomationClient, playgroundConfig)
+        : base(callAutomationClient, playgroundConfig)
     {
         _playgroundConfig = playgroundConfig;
     }
 
     public override async Task OnPressOne(CallConnectionProperties callConnectionProperties, CommunicationIdentifier target, CancellationToken cancellationToken = default)
     {
-        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new (target, 20)
+        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new(target, 20)
         {
             Prompt = new FileSource(_playgroundConfig.InitialPromptUri),
             InterruptPrompt = true,
-            StopTones = new [] { DtmfTone.Pound, DtmfTone.Asterisk }
+            StopTones = new[] { DtmfTone.Pound, DtmfTone.Asterisk }
         };
 
         // collect phone number from caller
@@ -28,9 +28,9 @@ public class PlaygroundMainMenu : IvrMenu
             {
                 var phoneNumber = "+1" + collectTonesResult?.ConvertToString();
 
-                PhoneNumberIdentifier addTarget = new (phoneNumber);
-                PhoneNumberIdentifier source = new (_playgroundConfig.PhoneNumber);
-                CallInvite callInvite = new (addTarget, source);
+                PhoneNumberIdentifier addTarget = new(phoneNumber);
+                PhoneNumberIdentifier source = new(_playgroundConfig.PhoneNumber);
+                CallInvite callInvite = new(addTarget, source);
 
                 // add the participant and play hold music while waiting, then cancel the hold music and start recording
                 await AddParticipant(callConnectionProperties,
@@ -66,11 +66,11 @@ public class PlaygroundMainMenu : IvrMenu
 
     public override async Task OnPressThree(CallConnectionProperties callConnectionProperties, CommunicationIdentifier target, CancellationToken cancellationToken = default)
     {
-        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new (target, 20)
+        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new(target, 20)
         {
             Prompt = new FileSource(_playgroundConfig.InitialPromptUri),
             InterruptPrompt = true,
-            StopTones = new [] { DtmfTone.Pound, DtmfTone.Asterisk }
+            StopTones = new[] { DtmfTone.Pound, DtmfTone.Asterisk }
         };
 
         await RecognizeDtmfInput(callConnectionProperties, null,
@@ -79,10 +79,10 @@ public class PlaygroundMainMenu : IvrMenu
                 var phoneNumber = "+1" + collectTonesResult?.ConvertToString();
 
                 // transfer participant option
-                PhoneNumberIdentifier addTarget = new (phoneNumber);
-                PhoneNumberIdentifier source = new (_playgroundConfig.PhoneNumber);
-                CallInvite callInvite = new (addTarget, source);
-                
+                PhoneNumberIdentifier addTarget = new(phoneNumber);
+                PhoneNumberIdentifier source = new(_playgroundConfig.PhoneNumber);
+                CallInvite callInvite = new(addTarget, source);
+
                 await TransferCallLeg(callConnectionProperties, null, null, null, callInvite, cancellationToken);
                 await CancelMedia(callConnectionProperties, cancellationToken);
             },

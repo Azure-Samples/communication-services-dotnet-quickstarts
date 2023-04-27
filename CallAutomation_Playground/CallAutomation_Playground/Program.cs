@@ -2,6 +2,7 @@
 using Azure.Communication.CallAutomation;
 using CallAutomation.Playground;
 using CallAutomation.Playground.Interfaces;
+using CallAutomation.Playground.Menus;
 using CallAutomation.Playground.Services;
 
 var builder = WebApplication.CreateBuilder(args);
