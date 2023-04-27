@@ -68,6 +68,7 @@ namespace SendEmailToMultipleRecipients
                     { "EmailTrackingHeader", "MyCustomEmailTrackingID" }
                 }
             };
+            emailMessage.ReplyTo.Add(new EmailAddress("<REPLY_TO_EMAIL>", "<REPLY_TO_DISPLAY_NAME>"));
 
             try
             {
