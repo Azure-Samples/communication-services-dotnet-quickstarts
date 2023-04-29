@@ -6,15 +6,13 @@
 
         public string MainMenuName { get; set; } = string.Empty;
 
+        public int NumRetries { get; set; } = 3;
+
         public Uri? CallbackUri { get; set; }
 
         public Uri? InitialPromptUri { get; set; }
 
-        public Uri? InvalidEntryUri { get; set; }
-
         public Uri? NoOptionSelectedUri { get; set; }
-
-        public Uri? AddParticipantPromptUri { get; set; }
 
         public Uri? HoldMusicPromptUri { get; set; }
 

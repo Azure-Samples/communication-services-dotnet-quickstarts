@@ -1,9 +1,9 @@
-
 using Azure.Communication.CallAutomation;
 using CallAutomation.Playground;
+using CallAutomation.Playground.Choices;
 using CallAutomation.Playground.Interfaces;
-using CallAutomation.Playground.Menus;
 using CallAutomation.Playground.Services;
+using CallAutomation.Playground.Tones;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,9 +20,14 @@ builder.Services.AddSingleton(playgroundConfig);
 builder.Services.AddSingleton(callAutomationClient);
 builder.Services.AddSingleton(eventProcessor);
 
-builder.Services.AddSingleton(new IvrMenuRegistry()
+builder.Services.AddIvrMenu("MainMenu", x =>
 {
-    IvrMenus = { { playgroundConfig.MainMenuName, new PlaygroundMainMenu(callAutomationClient, playgroundConfig)} }
+    x.WithConfiguration(y => builder.Configuration.Bind(IvrConfiguration.Name, y))
+        .AddChoice<One, PressOneChoice>()
+        .AddChoice<Two, PressTwoChoice>()
+        .AddChoice<Three, PressThreeChoice>()
+        .AddChoice<Four, PressFourChoice>()
+        .Build();
 });
 
 builder.Services.AddSingleton<ITopLevelMenuService, TopLevelMenuService>();

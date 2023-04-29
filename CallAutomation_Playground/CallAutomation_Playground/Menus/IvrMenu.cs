@@ -1,77 +1,44 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using CallAutomation.Playground.Exceptions;
+using CallAutomation.Playground.Interfaces;
 using CallAutomation.Playground.Services;
 
 namespace CallAutomation.Playground.Menus;
 
-public abstract class IvrMenu : CallingService
+public class IvrMenu : MenuCallingServices
 {
-    private readonly CallAutomationClient _callAutomationClient;
-    private readonly PlaygroundConfig _playgroundConfig;
+    private readonly Dictionary<Type, IvrChoice> _choices = new();
+    private readonly IvrConfiguration _ivrConfiguration;
 
-    protected IvrMenu(CallAutomationClient callAutomationClient, PlaygroundConfig playgroundConfig)
-        : base(callAutomationClient)
+    public IvrMenu(IServiceProvider serviceProvider, Dictionary<Type, Type> choices, IvrConfiguration ivrConfiguration)
+        : base(serviceProvider.GetRequiredService<ICallingServices>())
     {
-        _callAutomationClient = callAutomationClient;
-        _playgroundConfig = playgroundConfig;
+        _ivrConfiguration = ivrConfiguration;
+        foreach (var (tone, ivrChoice) in choices)
+        {
+            _choices.Add(tone, (IvrChoice)serviceProvider.GetRequiredService(ivrChoice));
+        }
     }
 
-    public virtual async Task OnPressOne(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressTwo(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressThree(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressFour(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressFive(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressSix(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressSeven(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressEight(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressNine(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressZero(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressPound(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    public virtual async Task OnPressStar(CallConnectionProperties callConnectionProperties,
-        CommunicationIdentifier target, CancellationToken cancellationToken = default) =>
-        await InvokeInvalidEntryAsync(callConnectionProperties);
-
-    private async Task InvokeInvalidEntryAsync(CallConnectionProperties callConnectionProperties)
+    public async Task OnPress<TTone>(TTone tone, CallConnectionProperties callConnectionProperties, CommunicationIdentifier target, CancellationToken cancellationToken = default)
+        where TTone : IDtmfTone
     {
-        await _callAutomationClient
-            .GetCallConnection(callConnectionProperties.CallConnectionId)
-            .GetCallMedia()
-            .PlayToAllAsync(new FileSource(_playgroundConfig.InvalidEntryUri));
+        // get the choice based on the tone
+        _choices.TryGetValue(typeof(TTone), out var choice);
+        if (choice is null)
+        {
+            await InvokeInvalidEntryAsync(callConnectionProperties, cancellationToken);
+        }
+        else
+        {
+            await choice.OnPress(tone, callConnectionProperties, target, cancellationToken);
+        }
+    }
 
+    private async Task InvokeInvalidEntryAsync(CallConnectionProperties callConnectionProperties, CancellationToken cancellationToken)
+    {
+        await PlayAudio(callConnectionProperties, _ivrConfiguration.InvalidEntryUri, null, false, cancellationToken);
         throw new InvalidEntryException("Invalid selection");
     }
 }

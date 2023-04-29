@@ -36,12 +36,9 @@ namespace CallAutomation.Playground.Controllers
             CreateCallResult createCallResult = await _callAutomationClient.CreateCallAsync(callInvite, _playgroundConfig.CallbackUri);
 
             CallConnection callConnection = createCallResult.CallConnection;
-            CallMedia callMedia = createCallResult.CallConnection.GetCallMedia();
 
             // Waiting for event related to createCallResult, which is CallConnected
             // TODO: implement cancellation token with timeout
-            CreateCallEventResult eventResult = await createCallResult.WaitForEventProcessorAsync();
-            CallConnected callConnected = eventResult.SuccessEvent;
 
             // invoke top level menu
             await _topLevelMenuService.InvokeTopLevelMenu(target, callConnection.CallConnectionId);

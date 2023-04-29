@@ -27,41 +27,22 @@ public class TopLevelMenuService : ITopLevelMenuService
     public async Task InvokeTopLevelMenu(CommunicationIdentifier target, string callConnectionId)
     {
         CallConnectionProperties callConnectionProperties = await _callAutomationClient.GetCallConnection(callConnectionId).GetCallConnectionPropertiesAsync();
-        
-        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new (target, 1)
+
+        CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new(target, 1)
         {
             Prompt = new FileSource(_playgroundConfig.InitialPromptUri),
             InterruptPrompt = true
         };
 
-        for (var i = 0; i < 3; i++)
+        for (var retries = 0; retries < _playgroundConfig.NumRetries; retries++)
         {
             try
             {
                 await _ivrMenu.RecognizeDtmfInput(callConnectionProperties, null,
                     async success =>
                     {
-                        if (success?.Tones.FirstOrDefault() == DtmfTone.One)
-                        {
-                            await _ivrMenu.OnPressOne(callConnectionProperties, target);
-                        }
-
-                        if (success?.Tones.FirstOrDefault() == DtmfTone.Two)
-                        {
-                            await _ivrMenu.OnPressTwo(callConnectionProperties, target);
-                        }
-
-                        if (success?.Tones.FirstOrDefault() == DtmfTone.Three)
-                        {
-                            await _ivrMenu.OnPressThree(callConnectionProperties, target);
-                        }
-
-                        if (success?.Tones.FirstOrDefault() == DtmfTone.Four)
-                        {
-                            await _ivrMenu.OnPressFour(callConnectionProperties, target);
-                        }
-
-                        i = 0;
+                        var tone = success.Tones.GetSingleTone();
+                        await _ivrMenu.OnPress(tone, callConnectionProperties, target);
                     },
                     async failed =>
                     {
