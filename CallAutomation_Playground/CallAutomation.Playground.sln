@@ -5,7 +5,9 @@ VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F01D4ECF-9202-4532-94BE-19A718955F5F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallAutomation.Playground.Tests", "tests\CallAutomation.Playground.Tests\CallAutomation.Playground.Tests.csproj", "{E226F622-593A-42D1-AAFD-1DE90A92BE27}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CallAutomation.Playground.Tests", "tests\CallAutomation.Playground.Tests\CallAutomation.Playground.Tests.csproj", "{E226F622-593A-42D1-AAFD-1DE90A92BE27}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CallAutomation.Playground", "src\CallAutomation.Playground\CallAutomation.Playground.csproj", "{253EC2CB-C189-4E06-AF0D-D4C00B1E7CAD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,6 +19,10 @@ Global
 		{E226F622-593A-42D1-AAFD-1DE90A92BE27}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E226F622-593A-42D1-AAFD-1DE90A92BE27}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E226F622-593A-42D1-AAFD-1DE90A92BE27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{253EC2CB-C189-4E06-AF0D-D4C00B1E7CAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{253EC2CB-C189-4E06-AF0D-D4C00B1E7CAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{253EC2CB-C189-4E06-AF0D-D4C00B1E7CAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{253EC2CB-C189-4E06-AF0D-D4C00B1E7CAD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
