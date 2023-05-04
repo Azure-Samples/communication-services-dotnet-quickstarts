@@ -1,4 +1,7 @@
-﻿namespace CallAutomation.Playground;
+﻿using CallAutomation.Playground.Interfaces;
+using CallAutomation.Playground.Services;
+
+namespace CallAutomation.Playground;
 
 public static class ServiceCollectionExtensions
 {

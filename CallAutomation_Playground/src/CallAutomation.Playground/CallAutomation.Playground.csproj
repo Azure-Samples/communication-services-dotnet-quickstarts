@@ -15,7 +15,6 @@
   <ItemGroup>
     <Folder Include="Exceptions\" />
     <Folder Include="Choices\" />
-    <Folder Include="Extensions\" />
   </ItemGroup>
 
 </Project>

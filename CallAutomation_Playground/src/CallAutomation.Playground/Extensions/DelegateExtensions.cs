@@ -14,7 +14,8 @@ public static class DelegateExtensions
         {
             return true;
         }
-        else if (typeof(Task).IsAssignableFrom(returnType))
+
+        if (typeof(Task).IsAssignableFrom(returnType))
         {
             return true;
         }

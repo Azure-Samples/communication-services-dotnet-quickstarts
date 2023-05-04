@@ -1,5 +1,4 @@
 ﻿using CallAutomation.Playground.Interfaces;
-using CallAutomation.Playground.Menus;
 using CallAutomation.Playground.Services;
 
 namespace CallAutomation.Playground;
@@ -42,11 +41,10 @@ public class IvrBuilder
             throw new ApplicationException("No IVR choices added to the IVR Menu.");
         }
 
-        _services.AddSingleton<ICallingServices, CallingServices>();
-        _services.AddSingleton(x =>
+        _services.AddSingleton(serviceProvider =>
         {
             var registry = new IvrMenuRegistry();
-            registry.IvrMenus.Add(_name, new IvrMenu(x, _choices, _ivrConfiguration));
+            registry.IvrMenus.Add(_name, new IvrMenu(serviceProvider, _choices, _ivrConfiguration));
             return registry;
         });
     }

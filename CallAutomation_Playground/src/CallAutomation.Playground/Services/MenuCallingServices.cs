@@ -21,7 +21,7 @@ public abstract class MenuCallingServices
             callMediaRecognizeDtmfOptions, cancellationToken);
     }
 
-    public async Task PlayAudio(CallConnectionProperties callConnectionProperties, Uri fileUri, CommunicationIdentifier? target,
+    public async Task PlayAudio(CallConnectionProperties callConnectionProperties, Uri fileUri, CommunicationIdentifier? target = null,
         bool loop = default, CancellationToken cancellationToken = default)
     {
         await _callingServices.PlayAudio(callConnectionProperties, fileUri, target, loop, cancellationToken);

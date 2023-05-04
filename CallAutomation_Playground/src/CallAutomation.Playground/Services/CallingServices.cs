@@ -3,7 +3,6 @@ using Azure.Communication.CallAutomation;
 using CallAutomation.Playground.Extensions;
 using CallAutomation.Playground.Interfaces;
 using System.Reflection;
-using System;
 
 namespace CallAutomation.Playground.Services;
 
@@ -11,7 +10,7 @@ public class CallingServices : ICallingServices
 {
     private readonly CallAutomationClient _callAutomationClient;
 
-    protected CallingServices(CallAutomationClient callAutomationClient)
+    public CallingServices(CallAutomationClient callAutomationClient)
     {
         _callAutomationClient = callAutomationClient;
     }
@@ -163,7 +162,7 @@ public class CallingServices : ICallingServices
             await task;
             return;
         }
-        
+
         @delegate.DynamicInvoke(args);
     }
 }

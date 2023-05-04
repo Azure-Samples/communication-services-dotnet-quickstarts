@@ -1,10 +1,11 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using CallAutomation.Playground.Exceptions;
+using CallAutomation.Playground.Extensions;
 using CallAutomation.Playground.Interfaces;
 using CallAutomation.Playground.Services;
 
-namespace CallAutomation.Playground.Menus;
+namespace CallAutomation.Playground;
 
 public class IvrMenu : MenuCallingServices
 {
@@ -26,14 +27,9 @@ public class IvrMenu : MenuCallingServices
     {
         // get the choice based on the tone
         _choices.TryGetValue(typeof(TTone), out var choice);
-        if (choice is null)
-        {
-            await InvokeInvalidEntryAsync(callConnectionProperties, cancellationToken);
-        }
-        else
-        {
-            await choice.OnPress(tone, callConnectionProperties, target, cancellationToken);
-        }
+        await choice.InvokeChoice(
+            async () => await choice.OnPress(tone, callConnectionProperties, target, cancellationToken),
+            async () => await InvokeInvalidEntryAsync(callConnectionProperties, cancellationToken));
     }
 
     private async Task InvokeInvalidEntryAsync(CallConnectionProperties callConnectionProperties, CancellationToken cancellationToken)

@@ -2,7 +2,7 @@
 using CallAutomation.Playground.Interfaces;
 using CallAutomation.Playground.Tones;
 
-namespace CallAutomation.Playground;
+namespace CallAutomation.Playground.Extensions;
 
 internal static class DtmfToneExtensions
 {
