@@ -2,16 +2,11 @@
 using Azure.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Handlers;
 
 namespace CallAutomation.Scenarios.Controllers
 {
-    [Route("/callbacks")]
     [ApiController]
     public class CallbacksController : ControllerBase
     {
@@ -74,15 +69,13 @@ namespace CallAutomation.Scenarios.Controllers
         }
 
         [HttpPost("/callbacks/{contextId}", Name = "CallBack_Events")]
-        [Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
+        //[Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
         public async Task<ActionResult> Handle([FromBody] CloudEvent[] cloudEvents, [FromRoute] string contextId, [FromQuery(Name = "CallerId")] string callerId)
         {
             _logger.LogDebug($"Received {cloudEvents.Length} CloudEvents");
 
             cloudEvents = cloudEvents.Where(e => e.Type != "Microsoft.Communication.ContinuousDtmfRecognitionToneReceived").ToArray();
             if (!cloudEvents.Any()) return new OkResult();
-
-            _callAutomationService.ProcessEvents(cloudEvents);
 
             foreach (var cloudEvent in cloudEvents)
             {

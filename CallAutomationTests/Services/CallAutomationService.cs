@@ -29,21 +29,21 @@ namespace CallAutomation.Scenarios.Services
             try
             {
                 var callerId = Uri.EscapeDataString(incomingCallEvent.From.RawId.ToString());
-                var authKey = $"{AuthenticationConstants.EventGridAuthenticationQueryParameterName}={_configuration.GetConnectionString(AuthenticationConstants.EventGridSecretName)}";
-                var callbackUri = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}?callerId={callerId}&{authKey}");
+                //var authKey = $"{AuthenticationConstants.EventGridAuthenticationQueryParameterName}={_configuration.GetConnectionString(AuthenticationConstants.EventGridSecretName)}";
+                var callbackUri = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}?callerId={callerId}");
                 var answerCallOptions = new AnswerCallOptions(incomingCallEvent.IncomingCallContext, callbackUri)
                 {
                     AzureCognitiveServicesEndpointUrl = new Uri(_configuration["CognitiveServicesEndpointUri"])
                 };
 
-                var ivrConfig = GetIvrConfig();
-                if (ivrConfig.GetValue<bool>("UseNlu"))
-                {
-                    _logger.LogInformation("Setting MediaStreamingOptions for incoming call");
+                //var ivrConfig = GetIvrConfig();
+                //if (ivrConfig.GetValue<bool>("UseNlu"))
+                //{
+                //    _logger.LogInformation("Setting MediaStreamingOptions for incoming call");
 
-                    var streamUri = new Uri($"{ivrConfig["StreamingUri"]}/streams/{Guid.NewGuid()}?callerId={callerId}&{authKey}");
-                    answerCallOptions.MediaStreamingOptions = new MediaStreamingOptions(streamUri, MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed);
-                }
+                //    var streamUri = new Uri($"{ivrConfig["StreamingUri"]}/streams/{Guid.NewGuid()}?callerId={callerId}&{authKey}");
+                //    answerCallOptions.MediaStreamingOptions = new MediaStreamingOptions(streamUri, MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed);
+                //}
 
                 return await _client.AnswerCallAsync(answerCallOptions);
             }
@@ -596,7 +596,7 @@ namespace CallAutomation.Scenarios.Services
                 InitialSilenceTimeout = TimeSpan.FromSeconds(initialSilenceTimeout),
                 OperationContext = operationContext,
                 InterruptPrompt = allowMenuInterrupt,
-                Prompt = prompt
+                Prompt = prompt,
             };
 
             await callMedia.StartRecognizingAsync(recognizeOptions, cancellationToken);

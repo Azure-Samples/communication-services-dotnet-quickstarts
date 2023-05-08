@@ -1,19 +1,9 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
-using AutoMapper;
 using Azure;
-using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
-using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Utils;
 

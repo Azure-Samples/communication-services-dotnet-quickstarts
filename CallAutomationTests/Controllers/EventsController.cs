@@ -1,14 +1,9 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
-using Azure.Communication.CallAutomation;
 using Azure.Messaging.EventGrid;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 
 namespace CallAutomation.Scenarios.Controllers
 {
