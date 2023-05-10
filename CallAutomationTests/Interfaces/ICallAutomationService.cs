@@ -2,11 +2,6 @@
 
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using CallAutomation.Scenarios.Handlers;
 
 namespace CallAutomation.Scenarios.Interfaces
