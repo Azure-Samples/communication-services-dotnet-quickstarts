@@ -78,6 +78,25 @@ namespace CallAutomation.Scenarios.Handlers
             }
         }
 
+        public async Task Handle(string targetId)
+        {
+            try
+            {
+                if(targetId == null)
+                {
+                    targetId = _configuration[""];
+                }
+                _logger.LogInformation("Outbound call received");
+                var callResult = await _callAutomationService.CreateCallAsync(targetId);
+                var callConnectionId = callResult.CallConnectionProperties.CallConnectionId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Outbound call failed unexpectedly");
+                throw;
+            }
+        }
+
         public async Task Handle(AddParticipantFailed addParticipantFailed, string callerId)
         {
             using (_logger.BeginScope(GetLogContext(addParticipantFailed.CorrelationId, addParticipantFailed.CallConnectionId, addParticipantFailed.OperationContext)))

@@ -9,7 +9,7 @@ namespace CallAutomation.Scenarios.Interfaces
     public interface ICallAutomationService
     {
         Task<AnswerCallResult> AnswerCallAsync(IncomingCallEvent incomingCallEvent);
-        Task<CreateCallResult> CreateCallAsync(string jobId, string callerId);
+        Task<CreateCallResult> CreateCallAsync(string callerId);
         CallConnection GetCallConnection(string callConnectionId);
         Task PlayMenuChoiceAsync(DtmfTone choiceOrTone, CallMedia callMedia, string textToSpeechLocale, string? prerollText = null);
         Task PlayMenuOptionsAsync(string callerId, CallMedia callMedia, string textToSpeechLocale, string? prerollText = null, CancellationToken cancellationToken = default);

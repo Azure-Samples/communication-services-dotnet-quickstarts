@@ -1,5 +1,8 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
+using Azure.Communication.CallAutomation;
+using Azure.Communication;
+using Azure.Core;
 using Azure.Messaging.EventGrid;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
@@ -7,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CallAutomation.Scenarios.Controllers
 {
-    [Route("/events")]
     [ApiController]
     public class EventsController : ControllerBase
     {
@@ -15,19 +17,22 @@ namespace CallAutomation.Scenarios.Controllers
         private readonly EventConverter _eventConverter;
         private readonly IEventGridEventHandler<IncomingCallEvent> _incomingCallEventHandler;
         private readonly IEventGridEventHandler<RecordingFileStatusUpdatedEvent> _recordingFileStatusUpdatedEventHandler;
+        private readonly IEventGridEventHandler<string> _outboundCallEventHandler;
 
         public EventsController(ILogger<EventsController> logger,
             EventConverter eventConverter,
             IEventGridEventHandler<IncomingCallEvent> incomingCallEventHandler,
-            IEventGridEventHandler<RecordingFileStatusUpdatedEvent> recordingFileStatusUpdatedEventHandler)
+            IEventGridEventHandler<RecordingFileStatusUpdatedEvent> recordingFileStatusUpdatedEventHandler,
+            IEventGridEventHandler<string> outboundCallEventHandler)
         {
             _logger = logger;
             _eventConverter = eventConverter;
             _incomingCallEventHandler = incomingCallEventHandler;
             _recordingFileStatusUpdatedEventHandler = recordingFileStatusUpdatedEventHandler;
+            _outboundCallEventHandler = outboundCallEventHandler;
         }
 
-        [HttpPost(Name = "Receive_ACS_Events")]
+        [HttpPost("/events", Name = "Receive_ACS_Events")]
         //[Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
         public async Task<ActionResult> Handle([FromBody] EventGridEvent[] eventGridEvents)
         {
@@ -64,5 +69,13 @@ namespace CallAutomation.Scenarios.Controllers
 
             return new OkResult();
         }
+
+        [HttpPost("api/call", Name = "outbound_call")]
+        public async Task<ActionResult> OutboundCall([FromQuery] string targetId )
+        {
+            var response = _outboundCallEventHandler.Handle(targetId);
+            return new OkResult();
+        }
+
     }
 }
