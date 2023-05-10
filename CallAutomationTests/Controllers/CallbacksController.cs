@@ -1,9 +1,8 @@
 ﻿using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CallAutomation.Scenarios.Interfaces;
-using CallAutomation.Scenarios.Handlers;
+
 
 namespace CallAutomation.Scenarios.Controllers
 {

@@ -7,6 +7,7 @@ using System.Net;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Utils;
 
+
 namespace CallAutomation.Scenarios.Handlers
 {
     public class CallEventHandler :
@@ -30,7 +31,7 @@ namespace CallAutomation.Scenarios.Handlers
         private readonly IConfiguration _configuration;
         private readonly ILogger<CallEventHandler> _logger;
         private readonly ICallAutomationService _callAutomationService;
-        private readonly ICallContextService _callContextService;
+        private readonly ICallContextService _callContextService;       
 
         public CallEventHandler(
             IConfiguration configuration,
@@ -458,8 +459,17 @@ namespace CallAutomation.Scenarios.Handlers
                             case ChoiceResult choiceResult:
                                 if (!useCustomPhraseRecognition)
                                 {
-                                    await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);
+                                    await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);                             
+
+
                                 }
+                                if (choiceResult.Label == DtmfTone.One || choiceResult.Label.ToString().Equals(QueueConstants.MagentaHome, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    await _callAutomationService.AddParticipantAsync(callConnectionId, "Agent", _configuration["AddParticipant"]);
+                                
+                                }
+
+                                // await _callAutomationService.RemoveParticipantAsync(callConnectionId, "Agent", "8:acs:e333a5b5-c1e4-4984-b752-447bf92d10b7_00000018-a001-0e85-0e04-343a0d00c5e8");
                                 break;
 
                             //Take action for Recognition through DTMF
