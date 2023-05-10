@@ -55,7 +55,7 @@ namespace CallAutomation.Scenarios.Services
             }
         }
 
-        public async Task<CreateCallResult> CreateCallAsync(string targetId)
+        public async Task<CreateCallResult> CreateCallAsync(String targetId)
         {
             _logger.LogInformation($"CreateCallAsync called at target {targetId}");
 

@@ -13,6 +13,7 @@ namespace CallAutomation.Scenarios.Handlers
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
         IEventGridEventHandler<RecordingFileStatusUpdatedEvent>,
+        IEventGridEventHandler<OutboundCallEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
         IEventCloudEventHandler<CallConnected>,
@@ -31,7 +32,7 @@ namespace CallAutomation.Scenarios.Handlers
         private readonly IConfiguration _configuration;
         private readonly ILogger<CallEventHandler> _logger;
         private readonly ICallAutomationService _callAutomationService;
-        private readonly ICallContextService _callContextService;       
+        private readonly ICallContextService _callContextService;
 
         public CallEventHandler(
             IConfiguration configuration,
@@ -78,11 +79,12 @@ namespace CallAutomation.Scenarios.Handlers
             }
         }
 
-        public async Task Handle(string targetId)
+        public async Task Handle(OutboundCallEvent outboundCallEvent)
         {
             try
             {
-                if(targetId == null)
+                string targetId = outboundCallEvent.TargetId;
+                if (targetId == null)
                 {
                     targetId = _configuration[""];
                 }

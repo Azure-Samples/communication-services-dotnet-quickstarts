@@ -7,6 +7,7 @@ using Azure.Messaging.EventGrid;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System;
 
 namespace CallAutomation.Scenarios.Controllers
 {
@@ -17,13 +18,13 @@ namespace CallAutomation.Scenarios.Controllers
         private readonly EventConverter _eventConverter;
         private readonly IEventGridEventHandler<IncomingCallEvent> _incomingCallEventHandler;
         private readonly IEventGridEventHandler<RecordingFileStatusUpdatedEvent> _recordingFileStatusUpdatedEventHandler;
-        private readonly IEventGridEventHandler<string> _outboundCallEventHandler;
+        private readonly IEventGridEventHandler<OutboundCallEvent> _outboundCallEventHandler;
 
         public EventsController(ILogger<EventsController> logger,
             EventConverter eventConverter,
             IEventGridEventHandler<IncomingCallEvent> incomingCallEventHandler,
             IEventGridEventHandler<RecordingFileStatusUpdatedEvent> recordingFileStatusUpdatedEventHandler,
-            IEventGridEventHandler<string> outboundCallEventHandler)
+            IEventGridEventHandler<OutboundCallEvent> outboundCallEventHandler)
         {
             _logger = logger;
             _eventConverter = eventConverter;
@@ -71,9 +72,9 @@ namespace CallAutomation.Scenarios.Controllers
         }
 
         [HttpPost("api/call", Name = "outbound_call")]
-        public async Task<ActionResult> OutboundCall([FromQuery] string targetId )
+        public async Task<ActionResult> OutboundCall([FromBody] OutboundCallEvent outboundCallEvent )
         {
-            var response = _outboundCallEventHandler.Handle(targetId);
+            var response = _outboundCallEventHandler.Handle(outboundCallEvent);
             return new OkResult();
         }
 

@@ -13,6 +13,11 @@ namespace CallAutomation.Scenarios.Handlers
         public string? IncomingCallContext { get; set; }
     }
 
+    public class OutboundCallEvent
+    {
+        public string? TargetId { get; set; }
+    }
+
     public class RecordingFileStatusUpdatedEvent
     {
         public AcsRecordingStorageInfoProperties RecordingStorageInfo { get; }
