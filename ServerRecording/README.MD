@@ -9,7 +9,7 @@ products:
 
 # Recording APIs Sample
 
-This is a sample application to show how the Azure Communication Services server calling SDK can be used to build a call recording feature.
+This is a sample application to show how the Azure Communication Services Call Automation SDK can be used to build a call recording feature.
 
 It's a C# based application powered by Dot net core to connect this application with Azure Communication Services.
 
@@ -19,7 +19,7 @@ A separate branch with end to end implementation is [available](https://github.c
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F)
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/)
-- [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) (Make sure to install the version that corresponds with your visual studio instance, 32 vs 64 bit)
+- [.NET Core 6.0](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) (Make sure to install the version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this quickstart.
 - An Azure storage account and container, for details, see [Create a storage account](https://docs.microsoft.com/azure/storage/common/storage-account-create?tabs=azure-portal). You'll need to record your storage **connection string** and **container name** for this quickstart.
 - Create a webhook and subscribe to the recording events. For details, see [Create webhook](https://docs.microsoft.com/azure/communication-services/quickstarts/voice-video-calling/download-recording-file-sample)
@@ -38,7 +38,6 @@ A separate branch with end to end implementation is [available](https://github.c
 	- Input your ACS connection string in the variable: `ACSResourceConnectionString`
 	- Input your storage connection string in the variable: `BlobStorageConnectionString`
 	- Input blob container name for recorded media in the variable `BlobContainerName`
-	- Input recording callback url for start recording api in the variable `CallbackUri`
 
 ## Locally deploying the sample app
 
@@ -49,8 +48,7 @@ A separate branch with end to end implementation is [available](https://github.c
 ### Troubleshooting
 
 1. Solution doesn\'t build, it throws errors during build
-
-	Clean/rebuild the C# solution
+	- Clean/rebuild the C# solution
 
 ## Publish to Azure
 
@@ -64,4 +62,4 @@ A separate branch with end to end implementation is [available](https://github.c
 ## Additional Reading
 
 - [Azure Communication Calling SDK](https://docs.microsoft.com/azure/communication-services/concepts/voice-video-calling/calling-sdk-features) - To learn more about the calling web sdk
-- [ASP.NET Core](https://docs.microsoft.com/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-3.1) - Framework for building web applications
+- [ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-6.0) - Framework for building web applications

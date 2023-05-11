@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "sms_url_shortener": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7106",
+      "launchBrowser": false
+    }
+  }
+}
