@@ -21,10 +21,17 @@ namespace CallingQuickstart
         public MainPage()
         {
             this.InitializeComponent();
-            Task.Run(() => this.InitCallAgentAndDeviceManagerAsync()).Wait();
+            this.Loaded += OnLoadedAsync;
 
             ApplicationView.PreferredLaunchViewSize = new Size(800, 600);
             ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.PreferredLaunchViewSize;
+        }
+
+        private async void OnLoadedAsync(object sender, RoutedEventArgs e)
+        {
+            this.Loaded -= OnLoadedAsync;
+
+            await this.InitCallAgentAndDeviceManagerAsync();
         }
 
         private async Task InitCallAgentAndDeviceManagerAsync()
