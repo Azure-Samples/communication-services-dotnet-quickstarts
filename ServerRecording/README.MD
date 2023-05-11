@@ -1,7 +1,7 @@
 ---
 page_type: sample
 languages:
-- C#
+- csharp
 products:
 - azure
 - azure-communication-services
