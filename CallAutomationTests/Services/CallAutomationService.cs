@@ -1,7 +1,9 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
+using Azure;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
+using Azure.Core.Pipeline;
 using Azure.Messaging;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
@@ -14,6 +16,7 @@ namespace CallAutomation.Scenarios.Services
         private readonly ILogger<CallAutomationService> _logger;
         private readonly CallAutomationClient _client;
         private readonly IConfiguration _configuration;
+
 
         public CallAutomationService(ILogger<CallAutomationService> logger, IConfiguration configuration)
         {
@@ -635,5 +638,39 @@ namespace CallAutomation.Scenarios.Services
         {
             throw new NotImplementedException();
         }
+
+        public async Task<RecordingStateResult> StartRecordingAsync(string serverCallId)
+        {
+            _logger.LogInformation($"Start recording with server:");
+            
+            try
+            {
+                var recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));                
+                return await _client.GetCallRecording().StartRecordingAsync(recordingOptions).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Start Recording failed unexpectedly: {e}");
+
+                throw;
+            }
+        }
+
+        public async Task<Response> StopRecordingAsync(string recordingId)
+        {
+            _logger.LogInformation($"Start recording with server:");
+
+            try
+            {               
+                return await _client.GetCallRecording().StopRecordingAsync(recordingId).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Stop Recording failed unexpectedly: {e}");
+
+                throw;
+            }
+        }
+
     }
 }

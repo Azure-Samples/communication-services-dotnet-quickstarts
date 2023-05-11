@@ -1,5 +1,6 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
+using Azure;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using CallAutomation.Scenarios.Handlers;
@@ -34,5 +35,8 @@ namespace CallAutomation.Scenarios.Interfaces
         IConfigurationSection GetQueuesConfig();
         string[] GetAllowedIncomingIdentitiesList();
         IDictionary<string, DtmfTone> GetAllRecognizedPhrasesAsDtmfTones();
+
+        Task<RecordingStateResult> StartRecordingAsync(string serverCallId);
+        Task<Response> StopRecordingAsync(string recordingId);
     }
 }

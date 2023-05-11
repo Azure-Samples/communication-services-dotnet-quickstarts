@@ -86,7 +86,7 @@ namespace CallAutomation.Scenarios.Handlers
                 string targetId = outboundCallEvent.TargetId;
                 if (targetId == null)
                 {
-                    targetId = _configuration[""];
+                    targetId = _configuration["targetId"];
                 }
                 _logger.LogInformation("Outbound call received");
                 var callResult = await _callAutomationService.CreateCallAsync(targetId);
@@ -945,7 +945,7 @@ namespace CallAutomation.Scenarios.Handlers
         }
 
         public Task Handle(RecordingFileStatusUpdatedEvent eventName)
-        {
+        {    
             throw new NotImplementedException();
         }
 
