@@ -13,7 +13,7 @@ namespace CallAutomation.Scenarios.Handlers
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
         IEventGridEventHandler<RecordingFileStatusUpdatedEvent>,
-        IEventGridEventHandler<OutboundCallEvent>,
+        IEventActionsEventHandler<OutboundCallEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
         IEventCloudEventHandler<CallConnected>,

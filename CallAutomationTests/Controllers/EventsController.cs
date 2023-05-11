@@ -70,13 +70,5 @@ namespace CallAutomation.Scenarios.Controllers
 
             return new OkResult();
         }
-
-        [HttpPost("api/call", Name = "outbound_call")]
-        public async Task<ActionResult> OutboundCall([FromBody] OutboundCallEvent outboundCallEvent )
-        {
-            var response = _outboundCallEventHandler.Handle(outboundCallEvent);
-            return new OkResult();
-        }
-
     }
 }
