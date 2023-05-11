@@ -13,6 +13,7 @@ namespace CallAutomation.Scenarios.Handlers
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
         IEventGridEventHandler<RecordingFileStatusUpdatedEvent>,
+        IEventGridEventHandler<OutboundCallEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
         IEventCloudEventHandler<CallConnected>,
@@ -31,7 +32,7 @@ namespace CallAutomation.Scenarios.Handlers
         private readonly IConfiguration _configuration;
         private readonly ILogger<CallEventHandler> _logger;
         private readonly ICallAutomationService _callAutomationService;
-        private readonly ICallContextService _callContextService;       
+        private readonly ICallContextService _callContextService;
 
         public CallEventHandler(
             IConfiguration configuration,
@@ -74,6 +75,26 @@ namespace CallAutomation.Scenarios.Handlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "IncomingCallEvent failed unexpectedly");
+                throw;
+            }
+        }
+
+        public async Task Handle(OutboundCallEvent outboundCallEvent)
+        {
+            try
+            {
+                string targetId = outboundCallEvent.TargetId;
+                if (targetId == null)
+                {
+                    targetId = _configuration[""];
+                }
+                _logger.LogInformation("Outbound call received");
+                var callResult = await _callAutomationService.CreateCallAsync(targetId);
+                var callConnectionId = callResult.CallConnectionProperties.CallConnectionId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Outbound call failed unexpectedly");
                 throw;
             }
         }

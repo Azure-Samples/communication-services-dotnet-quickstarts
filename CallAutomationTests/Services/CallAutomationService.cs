@@ -55,33 +55,22 @@ namespace CallAutomation.Scenarios.Services
             }
         }
 
-        public async Task<CreateCallResult> CreateCallAsync(string jobId, string callerId)
+        public async Task<CreateCallResult> CreateCallAsync(String targetId)
         {
-            _logger.LogInformation($"CreateCallAsync called with jobId {jobId} and callerId {callerId}");
+            _logger.LogInformation($"CreateCallAsync called at target {targetId}");
 
             try
             {
-                var authKey = $"{AuthenticationConstants.EventGridAuthenticationQueryParameterName}={_configuration.GetConnectionString(AuthenticationConstants.EventGridSecretName)}";
-
-                var callbackUri = new Uri($"{_configuration["BaseUri"]}/callbacks/{jobId}?callerId={callerId}&{authKey}");
-                var target = callerId.StartsWith("8:acs") ? new CallInvite(new CommunicationUserIdentifier(callerId))
-                    : new CallInvite(new PhoneNumberIdentifier($"+{callerId.SanitizePhoneNumber()}"),
-                            new PhoneNumberIdentifier(_configuration.GetValue<string>("ScheduledCallbacks:CallerId")));
+                var callbackUri = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}?callerId={targetId}");
+                var target = targetId.StartsWith("8:acs") ? new CallInvite(new CommunicationUserIdentifier(targetId))
+                    : new CallInvite(new PhoneNumberIdentifier($"+{targetId.SanitizePhoneNumber()}"),
+                            new PhoneNumberIdentifier(_configuration[""]));
 
                 var createCallOptions = new CreateCallOptions(target, callbackUri)
-                    {
-                        AzureCognitiveServicesEndpointUrl = new Uri(_configuration["CognitiveServicesEndpointUri"]),
-                        OperationContext = Constants.OperationContext.ScheduledCallbackDialout
-                };
-
-                var ivrConfig = GetIvrConfig();
-                if (ivrConfig.GetValue<bool>("UseNlu"))
                 {
-                    _logger.LogInformation("Setting MediaStreamingOptions for outbound call");
-
-                    var streamUri = new Uri($"{ivrConfig["StreamingUri"]}/streams/{Guid.NewGuid()}?callerId={callerId}&{authKey}");
-                    createCallOptions.MediaStreamingOptions = new MediaStreamingOptions(streamUri, MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed);
-                }
+                    AzureCognitiveServicesEndpointUrl = new Uri(_configuration["CognitiveServicesEndpointUri"]),
+                    OperationContext = Constants.OperationContext.ScheduledCallbackDialout
+                };
 
                 return await _client.CreateCallAsync(createCallOptions);
             }
