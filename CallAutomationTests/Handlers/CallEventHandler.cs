@@ -355,8 +355,12 @@ namespace CallAutomation.Scenarios.Handlers
                             _logger.LogInformation("Customer requested to end call, hanging up");
                             await _callAutomationService.EndCallAsync(callConnectionId, operationContext);
                             break;
-                        case QueueConstants.MagentaDefault:
+                        case QueueConstants.MagentaDefault:                             
                         case QueueConstants.MagentaHome:
+                            _logger.LogInformation("Add Participant initiate the call:");
+                            await _callAutomationService.AddParticipantAsync(callConnectionId, "agent", _configuration["AddParticipant"]);
+
+                            break;
                         case QueueConstants.MagentaTV:
                         case QueueConstants.MagentaMobile:
                             //await EnqueueCall(callConnectionId, operationContext, callId, callerId);
@@ -462,14 +466,7 @@ namespace CallAutomation.Scenarios.Handlers
                                     await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);                             
 
 
-                                }
-                                if (choiceResult.Label == DtmfTone.One || choiceResult.Label.ToString().Equals(QueueConstants.MagentaHome, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    await _callAutomationService.AddParticipantAsync(callConnectionId, "Agent", _configuration["AddParticipant"]);
-                                
-                                }
-
-                                // await _callAutomationService.RemoveParticipantAsync(callConnectionId, "Agent", "8:acs:e333a5b5-c1e4-4984-b752-447bf92d10b7_00000018-a001-0e85-0e04-343a0d00c5e8");
+                                }                               
                                 break;
 
                             //Take action for Recognition through DTMF
