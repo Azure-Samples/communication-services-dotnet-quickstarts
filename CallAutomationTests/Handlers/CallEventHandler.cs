@@ -379,7 +379,7 @@ namespace CallAutomation.Scenarios.Handlers
                         case QueueConstants.MagentaDefault:                             
                         case QueueConstants.MagentaHome:
                             _logger.LogInformation("Add Participant initiate the call:");
-                            await _callAutomationService.AddParticipantAsync(callConnectionId, "agent", _configuration["AddParticipant"]);
+                            await _callAutomationService.AddParticipantAsync(callConnectionId, Constants.OperationContext.SupervisorJoining, _configuration["AddParticipant"]);
 
                             break;
                         case QueueConstants.MagentaTV:
@@ -484,7 +484,7 @@ namespace CallAutomation.Scenarios.Handlers
                             case ChoiceResult choiceResult:
                                 if (!useCustomPhraseRecognition)
                                 {
-                                    await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);                             
+                                    await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);                            
 
 
                                 }                               
