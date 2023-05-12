@@ -1,236 +1,158 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
+using CallAutomation_Playground.Controllers;
 using CallAutomation_Playground.Interfaces;
 
 namespace CallAutomation_Playground
 {
+    /// <summary>
+    /// This is our top level menu that will have our greetings menu.
+    /// </summary>
     public class TopLevelMenuService : ITopLevelMenuService
     {
+        private readonly ILogger<TopLevelMenuService> _logger;
         private readonly CallAutomationClient _callAutomation;
         private readonly PlaygroundConfig _playgroundConfig;
 
-        public TopLevelMenuService(CallAutomationClient callAutomation, PlaygroundConfig playgroundConfig)
+        public TopLevelMenuService(
+            ILogger<TopLevelMenuService> logger, 
+            CallAutomationClient callAutomation, 
+            PlaygroundConfig playgroundConfig)
         {
+            _logger = logger;
             _callAutomation = callAutomation;
             _playgroundConfig = playgroundConfig;
         }
 
-        public async Task InvokeTopLevelMenu(CommunicationIdentifier target, string callConnectionId)
+        public async Task InvokeTopLevelMenu(
+            CommunicationIdentifier originalTarget, 
+            CallConnection callConnection,
+            string serverCallId)
         {
-            CallConnection callConnection = _callAutomation.GetCallConnection(callConnectionId);
+            _logger.LogInformation($"Invoking top level menu, with CallConnectionId[{callConnection.CallConnectionId}]");
 
-            // Top Level DTMF Menu
-            CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new CallMediaRecognizeDtmfOptions(target, 1);
-            callMediaRecognizeDtmfOptions.Prompt = new FileSource(_playgroundConfig.InitialPromptUri);
-            callMediaRecognizeDtmfOptions.InterruptPrompt = true;
+            // prepare calling modules to interact with this established call
+            ICallingModules callingModule = new CallingModules(callConnection, _playgroundConfig);
 
-            // TODO: add retry logic
-            CollectTonesResult pressedDTMF = null;
-            for (int i = 0; i < 3; i++)
+            try
             {
-                StartRecognizingEventResult startRecognizingEventResult = await RecognizeBlockAsync(callConnection.GetCallMedia(), callMediaRecognizeDtmfOptions);
-
-                if (startRecognizingEventResult.IsSuccessEvent)
+                while (true)
                 {
-                    RecognizeCompleted recognizeCompleted = startRecognizingEventResult.SuccessEvent;
-                    pressedDTMF = (CollectTonesResult)recognizeCompleted.RecognizeResult;
+                    // Top Level DTMF Menu, ask for which menu to be selected
+                    string selectedTone = await callingModule.RecognizeTonesAsync(
+                        originalTarget,
+                        1,
+                        _playgroundConfig.AllPrompts.MainMenu,
+                        _playgroundConfig.AllPrompts.Retry);
 
-                    if (pressedDTMF?.Tones.FirstOrDefault() == DtmfTone.One)
+                    _logger.LogInformation($"Caller selected DTMF Tone[{selectedTone}]");
+
+                    switch (selectedTone)
                     {
-                        // Option 1: Add Participant
-                        await AddParticipantBlock(target, callConnection);
-                    }
+                        // Option 1: Collect phone number, then add that person to the call.
+                        case "1":
+                            // recognize phonenumber
+                            string phoneNumberToCall = await callingModule.RecognizeTonesAsync(
+                                originalTarget,
+                                1,
+                                _playgroundConfig.AllPrompts.CollectPhoneNumber,
+                                _playgroundConfig.AllPrompts.Retry);
 
-                    if (pressedDTMF?.Tones.FirstOrDefault() == DtmfTone.Two)
-                    {
-                        // Option 2: Remove Participant
-                        await RemoveParticipantBlock(target, callConnection);
-                    }
+                            _logger.LogInformation($"Phonenumber to Call[{phoneNumberToCall}]");
 
-                    if (pressedDTMF?.Tones.FirstOrDefault() == DtmfTone.Three)
-                    {
-                        // Option 3: Transfer Participant
-                        await TransferParticipantBlock(target, callConnection);
-                        return;
-                    }
+                            // NOTE: this is assuming it is in North America number
+                            // format the phoenumber as you find nessesary.
+                            string formattedPhoneNumber = "+1" + phoneNumberToCall;
+                            PhoneNumberIdentifier phoneIdentifierToAdd = new PhoneNumberIdentifier(formattedPhoneNumber);
 
-                    if (pressedDTMF?.Tones.FirstOrDefault() == DtmfTone.Four)
-                    {
-                        // Option 4: Terminate the call
-                        await TerminateBlockAsync(callConnection);
-                        return;
-                    }
+                            // then add the phone number
+                            await callingModule.AddParticipantAsync(
+                                phoneIdentifierToAdd,
+                                _playgroundConfig.AllPrompts.AddParticipantSuccess,
+                                _playgroundConfig.AllPrompts.AddParticipantFailure,
+                                _playgroundConfig.AllPrompts.Music);
 
-                    i = 0;
+                            _logger.LogInformation($"Add Participant finished.");
+                            break;
+
+                        // Option 2: Remove all participants in the call except the original caller.
+                        case "2":
+                            _logger.LogInformation($"Removing all participants");
+
+                            await callingModule.RemoveAllParticipantExceptCallerAsync(originalTarget);
+                            break;
+
+                        // Option 3: Transfer Call to another PSTN endpoint
+                        case "3":
+                            // recognize phonenumber to transfer to
+                            string phoneNumberToTransfer = await callingModule.RecognizeTonesAsync(
+                                originalTarget,
+                                1,
+                                _playgroundConfig.AllPrompts.CollectPhoneNumber,
+                                _playgroundConfig.AllPrompts.Retry);
+
+                            _logger.LogInformation($"Phonenumber to Transfer[{phoneNumberToTransfer}]");
+
+                            // NOTE: this is assuming it is in NA
+                            // format the phoenumber as you find nesssary.
+                            string formattedTransferNumber = "+1" + phoneNumberToTransfer;
+                            PhoneNumberIdentifier phoneIdentifierToTransfer = new PhoneNumberIdentifier(formattedTransferNumber);
+
+                            // then transfer to the phonenumber
+                            var trasnferSuccess = await callingModule.TransferCallAsync(
+                                phoneIdentifierToTransfer,
+                                _playgroundConfig.AllPrompts.TransferFailure);
+
+                            if (trasnferSuccess)
+                            {
+                                _logger.LogInformation($"Successful Transfer - ending this logic.");
+                                return;
+                            }
+                            else
+                            {
+                                _logger.LogInformation($"Transfer Failed - back to main menu.");
+                            }
+                            break;
+
+                        // Option 4: Start Recording this call
+                        case "4":
+                            // ... then Start Recording
+                            // this will accept serverCallId and uses main service client
+                            _logger.LogInformation($"Start Recording...");
+                            CallLocator callLocator = new ServerCallLocator(serverCallId);
+                            StartRecordingOptions startRecordingOptions = new StartRecordingOptions(callLocator);
+                            _ = await _callAutomation.GetCallRecording().StartAsync(startRecordingOptions);
+
+                            // Play message of start of recording
+                            await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.PlayRecordingStarted);
+                            break;
+
+                        // Option 5: Play Message and terminate the call
+                        case "5":
+                            _logger.LogInformation($"Terminating Call.");
+                            await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.Goodbye);
+                            await callingModule.TerminateCallAsync();
+                            return;
+
+                        default:
+                            // Wrong input!
+                            // play message then retry this toplevel menu.
+                            _logger.LogInformation($"Wrong Input! selectedTone[{selectedTone}]");
+                            await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.Retry);
+                            break;
+                    }
                 }
-                else
-                {
-                    RecognizeFailed recognizeFailed = startRecognizingEventResult.FailureEvent;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Exception during Top Level Menu! [{e}]");
 
-                    if (recognizeFailed.ReasonCode.Equals(ReasonCode.RecognizeInitialSilenceTimedOut))
-                    {
-                        // TODO: do something special for this specific error?
-                    }
-
-                    continue;
-                }
+                // exception happened during the call, play message and hang up.
+                await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.Goodbye);
+                await callingModule.TerminateCallAsync();
             }
 
             return;
-        }
-
-        private async Task AddParticipantBlock(CommunicationIdentifier target, CallConnection callConnection)
-        {
-            // Add Participant Menu
-            string phonenumberToAdd = await RecognizePhonenumberAsync(target, callConnection.GetCallMedia(), _playgroundConfig.AddParticipantPromptUri);
-
-            // add participant option
-            PhoneNumberIdentifier addTarget = new PhoneNumberIdentifier(phonenumberToAdd);
-            PhoneNumberIdentifier source = new PhoneNumberIdentifier(_playgroundConfig.ACS_DirectOffer_Phonenumber);
-
-            CallInvite callInvite = new CallInvite(addTarget, source);
-            AddParticipantResult addParticipantResult = await callConnection.AddParticipantAsync(callInvite);
-
-            // Play hold music
-            await PlayHoldMusicLoopAsync(callConnection.GetCallMedia());
-
-            AddParticipantEventResult addParticipantEventResult = await addParticipantResult.WaitForEventProcessorAsync();
-
-            // Cancel media once the person is added or failed
-            await callConnection.GetCallMedia().CancelAllMediaOperationsAsync();
-
-            if (addParticipantEventResult.IsSuccessEvent)
-            {
-                AddParticipantSucceeded addParticipantSucceeded = addParticipantEventResult.SuccessEvent;
-
-                // start recording
-                CallRecording recording = _callAutomation.GetCallRecording();
-
-                // create call recording options
-                CallLocator callLocator = new ServerCallLocator(addParticipantSucceeded.ServerCallId);
-                StartRecordingOptions startRecordingOptions = new StartRecordingOptions(callLocator);
-
-                RecordingStateResult recordingStateResult = await recording.StartRecordingAsync(startRecordingOptions);
-
-                // TODO: add a recording statechange callback uri
-            }
-            else
-            {
-                // TODO: unhappy path
-            }
-
-            return;
-        }
-
-        private async Task RemoveParticipantBlock(CommunicationIdentifier target, CallConnection callConnection)
-        {
-            // List participants
-            // TODO: Look into details why this one doesn't unwrap
-            IReadOnlyList<CallParticipant> participantsList = (await callConnection.GetParticipantsAsync()).Value;
-
-            // go through the list and remove each one 
-            // TODO: unhappy path
-            foreach (var participant in participantsList)
-            {
-                // Remov all PSTN participants that is not the original target
-                if (participant.Identifier is PhoneNumberIdentifier && participant.Identifier.RawId != target.RawId)
-                {
-                    await callConnection.RemoveParticipantAsync(participant.Identifier);
-                }
-            }
-
-            return;
-        }
-
-        private async Task TransferParticipantBlock(CommunicationIdentifier target, CallConnection callConnection)
-        {
-            string phonenumberToTransfer = await RecognizePhonenumberAsync(target, callConnection.GetCallMedia(), _playgroundConfig.TransferParticipantApi);
-
-            // transfer participant option
-            PhoneNumberIdentifier addTarget = new PhoneNumberIdentifier(phonenumberToTransfer);
-            PhoneNumberIdentifier source = new PhoneNumberIdentifier(_playgroundConfig.ACS_DirectOffer_Phonenumber);
-
-            CallInvite callInvite = new CallInvite(addTarget, source);
-            TransferCallToParticipantResult transferCallToParticipantResult = await callConnection.TransferCallToParticipantAsync(callInvite);
-
-            // TODO: exception handling when media fails to play
-            await PlayHoldMusicLoopAsync(callConnection.GetCallMedia());
-
-            TransferCallToParticipantEventResult transferCallToParticipantEventResult = await transferCallToParticipantResult.WaitForEventProcessorAsync();
-
-            // Cancel media once the person is added or failed
-            await callConnection.GetCallMedia().CancelAllMediaOperationsAsync();
-
-            if (transferCallToParticipantEventResult.IsSuccessEvent)
-            {
-                // TODO... something when add participant
-            }
-            else
-            {
-                // TODO: unhappy path
-            }
-
-            return;
-        }
-
-        private async Task TerminateBlockAsync(CallConnection callConnection)
-        {
-            await callConnection.HangUpAsync(true);
-        }
-
-        private async Task<StartRecognizingEventResult> RecognizeBlockAsync(CallMedia callMedia, CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions)
-        {
-            StartRecognizingResult startRecognizingResult = await callMedia.StartRecognizingAsync(callMediaRecognizeDtmfOptions);
-
-            // wait for recognition completion event
-            return await startRecognizingResult.WaitForEventProcessorAsync();
-        }
-
-        private async Task PlayHoldMusicLoopAsync(CallMedia callMedia)
-        {
-            // Play Hold Music...
-            FileSource fileSource = new FileSource(_playgroundConfig.HoldMusicPromptUri);
-            PlayOptions playOptions = new PlayOptions();
-            playOptions.Loop = true;
-            PlayResult playResult = await callMedia.PlayToAllAsync(fileSource, playOptions);
-        }
-
-        private async Task<string> RecognizePhonenumberAsync(
-            CommunicationIdentifier target, 
-            CallMedia callMedia, 
-            Uri askPrompt)
-        {
-            // todo: add repeat capability
-            // todo: prompt what you have entered is invalid, try again
-
-            CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new CallMediaRecognizeDtmfOptions(target, 20);
-            callMediaRecognizeDtmfOptions.Prompt = new FileSource(askPrompt);
-            callMediaRecognizeDtmfOptions.InterruptPrompt = true;
-            callMediaRecognizeDtmfOptions.StopTones = new List<DtmfTone> { DtmfTone.Pound, DtmfTone.Asterisk };
-
-            StartRecognizingEventResult startRecognizingEventResult = await RecognizeBlockAsync(callMedia, callMediaRecognizeDtmfOptions);
-
-            string phoneNumber = string.Empty;
-            if (startRecognizingEventResult.IsSuccessEvent)
-            {
-                RecognizeCompleted recognizeCompleted = startRecognizingEventResult.SuccessEvent;
-                var collectToneResult = (CollectTonesResult)recognizeCompleted.RecognizeResult; 
-
-                return "+1" + collectToneResult.ConvertToString();
-            }
-            else
-            {
-                RecognizeFailed recognizeFailed = startRecognizingEventResult.FailureEvent;
-
-                if (recognizeFailed.ReasonCode.Equals(ReasonCode.RecognizeInitialSilenceTimedOut))
-                {
-                    // TODO: do something special for this specific error?
-                }
-
-                // TODO: fix when unhappy path happens
-            }
-
-            return string.Empty;
         }
     }
 }
