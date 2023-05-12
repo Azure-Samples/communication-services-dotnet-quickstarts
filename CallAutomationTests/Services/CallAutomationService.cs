@@ -8,14 +8,17 @@ using Azure.Messaging;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Utils;
+using Newtonsoft.Json;
 
 namespace CallAutomation.Scenarios.Services
 {
     public class CallAutomationService : ICallAutomationService
     {
+        public static string recFileFormat;
         private readonly ILogger<CallAutomationService> _logger;
         private readonly CallAutomationClient _client;
         private readonly IConfiguration _configuration;
+       
 
 
         public CallAutomationService(ILogger<CallAutomationService> logger, IConfiguration configuration)
@@ -669,6 +672,51 @@ namespace CallAutomation.Scenarios.Services
                 _logger.LogError($"Stop Recording failed unexpectedly: {e}");
 
                 throw;
+            }
+        }
+
+        public async Task ProcessFile(string downloadLocation, string documentId, string fileFormat, string downloadType)
+        {
+            var recordingDownloadUri = new Uri(downloadLocation);
+            var response = await _client.GetCallRecording().DownloadStreamingAsync(recordingDownloadUri);
+
+            Logger.LogInformation($"Download {downloadType} response  -- >" + response.GetRawResponse());
+            Logger.LogInformation($"Save downloaded {downloadType} -- >");
+
+            string filePath = ".\\" + documentId + "." + fileFormat;
+            using (Stream streamToReadFrom = response.Value)
+            {
+                using (Stream streamToWriteTo = System.IO.File.Open(filePath, FileMode.Create))
+                {
+                    await streamToReadFrom.CopyToAsync(streamToWriteTo);
+                    await streamToWriteTo.FlushAsync();
+                }
+            }
+
+            if (string.Equals(downloadType, FileDownloadType.Metadata, StringComparison.InvariantCultureIgnoreCase) && System.IO.File.Exists(filePath))
+            {
+                Root deserializedFilePath = JsonConvert.DeserializeObject<Root>(System.IO.File.ReadAllText(filePath));
+                recFileFormat = deserializedFilePath.recordingInfo.format;
+
+                Logger.LogInformation($"Recording File Format is -- > {recFileFormat}");
+            }
+            var containerName = _configuration["BlobContainerName"];
+            var blobStorageConnectionString = _configuration["BlobStorageConnectionString"];
+
+
+            Logger.LogInformation($"Starting to upload {downloadType} to BlobStorage into container -- > {containerName}");
+
+            var blobStorageHelperInfo = await BlobStorageHelper.UploadFileAsync(blobStorageConnectionString, containerName, filePath, filePath);
+            if (blobStorageHelperInfo.Status)
+            {
+                Logger.LogInformation(blobStorageHelperInfo.Message);
+                Logger.LogInformation($"Deleting temporary {downloadType} file being created");
+
+                System.IO.File.Delete(filePath);
+            }
+            else
+            {
+                Logger.LogError($"{downloadType} file was not uploaded,{blobStorageHelperInfo.Message}");
             }
         }
 

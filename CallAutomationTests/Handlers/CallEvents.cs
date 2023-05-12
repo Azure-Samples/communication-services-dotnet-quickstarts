@@ -27,6 +27,10 @@ namespace CallAutomation.Scenarios.Handlers
         public string? serverCallId { get; set; }
         public string? recordingId { get; set; }
     }
+    public class GetRecordingFileEvent
+    {
+        public Object? request { get; set; }
+    }
 
     public class RecordingFileStatusUpdatedEvent
     {
