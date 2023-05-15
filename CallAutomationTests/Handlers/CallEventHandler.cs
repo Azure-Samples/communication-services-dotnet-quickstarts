@@ -33,7 +33,7 @@ namespace CallAutomation.Scenarios.Handlers
         private readonly ILogger<CallEventHandler> _logger;
         private readonly ICallAutomationService _callAutomationService;
         private readonly ICallContextService _callContextService;
-
+        public static string recFileFormat;
         public CallEventHandler(
             IConfiguration configuration,
             ILogger<CallEventHandler> logger,
@@ -944,9 +944,35 @@ namespace CallAutomation.Scenarios.Handlers
             }
         }
 
-        public Task Handle(RecordingFileStatusUpdatedEvent eventName)
+        public Task Handle(RecordingFileStatusUpdatedEvent recordingFileStatusUpdatedEvent)
         {    
-            throw new NotImplementedException();
+            try
+            {
+                var eventData = recordingFileStatusUpdatedEvent;
+
+                Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + eventData);
+
+                Logger.LogInformation("Start processing metadata -- >");
+
+               var response=  _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,
+                    eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
+                    FileFormat.Json,
+                    FileDownloadType.Metadata);
+
+                Logger.LogInformation("Start processing recorded media -- >" + response);
+
+                response = _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation,
+                    eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
+                    string.IsNullOrWhiteSpace(recFileFormat) ? FileFormat.Mp4 : recFileFormat,
+                    FileDownloadType.Recording);
+                return response;
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "get record failed unexpectedly");
+                throw;
+            }
         }
 
         #endregion

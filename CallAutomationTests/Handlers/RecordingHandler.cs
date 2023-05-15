@@ -10,7 +10,8 @@ using Newtonsoft.Json;
 namespace CallAutomation.Scenarios
 {
     public class RecordingHandler : 
-        IEventActionsEventHandler<StartRecordingEvent>,IEventActionsEventHandler<StopRecordingEvent>
+        IEventActionsEventHandler<StartRecordingEvent>,IEventActionsEventHandler<StopRecordingEvent>,
+        IEventActionsEventHandler<RecordingFileStatusUpdatedEvent>, IEventActionsEventHandler<PauseRecordingEvent>, IEventActionsEventHandler<ResumeRecordingEvent>
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<CallEventHandler> _logger;
@@ -105,43 +106,97 @@ namespace CallAutomation.Scenarios
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Start Recording failed unexpectedly");
+                _logger.LogError(ex, "Stop Recording failed unexpectedly");
                 throw;
             }
         }
 
-        public async Task<Object> Handle(GetRecordingFileEvent getRecordingFileEvent)
+        public async Task Handle(PauseRecordingEvent pauseRecordingEvent)
         {
             try
             {
-
-                var httpContent = new BinaryData(getRecordingFileEvent.request.ToString()).ToStream();
-                EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
-
-                if (cloudEvent.EventType == SystemEventNames.EventGridSubscriptionValidation)
+                _logger.LogInformation("pauseRecordingEvent received");
+                string serverCallId = pauseRecordingEvent.serverCallId;
+                string recordingId = pauseRecordingEvent.recordingId;
+                if (!string.IsNullOrEmpty(serverCallId))
                 {
-                    var eventData = cloudEvent.Data.ToObjectFromJson<SubscriptionValidationEventData>();
-
-                    Logger.LogInformation("Microsoft.EventGrid.SubscriptionValidationEvent response  -- >" + cloudEvent.Data);
-
-                    var responseData = new SubscriptionValidationResponse
+                    if (string.IsNullOrEmpty(recordingId))
                     {
-                        ValidationResponse = eventData.ValidationCode
-                    };
-
-                    if (responseData.ValidationResponse != null)
-                    {
-                        //return Ok(responseData);
+                        recordingId = recordingData[serverCallId];
                     }
+                    else
+                    {
+                        if (!recordingData.ContainsKey(serverCallId))
+                        {
+                            recordingData[serverCallId] = recordingId;
+                        }
+                    }
+
+                    var PauseRecording = await _callAutomationService.PauseRecordingAsync(recordingId);
+                    Logger.LogInformation($"PauseRecordingAsync response -- > {PauseRecording}");
+                    
+                    // return Ok();
+                }
+                else
+                {
+                    // return BadRequest(new { Message = "serverCallId is invalid" });
                 }
 
-                if (cloudEvent.EventType == SystemEventNames.AcsRecordingFileStatusUpdated)
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Pause Recording failed unexpectedly");
+                throw;
+            }
+        }
+        public async Task Handle(ResumeRecordingEvent resumeRecordingEvent)
+        {
+            try
+            {
+                _logger.LogInformation("ResumeRecordingEvent received");
+                string serverCallId = resumeRecordingEvent.serverCallId;
+                string recordingId = resumeRecordingEvent.recordingId;
+                if (!string.IsNullOrEmpty(serverCallId))
                 {
-                    Logger.LogInformation($"Event type is -- > {cloudEvent.EventType}");
+                    if (string.IsNullOrEmpty(recordingId))
+                    {
+                        recordingId = recordingData[serverCallId];
+                    }
+                    else
+                    {
+                        if (!recordingData.ContainsKey(serverCallId))
+                        {
+                            recordingData[serverCallId] = recordingId;
+                        }
+                    }
 
-                    Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + cloudEvent.Data);
+                    var ResumeRecording = await _callAutomationService.ResumeRecordingAsync(recordingId);
+                    Logger.LogInformation($"ResumeRecordingAsync response -- > {ResumeRecording}");
 
-                    var eventData = cloudEvent.Data.ToObjectFromJson<AcsRecordingFileStatusUpdatedEventData>();
+                    // return Ok();
+                }
+                else
+                {
+                    // return BadRequest(new { Message = "serverCallId is invalid" });
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Resume Recording failed unexpectedly");
+                throw;
+            }
+        }
+
+        public async Task Handle(RecordingFileStatusUpdatedEvent recordingFileStatusUpdatedEvent)
+        {
+            try
+            {
+               var eventData = recordingFileStatusUpdatedEvent;
+
+                    Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + eventData);                   
 
                     Logger.LogInformation("Start processing metadata -- >");
 
@@ -156,10 +211,7 @@ namespace CallAutomation.Scenarios
                         eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
                         string.IsNullOrWhiteSpace(recFileFormat) ? FileFormat.Mp4 : recFileFormat,
                         FileDownloadType.Recording);
-                }
-
-                return "OK";
-
+                
 
             }
             catch (Exception ex)

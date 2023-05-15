@@ -675,6 +675,38 @@ namespace CallAutomation.Scenarios.Services
             }
         }
 
+        public async Task<Response> PauseRecordingAsync(string recordingId)
+        {
+            _logger.LogInformation($"Pause recording with server:");
+
+            try
+            {
+                return  _client.GetCallRecording().PauseRecording(recordingId);
+               // return await _client.GetCallRecording().PauseRecordingAsync(recordingId).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Pause Recording failed unexpectedly: {e}");
+
+                throw;
+            }
+        }
+        public async Task<Response> ResumeRecordingAsync(string recordingId)
+        {
+            _logger.LogInformation($"Resume recording with server:");
+
+            try
+            {
+                return await _client.GetCallRecording().ResumeRecordingAsync(recordingId).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Pause Recording failed unexpectedly: {e}");
+
+                throw;
+            }
+        }
+
         public async Task ProcessFile(string downloadLocation, string documentId, string fileFormat, string downloadType)
         {
             var recordingDownloadUri = new Uri(downloadLocation);

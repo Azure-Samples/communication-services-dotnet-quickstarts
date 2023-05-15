@@ -12,7 +12,7 @@ namespace CallAutomation.Scenarios
         public static IServiceCollection AddAllEventGridEventHandlers(this IServiceCollection services)
         {
             services.AddSingleton<IEventGridEventHandler<IncomingCallEvent>, CallEventHandler>();
-            services.AddSingleton<IEventGridEventHandler<RecordingFileStatusUpdatedEvent>, CallEventHandler>();
+            services.AddSingleton<IEventGridEventHandler<RecordingFileStatusUpdatedEvent>, CallEventHandler>();            
             services.AddSingleton<IEventCloudEventHandler<AddParticipantFailed>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<AddParticipantSucceeded>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<CallConnected>, CallEventHandler>();
@@ -30,6 +30,9 @@ namespace CallAutomation.Scenarios
             services.AddSingleton<IEventActionsEventHandler<OutboundCallEvent>, CallEventHandler>();
             services.AddSingleton<IEventActionsEventHandler<StartRecordingEvent>, RecordingHandler>();
             services.AddSingleton<IEventActionsEventHandler<StopRecordingEvent>, RecordingHandler>();
+            //services.AddSingleton<IEventActionsEventHandler<GetRecordingFileEvent>, RecordingHandler>();
+            services.AddSingleton<IEventActionsEventHandler<PauseRecordingEvent>, RecordingHandler>();
+            services.AddSingleton<IEventActionsEventHandler<ResumeRecordingEvent>, RecordingHandler>();           
             services.AddSingleton<EventConverter>();
 
             return services;
