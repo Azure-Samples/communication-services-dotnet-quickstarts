@@ -17,14 +17,14 @@ namespace CallAutomation_Playground.Controllers
     {
         private readonly ILogger<IncomingCallController> _logger;
         private readonly CallAutomationClient _callAutomationClient;
-        private readonly PlaygroundConfig _playgroundConfig;
+        private readonly PlaygroundConfigs _playgroundConfig;
         private readonly ITopLevelMenuService _topLevelMenuService;
         private readonly IOngoingEventHandler _ongoingEventHandler;
 
         public IncomingCallController(
             ILogger<IncomingCallController> logger,
             CallAutomationClient callAutomationClient,
-            PlaygroundConfig playgroundConfig,
+            PlaygroundConfigs playgroundConfig,
             ITopLevelMenuService topLevelMenuService,
             IOngoingEventHandler ongoingEventHandler)
         {

@@ -24,11 +24,11 @@ builder.Services.AddSingleton<ITopLevelMenuService, TopLevelMenuService>();
 var callbackUriHost = builder.Configuration["VS_TUNNEL_URL"];
 
 // Get all configs, such as callback url and prompts url
-PlaygroundConfig playgroundConfig = new PlaygroundConfig
+PlaygroundConfigs playgroundConfig = new PlaygroundConfigs
 {
     CallbackUri = new Uri(callbackUriHost + "api/event"),
     DirectOfferedPhonenumber = ReadingConfigs(builder, "DIRECT_OFFERED_PHONE_NUMBER"),
-    AllPrompts = new PlaygroundConfig.Prompts
+    AllPrompts = new PlaygroundConfigs.Prompts
     {
         MainMenu = new Uri(ReadingConfigs(builder, "PROMPT_MAIN_MENU")),
         CollectPhoneNumber = new Uri(ReadingConfigs(builder, "PROMPT_COLLECT_PHONE_NUMBER")),

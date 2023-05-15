@@ -12,12 +12,12 @@ namespace CallAutomation_Playground
     {
         private readonly ILogger<TopLevelMenuService> _logger;
         private readonly CallAutomationClient _callAutomation;
-        private readonly PlaygroundConfig _playgroundConfig;
+        private readonly PlaygroundConfigs _playgroundConfig;
 
         public TopLevelMenuService(
             ILogger<TopLevelMenuService> logger, 
             CallAutomationClient callAutomation, 
-            PlaygroundConfig playgroundConfig)
+            PlaygroundConfigs playgroundConfig)
         {
             _logger = logger;
             _callAutomation = callAutomation;

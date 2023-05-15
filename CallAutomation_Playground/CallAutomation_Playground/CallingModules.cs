@@ -10,11 +10,11 @@ namespace CallAutomation_Playground
     public class CallingModules : ICallingModules
     {
         private readonly CallConnection _callConnection;
-        private readonly PlaygroundConfig _playgroundConfig;
+        private readonly PlaygroundConfigs _playgroundConfig;
 
         public CallingModules(
             CallConnection callConnection,
-            PlaygroundConfig playgroundConfig)
+            PlaygroundConfigs playgroundConfig)
         {
             _callConnection = callConnection;
             _playgroundConfig = playgroundConfig;
