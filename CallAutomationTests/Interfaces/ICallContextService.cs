@@ -1,8 +1,13 @@
-﻿namespace CallAutomation.Scenarios.Interfaces
+﻿using CallAutomation.Scenarios.Handlers;
+
+namespace CallAutomation.Scenarios.Interfaces
 {
     public interface ICallContextService
     {
         // TODO: collapse these into a POCO
+
+        RecordingContext? GetRecordingContext(string serverCallId);
+        bool SetRecordingContext(string serverCallId, RecordingContext recordingContext);
         string? GetCustomerId(string callConnectionId);
         bool SetCustomerId(string callConnectionId, string accountId);
         bool RemoveCustomerId(string callConnectionId);

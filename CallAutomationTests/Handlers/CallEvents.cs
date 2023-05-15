@@ -4,6 +4,14 @@ using Azure.Messaging.EventGrid.SystemEvents;
 
 namespace CallAutomation.Scenarios.Handlers
 {
+    public class RecordingContext
+    {
+        public string? RecordingId { get; set; }
+        public DateTime? StartTime { get; set; }
+
+        public RecordingContext() { }
+    }
+
     public class IncomingCallEvent
     {
         public CommunicationIdentifierModel? To { get; set; }

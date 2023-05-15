@@ -1,4 +1,6 @@
-﻿using CallAutomation.Scenarios.Interfaces;
+﻿using Azure.Communication.CallAutomation;
+using CallAutomation.Scenarios.Handlers;
+using CallAutomation.Scenarios.Interfaces;
 using System.Collections.Concurrent;
 
 namespace CallAutomation.Scenarios.Services
@@ -16,6 +18,7 @@ namespace CallAutomation.Scenarios.Services
         private ConcurrentDictionary<string, CancellationTokenSource> _callConnectionIdToMainMenuSpeechRecognizerCancellationTokenSource;
         private ConcurrentDictionary<string, string> _callConnectionIdToMediaSubscriptionId;
         private ConcurrentDictionary<string, string> _callConnectionIdToCallSummary;
+        private ConcurrentDictionary<string, RecordingContext> _serverCallIdToRecordingContext;
 
         public CallContextService()
         {
@@ -31,7 +34,24 @@ namespace CallAutomation.Scenarios.Services
             _callConnectionIdToMediaSubscriptionId = new ConcurrentDictionary<string, string>();
             _callConnectionIdToCallSummary = new ConcurrentDictionary<string, string>();
             _callConnectionIdToMainMenuSpeechRecognizerCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
+            _serverCallIdToRecordingContext = new ConcurrentDictionary<string, RecordingContext>();
         }
+
+        public RecordingContext? GetRecordingContext(string serverCallId)
+        {
+            if (_serverCallIdToRecordingContext.TryGetValue(serverCallId, out var recordingContext))
+            {
+                return recordingContext;
+            }
+
+            return null;
+        }
+
+        public bool SetRecordingContext(string serverCallId, RecordingContext recordingContext)
+        {
+            return _serverCallIdToRecordingContext.TryAdd(serverCallId, recordingContext);
+        }
+
 
         public string? GetCustomerId(string callConnectionId)
         {

@@ -37,11 +37,8 @@ namespace CallAutomation.Scenarios
                 var startRecordingResponse = await _callAutomationService.StartRecordingAsync(serverCallId);
                 Logger.LogInformation($"StartRecordingAsync response -- >  {startRecordingResponse.RecordingState}, Recording Id: {startRecordingResponse.RecordingId}");
                 var recordingId = startRecordingResponse.RecordingId;
-                if (!recordingData.ContainsKey(serverCallId))
-                {
-                    recordingData.Add(serverCallId, string.Empty);
-                }
-                recordingData[serverCallId] = recordingId;
+                
+                _callContextService.SetRecordingContext(serverCallId, new RecordingContext() { StartTime = DateTime.UtcNow, RecordingId = recordingId });
 
             }
             catch (Exception ex)
