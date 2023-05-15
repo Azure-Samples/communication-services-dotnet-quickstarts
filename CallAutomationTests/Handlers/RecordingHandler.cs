@@ -3,6 +3,7 @@ using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
@@ -16,6 +17,7 @@ namespace CallAutomation.Scenarios
         private readonly ICallAutomationService _callAutomationService;
         private readonly ICallContextService _callContextService;
         static Dictionary<string, string> recordingData = new Dictionary<string, string>();
+        public static string recFileFormat;
         public RecordingHandler(
             IConfiguration configuration,
             ILogger<CallEventHandler> logger,
@@ -86,19 +88,17 @@ namespace CallAutomation.Scenarios
                         }
                     }
 
-                    var stopRecording = await _callAutomationService.StopRecordingAsync(recordingId);
-                   // var stopRecording = await callAutomationClient.GetCallRecording().StopRecordingAsync(recordingId).ConfigureAwait(false);
+                    var stopRecording = await _callAutomationService.StopRecordingAsync(recordingId);                 
                     Logger.LogInformation($"StopRecordingAsync response -- > {stopRecording}");
-
                     if (recordingData.ContainsKey(serverCallId))
                     {
                         recordingData.Remove(serverCallId);
                     }
-                    return Ok();
+                   // return Ok();
                 }
                 else
                 {
-                    return BadRequest(new { Message = "serverCallId is invalid" });
+                   // return BadRequest(new { Message = "serverCallId is invalid" });
                 }
 
 
@@ -109,5 +109,66 @@ namespace CallAutomation.Scenarios
                 throw;
             }
         }
+
+        public async Task<Object> Handle(GetRecordingFileEvent getRecordingFileEvent)
+        {
+            try
+            {
+
+                var httpContent = new BinaryData(getRecordingFileEvent.request.ToString()).ToStream();
+                EventGridEvent cloudEvent = EventGridEvent.ParseMany(BinaryData.FromStream(httpContent)).FirstOrDefault();
+
+                if (cloudEvent.EventType == SystemEventNames.EventGridSubscriptionValidation)
+                {
+                    var eventData = cloudEvent.Data.ToObjectFromJson<SubscriptionValidationEventData>();
+
+                    Logger.LogInformation("Microsoft.EventGrid.SubscriptionValidationEvent response  -- >" + cloudEvent.Data);
+
+                    var responseData = new SubscriptionValidationResponse
+                    {
+                        ValidationResponse = eventData.ValidationCode
+                    };
+
+                    if (responseData.ValidationResponse != null)
+                    {
+                        //return Ok(responseData);
+                    }
+                }
+
+                if (cloudEvent.EventType == SystemEventNames.AcsRecordingFileStatusUpdated)
+                {
+                    Logger.LogInformation($"Event type is -- > {cloudEvent.EventType}");
+
+                    Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + cloudEvent.Data);
+
+                    var eventData = cloudEvent.Data.ToObjectFromJson<AcsRecordingFileStatusUpdatedEventData>();
+
+                    Logger.LogInformation("Start processing metadata -- >");
+
+                    await _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,
+                        eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
+                        FileFormat.Json,
+                        FileDownloadType.Metadata);
+
+                    Logger.LogInformation("Start processing recorded media -- >");
+
+                    await _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].ContentLocation,
+                        eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
+                        string.IsNullOrWhiteSpace(recFileFormat) ? FileFormat.Mp4 : recFileFormat,
+                        FileDownloadType.Recording);
+                }
+
+                return "OK";
+
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Get Recording File failed unexpectedly");
+                throw;
+            }
+        }
+
+
     }
 }

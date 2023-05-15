@@ -13,12 +13,14 @@ namespace CallAutomation.Scenarios.Controllers
         private readonly IEventActionsEventHandler<OutboundCallEvent> _outboundCallActionHandler;
         private readonly IEventActionsEventHandler<StartRecordingEvent> _startRecordingActionHandler;
         private readonly IEventActionsEventHandler<StopRecordingEvent> _StopRecordingActionHandler;
+        private readonly IEventActionsEventHandler<GetRecordingFileEvent> _GetRecordingFileActionHandler;
 
         public ActionsController(ILogger<EventsController> logger,
             EventConverter eventConverter,
             IEventActionsEventHandler<OutboundCallEvent> outboundCallActionHandler,
             IEventActionsEventHandler<StartRecordingEvent> startRecordingActionHandler,
-            IEventActionsEventHandler<StopRecordingEvent> StopRecordingActionHandler )
+            IEventActionsEventHandler<StopRecordingEvent> StopRecordingActionHandler,
+             IEventActionsEventHandler<GetRecordingFileEvent> GetRecordingFileActionHandler)
             
         {
             _logger = logger;
@@ -26,6 +28,7 @@ namespace CallAutomation.Scenarios.Controllers
             _outboundCallActionHandler = outboundCallActionHandler;
             _startRecordingActionHandler = startRecordingActionHandler;
             _StopRecordingActionHandler = StopRecordingActionHandler;
+            _GetRecordingFileActionHandler = GetRecordingFileActionHandler;
 
         }
 
@@ -46,6 +49,13 @@ namespace CallAutomation.Scenarios.Controllers
         public async Task<ActionResult> StopRecording([FromBody] StopRecordingEvent StopRecordingEvent)
         {
             var response = _StopRecordingActionHandler.Handle(StopRecordingEvent);
+            return new OkResult();
+        }
+
+        [HttpPost("getRecording/File", Name = "getRecording_File")]
+        public async Task<ActionResult> getRecordingFile([FromBody] GetRecordingFileEvent getRecordingFileEvent)
+        {
+            var response = _GetRecordingFileActionHandler.Handle(getRecordingFileEvent);
             return new OkResult();
         }
 
