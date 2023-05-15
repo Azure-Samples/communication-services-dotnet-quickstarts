@@ -1,7 +1,7 @@
 ﻿using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Microsoft.AspNetCore.Mvc;
 using CallAutomation.Scenarios.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 
 namespace CallAutomation.Scenarios.Controllers

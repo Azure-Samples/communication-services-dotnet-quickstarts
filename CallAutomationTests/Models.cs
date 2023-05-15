@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using Azure.Communication.CallAutomation;
+﻿using Azure.Communication.CallAutomation;
 
 namespace CallAutomation.Scenarios
 {
-       static class FileDownloadType
+    static class FileDownloadType
     {
         const string recordingType = "recording";
         const string metadataType = "metadata";
@@ -69,8 +67,8 @@ namespace CallAutomation.Scenarios
     public class Mapper
     {
         static Dictionary<string, RecordingContent> recContentMap
-            = new Dictionary<string, RecordingContent>() 
-                { 
+            = new Dictionary<string, RecordingContent>()
+                {
                     { "audiovideo", RecordingContent.AudioVideo },
                     { "audio", RecordingContent.Audio }
                 };

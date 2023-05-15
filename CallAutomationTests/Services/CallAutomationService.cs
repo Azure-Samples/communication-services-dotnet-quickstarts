@@ -3,7 +3,6 @@
 using Azure;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
-using Azure.Core.Pipeline;
 using Azure.Messaging;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
@@ -18,7 +17,7 @@ namespace CallAutomation.Scenarios.Services
         private readonly ILogger<CallAutomationService> _logger;
         private readonly CallAutomationClient _client;
         private readonly IConfiguration _configuration;
-       
+
 
 
         public CallAutomationService(ILogger<CallAutomationService> logger, IConfiguration configuration)
@@ -202,7 +201,7 @@ namespace CallAutomation.Scenarios.Services
             }
             else if (choiceOrTone == DtmfTone.Two || choiceOrTone.ToString().Equals(QueueConstants.MagentaMobile, StringComparison.OrdinalIgnoreCase))
             {
-                operationContext= QueueConstants.MagentaMobile;
+                operationContext = QueueConstants.MagentaMobile;
                 textToSpeech = string.IsNullOrWhiteSpace(prerollText)
                     ? ivrText[QueueConstants.MagentaMobile]
                     : $"{prerollText} {ivrText[QueueConstants.MagentaMobile]}";
@@ -469,8 +468,8 @@ namespace CallAutomation.Scenarios.Services
             _logger.LogInformation($"PlayEstimatedWaitTime announcing estimated wait time of '{estimatedWaitTime}' minutes");
 
             var ivrText = GetIvrText();
-            var minutes = estimatedWaitTime > 1 
-                ? $"{estimatedWaitTime} {ivrText["Minutes"]}" 
+            var minutes = estimatedWaitTime > 1
+                ? $"{estimatedWaitTime} {ivrText["Minutes"]}"
                 : $"{estimatedWaitTime} {ivrText["Minute"]}";
             var textToSpeech = string.Format(ivrText["EstimatedWaitTime"], minutes);
 
@@ -645,10 +644,10 @@ namespace CallAutomation.Scenarios.Services
         public async Task<RecordingStateResult> StartRecordingAsync(string serverCallId)
         {
             _logger.LogInformation($"Start recording with server:");
-            
+
             try
             {
-                var recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));                
+                var recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
                 return await _client.GetCallRecording().StartRecordingAsync(recordingOptions).ConfigureAwait(false);
             }
             catch (Exception e)
@@ -664,7 +663,7 @@ namespace CallAutomation.Scenarios.Services
             _logger.LogInformation($"Start recording with server:");
 
             try
-            {               
+            {
                 return await _client.GetCallRecording().StopRecordingAsync(recordingId).ConfigureAwait(false);
             }
             catch (Exception e)
@@ -681,8 +680,8 @@ namespace CallAutomation.Scenarios.Services
 
             try
             {
-                return  _client.GetCallRecording().PauseRecording(recordingId);
-               // return await _client.GetCallRecording().PauseRecordingAsync(recordingId).ConfigureAwait(false);
+                return _client.GetCallRecording().PauseRecording(recordingId);
+                // return await _client.GetCallRecording().PauseRecordingAsync(recordingId).ConfigureAwait(false);
             }
             catch (Exception e)
             {

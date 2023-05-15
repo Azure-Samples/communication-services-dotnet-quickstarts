@@ -1,5 +1,4 @@
 ﻿using Azure.Communication.CallAutomation;
-using System.Collections.Generic;
 
 namespace CallAutomation.Scenarios.Utils
 {
@@ -19,7 +18,7 @@ namespace CallAutomation.Scenarios.Utils
                 { "seven", "7" },
                 { "eight", "8" },
                 { "nine", "9" } };
-            
+
             List<string> result = new List<string>();
             foreach (var tone in value.Tones)
             {

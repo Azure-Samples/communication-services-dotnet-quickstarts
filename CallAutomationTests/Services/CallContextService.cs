@@ -1,5 +1,5 @@
-﻿using System.Collections.Concurrent;
-using CallAutomation.Scenarios.Interfaces;
+﻿using CallAutomation.Scenarios.Interfaces;
+using System.Collections.Concurrent;
 
 namespace CallAutomation.Scenarios.Services
 {
@@ -163,7 +163,7 @@ namespace CallAutomation.Scenarios.Services
             return _callConnectionIdToAgentAcsId.TryRemove(callConnectionId, out _);
         }
 
-   
+
         public bool SetAccountIdSpeechRecognizerCancellationTokenSource(string callConnectionId, CancellationTokenSource cancellationTokenSource)
         {
             return _callConnectionIdToAccountIdSpeechRecognizerCancellationTokenSource.TryAdd(callConnectionId, cancellationTokenSource);

@@ -1,6 +1,6 @@
 ﻿namespace CallAutomation.Scenarios.Interfaces
 {
-    public interface IEventActionsEventHandler<TEvent>
+    public interface IEventActionEventHandler<TEvent>
     {
         Task Handle(TEvent eventName);
     }

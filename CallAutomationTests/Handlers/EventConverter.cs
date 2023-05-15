@@ -26,33 +26,33 @@ namespace CallAutomation.Scenarios.Handlers
         internal const string JobReceivedEventName = "RouterJobReceived";
         internal const string JobUnassignedEventName = "RouterJobUnassigned";
         internal const string JobWorkerSelectorsExpiredEventName = "RouterJobWorkerSelectorsExpired";
-        
+
         internal const string IncomingCallEventName = "IncomingCall";
-        
+        internal const string RecordingFileStatusUpdatedEventName = "RecordingFileStatusUpdated";
+
         internal const string SMSReceived = "SMSReceived";
         internal const string CrossPlatformMessageEvent = "CrossPlatformMessageReceived";
         internal const string ChatMessageReceivedInThreadEvent = "ChatMessageReceivedInThread";
 
 
 
-        private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true,  IgnoreNullValues = true };
+        private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, IgnoreNullValues = true };
 
         public object? Convert(EventGridEvent eventGridEvent, bool validationEvent = false)
         {
-            var data = eventGridEvent.Data.ToString();
-            if (data is null) throw new ArgumentNullException($"No data present: {eventGridEvent}");
+            var data = eventGridEvent.Data.ToString() ?? throw new ArgumentNullException($"No data present: {eventGridEvent}");
 
             if (validationEvent)
             {
                 var jsonObj = JsonDocument.Parse(data);
                 jsonObj.RootElement.TryGetProperty("validationCode", out var value);
-                
                 return new SubscriptionValidationResponse { ValidationResponse = value.GetString() };
             }
 
             return ParseEventType(eventGridEvent.EventType) switch
             {
                 IncomingCallEventName => JsonSerializer.Deserialize<IncomingCallEvent>(data, JsonOptions),
+                RecordingFileStatusUpdatedEventName => JsonSerializer.Deserialize<RecordingFileStatusUpdatedEvent>(data, JsonOptions),
                 _ => null
             };
         }

@@ -18,7 +18,8 @@ builder.Services.AddAuthentication()
 
     });
 
-builder.Services.AddAuthorization(options => {
+builder.Services.AddAuthorization(options =>
+{
     options.AddPolicy(EventGridAuthHandler.EventGridAuthenticationScheme,
         authBuilder =>
         {

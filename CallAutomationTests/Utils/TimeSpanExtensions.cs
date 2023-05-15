@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace CallAutomation.Scenarios.Utils
+﻿namespace CallAutomation.Scenarios.Utils
 {
     public static class TimeSpanExtensions
     {

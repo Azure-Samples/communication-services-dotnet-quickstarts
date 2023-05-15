@@ -17,7 +17,7 @@ namespace CallAutomation.Scenarios.Handlers
     {
         public string? TargetId { get; set; }
     }
-    
+
     public class StartRecordingEvent
     {
         public string? serverCallId { get; set; }

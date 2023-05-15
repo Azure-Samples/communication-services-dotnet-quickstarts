@@ -2,10 +2,10 @@
 
 using Azure;
 using Azure.Communication.CallAutomation;
-using System.Collections.Immutable;
-using System.Net;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Utils;
+using System.Collections.Immutable;
+using System.Net;
 
 
 namespace CallAutomation.Scenarios.Handlers
@@ -13,7 +13,7 @@ namespace CallAutomation.Scenarios.Handlers
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
         IEventGridEventHandler<RecordingFileStatusUpdatedEvent>,
-        IEventActionsEventHandler<OutboundCallEvent>,
+        IEventActionEventHandler<OutboundCallEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
         IEventCloudEventHandler<CallConnected>,
@@ -335,7 +335,7 @@ namespace CallAutomation.Scenarios.Handlers
                                 }
                             }
 
-                           // await CleanupCallJob(callId);
+                            // await CleanupCallJob(callId);
 
                             // try and hang up the call
                             await _callAutomationService.GetCallConnection(callConnectionId).HangUpAsync(true);
@@ -376,7 +376,7 @@ namespace CallAutomation.Scenarios.Handlers
                             _logger.LogInformation("Customer requested to end call, hanging up");
                             await _callAutomationService.EndCallAsync(callConnectionId, operationContext);
                             break;
-                        case QueueConstants.MagentaDefault:                             
+                        case QueueConstants.MagentaDefault:
                         case QueueConstants.MagentaHome:
                             _logger.LogInformation("Add Participant initiate the call:");
                             await _callAutomationService.AddParticipantAsync(callConnectionId, Constants.OperationContext.SupervisorJoining, _configuration["AddParticipant"]);
@@ -484,10 +484,10 @@ namespace CallAutomation.Scenarios.Handlers
                             case ChoiceResult choiceResult:
                                 if (!useCustomPhraseRecognition)
                                 {
-                                    await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);                            
+                                    await _callAutomationService.PlayMenuChoiceAsync(choiceResult.Label, callMedia, textToSpeechLocale);
 
 
-                                }                               
+                                }
                                 break;
 
                             //Take action for Recognition through DTMF
@@ -756,7 +756,7 @@ namespace CallAutomation.Scenarios.Handlers
                 CallConnectionProperties callConnectionProerties = await callConnection.GetCallConnectionPropertiesAsync();
                 var mediaSubscriptionId = callConnectionProerties.MediaSubscriptionId;
                 //var audioStreeam = _callContextService.GetAudioStream(mediaSubscriptionId);
-               // if (audioStreeam != null)
+                // if (audioStreeam != null)
                 {
                     _logger.LogInformation($"PlayMainMenu found an audiostream for MediaSubscriptionId '{mediaSubscriptionId}', connection ID '{callConnectionId}'");
 
@@ -766,7 +766,7 @@ namespace CallAutomation.Scenarios.Handlers
 
                         var phrases = _callAutomationService.GetAllRecognizedPhrasesAsDtmfTones();
                         var segmentationSilenceTimeoutMs = ivrConfig["SegmentationSilenceTimeoutMsForCustomerQuery"];
-                       // await _speechRecognizerService.RecognizePhraseFromAudioStreamAsync(audioStreeam, ivrConfig["SpeechRecognitionLanguage"], "1000", phrases.Keys, speechRecognitionCancellationTokenSource.Token, async (phrase) =>
+                        // await _speechRecognizerService.RecognizePhraseFromAudioStreamAsync(audioStreeam, ivrConfig["SpeechRecognitionLanguage"], "1000", phrases.Keys, speechRecognitionCancellationTokenSource.Token, async (phrase) =>
                         {
                             if (!speechRecognitionCancellationTokenSource.IsCancellationRequested)
                             {
@@ -945,7 +945,7 @@ namespace CallAutomation.Scenarios.Handlers
         }
 
         public Task Handle(RecordingFileStatusUpdatedEvent recordingFileStatusUpdatedEvent)
-        {    
+        {
             try
             {
                 var eventData = recordingFileStatusUpdatedEvent;
@@ -954,10 +954,10 @@ namespace CallAutomation.Scenarios.Handlers
 
                 Logger.LogInformation("Start processing metadata -- >");
 
-               var response=  _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,
-                    eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
-                    FileFormat.Json,
-                    FileDownloadType.Metadata);
+                var response = _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,
+                     eventData.RecordingStorageInfo.RecordingChunks[0].DocumentId,
+                     FileFormat.Json,
+                     FileDownloadType.Metadata);
 
                 Logger.LogInformation("Start processing recorded media -- >" + response);
 
