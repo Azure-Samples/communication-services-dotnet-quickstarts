@@ -36,11 +36,12 @@ namespace CallAutomation_Playground
 
             try
             {
-                while (true)
+                while(true)
                 {
                     // Top Level DTMF Menu, ask for which menu to be selected
                     string selectedTone = await callingModule.RecognizeTonesAsync(
                         originalTarget,
+                        1,
                         1,
                         _playgroundConfig.AllPrompts.MainMenu,
                         _playgroundConfig.AllPrompts.Retry);
@@ -54,16 +55,14 @@ namespace CallAutomation_Playground
                             // recognize phonenumber
                             string phoneNumberToCall = await callingModule.RecognizeTonesAsync(
                                 originalTarget,
-                                1,
+                                10,
+                                10,
                                 _playgroundConfig.AllPrompts.CollectPhoneNumber,
                                 _playgroundConfig.AllPrompts.Retry);
 
-                            _logger.LogInformation($"Phonenumber to Call[{phoneNumberToCall}]");
-
-                            // NOTE: this is assuming it is in North America number
-                            // format the phoenumber as you find nessesary.
-                            string formattedPhoneNumber = "+1" + phoneNumberToCall;
+                            string formattedPhoneNumber = Tools.FormatPhoneNumbers(phoneNumberToCall);
                             PhoneNumberIdentifier phoneIdentifierToAdd = new PhoneNumberIdentifier(formattedPhoneNumber);
+                            _logger.LogInformation($"Phonenumber to Call[{formattedPhoneNumber}]");
 
                             // then add the phone number
                             await callingModule.AddParticipantAsync(
@@ -87,16 +86,14 @@ namespace CallAutomation_Playground
                             // recognize phonenumber to transfer to
                             string phoneNumberToTransfer = await callingModule.RecognizeTonesAsync(
                                 originalTarget,
-                                1,
+                                10,
+                                10,
                                 _playgroundConfig.AllPrompts.CollectPhoneNumber,
                                 _playgroundConfig.AllPrompts.Retry);
 
-                            _logger.LogInformation($"Phonenumber to Transfer[{phoneNumberToTransfer}]");
-
-                            // NOTE: this is assuming it is in NA
-                            // format the phoenumber as you find nesssary.
-                            string formattedTransferNumber = "+1" + phoneNumberToTransfer;
+                            string formattedTransferNumber = Tools.FormatPhoneNumbers(phoneNumberToTransfer);
                             PhoneNumberIdentifier phoneIdentifierToTransfer = new PhoneNumberIdentifier(formattedTransferNumber);
+                            _logger.LogInformation($"Phonenumber to Transfer[{formattedTransferNumber}]");
 
                             // then transfer to the phonenumber
                             var trasnferSuccess = await callingModule.TransferCallAsync(
@@ -129,7 +126,7 @@ namespace CallAutomation_Playground
 
                         // Option 5: Play Message and terminate the call
                         case "5":
-                            _logger.LogInformation($"Terminating Call.");
+                            _logger.LogInformation($"Terminating Call. Due to wrong input too many times, exception happened, or user requested termination.");
                             await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.Goodbye);
                             await callingModule.TerminateCallAsync();
                             return;
@@ -145,13 +142,14 @@ namespace CallAutomation_Playground
             }
             catch (Exception e)
             {
-                _logger.LogError($"Exception during Top Level Menu! [{e}]");
-
-                // exception happened during the call, play message and hang up.
-                await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.Goodbye);
-                await callingModule.TerminateCallAsync();
+                _logger.LogWarning($"Exception during Top Level Menu! [{e}]");
             }
 
+            // wrong input too many times, exception happened, or user requested termination.
+            // good bye and hangup
+            _logger.LogInformation($"Terminating Call. Due to wrong input too many times, exception happened, or user requested termination.");
+            await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.Goodbye);
+            await callingModule.TerminateCallAsync();
             return;
         }
     }

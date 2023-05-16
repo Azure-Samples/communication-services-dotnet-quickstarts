@@ -5,7 +5,7 @@ namespace CallAutomation_Playground.Interfaces
 {
     public interface ICallingModules
     {
-        Task<string> RecognizeTonesAsync(CommunicationIdentifier targetToRecognize, int howManyDigitsToRecognize, Uri askPrompt, Uri retryPrompt);
+        Task<string> RecognizeTonesAsync(CommunicationIdentifier targetToRecognize, int minDigitToCollect, int maxDigitToCollect, Uri askPrompt, Uri retryPrompt);
 
         Task AddParticipantAsync(PhoneNumberIdentifier targetToAdd, Uri successPrompt, Uri failurePrompt, Uri musicPrompt);
 

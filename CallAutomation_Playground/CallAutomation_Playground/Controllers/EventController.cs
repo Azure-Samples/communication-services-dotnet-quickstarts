@@ -16,19 +16,24 @@ namespace CallAutomation_Playground.Controllers
         private readonly CallAutomationEventProcessor _eventProcessor;
 
         public EventController(
-            ILogger<EventController> logger, 
-            CallAutomationEventProcessor eventProcessor)
+            ILogger<EventController> logger,
+            CallAutomationClient callAutomationClient)
         {
             _logger = logger;
-            _eventProcessor = eventProcessor;
+            _eventProcessor = callAutomationClient.GetEventProcessor();
         }
 
         [HttpPost]
         public IActionResult CallbackEvent([FromBody] CloudEvent[] cloudEvents)
         {
-            _logger.LogInformation($"Event Recieved. Type[{cloudEvents.FirstOrDefault()?.Type}]");
+            // Prase incoming event into solid base class of CallAutomationEvent.
+            // This is useful when we want to access the properties of the event easily, such as CallConnectionId.
+            // We are using this parsed event to log CallconnectionId of the event here.
+            CallAutomationEventBase? parsedBaseEvent = CallAutomationEventParser.ParseMany(cloudEvents).FirstOrDefault();            
+            _logger.LogInformation($"Event Recieved. CallConnectionId[{parsedBaseEvent?.CallConnectionId}], Type Name[{parsedBaseEvent?.GetType().Name}]");
 
-            // process event into processor, so events could be handled in CallingModule
+            // Utilizing evnetProcessor here to easily handle mid-call call automation events.
+            // process event into processor, so events could be handled in CallingModule.
             _eventProcessor.ProcessEvents(cloudEvents);
             return Ok();
         }

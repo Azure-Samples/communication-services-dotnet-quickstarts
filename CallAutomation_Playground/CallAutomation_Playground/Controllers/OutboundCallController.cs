@@ -36,45 +36,50 @@ namespace CallAutomation_Playground.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCall([FromQuery] string pstnTarget)
         {
-            // prepare the target and caller in CallInvite
-            PhoneNumberIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-            PhoneNumberIdentifier caller = new PhoneNumberIdentifier(_playgroundConfig.DirectOfferedPhonenumber);
-            CallInvite callInvite = new CallInvite(target, caller);
-
-            _logger.LogInformation($"Calling[{pstnTarget}] from DirectOfferNumber[{_playgroundConfig.DirectOfferedPhonenumber}]");
-
+            string callConnectionId = string.Empty;
             try
             {
+                // prepare the target and caller in CallInvite
+                PhoneNumberIdentifier target = new PhoneNumberIdentifier(Tools.FormatPhoneNumbers(pstnTarget));
+                PhoneNumberIdentifier caller = new PhoneNumberIdentifier(_playgroundConfig.DirectOfferedPhonenumber);
+                CallInvite callInvite = new CallInvite(target, caller);
+
+                _logger.LogInformation($"Calling[{target.PhoneNumber}] from DirectOfferNumber[{_playgroundConfig.DirectOfferedPhonenumber}]");
+
                 // create an outbound call to target using caller number
                 CreateCallResult createCallResult = await _callAutomationClient.CreateCallAsync(callInvite, _playgroundConfig.CallbackUri);
+                callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
 
-                // attaching ongoing event handler for specific events
-                // This is useful for handling unexpected events could happen anytime (such as participants leaves the call and cal is disconnected)
-                _ongoingEventHandler.AttachCountParticipantsInTheCall(createCallResult.CallConnectionProperties.CallConnectionId);
-                _ongoingEventHandler.AttachDisconnectedWrapup(createCallResult.CallConnectionProperties.CallConnectionId);
-
-                // Waiting for event related to createCallResult, which is CallConnected
-                // Wait for 40 seconds before throwing timeout error.
-                var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(40));
-                CreateCallEventResult eventResult = await createCallResult.WaitForEventProcessorAsync(tokenSource.Token);
-
-                if (eventResult.IsSuccess)
+                _ = Task.Run(async () =>
                 {
-                    // call connected returned! Call is now established.
-                    // invoke top level menu now the call is connected;
-                    await _topLevelMenuService.InvokeTopLevelMenu(
-                    target,
-                    createCallResult.CallConnection,
-                    eventResult.SuccessResult.ServerCallId);
-                }
+                    // attaching ongoing event handler for specific events
+                    // This is useful for handling unexpected events could happen anytime (such as participants leaves the call and cal is disconnected)
+                    _ongoingEventHandler.AttachCountParticipantsInTheCall(callConnectionId);
+                    _ongoingEventHandler.AttachDisconnectedWrapup(callConnectionId);
+
+                    // Waiting for event related to createCallResult, which is CallConnected
+                    // Wait for 40 seconds before throwing timeout error.
+                    var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+                    CreateCallEventResult eventResult = await createCallResult.WaitForEventProcessorAsync(tokenSource.Token);
+
+                    if (eventResult.IsSuccess)
+                    {
+                        // call connected returned! Call is now established.
+                        // invoke top level menu now the call is connected;
+                        await _topLevelMenuService.InvokeTopLevelMenu(
+                            target, 
+                            createCallResult.CallConnection,
+                            eventResult.SuccessResult.ServerCallId);
+                    }
+                });
             }
             catch (Exception e)
             {
                 // Exception! likely the call was never established due to other party not answering.
-                _logger.LogError($"Exception while doing outbound call[{e}]");
+                _logger.LogError($"Exception while doing outbound call. CallConnectionId[{callConnectionId}], Exception[{e}]");
             }
 
-            return Ok();
+            return Ok(callConnectionId);
         }
     }
 }

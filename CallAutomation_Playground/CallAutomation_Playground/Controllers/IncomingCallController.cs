@@ -38,6 +38,7 @@ namespace CallAutomation_Playground.Controllers
         [HttpPost]
         public async Task<IActionResult> IncomingCall([FromBody] object request)
         {
+            string callConnectionId = string.Empty;
             try
             {
                 // Parse incoming call event using eventgrid parser
@@ -67,32 +68,36 @@ namespace CallAutomation_Playground.Controllers
                     // Answer Incoming call with incoming call event data
                     // IncomingCallContext can be used to answer the call
                     AnswerCallResult answerCallResult = await _callAutomationClient.AnswerCallAsync(incomingCallEventData.IncomingCallContext, _playgroundConfig.CallbackUri);
+                    callConnectionId = answerCallResult.CallConnectionProperties.CallConnectionId;
 
-                    // attaching ongoing event handler for specific events
-                    // This is useful for handling unexpected events could happen anytime (such as participants leaves the call and cal is disconnected)
-                    _ongoingEventHandler.AttachCountParticipantsInTheCall(answerCallResult.CallConnectionProperties.CallConnectionId);
-                    _ongoingEventHandler.AttachDisconnectedWrapup(answerCallResult.CallConnectionProperties.CallConnectionId);
-
-                    // Wait for call to be connected.
-                    // Wait for 40 seconds before throwing timeout error.
-                    var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(40));
-                    AnswerCallEventResult eventResult = await answerCallResult.WaitForEventProcessorAsync(tokenSource.Token);
-
-                    if (eventResult.IsSuccess)
+                    _ = Task.Run(async () =>
                     {
-                        // call connected returned! Call is now established.
-                        // invoke top level menu now the call is connected;
-                        await _topLevelMenuService.InvokeTopLevelMenu(
-                            CommunicationIdentifier.FromRawId(incomingCallEventData.FromCommunicationIdentifier.RawId),
-                            answerCallResult.CallConnection,
-                            eventResult.SuccessResult.ServerCallId);
-                    }
+                        // attaching ongoing event handler for specific events
+                        // This is useful for handling unexpected events could happen anytime (such as participants leaves the call and cal is disconnected)
+                        _ongoingEventHandler.AttachCountParticipantsInTheCall(callConnectionId);
+                        _ongoingEventHandler.AttachDisconnectedWrapup(callConnectionId);
+
+                        // Wait for call to be connected.
+                        // Wait for 40 seconds before throwing timeout error.
+                        var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+                        AnswerCallEventResult eventResult = await answerCallResult.WaitForEventProcessorAsync(tokenSource.Token);
+
+                        if (eventResult.IsSuccess)
+                        {
+                            // call connected returned! Call is now established.
+                            // invoke top level menu now the call is connected;
+                            await _topLevelMenuService.InvokeTopLevelMenu(
+                                CommunicationIdentifier.FromRawId(incomingCallEventData.FromCommunicationIdentifier.RawId),
+                                answerCallResult.CallConnection,
+                                eventResult.SuccessResult.ServerCallId);
+                        }
+                    });
                 }
             }
             catch (Exception e)
             {
                 // Exception! Failed to answer the call.
-                _logger.LogError($"Exception while answer the call[{e}]");
+                _logger.LogError($"Exception while answer the call. CallConnectionId[{callConnectionId}], Exception[{e}]");
             }
 
             return Ok();

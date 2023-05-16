@@ -10,13 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 CallAutomationClient callAutomationClient = new CallAutomationClient(ReadingConfigs(builder, "COMMUNICATION_CONNECTION_STRING"));
 builder.Services.AddSingleton(callAutomationClient);
 
-// EventProcessor: This is a greate way to handle interim Call automation events, such as,
-// CallConnected or ParticipantsUpdated events.
-CallAutomationEventProcessor eventProcessor = callAutomationClient.GetEventProcessor();
-builder.Services.AddSingleton(eventProcessor);
-
 // This is our main Top Level Menu service, which will include our business logic of IVR.
 builder.Services.AddSingleton<ITopLevelMenuService, TopLevelMenuService>();
+builder.Services.AddSingleton<IOngoingEventHandler, OngoingEventHandler>();
 
 // setting up callback endpoint
 // Note: we are using VS tunnel feature for hosting callback webhook
@@ -41,14 +37,6 @@ PlaygroundConfigs playgroundConfig = new PlaygroundConfigs
         Music = new Uri(ReadingConfigs(builder, "PROMPT_MUSIC")),
     }
 };
-// TODO HERE MWL:
-// Media: Need to re-record all media files and upload
-// Testing: Need testing
-// Readme: Readme file update
-// AzureDeployButton: Need to build tempalte + testing
-// Overal Testing + explore devex from scratch
-// share with the team on completion
-
 builder.Services.AddSingleton(playgroundConfig);
 
 builder.Services.AddControllers();
@@ -74,7 +62,7 @@ app.Run();
 
 static string ReadingConfigs(WebApplicationBuilder builder, string configKey)
 {
-    string? returnedValue = builder.Configuration.GetSection("PlaygroundConfig")["configKey"];
+    string? returnedValue = builder.Configuration.GetSection("PlaygroundConfigs")[configKey];
     if (returnedValue == null)
     {
         throw new NullReferenceException($"{configKey} is not setup. README has details on how to set these variables.");
