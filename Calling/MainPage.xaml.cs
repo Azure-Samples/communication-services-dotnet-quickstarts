@@ -21,12 +21,9 @@ namespace CallingQuickstart
     {
         private const string authToken = "<ACS auth token>";
 
-        private Dictionary<int, IncomingVideoStream> incomingVideoStreamDictionary = new Dictionary<int, IncomingVideoStream>();
-
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions;
         private CallAgent callAgent;
-        private ConcurrentDictionary<string, RemoteParticipant> remoteParticipantDictionary = new ConcurrentDictionary<string, RemoteParticipant>();
 
         private LocalOutgoingAudioStream micStream;
         private LocalOutgoingVideoStream cameraStream;
@@ -101,6 +98,10 @@ namespace CallingQuickstart
             var call = this.callAgent?.Calls?.FirstOrDefault();
             if (call != null)
             {
+                //var incoingVideoStream = call.RemoteParticipants[0].IncomingVideoStreams[0];
+                //var remoteVideoStream = incoingVideoStream as RemoteIncomingVideoStream;
+                //await remoteVideoStream.StopPreviewAsync();
+
                 foreach (var localVideoStream in call.OutgoingVideoStreams)
                 {
                     await call.StopVideoAsync(localVideoStream);
@@ -108,7 +109,8 @@ namespace CallingQuickstart
 
                 try
                 {
-                    await call.HangUpAsync(new HangUpOptions() { ForEveryone = false });
+                    // This failed because RemoteVideoStream is enable
+                    await call.HangUpAsync(new HangUpOptions() { ForEveryone = true });
                 }
                 catch(Exception ex) 
                 { 
@@ -250,14 +252,15 @@ namespace CallingQuickstart
                             call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
                             call.StateChanged -= OnStateChangedAsync;
 
-                            foreach(var localVideoStream in call.OutgoingVideoStreams)
+                            // This crashes
+                            // await cameraStream.StopPreviewAsync();
+
+                            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
                             {
-                                await call.StopVideoAsync(localVideoStream);
-                            }
+                                Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
+                            });
 
-                            Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
-
-                            //call.Dispose();
+                            call.Dispose();
 
                             break;
                         }
@@ -278,15 +281,12 @@ namespace CallingQuickstart
         {
             foreach (var participant in removedParticipants)
             {
-                //if (remoteParticipantDictionary.TryRemove(participant.Identifier.ToString(), out _))
+                foreach(var incomingVideoStream in  participant.IncomingVideoStreams)
                 {
-                    foreach(var incomingVideoStream in  participant.IncomingVideoStreams)
+                    var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
+                    if (remoteVideoStream != null)
                     {
-                        var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
-                        if (remoteVideoStream != null)
-                        {
-                            await remoteVideoStream.StopPreviewAsync();
-                        }
+                        await remoteVideoStream.StopPreviewAsync();
                     }
                 }
                 participant.VideoStreamStateChanged -= OnVideoStreamStateChanged;
@@ -294,10 +294,7 @@ namespace CallingQuickstart
 
             foreach (var participant in addedParticipants)
             {
-                //if (remoteParticipantDictionary.TryAdd(participant.Identifier.ToString(), participant))
-                {
-                    participant.VideoStreamStateChanged += OnVideoStreamStateChanged;
-                }
+                participant.VideoStreamStateChanged += OnVideoStreamStateChanged;
             }
         }
 
@@ -322,25 +319,20 @@ namespace CallingQuickstart
             {
                 case VideoStreamState.Available:
                     {
-                        if (!incomingVideoStreamDictionary.ContainsKey(incomingVideoStream.Id))
+                        switch (incomingVideoStream.Kind)
                         {
-                            switch (incomingVideoStream.Kind)
-                            {
-                                case VideoStreamKind.RemoteIncoming:
-                                    var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
-                                    var uri = await remoteVideoStream.StartPreviewAsync();
+                            case VideoStreamKind.RemoteIncoming:
+                                var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
+                                var uri = await remoteVideoStream.StartPreviewAsync();
 
-                                    await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-                                    {
-                                        RemoteVideo.Source = MediaSource.CreateFromUri(uri);
-                                    });
-                                    break;
+                                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+                                {
+                                    RemoteVideo.Source = MediaSource.CreateFromUri(uri);
+                                });
+                                break;
 
-                                case VideoStreamKind.RawIncoming:
-                                    break;
-                            }
-
-                            incomingVideoStreamDictionary.Add(incomingVideoStream.Id, incomingVideoStream);
+                            case VideoStreamKind.RawIncoming:
+                                break;
                         }
 
                         break;
@@ -350,13 +342,10 @@ namespace CallingQuickstart
                 case VideoStreamState.Stopping:
                     break;
                 case VideoStreamState.Stopped:
-                    //if (incomingVideoStreamDictionary.ContainsKey(incomingVideoStream.Id))
+                    if (incomingVideoStream.Kind == VideoStreamKind.RemoteIncoming)
                     {
-                        if (incomingVideoStream.Kind == VideoStreamKind.RemoteIncoming)
-                        {
-                            var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
-                            await remoteVideoStream.StopPreviewAsync();
-                        }
+                        var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
+                        await remoteVideoStream.StopPreviewAsync();
                     }
                     break;
                 case VideoStreamState.NotAvailable:
@@ -425,10 +414,23 @@ namespace CallingQuickstart
                 EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
             };
 
-            this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
-            //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
-            this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
-            this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
+
+            try
+            {
+                this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
+                //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
+                this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
+                this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
+
+            }
+            catch(Exception ex)
+            {
+                if (ex.HResult == -2147024809)
+                {
+                    // E_INVALIDARG
+                    // Handle possible invalid token
+                }
+            }
         }
 
         private async Task<CommunicationCall> StartAcsCallAsync(string acsCallee)
