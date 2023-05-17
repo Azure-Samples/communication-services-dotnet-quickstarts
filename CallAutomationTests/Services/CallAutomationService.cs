@@ -643,7 +643,7 @@ namespace CallAutomation.Scenarios.Services
 
         public async Task<RecordingStateResult> StartRecordingAsync(string serverCallId)
         {
-            _logger.LogInformation($"Start recording with server:");
+            _logger.LogInformation($"Start recording with server call Id: {serverCallId}");
 
             try
             {
@@ -660,7 +660,7 @@ namespace CallAutomation.Scenarios.Services
 
         public async Task<Response> StopRecordingAsync(string recordingId)
         {
-            _logger.LogInformation($"Start recording with server:");
+            _logger.LogInformation($"Stop recording for recording Id: {recordingId}");
 
             try
             {
@@ -676,12 +676,11 @@ namespace CallAutomation.Scenarios.Services
 
         public async Task<Response> PauseRecordingAsync(string recordingId)
         {
-            _logger.LogInformation($"Pause recording with server:");
+            _logger.LogInformation($"Pause recording for recording Id: {recordingId}");
 
             try
             {
-                return _client.GetCallRecording().PauseRecording(recordingId);
-                // return await _client.GetCallRecording().PauseRecordingAsync(recordingId).ConfigureAwait(false);
+                return await _client.GetCallRecording().PauseRecordingAsync(recordingId).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -692,7 +691,7 @@ namespace CallAutomation.Scenarios.Services
         }
         public async Task<Response> ResumeRecordingAsync(string recordingId)
         {
-            _logger.LogInformation($"Resume recording with server:");
+            _logger.LogInformation($"Resume recording for recordingId: {recordingId}");
 
             try
             {
@@ -707,7 +706,7 @@ namespace CallAutomation.Scenarios.Services
         }
         public async Task<RecordingStateResult> GetRecordingStateAsync(string recordingId)
         {
-            _logger.LogInformation($"Get recording State with server:");
+            _logger.LogInformation($"Get recording State for recordingId: {recordingId}");
 
             try
             {

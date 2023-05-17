@@ -1,11 +1,13 @@
 ﻿// © Microsoft Corporation. All rights reserved.
 
 using Azure.Messaging.EventGrid.SystemEvents;
+using CallAutomation.Scenarios.Handlers;
 
 namespace CallAutomation.Scenarios.Handlers
 {
     public class RecordingContext
     {
+        public string? ServerCallId { get; set; }
         public string? RecordingId { get; set; }
         public DateTime? StartTime { get; set; }
 
@@ -21,30 +23,9 @@ namespace CallAutomation.Scenarios.Handlers
         public string? IncomingCallContext { get; set; }
     }
 
-    public class OutboundCallEvent
+    public class OutboundCallContext
     {
         public string? TargetId { get; set; }
-    }
-
-    public class StartRecordingEvent
-    {
-        public string? serverCallId { get; set; }
-    }
-    public class StopRecordingEvent
-    {
-       public string? recordingId { get; set; }
-    }
-    public class RecordingStateEvent
-    {
-        public string? recordingId { get; set; }
-    }
-    public class PauseRecordingEvent
-    {
-        public string? recordingId { get; set; }
-    }
-    public class ResumeRecordingEvent
-    {
-        public string? recordingId { get; set; }
     }
 
     public class RecordingFileStatusUpdatedEvent

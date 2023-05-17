@@ -28,12 +28,8 @@ namespace CallAutomation.Scenarios
             services.AddSingleton<IEventCloudEventHandler<RecognizeFailed>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<RecognizeCanceled>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<RecordingStateChanged>, CallEventHandler>();
-            services.AddSingleton<IEventActionEventHandler<OutboundCallEvent>, CallEventHandler>();
-            services.AddSingleton<IEventActionEventHandler<StartRecordingEvent>, RecordingHandler>();
-            services.AddSingleton<IEventActionEventHandler<StopRecordingEvent>, RecordingHandler>();
-            services.AddSingleton<IEventActionEventHandler<RecordingStateEvent>, RecordingHandler>();
-            services.AddSingleton<IEventActionEventHandler<PauseRecordingEvent>, RecordingHandler>();
-            services.AddSingleton<IEventActionEventHandler<ResumeRecordingEvent>, RecordingHandler>();
+            services.AddSingleton<IEventActionEventHandler<OutboundCallContext>, ActionEventHandler>();
+            services.AddSingleton<IEventActionEventHandler<RecordingContext>, ActionEventHandler>();
             services.AddSingleton<EventConverter>();
 
             return services;

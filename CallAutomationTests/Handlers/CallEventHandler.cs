@@ -14,7 +14,6 @@ namespace CallAutomation.Scenarios.Handlers
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
         IEventGridEventHandler<AcsRecordingFileStatusUpdatedEventData>,
-        IEventActionEventHandler<OutboundCallEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
         IEventCloudEventHandler<CallConnected>,
@@ -80,25 +79,7 @@ namespace CallAutomation.Scenarios.Handlers
             }
         }
 
-        public async Task Handle(OutboundCallEvent outboundCallEvent)
-        {
-            try
-            {
-                string targetId = outboundCallEvent.TargetId;
-                if (targetId == null)
-                {
-                    targetId = _configuration["targetId"];
-                }
-                _logger.LogInformation("Outbound call received");
-                var callResult = await _callAutomationService.CreateCallAsync(targetId);
-                var callConnectionId = callResult.CallConnectionProperties.CallConnectionId;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Outbound call failed unexpectedly");
-                throw;
-            }
-        }
+
 
         public async Task Handle(AddParticipantFailed addParticipantFailed, string callerId)
         {

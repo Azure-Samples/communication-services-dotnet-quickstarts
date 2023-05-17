@@ -2,6 +2,8 @@
 {
     public interface IEventActionEventHandler<TEvent>
     {
-        Task Handle(TEvent eventName);
+        Task Handle(TEvent @event);
+
+        Task Handle(string action, string data);
     }
 }

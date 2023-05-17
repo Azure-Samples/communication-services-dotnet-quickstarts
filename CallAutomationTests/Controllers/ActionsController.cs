@@ -9,73 +9,59 @@ namespace CallAutomation.Scenarios.Controllers
     {
         private readonly ILogger _logger;
         private readonly EventConverter _eventConverter;
-        private readonly IEventActionEventHandler<OutboundCallEvent> _outboundCallActionHandler;
-        private readonly IEventActionEventHandler<StartRecordingEvent> _startRecordingActionHandler;
-        private readonly IEventActionEventHandler<StopRecordingEvent> _stopRecordingActionHandler;
-        private readonly IEventActionEventHandler<RecordingStateEvent> _getRecordingStateActionHandler;
-        private readonly IEventActionEventHandler<PauseRecordingEvent> _pauseRecordingActionHandler;
-        private readonly IEventActionEventHandler<ResumeRecordingEvent> _resumeRecordingActionHandler;
+        private readonly IEventActionEventHandler<OutboundCallContext> _outboundCallActionHandler;
+        private readonly IEventActionEventHandler<RecordingContext> _recordingActionHandler;
 
         public ActionsController(ILogger<EventsController> logger,
             EventConverter eventConverter,
-            IEventActionEventHandler<OutboundCallEvent> outboundCallActionHandler,
-            IEventActionEventHandler<StartRecordingEvent> startRecordingActionHandler,
-            IEventActionEventHandler<StopRecordingEvent> stopRecordingActionHandler,
-            IEventActionEventHandler<RecordingStateEvent> getRecordingStateActionHandler,
-            IEventActionEventHandler<PauseRecordingEvent> pauseRecordingActionHandler,
-            IEventActionEventHandler<ResumeRecordingEvent> resumeRecordingActionHandler)
+            IEventActionEventHandler<OutboundCallContext> outboundCallActionHandler,
+            IEventActionEventHandler<RecordingContext> recordingActionHandler)
 
         {
             _logger = logger;
             _eventConverter = eventConverter;
             _outboundCallActionHandler = outboundCallActionHandler;
-            _startRecordingActionHandler = startRecordingActionHandler;
-            _stopRecordingActionHandler = stopRecordingActionHandler;
-            _getRecordingStateActionHandler = getRecordingStateActionHandler;
-            _pauseRecordingActionHandler = pauseRecordingActionHandler;
-            _resumeRecordingActionHandler = resumeRecordingActionHandler;
+            _recordingActionHandler = recordingActionHandler;
 
         }
 
         [HttpPost("call", Name = "Outbound_Call")]
-        public async Task<ActionResult> OutboundCall([FromBody] OutboundCallEvent outboundCallEvent)
+        public async Task<ActionResult> OutboundCall([FromBody] OutboundCallContext outboundCallContext)
         {
-            var response = _outboundCallActionHandler.Handle(outboundCallEvent);
+            await _outboundCallActionHandler.Handle(outboundCallContext);
             return new OkResult();
         }
 
-        [HttpPost("startrecording", Name = "Start_Recording")]
-        public async Task<ActionResult> StartRecording([FromQuery] StartRecordingEvent startRecordingEvent)
+        [HttpPost("recordings", Name = "Start_Recording")]
+        public async Task<ActionResult> StartRecordingAsync([FromBody] RecordingContext recordingContext)
         {
-            var response = _startRecordingActionHandler.Handle(startRecordingEvent);
+            await _recordingActionHandler.Handle(recordingContext);
             return new OkResult();
         }
-        [HttpPost("pauserecording", Name = "Pause_Recording")]
-        public async Task<ActionResult> PauseRecording([FromQuery] PauseRecordingEvent pauseRecordingEvent)
+        [HttpPost("recordings{recordingId}:pause", Name = "Pause_Recording")]
+        public async Task<ActionResult> PauseRecording([FromRoute] string recordingId)
         {
-            var response = _pauseRecordingActionHandler.Handle(pauseRecordingEvent);
+            await _recordingActionHandler.Handle("PauseRecording", recordingId);
             return new OkResult();
         }
-        [HttpPost("resumerecording", Name = "Resume_Recording")]
-        public async Task<ActionResult> ResumeRecording([FromQuery] ResumeRecordingEvent resumeRecordingEvent)
+        [HttpPost("recordings{recordingId}:resume", Name = "Resume_Recording")]
+        public async Task<ActionResult> ResumeRecordingAsync([FromRoute] string recordingId)
         {
-            var response = _resumeRecordingActionHandler.Handle(resumeRecordingEvent);
+            await _recordingActionHandler.Handle("ResumeRecording", recordingId);
             return new OkResult();
         }
-        [HttpPost("stoprecording", Name = "Stop_Recording")]
-        public async Task<ActionResult> StopRecording([FromQuery] StopRecordingEvent stopRecordingEvent)
+        [HttpDelete("recordings/{recordingId}", Name = "Stop_Recording")]
+        public async Task<ActionResult> StopRecordingAsync([FromRoute] string recordingId)
         {
-            var response = _stopRecordingActionHandler.Handle(stopRecordingEvent);
-            return new OkResult();
-        }
-
-        [HttpPost("getRecordingState", Name = "GetRecording_State")]
-        public async Task<ActionResult> getRecordingFile([FromQuery] RecordingStateEvent recordingStateEvent)
-        {
-            var response = _getRecordingStateActionHandler.Handle(recordingStateEvent);
+            await _recordingActionHandler.Handle("StopRecording", recordingId);
             return new OkResult();
         }
 
-
+        [HttpPost("getRecordingState/{recordingId}", Name = "GetRecording_State")]
+        public async Task<ActionResult> GetRecordingStateAsync([FromRoute] string recordingId)
+        {
+            await _recordingActionHandler.Handle("GetRecordingState", recordingId);
+            return new OkResult();
+        }
     }
 }
