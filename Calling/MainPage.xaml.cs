@@ -24,11 +24,13 @@ namespace CallingQuickstart
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions;
         private CallAgent callAgent;
+        private CommunicationCall call = null;
 
         private LocalOutgoingAudioStream micStream;
         private LocalOutgoingVideoStream cameraStream;
 
         private BackgroundBlurEffect backgroundBlurVideoEffect = new BackgroundBlurEffect();
+        private LocalVideoEffectsFeature localVideoEffectsFeature;
 
         #region Page initialization
         public MainPage()
@@ -45,7 +47,6 @@ namespace CallingQuickstart
             CallButton.IsEnabled = true;
             HangupButton.IsEnabled = !CallButton.IsEnabled;
             MuteLocal.IsChecked = MuteLocal.IsEnabled = !CallButton.IsEnabled;
-            BackgroundBlur.IsChecked = BackgroundBlur.IsEnabled = !CallButton.IsEnabled;
 
             ApplicationView.PreferredLaunchViewSize = new Windows.Foundation.Size(800, 600);
             ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.PreferredLaunchViewSize;
@@ -62,8 +63,6 @@ namespace CallingQuickstart
         #region UI event handlers
         private async void CallButton_Click(object sender, RoutedEventArgs e)
         {
-            CommunicationCall call = null;
-
             var callString = CalleeTextBox.Text.Trim();
 
             if (!string.IsNullOrEmpty(callString))
@@ -151,25 +150,36 @@ namespace CallingQuickstart
 
         private async void BackgroundBlur_Click(object sender, RoutedEventArgs e)
         {
-            var muteBackgroundBlurCheckbox = sender as CheckBox;
-            if (muteBackgroundBlurCheckbox != null)
+            if (localVideoEffectsFeature.IsEffectSupported(backgroundBlurVideoEffect))
             {
-                var localVideoEffectsFeature = cameraStream.Features.VideoEffects;
-
-                if ((localVideoEffectsFeature != null) &&
-                    (localVideoEffectsFeature.IsEffectSupported(backgroundBlurVideoEffect)))
+                var backgroundBlurCheckbox = sender as CheckBox;
+                if (backgroundBlurCheckbox.IsChecked.Value)
                 {
-                    if (muteBackgroundBlurCheckbox.IsChecked.Value)
-                    {
-                        localVideoEffectsFeature.EnableEffect(backgroundBlurVideoEffect);
-                    }
-                    else
-                    {
-                        localVideoEffectsFeature.DisableEffect(backgroundBlurVideoEffect);
-                    }
+                    localVideoEffectsFeature.EnableEffect(backgroundBlurVideoEffect);
+                }
+                else
+                {
+                    localVideoEffectsFeature.DisableEffect(backgroundBlurVideoEffect);
                 }
             }
         }
+        #endregion
+
+        #region Video Effects Event Handlers
+        private void LocalVideoEffectsFeature_VideoEffectError(object sender, VideoEffectErrorEventArgs e)
+        {
+        }
+
+        private void LocalVideoEffectsFeature_VideoEffectDisabled(object sender, VideoEffectDisabledEventArgs e)
+        {
+            BackgroundBlur.IsChecked = false;
+        }
+
+        private void LocalVideoEffectsFeature_VideoEffectEnabled(object sender, VideoEffectEnabledEventArgs e)
+        {
+            BackgroundBlur.IsChecked = true;
+        }
+
         #endregion
 
         #region API event handlers
@@ -229,7 +239,6 @@ namespace CallingQuickstart
                     HangupButton.IsEnabled = state == CallState.Connected || state == CallState.Ringing;
                     CallButton.IsEnabled = !HangupButton.IsEnabled;
                     MuteLocal.IsEnabled = !CallButton.IsEnabled;
-                    BackgroundBlur.IsEnabled = !CallButton.IsEnabled;
                 });
 
                 switch (state)
@@ -390,16 +399,13 @@ namespace CallingQuickstart
             var deviceManager = await this.callClient.GetDeviceManagerAsync();
             var camera = deviceManager?.Cameras?.FirstOrDefault();
             var mic = deviceManager?.Microphones?.FirstOrDefault();
+            micStream = new LocalOutgoingAudioStream();
+
+            CameraList.ItemsSource = deviceManager.Cameras.ToList();
+            
             if (camera != null)
             {
-                micStream = new LocalOutgoingAudioStream();
-
-                cameraStream = new LocalOutgoingVideoStream(camera);
-                var localUri = await cameraStream.StartPreviewAsync();
-                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-                {
-                    LocalVideo.Source = MediaSource.CreateFromUri(localUri);
-                });
+                CameraList.SelectedIndex = 0;
             }
 
             callTokenRefreshOptions = new CallTokenRefreshOptions(false);
@@ -494,6 +500,39 @@ namespace CallingQuickstart
 
             return string.Empty;
         }
-#endregion
+        #endregion
+
+        private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+            if (cameraStream != null)
+            {
+                await cameraStream?.StopPreviewAsync();
+                if (call != null)
+                {
+                    await call?.StopVideoAsync(cameraStream);
+                }
+            }
+            var selectedCamerea = CameraList.SelectedItem as VideoDeviceDetails;
+            cameraStream = new LocalOutgoingVideoStream(selectedCamerea);
+            InitVideoEffectsFeature(cameraStream);
+
+            var localUri = await cameraStream.StartPreviewAsync();
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                LocalVideo.Source = MediaSource.CreateFromUri(localUri);
+            });
+
+            if (call != null) {
+                await call?.StartVideoAsync(cameraStream);
+            }
+        }
+
+        public void InitVideoEffectsFeature(LocalOutgoingVideoStream videoStream){
+            localVideoEffectsFeature = videoStream.Features.VideoEffects;
+            localVideoEffectsFeature.VideoEffectEnabled += LocalVideoEffectsFeature_VideoEffectEnabled;
+            localVideoEffectsFeature.VideoEffectDisabled += LocalVideoEffectsFeature_VideoEffectDisabled;
+            localVideoEffectsFeature.VideoEffectError += LocalVideoEffectsFeature_VideoEffectError;
+        }
     }
 }
