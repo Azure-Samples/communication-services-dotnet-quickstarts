@@ -705,6 +705,21 @@ namespace CallAutomation.Scenarios.Services
                 throw;
             }
         }
+        public async Task<RecordingStateResult> GetRecordingStateAsync(string recordingId)
+        {
+            _logger.LogInformation($"Get recording State with server:");
+
+            try
+            {
+                return await _client.GetCallRecording().GetRecordingStateAsync(recordingId).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"Get Recording state failed unexpectedly: {e}");
+
+                throw;
+            }
+        }
 
         public async Task ProcessFile(string downloadLocation, string documentId, string fileFormat, string downloadType)
         {

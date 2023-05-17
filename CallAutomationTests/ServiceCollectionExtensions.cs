@@ -1,6 +1,7 @@
 // © Microsoft Corporation. All rights reserved.
 
 using Azure.Communication.CallAutomation;
+using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Services;
@@ -12,7 +13,7 @@ namespace CallAutomation.Scenarios
         public static IServiceCollection AddAllEventGridEventHandlers(this IServiceCollection services)
         {
             services.AddSingleton<IEventGridEventHandler<IncomingCallEvent>, CallEventHandler>();
-            services.AddSingleton<IEventGridEventHandler<RecordingFileStatusUpdatedEvent>, CallEventHandler>();
+            services.AddSingleton<IEventGridEventHandler<AcsRecordingFileStatusUpdatedEventData>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<AddParticipantFailed>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<AddParticipantSucceeded>, CallEventHandler>();
             services.AddSingleton<IEventCloudEventHandler<CallConnected>, CallEventHandler>();
@@ -30,7 +31,7 @@ namespace CallAutomation.Scenarios
             services.AddSingleton<IEventActionEventHandler<OutboundCallEvent>, CallEventHandler>();
             services.AddSingleton<IEventActionEventHandler<StartRecordingEvent>, RecordingHandler>();
             services.AddSingleton<IEventActionEventHandler<StopRecordingEvent>, RecordingHandler>();
-            //services.AddSingleton<IEventActionsEventHandler<GetRecordingFileEvent>, RecordingHandler>();
+            services.AddSingleton<IEventActionEventHandler<RecordingStateEvent>, RecordingHandler>();
             services.AddSingleton<IEventActionEventHandler<PauseRecordingEvent>, RecordingHandler>();
             services.AddSingleton<IEventActionEventHandler<ResumeRecordingEvent>, RecordingHandler>();
             services.AddSingleton<EventConverter>();

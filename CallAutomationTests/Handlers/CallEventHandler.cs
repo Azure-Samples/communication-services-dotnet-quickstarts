@@ -2,6 +2,7 @@
 
 using Azure;
 using Azure.Communication.CallAutomation;
+using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation.Scenarios.Interfaces;
 using CallAutomation.Scenarios.Utils;
 using System.Collections.Immutable;
@@ -12,7 +13,7 @@ namespace CallAutomation.Scenarios.Handlers
 {
     public class CallEventHandler :
         IEventGridEventHandler<IncomingCallEvent>,
-        IEventGridEventHandler<RecordingFileStatusUpdatedEvent>,
+        IEventGridEventHandler<AcsRecordingFileStatusUpdatedEventData>,
         IEventActionEventHandler<OutboundCallEvent>,
         IEventCloudEventHandler<AddParticipantFailed>,
         IEventCloudEventHandler<AddParticipantSucceeded>,
@@ -944,7 +945,7 @@ namespace CallAutomation.Scenarios.Handlers
             }
         }
 
-        public Task Handle(RecordingFileStatusUpdatedEvent recordingFileStatusUpdatedEvent)
+        public Task Handle(AcsRecordingFileStatusUpdatedEventData recordingFileStatusUpdatedEvent)
         {
             try
             {

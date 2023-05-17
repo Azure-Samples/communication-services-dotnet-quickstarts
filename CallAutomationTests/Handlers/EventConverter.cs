@@ -52,7 +52,7 @@ namespace CallAutomation.Scenarios.Handlers
             return ParseEventType(eventGridEvent.EventType) switch
             {
                 IncomingCallEventName => JsonSerializer.Deserialize<IncomingCallEvent>(data, JsonOptions),
-                RecordingFileStatusUpdatedEventName => JsonSerializer.Deserialize<RecordingFileStatusUpdatedEvent>(data, JsonOptions),
+                RecordingFileStatusUpdatedEventName => JsonSerializer.Deserialize<AcsRecordingFileStatusUpdatedEventData>(data, JsonOptions),
                 _ => null
             };
         }

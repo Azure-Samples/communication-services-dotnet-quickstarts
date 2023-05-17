@@ -40,7 +40,7 @@ namespace CallAutomation.Scenarios.Interfaces
         Task<Response> StopRecordingAsync(string recordingId);
         Task<Response> PauseRecordingAsync(string recordingId);
         Task<Response> ResumeRecordingAsync(string recordingId);
-        //Task<Response> GetRecordingFileEvent(Object request);
+        Task<RecordingStateResult> GetRecordingStateAsync(string recordingId);        
         Task ProcessFile(string downloadLocation, string documentId, string fileFormat, string downloadType);
     }
 }
