@@ -1,4 +1,5 @@
-﻿using Azure.Messaging.EventGrid;
+﻿using Azure.Communication.CallAutomation;
+using Azure.Messaging.EventGrid;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using System.Runtime.Versioning;
@@ -60,6 +61,12 @@ namespace CallAutomation.Scenarios
             }
         }
 
+        public RecordingContext Handle (string serverCallId)
+        {
+            RecordingContext context = _callContextService.GetRecordingContext(serverCallId);
+            return context;
+        }
+
         public async Task Handle(string actionName, string recordingId)
         {
             switch (actionName)
@@ -76,7 +83,6 @@ namespace CallAutomation.Scenarios
                 case "StopRecording":
                     await _callAutomationService.StopRecordingAsync(recordingId);
                     break;
-
             }
         }
     }

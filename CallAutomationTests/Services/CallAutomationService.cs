@@ -648,7 +648,7 @@ namespace CallAutomation.Scenarios.Services
             try
             {
                 var recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
-                var recordingStateCallbackEndpoint = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}");
+                var recordingStateCallbackEndpoint = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}?CallerId=null");
                 recordingOptions.RecordingStateCallbackEndpoint = recordingStateCallbackEndpoint;
 
                 return await _client.GetCallRecording().StartRecordingAsync(recordingOptions).ConfigureAwait(false);

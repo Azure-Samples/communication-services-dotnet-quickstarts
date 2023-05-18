@@ -1,4 +1,5 @@
-﻿using CallAutomation.Scenarios.Handlers;
+﻿using Azure.Communication.CallAutomation;
+using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,13 +39,14 @@ namespace CallAutomation.Scenarios.Controllers
             await _recordingActionHandler.Handle(recordingContext);
             return new OkResult();
         }
-        [HttpPost("recordings{recordingId}:pause", Name = "Pause_Recording")]
+
+        [HttpPost("recordings/{recordingId}:pause", Name = "Pause_Recording")]
         public async Task<ActionResult> PauseRecording([FromRoute] string recordingId)
         {
             await _recordingActionHandler.Handle("PauseRecording", recordingId);
             return new OkResult();
         }
-        [HttpPost("recordings{recordingId}:resume", Name = "Resume_Recording")]
+        [HttpPost("recordings/{recordingId}:resume", Name = "Resume_Recording")]
         public async Task<ActionResult> ResumeRecordingAsync([FromRoute] string recordingId)
         {
             await _recordingActionHandler.Handle("ResumeRecording", recordingId);
@@ -62,6 +64,13 @@ namespace CallAutomation.Scenarios.Controllers
         {
             await _recordingActionHandler.Handle("GetRecordingState", recordingId);
             return new OkResult();
+        }
+
+        [HttpGet("getRecordingContext/{serverCallId}", Name = "GetRecording_Context")]
+        public async Task<ActionResult> GetRecordingContextAsync([FromRoute] string serverCallId)
+        {
+            RecordingContext recordingContext = _recordingActionHandler.Handle(serverCallId);
+            return new JsonResult(recordingContext);
         }
     }
 }
