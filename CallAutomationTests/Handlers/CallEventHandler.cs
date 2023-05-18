@@ -707,7 +707,12 @@ namespace CallAutomation.Scenarios.Handlers
 
         public Task Handle(RecordingStateChanged recordingStateChanged, string callerId)
         {
-            throw new NotImplementedException();
+            using (_logger.BeginScope(GetLogContext(recordingStateChanged.CorrelationId, recordingStateChanged.CallConnectionId, recordingStateChanged.OperationContext)))
+            {
+                _logger.LogInformation($"RecordingStateChanged received : '{recordingStateChanged}'");
+
+                return Task.CompletedTask;
+            }
         }
 
 

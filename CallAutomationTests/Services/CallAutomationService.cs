@@ -67,11 +67,11 @@ namespace CallAutomation.Scenarios.Services
             try
             {
                 var callbackUri = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}?callerId={targetId}");
-                var target = targetId.StartsWith("8:acs") ? new CallInvite(new CommunicationUserIdentifier(targetId))
+                var callInvite = targetId.StartsWith("8:acs") ? new CallInvite(new CommunicationUserIdentifier(targetId))
                     : new CallInvite(new PhoneNumberIdentifier($"+{targetId.SanitizePhoneNumber()}"),
-                            new PhoneNumberIdentifier(_configuration[""]));
+                            new PhoneNumberIdentifier(_configuration["CallerId"]));
 
-                var createCallOptions = new CreateCallOptions(target, callbackUri)
+                var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
                 {
                     AzureCognitiveServicesEndpointUrl = new Uri(_configuration["CognitiveServicesEndpointUri"]),
                     OperationContext = Constants.OperationContext.ScheduledCallbackDialout
@@ -648,6 +648,9 @@ namespace CallAutomation.Scenarios.Services
             try
             {
                 var recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
+                var recordingStateCallbackEndpoint = new Uri($"{_configuration["BaseUri"]}/callbacks/{Guid.NewGuid()}");
+                recordingOptions.RecordingStateCallbackEndpoint = recordingStateCallbackEndpoint;
+
                 return await _client.GetCallRecording().StartRecordingAsync(recordingOptions).ConfigureAwait(false);
             }
             catch (Exception e)

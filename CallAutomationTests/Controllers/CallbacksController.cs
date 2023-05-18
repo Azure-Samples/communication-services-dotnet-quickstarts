@@ -133,6 +133,10 @@ namespace CallAutomation.Scenarios.Controllers
                             await _playFailedEventHandler.Handle(playFailed, callerId);
                             break;
 
+                        case RecordingStateChanged recordingStateChanged:
+                            await _recordingStateChangedEventHandler.Handle(recordingStateChanged, callerId);
+                            break;
+
                         default:
                             break;
                     }
