@@ -216,7 +216,7 @@ namespace CallingQuickstart
             var acceptCallOptions = new AcceptCallOptions() { 
                 IncomingVideoOptions = new IncomingVideoOptions()
                 {
-                    IncomingVideoStreamKind = VideoStreamKind.RemoteIncoming
+                    StreamKind = VideoStreamKind.RemoteIncoming
                 } 
             };
 
@@ -309,9 +309,9 @@ namespace CallingQuickstart
 
         private void OnVideoStreamStateChanged(object sender, VideoStreamStateChangedEventArgs e)
         {
-            CallVideoStream callVideoStream = e.CallVideoStream;
+            CallVideoStream callVideoStream = e.Stream;
 
-            switch (callVideoStream.StreamDirection)
+            switch (callVideoStream.Direction)
             {
                 case StreamDirection.Outgoing:
                     //OnOutgoingVideoStreamStateChanged(callVideoStream as OutgoingVideoStream);
@@ -476,16 +476,16 @@ namespace CallingQuickstart
         private async Task<StartCallOptions> GetStartCallOptionsAsynnc()
         {
             return new StartCallOptions() {
-                OutgoingAudioOptions = new OutgoingAudioOptions() { IsOutgoingAudioMuted = true, OutgoingAudioStream = micStream  },
-                OutgoingVideoOptions = new OutgoingVideoOptions() { OutgoingVideoStreams = new OutgoingVideoStream[] { cameraStream } }
+                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream  },
+                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
         }
 
         private async Task<JoinCallOptions> GetJoinCallOptionsAsync()
         {
             return new JoinCallOptions() {
-                OutgoingAudioOptions = new OutgoingAudioOptions() { IsOutgoingAudioMuted = true },
-                OutgoingVideoOptions = new OutgoingVideoOptions() { OutgoingVideoStreams = new OutgoingVideoStream[] { cameraStream } }
+                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true },
+                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
         }
 
