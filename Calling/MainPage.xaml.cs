@@ -1,6 +1,5 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,9 +21,9 @@ namespace CallingQuickstart
         private const string authToken = "<ACS auth token>";
 
         private CallClient callClient;
-        private CallTokenRefreshOptions callTokenRefreshOptions;
+        private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
         private CallAgent callAgent;
-        private CommunicationCall call = null;
+        private CommunicationCall call;
 
         private LocalOutgoingAudioStream micStream;
         private LocalOutgoingVideoStream cameraStream;
@@ -58,9 +57,36 @@ namespace CallingQuickstart
 
             base.OnNavigatedTo(e);
         }
-#endregion
+    #endregion
 
         #region UI event handlers
+        private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+            if (cameraStream != null)
+            {
+                await cameraStream?.StopPreviewAsync();
+                if (call != null)
+                {
+                    await call?.StopVideoAsync(cameraStream);
+                }
+            }
+            var selectedCamerea = CameraList.SelectedItem as VideoDeviceDetails;
+            cameraStream = new LocalOutgoingVideoStream(selectedCamerea);
+
+            InitVideoEffectsFeature(cameraStream);
+
+            var localUri = await cameraStream.StartPreviewAsync();
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                LocalVideo.Source = MediaSource.CreateFromUri(localUri);
+            });
+
+            if (call != null) {
+                await call?.StartVideoAsync(cameraStream);
+            }
+        }
+
         private async void CallButton_Click(object sender, RoutedEventArgs e)
         {
             var callString = CalleeTextBox.Text.Trim();
@@ -166,16 +192,16 @@ namespace CallingQuickstart
         #endregion
 
         #region Video Effects Event Handlers
-        private void LocalVideoEffectsFeature_VideoEffectError(object sender, VideoEffectErrorEventArgs e)
+        private void OnVideoEffectError(object sender, VideoEffectErrorEventArgs e)
         {
         }
 
-        private void LocalVideoEffectsFeature_VideoEffectDisabled(object sender, VideoEffectDisabledEventArgs e)
+        private void OnVideoEffectDisabled(object sender, VideoEffectDisabledEventArgs e)
         {
             BackgroundBlur.IsChecked = false;
         }
 
-        private void LocalVideoEffectsFeature_VideoEffectEnabled(object sender, VideoEffectEnabledEventArgs e)
+        private void OnVideoEffectEnabled(object sender, VideoEffectEnabledEventArgs e)
         {
             BackgroundBlur.IsChecked = true;
         }
@@ -408,7 +434,6 @@ namespace CallingQuickstart
                 CameraList.SelectedIndex = 0;
             }
 
-            callTokenRefreshOptions = new CallTokenRefreshOptions(false);
             callTokenRefreshOptions.TokenRefreshRequested += OnTokenRefreshRequestedAsync;
 
             var tokenCredential = new CallTokenCredential(authToken, callTokenRefreshOptions);
@@ -437,6 +462,13 @@ namespace CallingQuickstart
                     // Handle possible invalid token
                 }
             }
+        }
+
+        public void InitVideoEffectsFeature(LocalOutgoingVideoStream videoStream) {
+            localVideoEffectsFeature = videoStream.Features.VideoEffects;
+            localVideoEffectsFeature.VideoEffectEnabled += OnVideoEffectEnabled;
+            localVideoEffectsFeature.VideoEffectDisabled += OnVideoEffectDisabled;
+            localVideoEffectsFeature.VideoEffectError += OnVideoEffectError;
         }
 
         private async Task<CommunicationCall> StartAcsCallAsync(string acsCallee)
@@ -501,38 +533,5 @@ namespace CallingQuickstart
             return string.Empty;
         }
         #endregion
-
-        private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-
-            if (cameraStream != null)
-            {
-                await cameraStream?.StopPreviewAsync();
-                if (call != null)
-                {
-                    await call?.StopVideoAsync(cameraStream);
-                }
-            }
-            var selectedCamerea = CameraList.SelectedItem as VideoDeviceDetails;
-            cameraStream = new LocalOutgoingVideoStream(selectedCamerea);
-            InitVideoEffectsFeature(cameraStream);
-
-            var localUri = await cameraStream.StartPreviewAsync();
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                LocalVideo.Source = MediaSource.CreateFromUri(localUri);
-            });
-
-            if (call != null) {
-                await call?.StartVideoAsync(cameraStream);
-            }
-        }
-
-        public void InitVideoEffectsFeature(LocalOutgoingVideoStream videoStream){
-            localVideoEffectsFeature = videoStream.Features.VideoEffects;
-            localVideoEffectsFeature.VideoEffectEnabled += LocalVideoEffectsFeature_VideoEffectEnabled;
-            localVideoEffectsFeature.VideoEffectDisabled += LocalVideoEffectsFeature_VideoEffectDisabled;
-            localVideoEffectsFeature.VideoEffectError += LocalVideoEffectsFeature_VideoEffectError;
-        }
     }
 }
