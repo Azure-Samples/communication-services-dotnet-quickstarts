@@ -62,7 +62,6 @@ namespace CallingQuickstart
         #region UI event handlers
         private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-
             if (cameraStream != null)
             {
                 await cameraStream?.StopPreviewAsync();
@@ -77,10 +76,7 @@ namespace CallingQuickstart
             InitVideoEffectsFeature(cameraStream);
 
             var localUri = await cameraStream.StartPreviewAsync();
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                LocalVideo.Source = MediaSource.CreateFromUri(localUri);
-            });
+            LocalVideo.Source = MediaSource.CreateFromUri(localUri);
 
             if (call != null) {
                 await call?.StartVideoAsync(cameraStream);
@@ -99,7 +95,7 @@ namespace CallingQuickstart
                 }
                 else if (callString.StartsWith("+")) // 1:1 phone call
                 {
-                    call = await StartPhoneCallAsync(callString, "+12133947338");
+                    call = await StartPhoneCallAsync(callString, "+12000000000");
                 }
                 else if (Guid.TryParse(callString, out Guid groupId))// Join group call by group guid
                 {
@@ -135,7 +131,9 @@ namespace CallingQuickstart
                 try
                 {
                     // This failed because RemoteVideoStream is enable
-                    await call.HangUpAsync(new HangUpOptions() { ForEveryone = true });
+                    //await cameraStream.StopPreviewAsync();
+
+                    await call.HangUpAsync(new HangUpOptions() { ForEveryone = false });
                 }
                 catch(Exception ex) 
                 { 
@@ -287,7 +285,7 @@ namespace CallingQuickstart
                             call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
                             call.StateChanged -= OnStateChangedAsync;
 
-                            // This crashes
+                            // This crashes - fix is coming
                             // await cameraStream.StopPreviewAsync();
 
                             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
@@ -353,29 +351,27 @@ namespace CallingQuickstart
             switch (incomingVideoStream.State)
             {
                 case VideoStreamState.Available:
+                    switch (incomingVideoStream.Kind)
                     {
-                        switch (incomingVideoStream.Kind)
-                        {
-                            case VideoStreamKind.RemoteIncoming:
-                                var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
-                                var uri = await remoteVideoStream.StartPreviewAsync();
+                        case VideoStreamKind.RemoteIncoming:
+                            var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
+                            var uri = await remoteVideoStream.StartPreviewAsync();
 
-                                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-                                {
-                                    RemoteVideo.Source = MediaSource.CreateFromUri(uri);
-                                });
-                                break;
+                            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+                            {
+                                RemoteVideo.Source = MediaSource.CreateFromUri(uri);
+                            });
+                            break;
 
-                            case VideoStreamKind.RawIncoming:
-                                break;
-                        }
-
-                        break;
+                        case VideoStreamKind.RawIncoming:
+                            break;
                     }
+                    break;
+
                 case VideoStreamState.Started:
                     break;
+
                 case VideoStreamState.Stopping:
-                    break;
                 case VideoStreamState.Stopped:
                     if (incomingVideoStream.Kind == VideoStreamKind.RemoteIncoming)
                     {
@@ -383,10 +379,10 @@ namespace CallingQuickstart
                         await remoteVideoStream.StopPreviewAsync();
                     }
                     break;
+
                 case VideoStreamState.NotAvailable:
                     break;
             }
-
         }
 
         private async void OnPushNotificationReceived(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
@@ -428,7 +424,7 @@ namespace CallingQuickstart
             micStream = new LocalOutgoingAudioStream();
 
             CameraList.ItemsSource = deviceManager.Cameras.ToList();
-            
+
             if (camera != null)
             {
                 CameraList.SelectedIndex = 0;
@@ -440,11 +436,10 @@ namespace CallingQuickstart
 
             var callAgentOptions = new CallAgentOptions()
             {
-                DisplayName = "Contoso",
+                DisplayName = $"{Environment.MachineName}/{Environment.UserName}",
                 //https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv
                 EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
             };
-
 
             try
             {
