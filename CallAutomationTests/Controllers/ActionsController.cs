@@ -65,12 +65,5 @@ namespace CallAutomation.Scenarios.Controllers
             await _recordingActionHandler.Handle("GetRecordingState", recordingId);
             return new OkResult();
         }
-
-        [HttpGet("getRecordingContext/{serverCallId}", Name = "GetRecording_Context")]
-        public async Task<ActionResult> GetRecordingContextAsync([FromRoute] string serverCallId)
-        {
-            RecordingContext recordingContext = _recordingActionHandler.Handle(serverCallId);
-            return new JsonResult(recordingContext);
-        }
     }
 }
