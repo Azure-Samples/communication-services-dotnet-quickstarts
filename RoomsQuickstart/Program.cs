@@ -4,12 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Communication.Identity;
 
 namespace RoomsQuickstart
 {
     class Program
     {
-        private static readonly string connectionString = "<ConnectionString>";
+        private static readonly string connectionString = "endpoint=https://rooms-e2e-prod.communication.azure.com/;accesskey=LKQhrQoh8weaKq10ywOsUpZgc6iiAhh5a8k7yx1w31/Co0o3fj06ZgEvGM2N9i89Y2TZWYe9oYAdH//taqU/dw==";
         static RoomsClient? roomsCollection = null;
         public static RoomsClient RoomCollection { 
             get { if (roomsCollection is not null)
@@ -19,11 +21,28 @@ namespace RoomsQuickstart
             } 
             set { roomsCollection = value; } 
         }
-        private static readonly List<string> rooms = new List<string> { };
-        static readonly string presenter = "<CommunicationIdentifier>";
-        static readonly string attendee = "<CommunicationIdentifier>";
-        static readonly string[] addeddParticipant = { "<CommunicationIdentifier>" };
 
+        static CommunicationIdentityClient? identityClient = null;
+        public static CommunicationIdentityClient IdentityClient
+        {
+            get
+            {
+                if (identityClient is not null)
+                    return identityClient;
+                else
+                    return new CommunicationIdentityClient(connectionString);
+            }
+            set { identityClient = value; }
+        }
+
+        private static readonly List<string> rooms = new List<string> { };
+        static readonly CommunicationUserIdentifier user1 = IdentityClient.CreateUser();
+        static readonly CommunicationUserIdentifier user2 = IdentityClient.CreateUser();
+        static readonly CommunicationUserIdentifier user3 = IdentityClient.CreateUser();
+
+        static readonly string presenter = user1.RawId;
+        static readonly string attendee = user2.RawId;
+        static readonly string[] addedParticipant = { user3.RawId, presenter };
         static async Task Main(string[] args)
         {
             Console.WriteLine("Azure Communication Services - Rooms Quickstart");
@@ -35,9 +54,10 @@ namespace RoomsQuickstart
                 {
                     await CreateRoom();
                     await UpdateRoom(rooms[0]);
-                    await UpdateParticipants(rooms[0]);
-                    await AddParticipants(rooms[0], addeddParticipant);
-                    await RemoveParticipants(rooms[0], addeddParticipant);
+                    await GetRoom(rooms[0]);
+                    await ListRoom();
+                    await AddOrUpdateParticipants(rooms[0], addedParticipant);
+                    await RemoveParticipants(rooms[0], addedParticipant);
                     await DeleteRoom(rooms[0]);
                 }
                 else
@@ -57,8 +77,14 @@ namespace RoomsQuickstart
             {
                 Console.WriteLine("\n---------Create Room---------\n");
                 List<RoomParticipant> roomParticipants = new List<RoomParticipant>();
-                var participant1 = new RoomParticipant(new CommunicationUserIdentifier(presenter), RoleType.Presenter);
-                var participant2 = new RoomParticipant(new CommunicationUserIdentifier(attendee), RoleType.Attendee);
+                var participant1 = new RoomParticipant(new CommunicationUserIdentifier(presenter))
+                {
+                    Role = ParticipantRole.Consumer
+                };
+                var participant2 = new RoomParticipant(new CommunicationUserIdentifier(attendee))
+                {
+                    Role = ParticipantRole.Attendee
+                };
 
                 roomParticipants.Add(participant1);
                 roomParticipants.Add(participant2);
@@ -67,7 +93,7 @@ namespace RoomsQuickstart
                 DateTimeOffset validFrom = DateTimeOffset.UtcNow;
                 DateTimeOffset validUntil = DateTimeOffset.UtcNow.AddDays(10);
 
-                CommunicationRoom createdRoom = await RoomCollection.CreateRoomAsync(validFrom, validUntil, RoomJoinPolicy.InviteOnly, roomParticipants, cancellationToken);
+                CommunicationRoom createdRoom = await RoomCollection.CreateRoomAsync(validFrom, validUntil, roomParticipants, cancellationToken);
                 rooms.Add(createdRoom.Id);
                 PrintRoom(createdRoom);
             }
@@ -86,7 +112,7 @@ namespace RoomsQuickstart
 
                 DateTimeOffset validFrom = DateTimeOffset.UtcNow;
                 DateTimeOffset validUntil = DateTimeOffset.UtcNow.AddDays(10);
-                CommunicationRoom updatedRoom = await RoomCollection.UpdateRoomAsync(roomId, validFrom, validUntil, RoomJoinPolicy.InviteOnly, null, cancellationToken);
+                CommunicationRoom updatedRoom = await RoomCollection.UpdateRoomAsync(roomId, validFrom, validUntil, cancellationToken);
                 PrintRoom(updatedRoom);
             }
             catch (Exception ex)
@@ -95,7 +121,42 @@ namespace RoomsQuickstart
             }
         }
 
-        static public async Task AddParticipants(string roomId, string[]?roomParticipants = null)
+        static async Task GetRoom(string roomId)
+        {
+            try
+            {
+                Console.WriteLine("\n---------Get Room---------\n");
+                CancellationToken cancellationToken = new CancellationTokenSource().Token;
+
+                CommunicationRoom updatedRoom = await RoomCollection.GetRoomAsync(roomId, cancellationToken);
+                PrintRoom(updatedRoom);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to get room, id: {roomId}, ex --> {ex}");
+            }
+        }
+
+        static async Task ListRoom()
+        {
+            try
+            {
+                Console.WriteLine("\n---------List Rooms---------\n");
+                CancellationToken cancellationToken = new CancellationTokenSource().Token;
+
+                AsyncPageable<CommunicationRoom> allRooms = RoomCollection.GetRoomsAsync(cancellationToken);
+                await foreach (CommunicationRoom room in allRooms)
+                {
+                    PrintRoom(room);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to get all rooms, ex --> {ex}");
+            }
+        }
+
+        static public async Task AddOrUpdateParticipants(string roomId, string[]?roomParticipants = null)
         {
             try
             {
@@ -106,11 +167,11 @@ namespace RoomsQuickstart
 
                 foreach (var p in roomParticipants)
                 {
-                    participants.Add(new RoomParticipant(new CommunicationUserIdentifier(p), RoleType.Attendee));
+                    participants.Add(new RoomParticipant(new CommunicationUserIdentifier(p)) { Role = ParticipantRole.Attendee });
                 }
 
                 CancellationToken cancellationToken = new CancellationTokenSource().Token;
-                var addParticipantsResult = await RoomCollection.AddParticipantsAsync(roomId, participants, cancellationToken);
+                var addParticipantsResult = await RoomCollection.AddOrUpdateParticipantsAsync(roomId, participants, cancellationToken);
                 Console.WriteLine("Participants after AddParticipantsAsync:");
                 await GetRoomParticipants(roomId);
             }
@@ -126,7 +187,7 @@ namespace RoomsQuickstart
             {
                 roomParticipants ??= new string[0];
                 Console.WriteLine("\n---------Remove participant from the Room---------\n");
-                var participants = new List<CommunicationUserIdentifier>();
+                var participants = new List<CommunicationIdentifier>();
 
                 foreach (var p in roomParticipants)
                 {
@@ -141,37 +202,6 @@ namespace RoomsQuickstart
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to remove participant from room, id: {roomId}, ex --> {ex}");
-            }
-        }
-
-        static async Task UpdateParticipants(string roomId)
-        {
-            try
-            {
-                Console.WriteLine("\n---------Update participants in Room---------\n");
-                CancellationToken cancellationToken = new CancellationTokenSource().Token;
-                List<RoomParticipant> participants = new List<RoomParticipant>();
-
-                ParticipantsCollection existingParticipants = await RoomCollection.GetParticipantsAsync(roomId, cancellationToken);
-                foreach(var participant in existingParticipants.Participants)
-                {
-                    if(participant.Role.Equals(RoleType.Presenter))
-                    {
-                        participant.Role = RoleType.Attendee;
-                    }
-                    else
-                    {
-                        participant.Role = RoleType.Presenter;
-                    }
-                    participants.Add(participant);
-                }
-                var updateParticipant = await RoomCollection.UpdateParticipantsAsync(roomId, participants);
-                Console.WriteLine($"Successfully updated participants in room with id: {roomId}");
-                await GetRoomParticipants(roomId);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to Update participants in room with id: {roomId} ex --> {ex}");
             }
         }
 
@@ -193,13 +223,8 @@ namespace RoomsQuickstart
         static void PrintRoom(CommunicationRoom roomInfo)
         {
             Console.WriteLine($"room_id: {roomInfo.Id}");
-            Console.WriteLine($"created_date_time: {roomInfo.CreatedOn}");
+            Console.WriteLine($"created_date_time: {roomInfo.CreatedAt}");
             Console.WriteLine($"valid_from: {roomInfo.ValidFrom}, valid_until: {roomInfo.ValidUntil}");
-            Console.WriteLine($"{roomInfo.Participants.Count} participants: ");
-            foreach (RoomParticipant participant in roomInfo.Participants)
-            {
-                Console.WriteLine($"-> {participant.CommunicationIdentifier.ToString()}, {participant.Role.ToString()}");
-            }
         }
 
         static async Task GetRoomParticipants(string roomId)
@@ -207,8 +232,8 @@ namespace RoomsQuickstart
             try
             {
                 CancellationToken cancellationToken = new CancellationTokenSource().Token;
-                ParticipantsCollection participants = await RoomCollection.GetParticipantsAsync(roomId, cancellationToken);
-                foreach (RoomParticipant participant in participants.Participants)
+                AsyncPageable<RoomParticipant> participants = RoomCollection.GetParticipantsAsync(roomId, cancellationToken);
+                await foreach (RoomParticipant participant in participants)
                 {
                     Console.WriteLine($"{participant.CommunicationIdentifier.ToString()},  {participant.Role.ToString()}");
                 }
