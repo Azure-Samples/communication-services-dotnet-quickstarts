@@ -709,7 +709,34 @@ namespace CallAutomation.Scenarios.Handlers
         {
             using (_logger.BeginScope(GetLogContext(recordingStateChanged.CorrelationId, recordingStateChanged.CallConnectionId, recordingStateChanged.OperationContext)))
             {
-                _logger.LogInformation($"RecordingStateChanged received : '{recordingStateChanged}'");
+                _logger.LogInformation($"RecordingStateChanged received : State = '{recordingStateChanged.State}', " +
+                    $"StartDateTime = '{recordingStateChanged.StartDateTime}'");
+
+                RecordingContext context = _callContextService.GetRecordingContext(recordingStateChanged.ServerCallId);
+
+                if (context != null)
+                {
+                    if (recordingStateChanged.State == RecordingState.Active)
+                    {
+                        if (context.StartDurationInMS == null)
+                        {
+                            context.StartDurationInMS = (DateTime.UtcNow - recordingStateChanged.StartDateTime.Value.UtcDateTime).TotalMilliseconds;
+                        }
+                        else if (context != null && context.StartDurationInMS != null && context.ResumeDurationInMS == null)
+                        {
+                            context.ResumeDurationInMS = (DateTime.UtcNow - recordingStateChanged.StartDateTime.Value.UtcDateTime).TotalMilliseconds;
+                        }
+                    }
+                    else if (recordingStateChanged.State == RecordingState.Inactive)
+                    {
+                        if (context != null && context.StartDurationInMS != null && context.PauseDurationInMS == null)
+                        {
+                            context.PauseDurationInMS = (DateTime.UtcNow - recordingStateChanged.StartDateTime.Value.UtcDateTime).TotalMilliseconds;
+                        }
+                    }
+
+                    _callContextService.SetRecordingContext(recordingStateChanged.ServerCallId, context);
+                }
 
                 return Task.CompletedTask;
             }

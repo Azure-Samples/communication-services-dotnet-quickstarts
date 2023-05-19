@@ -1,5 +1,4 @@
-﻿using Azure.Communication.CallAutomation;
-using CallAutomation.Scenarios.Handlers;
+﻿using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using System.Collections.Concurrent;
 
@@ -47,11 +46,10 @@ namespace CallAutomation.Scenarios.Services
             return null;
         }
 
-        public bool SetRecordingContext(string serverCallId, RecordingContext recordingContext)
+        public void SetRecordingContext(string serverCallId, RecordingContext recordingContext)
         {
-            return _serverCallIdToRecordingContext.TryAdd(serverCallId, recordingContext);
+            _serverCallIdToRecordingContext.AddOrUpdate(serverCallId, recordingContext, (_, _) => recordingContext);
         }
-
 
         public string? GetCustomerId(string callConnectionId)
         {
