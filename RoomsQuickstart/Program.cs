@@ -11,7 +11,7 @@ namespace RoomsQuickstart
 {
     class Program
     {
-        private static readonly string connectionString = "endpoint=https://rooms-e2e-prod.communication.azure.com/;accesskey=LKQhrQoh8weaKq10ywOsUpZgc6iiAhh5a8k7yx1w31/Co0o3fj06ZgEvGM2N9i89Y2TZWYe9oYAdH//taqU/dw==";
+        private static readonly string connectionString = "<ConnectionString>";
         static RoomsClient? roomsCollection = null;
         public static RoomsClient RoomCollection { 
             get { if (roomsCollection is not null)
