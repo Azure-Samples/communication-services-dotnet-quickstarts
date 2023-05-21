@@ -19,7 +19,6 @@ namespace CallingQuickstart
     public sealed partial class MainPage : Page
     {
         private const string authToken = "<ACS auth token>";
-
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
         private CallAgent callAgent;
@@ -119,10 +118,6 @@ namespace CallingQuickstart
             var call = this.callAgent?.Calls?.FirstOrDefault();
             if (call != null)
             {
-                //var incoingVideoStream = call.RemoteParticipants[0].IncomingVideoStreams[0];
-                //var remoteVideoStream = incoingVideoStream as RemoteIncomingVideoStream;
-                //await remoteVideoStream.StopPreviewAsync();
-
                 foreach (var localVideoStream in call.OutgoingVideoStreams)
                 {
                     await call.StopVideoAsync(localVideoStream);
@@ -130,8 +125,7 @@ namespace CallingQuickstart
 
                 try
                 {
-                    // This failed because RemoteVideoStream is enable
-                    //await cameraStream.StopPreviewAsync();
+                    await cameraStream.StopPreviewAsync();
 
                     await call.HangUpAsync(new HangUpOptions() { ForEveryone = false });
                 }
@@ -285,9 +279,6 @@ namespace CallingQuickstart
                             call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
                             call.StateChanged -= OnStateChangedAsync;
 
-                            // This crashes - fix is coming
-                            // await cameraStream.StopPreviewAsync();
-
                             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
                             {
                                 Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
@@ -308,7 +299,6 @@ namespace CallingQuickstart
                 args.RemovedParticipants.ToList<RemoteParticipant>(),
                 args.AddedParticipants.ToList<RemoteParticipant>());
         }
-
 
         private async Task OnParticipantChangedAsync(IEnumerable<RemoteParticipant> removedParticipants, IEnumerable<RemoteParticipant> addedParticipants)
         {
@@ -338,7 +328,7 @@ namespace CallingQuickstart
             switch (callVideoStream.Direction)
             {
                 case StreamDirection.Outgoing:
-                    //OnOutgoingVideoStreamStateChanged(callVideoStream as OutgoingVideoStream);
+                    OnOutgoingVideoStreamStateChanged(callVideoStream as OutgoingVideoStream);
                     break;
                 case StreamDirection.Incoming:
                     OnIncomingVideoStreamStateChanged(callVideoStream as IncomingVideoStream);
@@ -383,6 +373,11 @@ namespace CallingQuickstart
                 case VideoStreamState.NotAvailable:
                     break;
             }
+        }
+
+        private async void OnOutgoingVideoStreamStateChanged(OutgoingVideoStream outgoingVideoStream)
+        {
+            /* Sample coming soon */
         }
 
         private async void OnPushNotificationReceived(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
