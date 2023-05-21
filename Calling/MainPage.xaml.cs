@@ -19,6 +19,7 @@ namespace CallingQuickstart
     public sealed partial class MainPage : Page
     {
         private const string authToken = "<ACS auth token>";
+
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
         private CallAgent callAgent;
@@ -56,11 +57,13 @@ namespace CallingQuickstart
 
             base.OnNavigatedTo(e);
         }
-    #endregion
+        #endregion
 
         #region UI event handlers
         private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (tryRawMedia) return;
+
             if (cameraStream != null)
             {
                 await cameraStream?.StopPreviewAsync();
@@ -125,7 +128,10 @@ namespace CallingQuickstart
 
                 try
                 {
-                    await cameraStream.StopPreviewAsync();
+                    if (cameraStream != null)
+                    {
+                        await cameraStream.StopPreviewAsync();
+                    }
 
                     await call.HangUpAsync(new HangUpOptions() { ForEveryone = false });
                 }
@@ -264,9 +270,6 @@ namespace CallingQuickstart
                     case CallState.Connected:
                         {
                             await call.StartAudioAsync(micStream);
-                            await call.StartVideoAsync(cameraStream);
-                            var localUri = await cameraStream.StartPreviewAsync();
-
                             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
                             {
                                 Stats.Text = $"Call id: {Guid.Parse(call.Id).ToString("D")}, Remote caller id: {call.RemoteParticipants.FirstOrDefault()?.Identifier.RawId}";
@@ -304,7 +307,7 @@ namespace CallingQuickstart
         {
             foreach (var participant in removedParticipants)
             {
-                foreach(var incomingVideoStream in  participant.IncomingVideoStreams)
+                foreach(var incomingVideoStream in participant.IncomingVideoStreams)
                 {
                     var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
                     if (remoteVideoStream != null)
@@ -373,11 +376,6 @@ namespace CallingQuickstart
                 case VideoStreamState.NotAvailable:
                     break;
             }
-        }
-
-        private async void OnOutgoingVideoStreamStateChanged(OutgoingVideoStream outgoingVideoStream)
-        {
-            /* Sample coming soon */
         }
 
         private async void OnPushNotificationReceived(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
@@ -463,14 +461,14 @@ namespace CallingQuickstart
 
         private async Task<CommunicationCall> StartAcsCallAsync(string acsCallee)
         {
-            var options = await GetStartCallOptionsAsynnc();
+            var options = GetStartCallOptions();
             var call = await this.callAgent.StartCallAsync( new [] { new UserCallIdentifier(acsCallee) }, options);
             return call;
         }
 
         private async Task<CommunicationCall> StartPhoneCallAsync(string acsCallee, string alternateCallerId)
         {
-            var options = await GetStartCallOptionsAsynnc();
+            var options = GetStartCallOptions();
             options.AlternateCallerId = new PhoneNumberCallIdentifier(alternateCallerId);
 
             var call = await this.callAgent.StartCallAsync( new [] { new PhoneNumberCallIdentifier(acsCallee) }, options);
@@ -479,7 +477,7 @@ namespace CallingQuickstart
 
         private async Task<CommunicationCall> JoinGroupCallByIdAsync(Guid groupId)
         {
-            var joinCallOptions = await GetJoinCallOptionsAsync();
+            var joinCallOptions = GetJoinCallOptions();
 
             var groupCallLocator = new GroupCallLocator(groupId);
             var call = await this.callAgent.JoinAsync(groupCallLocator, joinCallOptions);
@@ -488,22 +486,29 @@ namespace CallingQuickstart
 
         private async Task<CommunicationCall> JoinTeamsMeetingByLinkAsync(Uri teamsCallLink)
         {
-            var joinCallOptions = await GetJoinCallOptionsAsync();
+            var joinCallOptions = GetJoinCallOptions();
 
             var teamsMeetingLinkLocator = new TeamsMeetingLinkLocator(teamsCallLink.AbsoluteUri);
             var call = await callAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
             return call;
         }
 
-        private async Task<StartCallOptions> GetStartCallOptionsAsynnc()
+        private StartCallOptions GetStartCallOptions()
         {
-            return new StartCallOptions() {
-                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream  },
-                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
-            };
+            var startCallOptions = GetStartCallOptionsWithRawMedia();
+
+            if (startCallOptions == null)
+            {
+                startCallOptions = new StartCallOptions() {
+                    OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream  },
+                    OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
+                };
+            }
+
+            return startCallOptions;
         }
 
-        private async Task<JoinCallOptions> GetJoinCallOptionsAsync()
+        private JoinCallOptions GetJoinCallOptions()
         {
             return new JoinCallOptions() {
                 OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true },
