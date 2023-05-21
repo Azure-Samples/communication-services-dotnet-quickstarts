@@ -334,12 +334,12 @@ namespace CallingQuickstart
                     OnOutgoingVideoStreamStateChanged(callVideoStream as OutgoingVideoStream);
                     break;
                 case StreamDirection.Incoming:
-                    OnIncomingVideoStreamStateChanged(callVideoStream as IncomingVideoStream);
+                    OnIncomingVideoStreamStateChangedAsync(callVideoStream as IncomingVideoStream);
                     break;
             }
         }
 
-        private async void OnIncomingVideoStreamStateChanged(IncomingVideoStream incomingVideoStream)
+        private async void OnIncomingVideoStreamStateChangedAsync(IncomingVideoStream incomingVideoStream)
         {
             switch (incomingVideoStream.State)
             {
@@ -378,7 +378,7 @@ namespace CallingQuickstart
             }
         }
 
-        private async void OnPushNotificationReceived(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
+        private async void OnPushNotificationReceivedAsync(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
         {
             switch (args.NotificationType) {
                 case PushNotificationType.Toast:
@@ -452,7 +452,7 @@ namespace CallingQuickstart
             }
         }
 
-        public void InitVideoEffectsFeature(LocalOutgoingVideoStream videoStream) {
+        private void InitVideoEffectsFeature(LocalOutgoingVideoStream videoStream) {
             localVideoEffectsFeature = videoStream.Features.VideoEffects;
             localVideoEffectsFeature.VideoEffectEnabled += OnVideoEffectEnabled;
             localVideoEffectsFeature.VideoEffectDisabled += OnVideoEffectDisabled;
@@ -521,7 +521,7 @@ namespace CallingQuickstart
             // Register to WNS
 
             var channel = await PushNotificationChannelManager.CreatePushNotificationChannelForApplicationAsync();
-            channel.PushNotificationReceived += OnPushNotificationReceived;
+            channel.PushNotificationReceived += OnPushNotificationReceivedAsync;
             var hub = new Microsoft.WindowsAzure.Messaging.NotificationHub("{CHANNEL_NAME}", "{SECRET_FROM_PNHUB_RESOURCE}");
             var result = await hub.RegisterNativeAsync(channel.Uri);
 
