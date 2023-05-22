@@ -1,10 +1,12 @@
+---
 page_type: sample
 languages:
-- csharp
+- javascript
+- nodejs
 products:
 - azure
+- azure-functions
 - azure-communication-services
-- azure-communication-callAutomation
 ---
 
 # ACS Call Automation and Azure OpenAI Service
