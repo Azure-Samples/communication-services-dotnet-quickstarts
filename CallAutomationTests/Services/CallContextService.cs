@@ -36,9 +36,9 @@ namespace CallAutomation.Scenarios.Services
             _serverCallIdToRecordingContext = new ConcurrentDictionary<string, RecordingContext>();
         }
 
-        public RecordingContext? GetRecordingContext(string serverCallId)
+        public RecordingContext? GetRecordingContext(string recordingId)
         {
-            if (_serverCallIdToRecordingContext.TryGetValue(serverCallId, out var recordingContext))
+            if (_serverCallIdToRecordingContext.TryGetValue(recordingId, out var recordingContext))
             {
                 return recordingContext;
             }
@@ -46,9 +46,10 @@ namespace CallAutomation.Scenarios.Services
             return null;
         }
 
-        public void SetRecordingContext(string serverCallId, RecordingContext recordingContext)
+        public void SetRecordingContext(string recordingId, RecordingContext recordingContext)
         {
-            _serverCallIdToRecordingContext.AddOrUpdate(serverCallId, recordingContext, (_, _) => recordingContext);
+            recordingContext.APIStartTime = DateTime.UtcNow;
+            _serverCallIdToRecordingContext.AddOrUpdate(recordingId, recordingContext, (_, _) => recordingContext);
         }
 
         public string? GetCustomerId(string callConnectionId)

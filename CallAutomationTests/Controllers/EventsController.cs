@@ -57,7 +57,8 @@ namespace CallAutomation.Scenarios.Controllers
                             break;
 
                         case AcsRecordingFileStatusUpdatedEventData recordingFileStatusUpdatedEvent:
-                            await _recordingFileStatusUpdatedEventHandler.Handle(recordingFileStatusUpdatedEvent);
+                            string recordingId = eventGridEvent.Subject.Split("recordingId/")[1];
+                            await _recordingFileStatusUpdatedEventHandler.Handle(recordingFileStatusUpdatedEvent, recordingId);
                             break;
 
                         default: throw new ArgumentException($"{eventData.GetType().ToString()} : not handled.");

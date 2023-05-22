@@ -79,7 +79,10 @@ namespace CallAutomation.Scenarios.Handlers
             }
         }
 
-
+        public async Task Handle(IncomingCallEvent incomingCallEvent, string info)
+        {
+            throw new NotImplementedException();
+        }
 
         public async Task Handle(AddParticipantFailed addParticipantFailed, string callerId)
         {
@@ -712,7 +715,16 @@ namespace CallAutomation.Scenarios.Handlers
                 _logger.LogInformation($"RecordingStateChanged received : State = '{recordingStateChanged.State}', " +
                     $"StartDateTime = '{recordingStateChanged.StartDateTime}'");
 
-                RecordingContext context = _callContextService.GetRecordingContext(recordingStateChanged.ServerCallId);
+                RecordingContext context = _callContextService.GetRecordingContext(recordingStateChanged.RecordingId);
+
+                if (context == null)
+                {
+                    context = new RecordingContext()
+                    {
+                        ServerCallId = recordingStateChanged.ServerCallId,
+                        RecordingId = recordingStateChanged.RecordingId
+                    };
+                }
 
                 if (context != null)
                 {
@@ -722,20 +734,20 @@ namespace CallAutomation.Scenarios.Handlers
                         {
                             context.StartDurationInMS = (DateTime.UtcNow - recordingStateChanged.StartDateTime.Value.UtcDateTime).TotalMilliseconds;
                         }
-                        else if (context != null && context.StartDurationInMS != null && context.ResumeDurationInMS == null)
+                        else if (context != null && context.StartDurationInMS != null)
                         {
                             context.ResumeDurationInMS = (DateTime.UtcNow - recordingStateChanged.StartDateTime.Value.UtcDateTime).TotalMilliseconds;
                         }
                     }
                     else if (recordingStateChanged.State == RecordingState.Inactive)
                     {
-                        if (context != null && context.StartDurationInMS != null && context.PauseDurationInMS == null)
+                        if (context != null && context.StartDurationInMS != null)
                         {
                             context.PauseDurationInMS = (DateTime.UtcNow - recordingStateChanged.StartDateTime.Value.UtcDateTime).TotalMilliseconds;
                         }
                     }
 
-                    _callContextService.SetRecordingContext(recordingStateChanged.ServerCallId, context);
+                    _callContextService.SetRecordingContext(recordingStateChanged.RecordingId, context);
                 }
 
                 return Task.CompletedTask;
@@ -744,7 +756,6 @@ namespace CallAutomation.Scenarios.Handlers
 
 
         #region private helpers
-
 
         private async Task PlayMainMenu(CallConnection callConnection, string textToSpeechLocale, string callerId, string? prerollText = null)
         {
@@ -960,12 +971,28 @@ namespace CallAutomation.Scenarios.Handlers
 
         public Task Handle(AcsRecordingFileStatusUpdatedEventData recordingFileStatusUpdatedEvent)
         {
+            throw new NotImplementedException();
+        }
+        public Task Handle(AcsRecordingFileStatusUpdatedEventData recordingFileStatusUpdatedEvent, string recordingId)
+        {
             try
             {
+                _logger.LogInformation($"RecordingStateChanged received : State = STOP " +
+                    $"StartDateTime = '{recordingFileStatusUpdatedEvent.RecordingStartTime}'");
+
+                RecordingContext context = _callContextService.GetRecordingContext(recordingId);
+
+                if (context != null)
+                {
+                    if (context.StopDurationInMS == null)
+                    {
+                        context.StopDurationInMS = (DateTime.UtcNow - context.APIStartTime).Value.TotalMilliseconds;
+                    }
+                }
+
                 var eventData = recordingFileStatusUpdatedEvent;
 
                 Logger.LogInformation("Microsoft.Communication.RecordingFileStatusUpdated response  -- >" + eventData);
-
                 Logger.LogInformation("Start processing metadata -- >");
 
                 var response = _callAutomationService.ProcessFile(eventData.RecordingStorageInfo.RecordingChunks[0].MetadataLocation,

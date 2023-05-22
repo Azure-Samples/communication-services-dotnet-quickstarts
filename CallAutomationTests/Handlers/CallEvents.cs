@@ -10,10 +10,10 @@ namespace CallAutomation.Scenarios.Handlers
         public string? ServerCallId { get; set; }
         public string? RecordingId { get; set; }
         public DateTime? StartTime { get; set; }
-
         public double? StartDurationInMS { get; set; }
         public double? ResumeDurationInMS { get; set; }
         public double? PauseDurationInMS { get; set; }
+        public DateTime? APIStartTime { get; set; }
         public double? StopDurationInMS { get; set; }
         public RecordingContext() { }
     }
