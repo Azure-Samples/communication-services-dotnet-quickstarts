@@ -19,8 +19,8 @@ This is a sample application demonstrated during Microsoft /Build 2023. It highl
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
 
-- Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel] (https://docs.tunnels.api.visualstudio.com/cli)
-- Create an Azure Cognitive Services resource. For details, see [Create an Azure Cognitive Services Resource] (https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account)
+- Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://docs.tunnels.api.visualstudio.com/cli)
+- Create an Azure Cognitive Services resource. For details, see [Create an Azure Cognitive Services Resource](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account)
 - An Azure OpenAI Resource and Deployed Model. See [instructions](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal).
 
 
