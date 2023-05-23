@@ -59,7 +59,7 @@ namespace CallingQuickstart
         #region UI event handlers
         private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            //if (tryRawMedia) return;
+            if (tryRawMedia) return;
 
             if (cameraStream != null)
             {
@@ -77,7 +77,8 @@ namespace CallingQuickstart
             var localUri = await cameraStream.StartPreviewAsync();
             LocalVideo.Source = MediaSource.CreateFromUri(localUri);
 
-            if (call != null) {
+            if (call != null)
+            {
                 await call?.StartVideoAsync(cameraStream);
             }
         }
@@ -94,7 +95,7 @@ namespace CallingQuickstart
                 }
                 else if (callString.StartsWith("+")) // 1:1 phone call
                 {
-                    call = await StartPhoneCallAsync(callString, "+12000000000");
+                    call = await StartPhoneCallAsync(callString, "+19876543210");
                 }
                 else if (Guid.TryParse(callString, out Guid groupId))// Join group call by group guid
                 {
@@ -193,12 +194,18 @@ namespace CallingQuickstart
 
         private void OnVideoEffectDisabled(object sender, VideoEffectDisabledEventArgs e)
         {
-            BackgroundBlur.IsChecked = false;
+            this.DispatcherQueue.TryEnqueue(async () =>
+            {
+                BackgroundBlur.IsChecked = false;
+            });
         }
 
         private void OnVideoEffectEnabled(object sender, VideoEffectEnabledEventArgs e)
         {
-            BackgroundBlur.IsChecked = true;
+            this.DispatcherQueue.TryEnqueue(async () =>
+            {
+                BackgroundBlur.IsChecked = true;
+            });
         }
 
         #endregion
@@ -241,7 +248,9 @@ namespace CallingQuickstart
                 } 
             };
 
-            _ = await incomingCall.AcceptAsync(acceptCallOptions);
+            call = await incomingCall.AcceptAsync(acceptCallOptions);
+            call.StateChanged += OnStateChangedAsync;
+            call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
         }
 
         private async void OnStateChangedAsync(object sender, PropertyChangedEventArgs args)
@@ -432,7 +441,6 @@ namespace CallingQuickstart
             try
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
-                //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
 
@@ -509,18 +517,6 @@ namespace CallingQuickstart
                 OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true },
                 OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
-        }
-
-        private async Task<string> RegisterWNS()
-        {
-            // Register to WNS
-
-            var channel = await PushNotificationChannelManager.CreatePushNotificationChannelForApplicationAsync();
-            channel.PushNotificationReceived += OnPushNotificationReceivedAsync;
-            //var hub = new Microsoft.WindowsAzure.Messaging.NotificationHub("{CHANNEL_NAME}", "{SECRET_FROM_PNHUB_RESOURCE}");
-            //var result = await hub.RegisterNativeAsync(channel.Uri);
-
-            return string.Empty;
         }
         #endregion
     }

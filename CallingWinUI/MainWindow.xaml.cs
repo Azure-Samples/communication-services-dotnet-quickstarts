@@ -36,5 +36,10 @@ namespace CallingQuickstart
         {
             (sender as Frame).Navigate(typeof(MainPage), (sender as Frame).XamlRoot);
         }
+
+        private void OnClosed(object sender, WindowEventArgs e)
+        {
+            Application.Current.Exit();
+        }
     }
 }

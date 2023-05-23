@@ -13,9 +13,6 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="MainWindow.RawMedia.xaml.cs" />
-  </ItemGroup>
     
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -68,7 +65,7 @@
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="copy $(OutDir)\AppX\runtimes\win10-x64\nativeAssets\net6.0-windows\*.* $(OutDir)\Appx" />
+    <Exec Command="xcopy $(OutDir)\runtimes\win10-x64\nativeAssets\net6.0-windows\*.* $(OutDir)\Appx\*.* /Y" />
   </Target>
 
 </Project>

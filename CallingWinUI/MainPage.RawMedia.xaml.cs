@@ -6,13 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Storage.Streams;
+using WinRT;
 
 namespace CallingQuickstart
 {
     public sealed partial class MainPage : Page
     {
         // Set tryRawMedia to true to enable raw media
-        private bool tryRawMedia = false;
+        private bool tryRawMedia = true;
 
         // Video frame specs
         private const int width = 640;
@@ -59,7 +60,7 @@ namespace CallingQuickstart
             public static unsafe byte* GetArrayBuffer(IMemoryBuffer memoryBuffer)
             {
                 IMemoryBufferReference memoryBufferReference = memoryBuffer.CreateReference();
-                var memoryBufferByteAccess = memoryBufferReference as IMemoryBufferByteAccess;
+                var memoryBufferByteAccess = memoryBufferReference.As<IMemoryBufferByteAccess>();
 
                 memoryBufferByteAccess.GetBuffer(out byte* arrayBuffer, out uint arrayBufferCapacity);
 

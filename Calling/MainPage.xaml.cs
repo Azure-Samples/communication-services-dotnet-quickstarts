@@ -196,12 +196,18 @@ namespace CallingQuickstart
 
         private void OnVideoEffectDisabled(object sender, VideoEffectDisabledEventArgs e)
         {
-            BackgroundBlur.IsChecked = false;
+            Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                BackgroundBlur.IsChecked = false;
+            });
         }
 
         private void OnVideoEffectEnabled(object sender, VideoEffectEnabledEventArgs e)
         {
-            BackgroundBlur.IsChecked = true;
+            Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                BackgroundBlur.IsChecked = true;
+            });
         }
 
         #endregion
@@ -244,7 +250,9 @@ namespace CallingQuickstart
                 } 
             };
 
-            _ = await incomingCall.AcceptAsync(acceptCallOptions);
+            call = await incomingCall.AcceptAsync(acceptCallOptions);
+            call.StateChanged += OnStateChangedAsync;
+            call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
         }
 
         private async void OnStateChangedAsync(object sender, PropertyChangedEventArgs args)
