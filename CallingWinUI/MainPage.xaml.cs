@@ -1,23 +1,24 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
-using Windows.ApplicationModel.Core;
 using Windows.Media.Core;
 using Windows.Networking.PushNotifications;
-using Windows.UI;
-using Windows.UI.ViewManagement;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
+using WinRT.Interop;
 
 namespace CallingQuickstart
 {
     public sealed partial class MainPage : Page
     {
+        private AppWindow m_AppWindow;
+
         private const string authToken = "<ACS auth token>";
 
         private CallClient callClient;
@@ -36,19 +37,14 @@ namespace CallingQuickstart
         {
             this.InitializeComponent();
 
-            // Hide default title bar.
-            var coreTitleBar = CoreApplication.GetCurrentView().TitleBar;
-            coreTitleBar.ExtendViewIntoTitleBar = true;
-
-            QuickstartTitle.Text = $"{Package.Current.DisplayName} - Ready";
-            Window.Current.SetTitleBar(AppTitleBar);
-
             CallButton.IsEnabled = true;
             HangupButton.IsEnabled = !CallButton.IsEnabled;
             MuteLocal.IsChecked = MuteLocal.IsEnabled = !CallButton.IsEnabled;
 
-            ApplicationView.PreferredLaunchViewSize = new Windows.Foundation.Size(800, 600);
-            ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.PreferredLaunchViewSize;
+            var window = (Application.Current as App)?.m_window as MainWindow;
+            IntPtr hWnd = WindowNative.GetWindowHandle(window);
+            WindowId wndId = Win32Interop.GetWindowIdFromWindow(hWnd);
+            m_AppWindow = AppWindow.GetFromWindowId(wndId);
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -57,6 +53,7 @@ namespace CallingQuickstart
 
             base.OnNavigatedTo(e);
         }
+
         #endregion
 
         #region UI event handlers
@@ -80,7 +77,8 @@ namespace CallingQuickstart
             var localUri = await cameraStream.StartPreviewAsync();
             LocalVideo.Source = MediaSource.CreateFromUri(localUri);
 
-            if (call != null) {
+            if (call != null)
+            {
                 await call?.StartVideoAsync(cameraStream);
             }
         }
@@ -97,7 +95,7 @@ namespace CallingQuickstart
                 }
                 else if (callString.StartsWith("+")) // 1:1 phone call
                 {
-                    call = await StartPhoneCallAsync(callString, "+12000000000");
+                    call = await StartPhoneCallAsync(callString, "+19876543210");
                 }
                 else if (Guid.TryParse(callString, out Guid groupId))// Join group call by group guid
                 {
@@ -165,9 +163,9 @@ namespace CallingQuickstart
                     }
                 }
 
-                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+                this.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    AppTitleBar.Background = call.IsOutgoingAudioMuted ? new SolidColorBrush(Colors.PaleVioletRed) : new SolidColorBrush(Colors.SeaGreen);
+                    m_AppWindow.TitleBar.BackgroundColor = call.IsOutgoingAudioMuted ? Colors.PaleVioletRed : Colors.SeaGreen;
                 });
             }
         }
@@ -196,7 +194,7 @@ namespace CallingQuickstart
 
         private void OnVideoEffectDisabled(object sender, VideoEffectDisabledEventArgs e)
         {
-            Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            this.DispatcherQueue.TryEnqueue(async () =>
             {
                 BackgroundBlur.IsChecked = false;
             });
@@ -204,7 +202,7 @@ namespace CallingQuickstart
 
         private void OnVideoEffectEnabled(object sender, VideoEffectEnabledEventArgs e)
         {
-            Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            this.DispatcherQueue.TryEnqueue(async () =>
             {
                 BackgroundBlur.IsChecked = true;
             });
@@ -263,10 +261,8 @@ namespace CallingQuickstart
             {
                 var state = call.State;
 
-                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-                {
-                    QuickstartTitle.Text = $"{Package.Current.DisplayName} - {state.ToString()}";
-                    Window.Current.SetTitleBar(AppTitleBar);
+                this.DispatcherQueue.TryEnqueue(() => {
+                    m_AppWindow.Title = $"{Package.Current.DisplayName} - {state.ToString()}";
 
                     HangupButton.IsEnabled = state == CallState.Connected || state == CallState.Ringing;
                     CallButton.IsEnabled = !HangupButton.IsEnabled;
@@ -278,7 +274,7 @@ namespace CallingQuickstart
                     case CallState.Connected:
                         {
                             await call.StartAudioAsync(micStream);
-                            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+                            this.DispatcherQueue.TryEnqueue(() =>
                             {
                                 Stats.Text = $"Call id: {Guid.Parse(call.Id).ToString("D")}, Remote caller id: {call.RemoteParticipants.FirstOrDefault()?.Identifier.RawId}";
                             });
@@ -290,7 +286,7 @@ namespace CallingQuickstart
                             call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
                             call.StateChanged -= OnStateChangedAsync;
 
-                            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+                            this.DispatcherQueue.TryEnqueue(() =>
                             {
                                 Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
                             });
@@ -358,7 +354,7 @@ namespace CallingQuickstart
                             var remoteVideoStream = incomingVideoStream as RemoteIncomingVideoStream;
                             var uri = await remoteVideoStream.StartPreviewAsync();
 
-                            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+                            this.DispatcherQueue.TryEnqueue(() =>
                             {
                                 RemoteVideo.Source = MediaSource.CreateFromUri(uri);
                             });
@@ -424,13 +420,13 @@ namespace CallingQuickstart
             var mic = deviceManager?.Microphones?.FirstOrDefault();
             micStream = new LocalOutgoingAudioStream();
 
-            CameraList.ItemsSource = deviceManager.Cameras.ToList();
-
-            if (camera != null)
-            {
-                CameraList.SelectedIndex = 0;
-            }
-
+            this.DispatcherQueue.TryEnqueue(() => {
+                CameraList.ItemsSource = deviceManager.Cameras.ToList();
+                if (camera != null)
+                {
+                    CameraList.SelectedIndex = 0;
+                }
+            });
             callTokenRefreshOptions.TokenRefreshRequested += OnTokenRefreshRequestedAsync;
 
             var tokenCredential = new CallTokenCredential(authToken, callTokenRefreshOptions);
@@ -445,7 +441,6 @@ namespace CallingQuickstart
             try
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
-                //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
 
@@ -522,18 +517,6 @@ namespace CallingQuickstart
                 OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true },
                 OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
-        }
-
-        private async Task<string> RegisterWNS()
-        {
-            // Register to WNS
-
-            var channel = await PushNotificationChannelManager.CreatePushNotificationChannelForApplicationAsync();
-            channel.PushNotificationReceived += OnPushNotificationReceivedAsync;
-            var hub = new Microsoft.WindowsAzure.Messaging.NotificationHub("{CHANNEL_NAME}", "{SECRET_FROM_PNHUB_RESOURCE}");
-            var result = await hub.RegisterNativeAsync(channel.Uri);
-
-            return string.Empty;
         }
         #endregion
     }
