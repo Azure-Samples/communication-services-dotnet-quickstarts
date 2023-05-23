@@ -13,7 +13,7 @@ namespace CallingQuickstart
     public sealed partial class MainPage : Page
     {
         // Set tryRawMedia to true to enable raw media
-        private bool tryRawMedia = true;
+        private bool tryRawMedia = false;
 
         // Video frame specs
         private const int width = 640;
