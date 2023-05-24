@@ -25,7 +25,7 @@
     
     
     <!-- Add your application specific runtime directives here. -->
-
+    <Type Name="System.Collections.Generic.IEnumerable{}" MarshalObject="Required All"/>
 
   </Application>
 </Directives>
