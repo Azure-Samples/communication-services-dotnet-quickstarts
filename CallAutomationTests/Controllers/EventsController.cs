@@ -5,6 +5,7 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation.Scenarios.Handlers;
 using CallAutomation.Scenarios.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CallAutomation.Scenarios.Controllers
 {
@@ -30,7 +31,7 @@ namespace CallAutomation.Scenarios.Controllers
         }
 
         [HttpPost("/events", Name = "Receive_ACS_Events")]
-        //[Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
+        [Authorize(EventGridAuthHandler.EventGridAuthenticationScheme)]
         public async Task<ActionResult> Handle([FromBody] EventGridEvent[] eventGridEvents)
         {
             Request.Headers.TryGetValue("Aeg-Event-Type", out var eventType);
