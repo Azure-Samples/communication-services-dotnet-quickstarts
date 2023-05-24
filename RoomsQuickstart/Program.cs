@@ -147,7 +147,12 @@ namespace RoomsQuickstart
                 AsyncPageable<CommunicationRoom> allRooms = RoomCollection.GetRoomsAsync(cancellationToken);
                 await foreach (CommunicationRoom room in allRooms)
                 {
-                    PrintRoom(room);
+                    if (room is not null)
+                    {
+                        Console.WriteLine("\n---------Printing first room in list rooms---------\n");
+                        PrintRoom(room);
+                        break;
+                    }
                 }
             }
             catch (Exception ex)
