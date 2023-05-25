@@ -145,13 +145,18 @@ namespace RoomsQuickstart
                 CancellationToken cancellationToken = new CancellationTokenSource().Token;
 
                 AsyncPageable<CommunicationRoom> allRooms = RoomCollection.GetRoomsAsync(cancellationToken);
+                var count = 0;
+                Console.WriteLine("\n---------Printing first two rooms in list rooms---------\n");
                 await foreach (CommunicationRoom room in allRooms)
                 {
+                    if (count > 1)
+                    {
+                        break;
+                    }
                     if (room is not null)
                     {
-                        Console.WriteLine("\n---------Printing first room in list rooms---------\n");
                         PrintRoom(room);
-                        break;
+                        count++;
                     }
                 }
             }
