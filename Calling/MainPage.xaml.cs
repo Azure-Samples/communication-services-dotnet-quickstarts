@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Core;
 using Windows.Media.Core;
-using Windows.Networking.PushNotifications;
 using Windows.UI;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
@@ -18,7 +17,7 @@ namespace CallingQuickstart
 {
     public sealed partial class MainPage : Page
     {
-        private const string authToken = "<ACS auth token>";
+        private const string authToken = "<AUTHENTICATION_TOKEN>";
 
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
@@ -385,26 +384,6 @@ namespace CallingQuickstart
                     break;
             }
         }
-
-        private async void OnPushNotificationReceivedAsync(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
-        {
-            switch (args.NotificationType) {
-                case PushNotificationType.Toast:
-                case PushNotificationType.Tile:
-                case PushNotificationType.TileFlyout:
-                case PushNotificationType.Badge: 
-                    break;
-                case PushNotificationType.Raw:
-                    RawNotification rawNotification = args.RawNotification;
-                    string channelId = rawNotification.ChannelId;
-                    string content = rawNotification.Content;
-
-                    var pushNotificationDetails = PushNotificationDetails.Parse(content);
-                    await this.callAgent.HandlePushNotificationAsync(pushNotificationDetails);
-                    break;
-                default: break;
-            }
-        }
         #endregion
 
         #region Helpers
@@ -522,18 +501,6 @@ namespace CallingQuickstart
                 OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true },
                 OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
-        }
-
-        private async Task<string> RegisterWNS()
-        {
-            // Register to WNS
-
-            var channel = await PushNotificationChannelManager.CreatePushNotificationChannelForApplicationAsync();
-            channel.PushNotificationReceived += OnPushNotificationReceivedAsync;
-            var hub = new Microsoft.WindowsAzure.Messaging.NotificationHub("{CHANNEL_NAME}", "{SECRET_FROM_PNHUB_RESOURCE}");
-            var result = await hub.RegisterNativeAsync(channel.Uri);
-
-            return string.Empty;
         }
         #endregion
     }

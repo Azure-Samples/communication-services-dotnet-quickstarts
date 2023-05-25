@@ -10,7 +10,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Media.Core;
-using Windows.Networking.PushNotifications;
 using WinRT.Interop;
 
 namespace CallingQuickstart
@@ -19,7 +18,7 @@ namespace CallingQuickstart
     {
         private AppWindow m_AppWindow;
 
-        private const string authToken = "<ACS auth token>";
+        private const string authToken = "<AUTHENTICATION_TOKEN>";
 
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
@@ -379,26 +378,6 @@ namespace CallingQuickstart
 
                 case VideoStreamState.NotAvailable:
                     break;
-            }
-        }
-
-        private async void OnPushNotificationReceivedAsync(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
-        {
-            switch (args.NotificationType) {
-                case PushNotificationType.Toast:
-                case PushNotificationType.Tile:
-                case PushNotificationType.TileFlyout:
-                case PushNotificationType.Badge: 
-                    break;
-                case PushNotificationType.Raw:
-                    RawNotification rawNotification = args.RawNotification;
-                    string channelId = rawNotification.ChannelId;
-                    string content = rawNotification.Content;
-
-                    var pushNotificationDetails = PushNotificationDetails.Parse(content);
-                    await this.callAgent.HandlePushNotificationAsync(pushNotificationDetails);
-                    break;
-                default: break;
             }
         }
         #endregion
