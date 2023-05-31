@@ -16,21 +16,28 @@ public class LookupPhoneNumber
         string recipientNumber = "<to-phone-number>";
         string acsNumber = "<from-phone-number>";
 
-        // Lookup recipient phone number
-        OperatorInformationResult searchResult = await client.SearchOperatorInformationAsync(new[] { recipientNumber });
-        OperatorInformation operatorInformation = searchResult.Results[0];
-
-        Console.WriteLine($"{operatorInformation.PhoneNumber} is a {operatorInformation.NumberType ?? "unknown"} number, operated by {operatorInformation.OperatorDetails.Name ?? "an unknown operator"}");
-
-        // Send an SMS if the recipient is a mobile number in the US
-        if (operatorInformation.OperatorDetails.MobileCountryCode == "310")
+        try
         {
-            SmsSendResult sendResult = smsClient.Send(
-                from: acsNumber,
-                to: operatorInformation.PhoneNumber,
-                message: "Hello World from the Number Lookup sample!"
-            );
-            Console.WriteLine($"Sms id: {sendResult.MessageId}");
+            // Lookup recipient phone number
+            OperatorInformationResult searchResult = await client.SearchOperatorInformationAsync(new[] { recipientNumber });
+            OperatorInformation operatorInformation = searchResult.Results[0];
+
+            Console.WriteLine($"{operatorInformation.PhoneNumber} is a {operatorInformation.NumberType ?? "unknown"} number, operated by {operatorInformation.OperatorDetails.Name ?? "an unknown operator"}");
+
+            // Send an SMS if the recipient is a mobile number in the US
+            if (operatorInformation.OperatorDetails.MobileCountryCode == "310")
+            {
+                SmsSendResult sendResult = smsClient.Send(
+                    from: acsNumber,
+                    to: operatorInformation.PhoneNumber,
+                    message: "Hello World from the Number Lookup sample!"
+                );
+                Console.WriteLine($"Sms id: {sendResult.MessageId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
         }
     }
 }
