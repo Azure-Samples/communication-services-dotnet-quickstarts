@@ -23,8 +23,6 @@ This guide walks through simple call automation scenarios and endpoints.
 4. Run `dotnet add package Azure.Messaging.EventGrid` in the new project folder we created to install the event grid package 
 5. Run `dotnet restore` to ensure we can build the required packages
     - If you have issues building the correct package, create a new nuget.config file in the project directory and add the following to it
-    - Run `dotnet restore` and it should now work
-
         ```
         <?xml version="1.0" encoding="utf-8"?>
         <configuration>
@@ -34,6 +32,8 @@ This guide walks through simple call automation scenarios and endpoints.
         </packageSources>
         </configuration>
         ```
+    - Run `dotnet restore` and it should now work
+
 ## NOTE after every code change make sure you end the server and restart it. 
 
 ## Setup variables and imports that will be reused later on in this sample in the program.cs file
@@ -51,9 +51,9 @@ using Azure.Messaging;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-const string ngrokEndpoint = ""; //ngrok endpoint for our service
-const string cstring = ""; // Input your connection string here
-var client = new CallAutomationClient(connectionString: cstring);
+const string ngrokEndpoint = "<NGROK_ENDPOINT>";
+const string acsConnectionString = "<ACS_CONNECTION_STRING>";
+var client = new CallAutomationClient(connectionString: acsConnectionString);
 var eventProcessor = client.GetEventProcessor(); //This will be used for the event processor later on
 string callConnectionId = "";
 string recordingId = "";
@@ -323,7 +323,7 @@ app.MapGet("/delete", () =>
 
 
 
-## **inbound pstn call
+## **Inbound pstn call
 1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapPost("/incomingcall", async (

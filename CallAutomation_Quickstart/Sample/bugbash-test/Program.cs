@@ -9,9 +9,9 @@ using Azure.Messaging;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-const string ngrokEndpoint = ""; //ngrok endpoint for our service
-const string cstring = ""; // Input your connection string here
-var client = new CallAutomationClient(connectionString: cstring);
+const string ngrokEndpoint = "<NGROK_ENDPOINT>";
+const string acsConnectionString = "<ACS_CONNECTION_STRING>";
+var client = new CallAutomationClient(connectionString: acsConnectionString);
 var eventProcessor = client.GetEventProcessor(); //This will be used for the event processor later on
 string callConnectionId = "";
 string recordingId = "";
@@ -170,7 +170,7 @@ app.MapGet("/recognize", async () =>
         var callConenction = client.GetCallConnection(callConnectionId);
         var callMedia = callConenction.GetCallMedia();
         callConenction.GetParticipants();
-        CallMediaRecognizeOptions dmtfRecognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier("+17787519872"), maxTonesToCollect: 3)
+        CallMediaRecognizeOptions dmtfRecognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier("+17781231324"), maxTonesToCollect: 3)
         {
             InterruptCallMediaOperation = true,
             InterToneTimeout = TimeSpan.FromSeconds(10),
