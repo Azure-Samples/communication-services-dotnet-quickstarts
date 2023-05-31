@@ -1,6 +1,9 @@
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
+using Azure.Messaging.EventGrid;
+using Azure.Messaging.EventGrid.SystemEvents;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +21,11 @@ var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
 
 // Base url of the app
 var callbackUriHost = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
+
+// This will be set by fileStatus endpoints
+string recordingLocation = "";
+
+string recordingId = "";
 
 CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
 builder.Services.AddSingleton(callAutomationClient);
@@ -46,7 +54,8 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         {
             logger.LogInformation($"Start Recording...");
             CallLocator callLocator = new ServerCallLocator(@event.ServerCallId);
-            _ = await callAutomationClient.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
+            var recordingResult = await callAutomationClient.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
+            recordingId = recordingResult.Value.RecordingId;
 
             // prepare recognize tones
             CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(targetPhonenumber), maxTonesToCollect: 1);
@@ -63,7 +72,6 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         {
             // Play audio once recognition is completed sucessfully
             var recognizeCompleted = (RecognizeCompleted)@event;
-
             string selectedTone = ((DtmfResult)recognizeCompleted.RecognizeResult).ConvertToString();
 
             switch (selectedTone)
@@ -77,18 +85,61 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                     break;
 
                 default:
-                    await callConnection.HangUpAsync(true);
+                    //invalid tone
+                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "/audio/Invalid.wav")));
                     break;
             }
         }
-        if ((@event is RecognizeFailed) || (@event is PlayCompleted) || (@event is PlayFailed))
+        if (@event is RecognizeFailed)
         {
-            logger.LogInformation($"Terminating Call.");
+            logger.LogInformation($"RecognizeFailed event received for call connection id: {@event.CallConnectionId}");
+            var recognizeFailedEvent = (RecognizeFailed)@event;
+
+            // Check for time out, and then play audio message
+            if (recognizeFailedEvent.ReasonCode.Equals(MediaEventReasonCode.RecognizeInitialSilenceTimedOut))
+            {
+                await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "/audio/Timeout.wav")));
+            }
+        }
+        if ((@event is PlayCompleted) || (@event is PlayFailed))
+        {
+            logger.LogInformation($"Stop recording and terminating call.");
+            callAutomationClient.GetCallRecording().Stop(recordingId);
             await callConnection.HangUpAsync(true);
         }
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
+
+app.MapPost("/filestatus", ([FromBody] EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
+{
+    foreach (var eventGridEvent in eventGridEvents)
+    {
+        if (eventGridEvent.TryGetSystemEventData(out object eventData))
+        {
+            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+            {
+                var responseData = new SubscriptionValidationResponse
+                {
+                    ValidationResponse = subscriptionValidationEventData.ValidationCode
+                };
+                return Results.Ok(responseData);
+            }
+            if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+            {
+                recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+                logger.LogInformation($"The recording location is : {recordingLocation}");
+            }
+        }
+    }
+    return Results.Ok();
+});
+
+app.MapGet("/download", (ILogger<Program> logger) =>
+{
+    callAutomationClient.GetCallRecording().DownloadTo(new Uri(recordingLocation), "testfile.wav");
+    return Results.Ok();
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -98,8 +149,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(
-           Path.Combine(builder.Environment.ContentRootPath, "audio")),
+    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "audio")),
     RequestPath = "/audio"
 });
 
