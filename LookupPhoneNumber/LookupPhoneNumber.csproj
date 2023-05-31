@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Communication.PhoneNumbers" Version="1.2.0-alpha.20230531.2" />
+    <PackageReference Include="Azure.Communication.Sms" Version="1.0.1" />
+    <PackageReference Include="Azure.Core" Version="1.32.0" />
+  </ItemGroup>
+
+</Project>
