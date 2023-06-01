@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace RecordingApi.Controllers
 {
+    /// <summary>
+    /// Recording APIs
+    /// </summary>
     [ApiController]
     public class RecordingsController : ControllerBase
     {
@@ -24,7 +27,11 @@ namespace RecordingApi.Controllers
         private const string RecordingActiveMessage = "Recording is already in progress, only one recording can be started.";
         private string _recordingFileFormat;
 
-
+        /// <summary>
+        /// Initilize Recording
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="logger"></param>
         public RecordingsController(IConfiguration configuration, ILogger<RecordingsController> logger)
         {
             _logger = logger;
@@ -35,6 +42,11 @@ namespace RecordingApi.Controllers
 
         #region outbound call - an active call required for recording to start.
 
+        /// <summary>
+        /// Start outbound call, Run before start recording
+        /// </summary>
+        /// <param name="targetPstnPhoneNumber"></param>
+        /// <returns></returns>
         [HttpGet("api/outbound_call", Name = "Outbound_Call")]
         public async Task<IActionResult> OutboundCall([FromQuery] string targetPstnPhoneNumber)
         {
@@ -53,6 +65,11 @@ namespace RecordingApi.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Call backs for signalling events, [Do not call directly from swagger]
+        /// </summary>
+        /// <param name="cloudEvents"></param>
+        /// <returns></returns>
         [HttpPost]
         [Route("/api/callbacks")]
         public IActionResult Callbacks([FromBody] CloudEvent[] cloudEvents)
@@ -81,7 +98,11 @@ namespace RecordingApi.Controllers
 
         #endregion
 
-
+        /// <summary>
+        /// Start Recording 
+        /// </summary>
+        /// <param name="serverCallId"></param>
+        /// <returns></returns>
         [HttpPost("recordings", Name = "Start_Recording")]
         public async Task<IActionResult> StartRecordingAsync([FromQuery] string serverCallId)
         {
@@ -121,6 +142,12 @@ namespace RecordingApi.Controllers
             }
         }
 
+
+        /// <summary>
+        /// Pause Recording
+        /// </summary>
+        /// <param name="recordingId"></param>
+        /// <returns></returns>
         [HttpPost("recordings/{recordingId}:pause", Name = "Pause_Recording")]
         public async Task<IActionResult> PauseRecording([FromRoute] string recordingId)
         {
@@ -129,6 +156,12 @@ namespace RecordingApi.Controllers
 
             return Ok();
         }
+
+        /// <summary>
+        /// Resume Recording
+        /// </summary>
+        /// <param name="recordingId"></param>
+        /// <returns></returns>
         [HttpPost("recordings/{recordingId}:resume", Name = "Resume_Recording")]
         public async Task<IActionResult> ResumeRecordingAsync([FromRoute] string recordingId)
         {
@@ -137,6 +170,12 @@ namespace RecordingApi.Controllers
 
             return Ok();
         }
+
+        /// <summary>
+        /// Stop Recording
+        /// </summary>
+        /// <param name="recordingId"></param>
+        /// <returns></returns>
         [HttpDelete("recordings/{recordingId}", Name = "Stop_Recording")]
         public async Task<IActionResult> StopRecordingAsync([FromRoute] string recordingId)
         {
@@ -146,6 +185,11 @@ namespace RecordingApi.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Get recording state
+        /// </summary>
+        /// <param name="recordingId"></param>
+        /// <returns></returns>
         [HttpGet("getRecordingState/{recordingId}", Name = "GetRecording_State")]
         public async Task<IActionResult> GetRecordingStateAsync([FromRoute] string recordingId)
         {
@@ -158,7 +202,7 @@ namespace RecordingApi.Controllers
         #region recording download file after stop recording
 
         /// <summary>
-        /// Web hook to receive the recording file update status event
+        /// Web hook to receive the recording file update status event, [Do not call directly from Swagger]
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
+using System.IO;
 
 namespace RecordingApi
 {
@@ -30,7 +32,10 @@ namespace RecordingApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRazorPages();
-            services.AddSwaggerGen();
+            services.AddSwaggerGen(c =>
+            {
+                c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "RecordingApi.xml"));
+            });
             services.AddControllers();
         }
 
