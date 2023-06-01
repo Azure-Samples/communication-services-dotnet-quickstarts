@@ -1,8 +1,7 @@
 ---
 Page Type: Sample
-Languages:
-- CSharp
-products:
+Languages: CSharp
+Products:
 - Azure.Messaging.EventGrid
 - Azure.Communication.CallAutomation
 ---
@@ -25,9 +24,9 @@ A separate branch with end to end implementation is [available](https://github.c
 	- To enable dev tunneling, Click `Tools` -> `Options` in Visual Studio 2022.  In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
 	![EnableDevTunnel](./data/EnableDevTunnel.png) 
 	- Create `Dev Tunnels`, for more details about [Dev Tunnels.](https://learn.microsoft.com/en-us/aspnet/core/test/dev-tunnels?view=aspnetcore-7.0)  
-	![ViewDevTunnels](./data//ViewDevTunnel.png) 
+	![ViewDevTunnels](./data/ViewDevTunnel.png) 
 	- For accessing the Dev Tunnel public change the Access to Public.  
-	![CreateDevTunnels](./data//CreateDevTunnel.png) 
+	![CreateDevTunnels](./data/CreateDevTunnel.png) 
 
 
 
@@ -63,7 +62,7 @@ Call Recording enables you to record multiple calling scenarios available in Azu
 2. Select `+ Event Subscription` to create a new subscription. 
 3. Filter for Recording File Status Updated(preview) event. 
 4. Choose endpoint type as web hook and provide the public url generated for your application by Dev Tunnels. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <dev_tunnel_url>/recording/getRecordingFile.  
-![Event Grid Subscription for Call Recording](./data/EventgridSubscription-CallRecording.png)  
+![Event Grid Subscription for Call Recording](./data/WebHookSettings.png)  
 5. Select create to start the creation of subscription and validation of your endpoint as mentioned previously. The subscription is ready when the provisioning status is marked as succeeded.  
 **Note:** Application should be running to able to create the webhook successfully. 
 
