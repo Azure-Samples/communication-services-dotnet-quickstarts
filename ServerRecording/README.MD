@@ -1,65 +1,98 @@
 ---
-page_type: sample
-languages:
-- csharp
+Page Type: Sample
+Languages:
+- CSharp
 products:
-- azure
-- azure-communication-services
+- Azure.Messaging.EventGrid
+- Azure.Communication.CallAutomation
 ---
 
 # Recording APIs Sample
 
-This is a sample application to show how the Azure Communication Services Call Automation SDK can be used to build a call recording feature.
+This is a sample application to showcase how the Call Automation SDK can be used to add recording features to any application.
 
-It's a C# based application powered by Dot net core to connect this application with Azure Communication Services.
+This application, built on the .NET Core framework using C#, is seamlessly integrated with Azure Communication Services. It harnesses the power of Azure Communication Services to establish connections and enable communication features within the application.
 
 A separate branch with end to end implementation is [available](https://github.com/Azure-Samples/communication-services-web-calling-hero/tree/public-preview). It's a public preview branch and uses beta SDKs that are not meant for production use. Please use the main branch sample for any production scenarios.
 
 ## Prerequisites
+- Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
+- [Visual Studio (2022 and above)](https://visualstudio.microsoft.com/vs/)
+- [.NET7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
+- Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
+- Enable Visual studio dev tunneling for local development. For details, see   [Enable dev tunnel] (https://learn.microsoft.com/en-us/connectors/custom-connectors/port-tunneling)
+	
+	- To enable dev tunneling, Click `Tools` -> `Options` in Visual Studio 2022.  In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
+	![EnableDevTunnel](./data/EnableDevTunnel.png) 
+	- Create `Dev Tunnels`, for more details about [Dev Tunnels.](https://learn.microsoft.com/en-us/aspnet/core/test/dev-tunnels?view=aspnetcore-7.0)  
+	![ViewDevTunnels](./data//ViewDevTunnel.png) 
+	- For accessing the Dev Tunnel public change the Access to Public.  
+	![CreateDevTunnels](./data//CreateDevTunnel.png) 
 
-- Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F)
-- [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/)
-- [.NET Core 6.0](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) (Make sure to install the version that corresponds with your visual studio instance, 32 vs 64 bit)
-- Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this quickstart.
-- An Azure storage account and container, for details, see [Create a storage account](https://docs.microsoft.com/azure/storage/common/storage-account-create?tabs=azure-portal). You'll need to record your storage **connection string** and **container name** for this quickstart.
-- Create a webhook and subscribe to the recording events. For details, see [Create webhook](https://docs.microsoft.com/azure/communication-services/quickstarts/voice-video-calling/download-recording-file-sample)
+
+
+
+## Clone the code local and update appsettings
+
+1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
+2. Run `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
+3. Once you get the code on local machine, navigate to **ServerRecording/appsettings.json** file found under the ServerRecording folder.
+4. Update the values for below.
+
+	| Key | Value | Description |
+	| -------- | -------- | -------- |
+	| `ACSResourceConnectionString`    | \<ACS Connection String>   | Input your ACS connection string in the variable   |
+	| `ACSAcquiredPhoneNumber`    | \<ACS Acquired Number>   | Phone number associated with the Azure Communication Service resource   |
+	| `BaseUri`    | \<dev tunnel url>   | Base url of the app, don't add `/` at end. For getting the dev tunnel url, run the app once.   |
 
 ## Code structure
 
-- ./ServerRecording/Controllers : Server app core logic for calling recording APIs using Azure Communication Services server calling SDK
-- ./ServerRecording/Program.cs : Entry point for the server app program logic
-- ./ServerRecording/Startup.cs : Entry point for the server app startup logic
+- `./ServerRecording/Controllers/RecordingsController.cs`: Exposing Recordings APIs as well as helper APIs to start the recording.
+- `./ServerRecording/Program.cs`: Entry point for the server app, and startup settings.
+- `./ServerRecording/Models.cs`: Models for recording types, format etc.
 
-## Before running the sample for the first time
+## Locally Run the sample app
 
-1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
-2. git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git.
-3. Once you get the config keys add the keys to the **Calling/appsetting.json**  file found under the Calling folder.
-	- Input your ACS connection string in the variable: `ACSResourceConnectionString`
-	- Input your storage connection string in the variable: `BlobStorageConnectionString`
-	- Input blob container name for recorded media in the variable `BlobContainerName`
+1. Go to ServerRecording folder and open `RecordingApi.csproj` solution in Visual Studio.
+2. Enable Visual studio dev tunneling for local development (see pre-requisite section for enabling dev tunnel).
+3. Run the application in debug mode, swagger url should open, if swagger not opened by itself add `/swagger/index.html` at the end.
 
-## Locally deploying the sample app
+## Create Webhook for Microsoft.Communication.RecordingFileStatus event
+Call Recording enables you to record multiple calling scenarios available in Azure Communication Services by providing you with a set of APIs to start, stop, pause and resume recording. To learn more about it, see [this guide](https://learn.microsoft.com/en-us/azure/communication-services/concepts/voice-video-calling/call-recording). 
+1. Navigate to your resource on Azure portal and select `Events` from the left side menu.
+2. Select `+ Event Subscription` to create a new subscription. 
+3. Filter for Recording File Status Updated(preview) event. 
+4. Choose endpoint type as web hook and provide the public url generated for your application by Dev Tunnels. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <dev_tunnel_url>/recording/getRecordingFile.  
+![Event Grid Subscription for Call Recording](./data/EventgridSubscription-CallRecording.png)  
+5. Select create to start the creation of subscription and validation of your endpoint as mentioned previously. The subscription is ready when the provisioning status is marked as succeeded.  
+**Note:** Application should be running to able to create the webhook successfully. 
 
-1. Go to Calling folder and open `RecordingApi.csproj` solution in Visual Studio
-2. Run `RecordingApi` project.
-3. Use postman or any debugging tool and open url - https://localhost:5001
+## Step by step to test recordings API via swagger.
 
-### Troubleshooting
+Once App is running local, you will see all list of exposed API on swagger.
+1. Step 1. Start a call invoke api/call under Outbound section.
+	- Try it out `GET api/outbound_call`, provide the Target PSTN phone number to get the call.
+	- Execute, accept the call on Target PSTN Phone number, Keep call running.
 
-1. Solution doesn\'t build, it throws errors during build
-	- Clean/rebuild the C# solution
+2. Step 2. Start Recording.
+	-	Get the serverCallId from log (command prompt should be running while you open the App in debug mode).
+	-	Try it out `POST recordings`, provide the serverCallId value.
+	- 	Execute, recording would be started.
+3. Step 3. (Optional) Execute `POST recordings/{recordingId}:pause` and then `POST recordings/{recordingId}:resume`.
 
-## Publish to Azure
+4. Step 4. Execute `DELETE recordings/{recordingId}` for stop the recording.
 
-1. Right click the `RecordingApi` project and select Publish.
-2. Create a new publish profile and select your app name, Azure subscription, resource group and etc.
-3. Before publishing, add your connection string with `Edit App Service Settings`, and fill in `ResourceConnectionString` as key and connection string (copy from appsettings.json) as value
-4. Detailed instructions on publishing the app to Azure are available at [Publish a Web app](https://docs.microsoft.com/visualstudio/deployment/quickstart-deploy-to-azure?view=vs-2019).
+5. Step 5. After stop recording, there would be callbacks for download recording file, check on App running folder to see the recording files.
 
-**Note**: While you may use http://localhost for local testing, the sample when deployed will only work when served over https. The SDK [does not support http](https://docs.microsoft.com/azure/communication-services/concepts/voice-video-calling/calling-sdk-features#user-webrtc-over-https).
+## Troubleshooting
+
+1. Solution doesn\'t build, it throws errors during build.
+	- Clean/rebuild the C# solution.
+2. Recording files not getting downloaded.
+	- Check for webhook settings if dev tunnel url is correct.
 
 ## Additional Reading
 
-- [Azure Communication Calling SDK](https://docs.microsoft.com/azure/communication-services/concepts/voice-video-calling/calling-sdk-features) - To learn more about the calling web sdk
-- [ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-6.0) - Framework for building web applications
+- [Azure Communication Calling SDK](https://docs.microsoft.com/azure/communication-services/concepts/voice-video-calling/calling-sdk-features) - To learn more about the calling web SDK.
+- [ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-7.0) - Framework for building web applications
+
