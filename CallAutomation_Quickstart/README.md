@@ -15,11 +15,49 @@ This guide walks through simple call automation scenarios and endpoints.
 - An active Communication Services resource. [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource).
 - Dotnet 7 or 6 SDK. [Download Dotnet](https://dotnet.microsoft.com/en-us/download/dotnet). (dotnet --list-sdks)
 - VScode. [Download VScode](https://code.visualstudio.com/).
-- ngrok
+- Dev-tunnel. download from the following [Dev-tunnel download](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
+
+## Dev tunnels setup
+- run `devtunnel user login` and login with your msft account or `devtunnel user login -g` for github
+- run `devtunnel.exe host -p 5000 --allow-anonymous` to begin hosting. copy the url similar to `https://9ndqr7mn.usw2.devtunnels.ms:5000` that is returned
+
+## *For a persistent dev tunnel
+- run `devtunnel create --allow-anonymous` and note the id. Similar to 4bt7fzff.usw2
+- run `devtunnel port create -p 5000`
+- run `devtunnel host <id>` to begin hosting. copy the url similar to `https://9ndqr7mn.usw2.devtunnels.ms:5000` that is returned
+
+
+## Actions to test (included in guide and sample file)
+- start call
+- start group call
+- play media
+- play media to all
+- start recording
+- download recording
+- delete recording
+- *inbound pstn call
+- *dtmf recognition
+
+
+## Additional actions to test (must create endpoints yourself)
+- pause recording
+- resume recording
+- hang up call
+- transfer call
+- modify start recording settings
+- *modify dtmf timing settings, tones required, and act on one specific tone
+
+## Two ways to test.
+1. Follow the guide and setup the project from scratch, follow test instructions.
+2. Run the sample bugbash-test project.
+    - from the sample/bugbash-test folder run `dotnet restore`
+    - update the hostingEndpoint and acsConnectionString variables
+    - run `dotnet run` and follow the test instructions in the guide.
+
 ## Setup empty project
 1. Create a folder for our project
 2. Run `dotnet new web --language c# --name bugbash-testing` in the folder we created to initialize the project.
-3. In the new project folder that was created in step 1 Run `dotnet add package Azure.Communication.CallAutomation -v 1.0.0-alpha.20230526.8`. 
+3. In the new project folder that was created in step 1 Run `dotnet add package Azure.Communication.CallAutomation -v 1.0.0-alpha.20230526.8` 
 4. Run `dotnet add package Azure.Messaging.EventGrid` in the new project folder we created to install the event grid package 
 5. Run `dotnet restore` to ensure we can build the required packages
     - If you have issues building the correct package, create a new nuget.config file in the project directory and add the following to it
@@ -37,8 +75,7 @@ This guide walks through simple call automation scenarios and endpoints.
 ## NOTE after every code change make sure you end the server and restart it. 
 
 ## Setup variables and imports that will be reused later on in this sample in the program.cs file
-Add the following snippets under. This will be used to recieve incoming events and the conenction string will link this with the acs resource we created.
-
+Update the program.cs file to the following.
 ```c#
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
@@ -51,7 +88,7 @@ using Azure.Messaging;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-const string ngrokEndpoint = "<NGROK_ENDPOINT>";
+const string hostingEndpoint = "<HOSTING_ENDPOINT>";
 const string acsConnectionString = "<ACS_CONNECTION_STRING>";
 var client = new CallAutomationClient(connectionString: acsConnectionString);
 var eventProcessor = client.GetEventProcessor(); //This will be used for the event processor later on
@@ -60,22 +97,18 @@ string recordingId = "";
 string contentLocation = "";
 string deleteLocation = "";
 
-
-app.Run();
-```
-
-## Test endpoint to make sure we are okay
-1. insert the following code snippets above `app.Run()`, and add your connection string from your acs resource
-```c#
 app.MapGet("/test", ()=>
     {
         Console.WriteLine("test endpoint");
     }
 );
+
+app.Run();
 ```
+
+
 2. In the projectFolder/Properties/launchSettings.json update the http.applicationUrl to have port 5000
-3. Start ngrok on port 5000. From where ngrok is dowloaded, using the terminal run `./ngrok http 5000`
-4. update the ngrok endpoints. example `https://9253-2001-569-5146-9600-755d-996a-d84c-8dbf.ngrok.io`
+3. update the hosting endpoint with our dev tunnel. example `https://9ndqr7mn.usw2.devtunnels.ms:5000`
 5. from the terminal run `dotnet run` in our project folder"
 6. from cmd run "curl http://localhost:5000/test" and ensure you can see test endpoint being written to the console.  
 
@@ -103,12 +136,12 @@ app.MapGet("/startcall", (
         Console.WriteLine($"starting a new call to user:{acsTarget}");
         CommunicationUserIdentifier targetUser = new CommunicationUserIdentifier(acsTarget);
         var invite = new CallInvite(targetUser);
-        var createCallOptions = new CreateCallOptions(invite, new Uri(ngrokEndpoint+ "/callback"));
+        var createCallOptions = new CreateCallOptions(invite, new Uri(hostingEndpoint+ "/callback"));
         var call = client.CreateCall(createCallOptions);
         callConnectionId = call.Value.CallConnection.CallConnectionId;
         return Results.Ok();
     }
-);
+);c
 ```
 2. login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. 
 3. To test this, run the following form a cmd prompt `curl http://localhost:5000/startcall?acstarget=INSERTACSTARGETUSERHERE` using the acs user you created
@@ -124,8 +157,8 @@ app.MapGet("/playmedia", (
     {
         Console.WriteLine("play media endpoint");
         Console.WriteLine($"playing media to user:{acsTarget}");
-        var callConenction = client.GetCallConnection(callConnectionId);
-        var callMedia = callConenction.GetCallMedia();
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callMedia = callConnection.GetCallMedia();
         FileSource fileSource = new FileSource(new System.Uri("https://acstestapp1.azurewebsites.net/audio/bot-hold-music-1.wav"));
         CommunicationUserIdentifier targetUser = new CommunicationUserIdentifier(acsTarget);
         var playOptions = new PlayOptions(new List<PlaySource> {fileSource},new List<CommunicationIdentifier> {targetUser});
@@ -145,8 +178,8 @@ you should notice audio will start to play from the call.
 app.MapGet("/stopmedia", () =>
     {
         Console.WriteLine("stop media operations endpoint");
-        var callConenction = client.GetCallConnection(callConnectionId);
-        var callMedia = callConenction.GetCallMedia();
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callMedia = callConnection.GetCallMedia();
         callMedia.CancelAllMediaOperations();
         return Results.Ok();
     }
@@ -169,7 +202,7 @@ app.MapGet("/startgroupcall", (
         CommunicationUserIdentifier targetUser2 = new CommunicationUserIdentifier(targets[1]);
 
         var invite = new CallInvite(targetUser);
-        var createGroupCallOptions = new CreateGroupCallOptions(new List<CommunicationIdentifier> {targetUser, targetUser2}, new Uri(ngrokEndpoint+ "/callback"));
+        var createGroupCallOptions = new CreateGroupCallOptions(new List<CommunicationIdentifier> {targetUser, targetUser2}, new Uri(hostingEndpoint+ "/callback"));
         var call =client.CreateGroupCall(createGroupCallOptions);
         callConnectionId = call.Value.CallConnection.CallConnectionId;
         return Results.Ok();
@@ -189,8 +222,8 @@ app.MapGet("/playmediatoall", () =>
         Console.WriteLine("play media to all endpoint");
         Console.WriteLine($"playing media to all users");
 
-        var callConenction = client.GetCallConnection(callConnectionId);
-        var callMedia = callConenction.GetCallMedia();
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callMedia = callConnection.GetCallMedia();
         FileSource fileSource = new FileSource(new System.Uri("https://acstestapp1.azurewebsites.net/audio/bot-hold-music-1.wav"));
         var playToAllOptions = new PlayToAllOptions(new List<PlaySource> {fileSource});
         callMedia.PlayToAll(playToAllOptions);
@@ -208,8 +241,8 @@ app.MapGet("/startrecording", () =>
     {
         Console.WriteLine("start recording endpoint");
 
-        var callConenction = client.GetCallConnection(callConnectionId);
-        var callLocator = new ServerCallLocator(callConenction.GetCallConnectionProperties().Value.ServerCallId);
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callLocator = new ServerCallLocator(callConnection.GetCallConnectionProperties().Value.ServerCallId);
         var callRecording = client.GetCallRecording();
         var recordingOptions = new StartRecordingOptions(callLocator);
         var recording = callRecording.Start(recordingOptions);
@@ -228,8 +261,8 @@ app.MapGet("/stoprecording", () =>
     {
         Console.WriteLine("stop recording endpoint");
 
-        var callConenction = client.GetCallConnection(callConnectionId);
-        var callLocator = new ServerCallLocator(callConenction.GetCallConnectionProperties().Value.ServerCallId);
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callLocator = new ServerCallLocator(callConnection.GetCallConnectionProperties().Value.ServerCallId);
         var callRecording = client.GetCallRecording();
         var recordingOptions = new StartRecordingOptions(callLocator);
         callRecording.Stop(recordingId);
@@ -278,7 +311,7 @@ app.MapPost("/filestatus", ([FromBody] EventGridEvent[] eventGridEvents) =>
     - enter name "filestatus"
     - select recording file status updated as the event to filter
     - add a system topic name, testevent for example
-    - under endpoint, select webhook and enter the ngrokurl/filestatus as the endpoint. 
+    - under endpoint, select webhook and enter the hostingEndpoint/filestatus as the endpoint. 
     - make sure when we register this, our app is running as the subscription validation handshake is required. 
 
 3. Now that we have completed the setup, we can stop a recording, or end a call and we will get this filestatus updated event. 
@@ -345,7 +378,7 @@ app.MapPost("/incomingcall", async (
             else if (eventData is Azure.Messaging.EventGrid.SystemEvents.AcsIncomingCallEventData acsIncomingCallEventData)
             {
                 var incomingCallContext = acsIncomingCallEventData.IncomingCallContext;
-                var callbackUri = new Uri(ngrokEndpoint+ "/callback");
+                var callbackUri = new Uri(hostingEndpoint+ "/callback");
                 AnswerCallResult answerCallResult = await client.AnswerCallAsync(incomingCallContext, callbackUri);
                 callConnectionId = answerCallResult.CallConnectionProperties.CallConnectionId;
             }
@@ -360,7 +393,7 @@ app.MapPost("/incomingcall", async (
     - click event subscription to create a new subscription
     - enter name "call"
     - select incoming call as the event to filter
-    - under endpoint, seelct webhook and enter the ngrokurl/incomingcall as the endpoint. 
+    - under endpoint, seelct webhook and enter the hostingEndpoint/incomingcall as the endpoint. 
     - make sure when we register this, our app is running as the subscription validation handshake is required. 
 
 
@@ -374,9 +407,9 @@ app.MapGet("/recognize", async () =>
         Console.WriteLine("play media to all endpoint");
         Console.WriteLine($"playing media to all users");
 
-        var callConenction = client.GetCallConnection(callConnectionId);
-        var callMedia = callConenction.GetCallMedia();
-        callConenction.GetParticipants();
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callMedia = callConnection.GetCallMedia();
+        callConnection.GetParticipants();
         CallMediaRecognizeOptions dmtfRecognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(pstnNumber), maxTonesToCollect: 3)
         {
             InterruptCallMediaOperation = true,
@@ -405,6 +438,3 @@ app.MapGet("/recognize", async () =>
 2. you will now hear a song play (in a real case this would be an audio file containing options)
 3. you can enter 1-3 digits, and hit pound. This server will now print the options you chose to the console. 
 
-
-## Additional things to test
-- TODO
