@@ -1,5 +1,4 @@
-﻿using Azure;
-using Azure.Communication;
+﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
@@ -21,10 +20,13 @@ namespace RecordingApi.Controllers
         private readonly ILogger _logger;
         private readonly CallAutomationClient _client;
         private readonly IConfiguration _configuration;
-        
-        // for simplicity storing last locations
-        private string contentLocation;
-        private string deleteLocation;
+
+        // for simplicity using static values
+        private static string _serverCallId = "";
+        private static string _callConnectionId = "";
+        private static string _recordingId = "";
+        private static string _contentLocation = "";
+        private static string _deleteLocation = "";
 
         /// <summary>
         /// Initilize Recording
@@ -39,13 +41,13 @@ namespace RecordingApi.Controllers
         }
 
         #region outbound call - an active call required for recording to start.
-        
+
         /// <summary>
         /// Start outbound call, Run before start recording
         /// </summary>
         /// <param name="targetPhoneNumber"></param>
         /// <returns></returns>
-        [HttpGet("api/call", Name = "Outbound_Call")]
+        [HttpGet("OutboundCall")]
         public async Task<IActionResult> OutboundCall([FromQuery] string targetPhoneNumber)
         {
             var callerId = new PhoneNumberIdentifier(_configuration["ACSAcquiredPhoneNumber"]);
@@ -54,10 +56,11 @@ namespace RecordingApi.Controllers
             var createCallOption = new CreateCallOptions(callInvite, new Uri(_configuration["BaseUri"] + "/api/callbacks"));
 
             var response = await _client.CreateCallAsync(createCallOption).ConfigureAwait(false);
+            _callConnectionId = response.Value.CallConnection.CallConnectionId;
 
-            return Ok($"CallConnectionId: {response.Value.CallConnection.CallConnectionId}");
+            return Ok($"CallConnectionId: {_callConnectionId}");
         }
-        
+
         #endregion
 
         /// <summary>
@@ -65,22 +68,17 @@ namespace RecordingApi.Controllers
         /// </summary>
         /// <param name="serverCallId"></param>
         /// <returns></returns>
-        [HttpPost("recordings", Name = "Start_Recording")]
+        [HttpGet("StartRecording")]
         public async Task<IActionResult> StartRecordingAsync([FromQuery] string serverCallId)
         {
             try
             {
-                StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId))
-                {
-                    RecordingContent = RecordingContent.Audio,
-                    RecordingFormat = RecordingFormat.Mp3,
-                    RecordingChannel = RecordingChannel.Mixed,
-                };
-
+                _serverCallId = serverCallId ?? _client.GetCallConnection(_callConnectionId).GetCallConnectionProperties().Value.ServerCallId;
+                StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(_serverCallId));
                 var callRecording = _client.GetCallRecording();
                 var response = await callRecording.StartAsync(recordingOptions).ConfigureAwait(false);
-                
-                return Ok($"RecordingId: {response.Value.RecordingId}");
+                _recordingId = response.Value.RecordingId;
+                return Ok($"RecordingId: {_recordingId}");
             }
             catch (Exception ex)
             {
@@ -88,16 +86,16 @@ namespace RecordingApi.Controllers
             }
         }
 
-
         /// <summary>
         /// Pause Recording
         /// </summary>
         /// <param name="recordingId"></param>
         /// <returns></returns>
-        [HttpPost("recordings/{recordingId}:pause", Name = "Pause_Recording")]
-        public async Task<IActionResult> PauseRecording([FromRoute] string recordingId)
+        [HttpPost("PauseRecording")]
+        public async Task<IActionResult> PauseRecording([FromQuery] string recordingId)
         {
-            var response =  await _client.GetCallRecording().PauseAsync(recordingId).ConfigureAwait(false);
+            _recordingId = recordingId ?? _recordingId;
+            var response = await _client.GetCallRecording().PauseAsync(_recordingId).ConfigureAwait(false);
 
             _logger.LogInformation($"Pause Recording response -- > {response}");
             return Ok();
@@ -108,11 +106,12 @@ namespace RecordingApi.Controllers
         /// </summary>
         /// <param name="recordingId"></param>
         /// <returns></returns>
-        [HttpPost("recordings/{recordingId}:resume", Name = "Resume_Recording")]
-        public async Task<IActionResult> ResumeRecordingAsync([FromRoute] string recordingId)
+        [HttpPost("ResumeRecording")]
+        public async Task<IActionResult> ResumeRecordingAsync([FromQuery] string recordingId)
         {
-            var response = await _client.GetCallRecording().ResumeAsync(recordingId).ConfigureAwait(false);
-            
+            _recordingId = recordingId ?? _recordingId;
+            var response = await _client.GetCallRecording().ResumeAsync(_recordingId).ConfigureAwait(false);
+
             _logger.LogInformation($"Resume Recording response -- > {response}");
             return Ok();
         }
@@ -122,11 +121,12 @@ namespace RecordingApi.Controllers
         /// </summary>
         /// <param name="recordingId"></param>
         /// <returns></returns>
-        [HttpDelete("recordings/{recordingId}", Name = "Stop_Recording")]
-        public async Task<IActionResult> StopRecordingAsync([FromRoute] string recordingId)
+        [HttpDelete("StopRecording")]
+        public async Task<IActionResult> StopRecordingAsync([FromQuery] string recordingId)
         {
-            var response = await _client.GetCallRecording().StopAsync(recordingId).ConfigureAwait(false);
-            
+            _recordingId = recordingId ?? _recordingId;
+            var response = await _client.GetCallRecording().StopAsync(_recordingId).ConfigureAwait(false);
+
             _logger.LogInformation($"StopRecordingAsync response -- > {response}");
             return Ok();
         }
@@ -136,11 +136,12 @@ namespace RecordingApi.Controllers
         /// </summary>
         /// <param name="recordingId"></param>
         /// <returns></returns>
-        [HttpGet("getRecordingState/{recordingId}", Name = "GetRecording_State")]
-        public async Task<IActionResult> GetRecordingStateAsync([FromRoute] string recordingId)
+        [HttpGet("GetRecordingState")]
+        public async Task<IActionResult> GetRecordingStateAsync([FromQuery] string recordingId)
         {
-            var response = await _client.GetCallRecording().GetStateAsync(recordingId).ConfigureAwait(false);
-            
+            _recordingId = recordingId ?? _recordingId;
+            var response = await _client.GetCallRecording().GetStateAsync(_recordingId).ConfigureAwait(false);
+
             _logger.LogInformation($"GetRecordingStateAsync response -- > {response}");
             return Ok();
         }
@@ -149,11 +150,11 @@ namespace RecordingApi.Controllers
         /// Download Recording
         /// </summary>
         /// <returns></returns>
-        [HttpGet("download", Name = "Download_Recording")]
+        [HttpGet("DownloadRecording")]
         public IActionResult DownloadRecording()
         {
             var callRecording = _client.GetCallRecording();
-            callRecording.DownloadTo(new Uri(contentLocation), "Recording_File.wav");
+            callRecording.DownloadTo(new Uri(_contentLocation), "Recording_File.wav");
             return Ok();
         }
 
@@ -161,10 +162,10 @@ namespace RecordingApi.Controllers
         /// Delete Recording
         /// </summary>
         /// <returns></returns>
-        [HttpDelete("delete", Name = "Delete_Recording")]
+        [HttpDelete("DeleteRecording")]
         public IActionResult DeleteRecording()
         {
-            _client.GetCallRecording().Delete(new Uri(deleteLocation));
+            _client.GetCallRecording().Delete(new Uri(_deleteLocation));
             return Ok();
         }
 
@@ -195,12 +196,12 @@ namespace RecordingApi.Controllers
 
                     if (eventData is Azure.Messaging.EventGrid.SystemEvents.AcsRecordingFileStatusUpdatedEventData statusUpdated)
                     {
-                        contentLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                        deleteLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].DeleteLocation;
+                        _contentLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+                        _deleteLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].DeleteLocation;
                     }
                 }
             }
-            return Ok($"Recording Download Location : {contentLocation}, Recording Delete Location: {deleteLocation}");
+            return Ok($"Recording Download Location : {_contentLocation}, Recording Delete Location: {_deleteLocation}");
         }
 
         /// <summary>
