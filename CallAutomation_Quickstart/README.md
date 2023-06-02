@@ -26,8 +26,8 @@ This guide walks through simple call automation scenarios and endpoints.
 ## Actions to test (included in guide and sample file)
 - start call
 - start group call
-- play media
-- play media to all
+- play media (audio will not be recorded)
+- play media to all (audio will be recorded)
 - start recording
 - download recording
 - delete recording
@@ -331,7 +331,7 @@ app.MapGet("/download", () =>
 );
 ```
 1. the previous endpoint has been setup so after we get the filestatus updated event, we update the content location. 
-2. to download the file, you only need to call `curl http://localhost:5000/download`
+2. to delete the file, you only need to call `curl http://localhost:5000/download`
 
 
 ## Delete recording
