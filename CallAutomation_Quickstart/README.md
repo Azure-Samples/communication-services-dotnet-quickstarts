@@ -15,17 +15,13 @@ This guide walks through simple call automation scenarios and endpoints.
 - An active Communication Services resource. [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource).
 - Dotnet 7 or 6 SDK. [Download Dotnet](https://dotnet.microsoft.com/en-us/download/dotnet). (dotnet --list-sdks)
 - VScode. [Download VScode](https://code.visualstudio.com/).
-- Dev-tunnel. download from the following [Dev-tunnel download](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
+- Dev-tunnel. download from the following [Dev-tunnel download](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows).
 
-## Dev tunnels setup
-- run `devtunnel user login` and login with your msft account or `devtunnel user login -g` for github
-- run `devtunnel.exe host -p 5000 --allow-anonymous` to begin hosting. copy the url similar to `https://9ndqr7mn.usw2.devtunnels.ms:5000` that is returned
-
-## *For a persistent dev tunnel
-- run `devtunnel create --allow-anonymous` and note the id. Similar to 4bt7fzff.usw2
-- run `devtunnel port create -p 5000`
-- run `devtunnel host <id>` to begin hosting. copy the url similar to `https://9ndqr7mn.usw2.devtunnels.ms:5000` that is returned
-
+## Setup dev tunnel
+- Run `devtunnel user login` and login with your msft account or `devtunnel user login -g` for github.
+- Run `devtunnel create --allow-anonymous`.
+- Run `devtunnel port create -p 5000`.
+- Run `devtunnel host` to begin hosting. Copy the url similar to `https://9ndqr7mn.usw2.devtunnels.ms:5000` that is returned. This will be the hostingEndpoint variable.
 
 ## Actions to test (included in guide and sample file)
 - start call
@@ -50,17 +46,17 @@ This guide walks through simple call automation scenarios and endpoints.
 ## Two ways to test.
 1. Follow the guide and setup the project from scratch, follow test instructions.
 2. Run the sample bugbash-test project.
-    - from the sample/bugbash-test folder run `dotnet restore`
-    - update the hostingEndpoint and acsConnectionString variables
+    - from the sample/bugbash-test folder run `dotnet restore`.
+    - update the hostingEndpoint and acsConnectionString variables.
     - run `dotnet run` and follow the test instructions in the guide.
 
 ## Setup empty project
-1. Create a folder for our project
+1. Create a folder for our project.
 2. Run `dotnet new web --language c# --name bugbash-testing` in the folder we created to initialize the project.
-3. In the new project folder that was created in step 1 Run `dotnet add package Azure.Communication.CallAutomation -v 1.0.0-alpha.20230526.8` 
-4. Run `dotnet add package Azure.Messaging.EventGrid` in the new project folder we created to install the event grid package 
-5. Run `dotnet restore` to ensure we can build the required packages
-    - If you have issues building the correct package, create a new nuget.config file in the project directory and add the following to it
+3. In the new project folder that was created in step 1 Run `dotnet add package Azure.Communication.CallAutomation -v 1.0.0-alpha.20230526.8`. 
+4. Run `dotnet add package Azure.Messaging.EventGrid` in the new project folder we created to install the event grid package .
+5. Run `dotnet restore` to ensure we can build the required packages.
+    - If you have issues building the correct package, create a new nuget.config file in the project directory and add the following to it.
         ```
         <?xml version="1.0" encoding="utf-8"?>
         <configuration>
@@ -107,10 +103,10 @@ app.Run();
 ```
 
 
-2. In the projectFolder/Properties/launchSettings.json update the http.applicationUrl to have port 5000
-3. update the hosting endpoint with our dev tunnel. example `https://9ndqr7mn.usw2.devtunnels.ms:5000`
-5. from the terminal run `dotnet run` in our project folder"
-6. from cmd run "curl http://localhost:5000/test" and ensure you can see test endpoint being written to the console.  
+2. In the projectFolder/Properties/launchSettings.json update the http.applicationUrl to have port 5000.
+3. Update the hosting endpoint with our dev tunnel. example `https://9ndqr7mn.usw2.devtunnels.ms:5000`.
+5. From the terminal run `dotnet run` in our project folder".
+6. From cmd run "curl http://localhost:5000/test" and ensure you can see test endpoint being written to the console.  
 
 
 ## This can be used as a dummy callback URL for testing or the eventproccesor 
@@ -141,9 +137,9 @@ app.MapGet("/startcall", (
         callConnectionId = call.Value.CallConnection.CallConnectionId;
         return Results.Ok();
     }
-);c
+);
 ```
-2. login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. 
+2. Login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. 
 3. To test this, run the following form a cmd prompt `curl http://localhost:5000/startcall?acstarget=INSERTACSTARGETUSERHERE` using the acs user you created
 4. On the ACS Test App, you should see the incoming call. 
 5. you can hang up the call now. You can keep this tab and user open for upcoming steps.
@@ -404,8 +400,7 @@ app.MapPost("/incomingcall", async (
 app.MapGet("/recognize", async () =>
     {
         string pstnNumber = "+11231231234";
-        Console.WriteLine("play media to all endpoint");
-        Console.WriteLine($"playing media to all users");
+        Console.WriteLine("recognize endpoint");
 
         var callConnection = client.GetCallConnection(callConnectionId);
         var callMedia = callConnection.GetCallMedia();
@@ -438,3 +433,5 @@ app.MapGet("/recognize", async () =>
 2. you will now hear a song play (in a real case this would be an audio file containing options)
 3. you can enter 1-3 digits, and hit pound. This server will now print the options you chose to the console. 
 
+# Api view
+- https://apiview.dev/Assemblies/Review/e6e07bd411d646d5a6b0fe5b6760c976

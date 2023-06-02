@@ -210,8 +210,7 @@ app.MapPost("/incomingcall", async (
 app.MapGet("/recognize", async () =>
     {
         string pstnNumber = "+11231231234";
-        Console.WriteLine("play media to all endpoint" +pstnNumber);
-        Console.WriteLine($"playing media to all users");
+        Console.WriteLine("recognize endpoint");
 
         var callConnection = client.GetCallConnection(callConnectionId);
         var callMedia = callConnection.GetCallMedia();
