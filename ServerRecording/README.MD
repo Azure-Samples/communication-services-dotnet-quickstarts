@@ -1,17 +1,13 @@
 ---
 Page Type: Sample
-Languages: CSharp
-Products:
-- Azure.Messaging.EventGrid
-- Azure.Communication.CallAutomation
+Languages: C#
+Products: Azure.Communication.CallAutomation
 ---
 
 # Recording APIs Sample
 
 This is a sample application to showcase how the Call Automation SDK can be used to add recording features to any application.
-
 This application, built on the .NET Core framework using C#, is seamlessly integrated with Azure Communication Services. It harnesses the power of Azure Communication Services to establish connections and enable communication features within the application.
-
 A separate branch with end to end implementation is [available](https://github.com/Azure-Samples/communication-services-web-calling-hero/tree/public-preview). It's a public preview branch and uses beta SDKs that are not meant for production use. Please use the main branch sample for any production scenarios.
 
 ## Prerequisites
@@ -29,8 +25,6 @@ A separate branch with end to end implementation is [available](https://github.c
 	![CreateDevTunnels](./data/CreateDevTunnel.png) 
 
 
-
-
 ## Clone the code local and update appsettings
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
@@ -44,12 +38,6 @@ A separate branch with end to end implementation is [available](https://github.c
 	| `ACSAcquiredPhoneNumber`    | \<ACS Acquired Number>   | Phone number associated with the Azure Communication Service resource   |
 	| `BaseUri`    | \<dev tunnel url>   | Base url of the app, don't add `/` at end. For getting the dev tunnel url, run the app once.   |
 
-## Code structure
-
-- `./ServerRecording/Controllers/RecordingsController.cs`: Exposing Recordings APIs as well as helper APIs to start the recording.
-- `./ServerRecording/Program.cs`: Entry point for the server app, and startup settings.
-- `./ServerRecording/Models.cs`: Models for recording types, format etc.
-
 ## Locally Run the sample app
 
 1. Go to ServerRecording folder and open `RecordingApi.csproj` solution in Visual Studio.
@@ -61,7 +49,7 @@ Call Recording enables you to record multiple calling scenarios available in Azu
 1. Navigate to your resource on Azure portal and select `Events` from the left side menu.
 2. Select `+ Event Subscription` to create a new subscription. 
 3. Filter for Recording File Status Updated(preview) event. 
-4. Choose endpoint type as web hook and provide the public url generated for your application by Dev Tunnels. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <dev_tunnel_url>/recording/getRecordingFile.  
+4. Choose endpoint type as web hook and provide the public url generated for your application by Dev Tunnels. Make sure to provide the exact api route that you programmed to receive the event previously. In this case, it would be <dev_tunnel_url>/recordingFileStatus.  
 ![Event Grid Subscription for Call Recording](./data/WebHookSettings.png)  
 5. Select create to start the creation of subscription and validation of your endpoint as mentioned previously. The subscription is ready when the provisioning status is marked as succeeded.  
 **Note:** Application should be running to able to create the webhook successfully. 
@@ -70,18 +58,16 @@ Call Recording enables you to record multiple calling scenarios available in Azu
 
 Once App is running local, you will see all list of exposed API on swagger.
 1. Step 1. Start a call invoke api/call under Outbound section.
-	- Try it out `GET api/outbound_call`, provide the Target PSTN phone number to get the call.
+	- Try it out `GET api/call`, provide the Target PSTN phone number to get the call.
 	- Execute, accept the call on Target PSTN Phone number, Keep call running.
-
 2. Step 2. Start Recording.
 	-	Get the serverCallId from log (command prompt should be running while you open the App in debug mode).
 	-	Try it out `POST recordings`, provide the serverCallId value.
 	- 	Execute, recording would be started.
 3. Step 3. (Optional) Execute `POST recordings/{recordingId}:pause` and then `POST recordings/{recordingId}:resume`.
-
 4. Step 4. Execute `DELETE recordings/{recordingId}` for stop the recording.
-
-5. Step 5. After stop recording, there would be callbacks for download recording file, check on App running folder to see the recording files.
+5. Step 5. Execute `GET download` for downloading the recording from server, only last recorded file will be downloaded.
+6. Step 6. Execute `DELETE delete` for delete the recording at server.
 
 ## Troubleshooting
 
