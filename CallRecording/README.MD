@@ -27,7 +27,7 @@ A separate branch with end to end implementation is [available](https://github.c
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 2. Run `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
-3. Once you get the code on local machine, navigate to **ServerRecording/appsettings.json** file found under the ServerRecording folder.
+3. Once you get the code on local machine, navigate to **CallRecording/appsettings.json** file found under the CallRecording folder.
 4. Update the values for below.
 
 	| Key | Value | Description |
@@ -38,7 +38,7 @@ A separate branch with end to end implementation is [available](https://github.c
 
 ## Locally Run the sample app
 
-1. Go to ServerRecording folder and open `RecordingApi.csproj` solution in Visual Studio.
+1. Go to CallRecording folder and open `RecordingApi.csproj` solution in Visual Studio.
 2. Enable Visual Studio Dev Tunnels for local development (see pre-requisite section for enabling dev tunnel).
 3. Run the application in debug mode, swagger url should open, if swagger not opened by itself add `/swagger/index.html` at the end.
 
