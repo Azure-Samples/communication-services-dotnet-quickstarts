@@ -20,7 +20,7 @@ var acsPhonenumber = "<ACS_PHONE_NUMBER>";
 var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
 
 // Base url of the app
-var callbackUriHost = Environment.GetEnvironmentVariable("VS_TUNNEL_URL");
+var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
 
 // This will be set by fileStatus endpoints
 string recordingLocation = "";
@@ -31,12 +31,12 @@ CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnecti
 builder.Services.AddSingleton(callAutomationClient);
 var app = builder.Build();
 
-app.MapPost("/api/outboundCall", async (ILogger<Program> logger) =>
+app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
 {
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
     CallInvite callInvite = new CallInvite(target, caller);
-    CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "api/callbacks")).ConfigureAwait(false);
+    CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "/api/callbacks"));
 
     logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
 });
@@ -59,7 +59,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             // prepare recognize tones
             CallMediaRecognizeDtmfOptions callMediaRecognizeDtmfOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(targetPhonenumber), maxTonesToCollect: 1);
-            callMediaRecognizeDtmfOptions.Prompt = new FileSource(new Uri(callbackUriHost + "audio/MainMenu.wav"));
+            callMediaRecognizeDtmfOptions.Prompt = new FileSource(new Uri(callbackUriHost + "/audio/MainMenu.wav"));
             callMediaRecognizeDtmfOptions.InterruptPrompt = true;
             callMediaRecognizeDtmfOptions.InitialSilenceTimeout = TimeSpan.FromSeconds(5);
             callMediaRecognizeDtmfOptions.InterToneTimeout = TimeSpan.FromSeconds(10);
@@ -76,16 +76,16 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             switch (selectedTone)
             {
                 case "1":
-                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "audio/Confirmed.wav")));
+                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "/audio/Confirmed.wav")));
                     break;
 
                 case "2":
-                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "audio/Goodbye.wav")));         
+                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "/audio/Goodbye.wav")));         
                     break;
 
                 default:
                     //invalid tone
-                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "audio/Invalid.wav")));
+                    await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "/audio/Invalid.wav")));
                     break;
             }
         }
@@ -96,7 +96,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             // Check for time out, and then play audio message
             if (recognizeFailedEvent.ReasonCode.Equals(MediaEventReasonCode.RecognizeInitialSilenceTimedOut))
             {
-                await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "audio/Timeout.wav")));
+                await callMedia.PlayToAllAsync(new FileSource(new Uri(callbackUriHost + "/audio/Timeout.wav")));
             }
         }
         if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
@@ -109,7 +109,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
 
-app.MapPost("/recordingCallbacks", ([FromBody] EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
+app.MapPost("/api/recordingFileStatus", ([FromBody] EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
@@ -151,5 +151,4 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/audio"
 });
 
-app.UseHttpsRedirection();
 app.Run();

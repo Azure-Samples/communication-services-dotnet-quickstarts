@@ -16,16 +16,10 @@ This sample application is also capable of making multiple concurrent outbound c
 ## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
-- [Visual Studio (2022 v17.4.0 and above)](https://visualstudio.microsoft.com/vs/)
-- [.NET7 Framework](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You will need to record your resource **connection string** for this sample.
 - Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=programming-language-csharp)
-- Enable Visual studio dev tunneling for local development. For details, see [Enable dev tunnel] (https://learn.microsoft.com/en-us/connectors/custom-connectors/port-tunneling)
-	- To enable dev tunneling, Click `Tools` -> `Options` in Visual Studio 2022
-	- In the search bar type tunnel, Click the checkbox under `Environment` -> `Preview Features` called `Enable dev tunnels for Web Application`
-	- ![EnableDevTunnel](./data/EnableDevTunnel.png) 
-	- Login into your account under `Dev Tunnels` -> `General`
-	- ![LogInDevTunnel](./data/AddAccountForTunnel.png) 
+- Create and host a Azure Dev Tunnel. Instructions [here](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started)
+- [.NET7 Framework](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 
 ## Before running the sample for the first time
 
@@ -33,6 +27,15 @@ This sample application is also capable of making multiple concurrent outbound c
 2. git clone `https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`.
 3. Navigate to `CallAutomation_OutboundCalling` folder and open `CallAutomation_OutboundCalling.sln` file.
 
+### Setup and host your Azure DevTunnel
+
+[Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
+
+```bash
+devtunnel create --allow-anonymous
+devtunnel port create -p 8080
+devtunnel host
+```
 ### Configuring application
 
 Open the Program.cs file to configure the following settings
@@ -44,6 +47,6 @@ Open the Program.cs file to configure the following settings
 
 ### Run app locally
 
-1. Run the `CallAutomation_OutboundCalling` project in debug mode
-2. Browser should pop up with swagger UI, If using Visual studio dev tunnels note the app base url and update it in the Program.cs file `(callbackUriHost)`
-3. To initiate the call, from the swagger ui execute the `/api/outboundCall` endpoint or make a Http post request to `https://<callbackUriHost>/api/outboundCall`
+1. Run the `CallAutomation_OutboundCalling` project with `dotnet run`
+2. Open `http://localhost:8080/swagger/index.html` or your dev tunnel url in browser
+3. To initiate the call, from the swagger ui execute the `/outboundCall` endpoint or make a Http post request to `<callbackUriHost>/outboundCall`
