@@ -28,7 +28,6 @@ string recordingLocation = "";
 string recordingId = "";
 
 CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
-builder.Services.AddSingleton(callAutomationClient);
 var app = builder.Build();
 
 app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
@@ -62,8 +61,6 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             callMediaRecognizeDtmfOptions.Prompt = new FileSource(new Uri(callbackUriHost + "/audio/MainMenu.wav"));
             callMediaRecognizeDtmfOptions.InterruptPrompt = true;
             callMediaRecognizeDtmfOptions.InitialSilenceTimeout = TimeSpan.FromSeconds(5);
-            callMediaRecognizeDtmfOptions.InterToneTimeout = TimeSpan.FromSeconds(10);
-            callMediaRecognizeDtmfOptions.StopTones = new List<DtmfTone> { DtmfTone.Pound, DtmfTone.Asterisk };
 
             // Send request to recognize tones
             await callMedia.StartRecognizingAsync(callMediaRecognizeDtmfOptions);
@@ -109,7 +106,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
 
-app.MapPost("/api/recordingFileStatus", ([FromBody] EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
+app.MapPost("/api/recordingFileStatus", (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
