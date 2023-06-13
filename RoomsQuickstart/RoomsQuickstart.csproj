@@ -16,7 +16,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Common" Version="1.2.1" />
     <PackageReference Include="Azure.Communication.Identity" Version="1.2.0" />
-    <PackageReference Include="Azure.Communication.Rooms" Version="1.0.0-beta.2" />
+    <PackageReference Include="Azure.Communication.Rooms" Version="1.0.0" />
     <PackageReference Include="Azure.Core" Version="1.32.0" />
   </ItemGroup>
 
