@@ -50,6 +50,10 @@ namespace RecordingApi.Controllers
         [HttpGet("OutboundCall")]
         public async Task<IActionResult> OutboundCall([FromQuery] string targetPhoneNumber)
         {
+            if(!targetPhoneNumber.Contains("+"))
+            {
+                targetPhoneNumber = targetPhoneNumber.Replace(" ", "+");
+            }
             var callerId = new PhoneNumberIdentifier(_configuration["ACSAcquiredPhoneNumber"]);
             var target = new PhoneNumberIdentifier(targetPhoneNumber);
             var callInvite = new CallInvite(target, callerId);
@@ -143,7 +147,7 @@ namespace RecordingApi.Controllers
             var response = await _client.GetCallRecording().GetStateAsync(_recordingId).ConfigureAwait(false);
 
             _logger.LogInformation($"GetRecordingStateAsync response -- > {response}");
-            return Ok();
+            return Ok($"{response.Value.RecordingState}");
         }
 
         /// <summary>
