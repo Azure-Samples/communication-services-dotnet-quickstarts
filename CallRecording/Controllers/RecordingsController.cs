@@ -147,7 +147,7 @@ namespace RecordingApi.Controllers
             var response = await _client.GetCallRecording().GetStateAsync(_recordingId).ConfigureAwait(false);
 
             _logger.LogInformation($"GetRecordingStateAsync response -- > {response}");
-            return Ok();
+            return Ok($"{response.Value.RecordingState}");
         }
 
         /// <summary>
