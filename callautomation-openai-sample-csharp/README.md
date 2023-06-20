@@ -12,6 +12,8 @@ products:
 
 This is a sample application demonstrated during Microsoft Build 2023. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
+> Please note that you will have join the [Azure Communication Services TAP program](https://aka.ms/acs-tap-invite) to get access to some of the features used in this sample. We will be releasing public preview access to these features in the coming weeks. 
+
 ## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
