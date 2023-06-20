@@ -10,7 +10,7 @@ products:
 
 # ACS Call Automation and Azure OpenAI Service
 
-This is a sample application demonstrated during Microsoft /Build 2023. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
+This is a sample application demonstrated during Microsoft Build 2023. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
 ## Prerequisites
 
