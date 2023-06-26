@@ -74,7 +74,7 @@ Once App is running local, you will see all list of exposed API on swagger.
 	- Clean/rebuild the C# solution.
 2. Recording files not getting downloaded.
 	- Check for webhook settings if dev tunnel url is correct.
-3. Recording Callbacks not coming.
+3. Recording files not getting downloaded.
       	- Check EventGrid under ACS Resource if this is correctly configured.
 
 ## Additional Reading
