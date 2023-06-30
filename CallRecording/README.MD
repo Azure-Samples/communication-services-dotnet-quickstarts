@@ -69,7 +69,6 @@ Once App is running local, you will see all list of exposed API on swagger.
 
 
 ## Troubleshooting
-
 1. Solution doesn\'t build, it throws errors during build.
 	- Clean/rebuild the C# solution.
 2. Recording files not getting downloaded.
