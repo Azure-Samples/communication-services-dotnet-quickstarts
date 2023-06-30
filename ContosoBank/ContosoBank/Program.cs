@@ -59,7 +59,7 @@ app.MapPost("/api/incomingCall", async (
             }
         }
         var jsonObject = GetJsonObject(eventGridEvent.Data);
-        var callerId = GetCallerId(jsonObject);
+        var callerId = GetCallerId(jsonObject).ToBase64();
         var incomingCallContext = GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(callbackUriBase + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
@@ -94,7 +94,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
         var callConnection = callAutomationClient.GetCallConnection(@event.CallConnectionId);
         var callConnectionMedia = callConnection.GetCallMedia();
 
-        await eventHandler.HandleAsync(callerId, @event, callConnection, callConnectionMedia);
+        await eventHandler.HandleAsync(callerId.FromBase64(), @event, callConnection, callConnectionMedia);
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
