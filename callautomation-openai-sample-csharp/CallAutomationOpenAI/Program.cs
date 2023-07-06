@@ -54,9 +54,9 @@ app.MapPost("/api/incomingCall", async (
             }
         }
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
-        var callerId = Helper.GetCallerId(jsonObject).ToBase64();
+        var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
-        var callbackUri = new Uri(devTunnelUri + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+        var callbackUri = new Uri(devTunnelUri + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId.ToBase64()}");
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
             AzureCognitiveServicesEndpointUrl = new Uri(cognitiveServicesEndpoint)
