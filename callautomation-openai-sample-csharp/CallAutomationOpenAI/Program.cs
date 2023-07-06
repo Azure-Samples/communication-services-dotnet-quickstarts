@@ -70,14 +70,14 @@ app.MapPost("/api/incomingCall", async (
         {
             Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleWelcomeMessageAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+            await HandleWelcomeMessageAsync(callConnectionMedia, callerId);
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
         {
             Console.WriteLine($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleWelcomeMessageAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+            await HandleWelcomeMessageAsync(callConnectionMedia, callerId);
         });
 
         client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
@@ -91,7 +91,7 @@ app.MapPost("/api/incomingCall", async (
 
                 var chatGPTResponse = await GetChatGPTResponse(speech_result?.Speech);
 
-                await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), answer_result.SuccessResult.CallConnectionId);
+                await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), callerId);
             }
         });
     }
