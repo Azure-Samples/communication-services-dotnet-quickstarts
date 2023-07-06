@@ -12,6 +12,7 @@ using Azure.Messaging;
 
 using Azure;
 using Azure.AI.OpenAI;
+using CallAutomationOpenAI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,7 +54,7 @@ app.MapPost("/api/incomingCall", async (
             }
         }
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
-        var callerId = Helper.GetCallerId(jsonObject);
+        var callerId = Helper.GetCallerId(jsonObject).ToBase64();
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(devTunnelUri + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
