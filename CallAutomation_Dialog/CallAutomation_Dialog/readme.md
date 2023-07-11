@@ -19,7 +19,7 @@ The purpose of this sample application is to demonstrate the addition of a Dialo
 - [.NET7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - Under the Communication Service resource, get a phone number within the `Phone numbers` tab.
-- Create a Dialog Bot App
+- Create a [Nuance Mix][Nuance_Mix] bot
 
 ## Before running the sample for the first time
 
@@ -58,3 +58,6 @@ This subscription currently has no filters and hence all incoming calls will be 
 1. Solution doesn't build, it throws errors during build
 
 	Clean/rebuild the C# solution
+
+<!-- Links -->
+[Nuance_Mix]: https://docs.nuance.com/mix/
