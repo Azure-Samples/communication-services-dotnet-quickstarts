@@ -1,9 +1,7 @@
 ﻿using Microsoft.UI;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
-using Windows.ApplicationModel;
 using WinRT.Interop;
 
 namespace CallingQuickstart
@@ -13,6 +11,8 @@ namespace CallingQuickstart
     /// </summary>
     public sealed partial class MainWindow : Window
     {
+        private Microsoft.UI.Windowing.AppWindow m_AppWindow;
+
         public MainWindow()
         {
             this.InitializeComponent();
@@ -21,25 +21,24 @@ namespace CallingQuickstart
             {
                 IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 WindowId wndId = Win32Interop.GetWindowIdFromWindow(hWnd);
-                var m_AppWindow = AppWindow.GetFromWindowId(wndId);
+                m_AppWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(wndId);
 
-                m_AppWindow.Title = $"{Package.Current.DisplayName} - Ready";
-                m_AppWindow.TitleBar.BackgroundColor = Colors.SeaGreen;
+                m_AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
 
-                var size = new Windows.Graphics.SizeInt32(1000, 800);
-
-                m_AppWindow.Resize(size);
+                var size = new Windows.Graphics.SizeInt32(1000, 710);
+                m_AppWindow.ResizeClient(size);
             }
         }
 
-        private void FrameLoaded(object sender, RoutedEventArgs e)
+        private void OnFrameLoaded(object sender, RoutedEventArgs e)
         {
             (sender as Frame).Navigate(typeof(MainPage), (sender as Frame).XamlRoot);
         }
 
-        private void OnClosed(object sender, WindowEventArgs e)
+        private void OnSizeChanged(object sender, WindowSizeChangedEventArgs e)
         {
-            Application.Current.Exit();
+            MainFrame.Width = e.Size.Width;
+            MainFrame.Height = e.Size.Height;
         }
     }
 }

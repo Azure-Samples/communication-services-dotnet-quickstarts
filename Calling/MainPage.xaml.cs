@@ -39,8 +39,9 @@ namespace CallingQuickstart
             var coreTitleBar = CoreApplication.GetCurrentView().TitleBar;
             coreTitleBar.ExtendViewIntoTitleBar = true;
 
+            coreTitleBar.LayoutMetricsChanged += (CoreApplicationViewTitleBar sender, object args) => { MainGrid.RowDefinitions[0].Height = new GridLength(sender.Height, GridUnitType.Pixel); };
+
             QuickstartTitle.Text = $"{Package.Current.DisplayName} - Ready";
-            Window.Current.SetTitleBar(AppTitleBar);
 
             CallButton.IsEnabled = true;
             HangupButton.IsEnabled = !CallButton.IsEnabled;

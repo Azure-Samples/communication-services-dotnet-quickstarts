@@ -40,6 +40,8 @@ namespace CallingQuickstart
             HangupButton.IsEnabled = !CallButton.IsEnabled;
             MuteLocal.IsChecked = MuteLocal.IsEnabled = !CallButton.IsEnabled;
 
+            QuickstartTitle.Text = $"{Package.Current.DisplayName} - Ready";
+
             var window = (Application.Current as App)?.m_window as MainWindow;
             IntPtr hWnd = WindowNative.GetWindowHandle(window);
             WindowId wndId = Win32Interop.GetWindowIdFromWindow(hWnd);
@@ -52,7 +54,6 @@ namespace CallingQuickstart
 
             base.OnNavigatedTo(e);
         }
-
         #endregion
 
         #region UI event handlers
