@@ -17,7 +17,7 @@ namespace CallingQuickstart
     public sealed partial class MainPage : Page
     {
         private AppWindow m_AppWindow;
-
+        
         private const string authToken = "<AUTHENTICATION_TOKEN>";
 
         private CallClient callClient;
@@ -96,6 +96,10 @@ namespace CallingQuickstart
                 else if (callString.StartsWith("+")) // 1:1 phone call
                 {
                     call = await StartPhoneCallAsync(callString, "+19876543210");
+                }
+                else if (callString.All(char.IsDigit)) // rooms call
+                {
+                    call = await StartRoomsCallAsync(callString);
                 }
                 else if (Guid.TryParse(callString, out Guid groupId))// Join group call by group guid
                 {
@@ -474,6 +478,16 @@ namespace CallingQuickstart
             var teamsMeetingLinkLocator = new TeamsMeetingLinkLocator(teamsCallLink.AbsoluteUri);
             var call = await callAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
             return call;
+        }
+        private async Task<CommunicationCall> StartRoomsCallAsync(String roomId)
+        {
+            var joinCallOptions = GetJoinCallOptions();
+
+            var roomCallLocator = new RoomCallLocator(roomId);
+
+            call = await callAgent.JoinAsync(roomCallLocator, joinCallOptions);
+            return call;
+
         }
 
         private StartCallOptions GetStartCallOptions()

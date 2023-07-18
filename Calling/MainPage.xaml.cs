@@ -18,7 +18,7 @@ namespace CallingQuickstart
     public sealed partial class MainPage : Page
     {
         private const string authToken = "<AUTHENTICATION_TOKEN>";
-
+        
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
         private CallAgent callAgent;
@@ -94,6 +94,10 @@ namespace CallingQuickstart
                 if (callString.StartsWith("8:")) // 1:1 ACS call
                 {
                     call = await StartAcsCallAsync(callString);
+                }
+                else if (callString.All(char.IsDigit)) // rooms call
+                { 
+                    call = await StartRoomsCallAsync(callString);
                 }
                 else if (callString.StartsWith("+")) // 1:1 phone call
                 {
@@ -479,6 +483,17 @@ namespace CallingQuickstart
             var teamsMeetingLinkLocator = new TeamsMeetingLinkLocator(teamsCallLink.AbsoluteUri);
             var call = await callAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
             return call;
+        }
+
+        private async Task<CommunicationCall> StartRoomsCallAsync(String roomId) 
+        {
+            var joinCallOptions = GetJoinCallOptions();
+
+            var roomCallLocator = new RoomCallLocator(roomId);
+
+            call = await callAgent.JoinAsync(roomCallLocator, joinCallOptions);
+            return call;
+
         }
 
         private StartCallOptions GetStartCallOptions()
