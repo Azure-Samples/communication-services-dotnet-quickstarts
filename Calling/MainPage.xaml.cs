@@ -18,7 +18,7 @@ namespace CallingQuickstart
     public sealed partial class MainPage : Page
     {
         private const string authToken = "<AUTHENTICATION_TOKEN>";
-
+        
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
         private CallAgent callAgent;
@@ -489,7 +489,7 @@ namespace CallingQuickstart
         {
             var joinCallOptions = GetJoinCallOptions();
 
-            RoomCallLocator roomCallLocator = new RoomCallLocator(roomId);
+            var roomCallLocator = new RoomCallLocator(roomId);
 
             call = await callAgent.JoinAsync(roomCallLocator, joinCallOptions);
             return call;
