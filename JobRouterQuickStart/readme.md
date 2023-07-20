@@ -9,7 +9,7 @@ products:
 
 # Job Router quick start
 
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Create a worker and job](https://learn.microsoft.com/azure/communication-services/quickstarts/jobrouter/quickstart)
+For full instructions on how to build this code sample from scratch, look at [Quickstart: Create a worker and job](https://learn.microsoft.com/azure/communication-services/quickstarts/router/get-started-router?pivots=programming-language-csharp)
 
 ## Prerequisites
 
