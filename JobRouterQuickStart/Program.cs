@@ -42,7 +42,7 @@ var worker = await routerClient.CreateWorkerAsync(
         AvailableForOffers = true
     });
 
-await Task.Delay(TimeSpan.FromSeconds(5));
+await Task.Delay(TimeSpan.FromSeconds(10));
 worker = await routerClient.GetWorkerAsync(worker.Value.Id);
 foreach (var offer in worker.Value.Offers)
 {
