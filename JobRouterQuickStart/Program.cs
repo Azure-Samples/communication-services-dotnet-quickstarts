@@ -1,8 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Azure.Communication.JobRouter;
-using System;
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine("Azure Communication Services - Job Router Quickstart");
 
 var connectionString = "your_connection_string";
 var routerAdminClient = new JobRouterAdministrationClient(connectionString);
@@ -39,7 +38,8 @@ var worker = await routerClient.CreateWorkerAsync(
     {
         QueueIds = { [queue.Value.Id] = new RouterQueueAssignment() },
         Labels = { ["Some-Skill"] = new LabelValue(11) },
-        ChannelConfigurations = { ["voice"] = new ChannelConfiguration(capacityCostPerJob: 1) }
+        ChannelConfigurations = { ["voice"] = new ChannelConfiguration(capacityCostPerJob: 1) },
+        AvailableForOffers = true
     });
 
 await Task.Delay(TimeSpan.FromSeconds(3));
@@ -52,11 +52,11 @@ foreach (var offer in worker.Value.Offers)
 var accept = await routerClient.AcceptJobOfferAsync(worker.Value.Id, worker.Value.Offers.FirstOrDefault().OfferId);
 Console.WriteLine($"Worker {worker.Value.Id} is assigned job {accept.Value.JobId}");
 
-await routerClient.CompleteJobAsync(new CompleteJobOptions("job-1", accept.Value.AssignmentId));
+await routerClient.CompleteJobAsync(new CompleteJobOptions(accept.Value.JobId, accept.Value.AssignmentId));
 Console.WriteLine($"Worker {worker.Value.Id} has completed job {accept.Value.JobId}");
 
-await routerClient.CloseJobAsync(new CloseJobOptions("job-1", accept.Value.AssignmentId)
-{
-    DispositionCode = "Resolved"
-});
+await routerClient.CloseJobAsync(new CloseJobOptions(accept.Value.JobId, accept.Value.AssignmentId) { DispositionCode = "Resolved" });
 Console.WriteLine($"Worker {worker.Value.Id} has closed job {accept.Value.JobId}");
+
+await routerClient.DeleteJobAsync(accept.Value.JobId);
+Console.WriteLine($"Deleted job {accept.Value.JobId}");
