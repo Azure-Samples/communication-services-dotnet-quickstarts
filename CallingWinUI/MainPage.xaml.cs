@@ -19,17 +19,23 @@ namespace CallingQuickstart
         private AppWindow m_AppWindow;
         
         private const string authToken = "<AUTHENTICATION_TOKEN>";
+        private const string teamsAuthToken = "<TEAMS_AUTHENTICATION_TOKEN>";
 
         private CallClient callClient;
         private CallTokenRefreshOptions callTokenRefreshOptions = new CallTokenRefreshOptions(false);
         private CallAgent callAgent;
+        private TeamsCallAgent teamsCallAgent;
+
         private CommunicationCall call;
+        private TeamsCommunicationCall teamsCall;
 
         private LocalOutgoingAudioStream micStream;
         private LocalOutgoingVideoStream cameraStream;
 
         private BackgroundBlurEffect backgroundBlurVideoEffect = new BackgroundBlurEffect();
         private LocalVideoEffectsFeature localVideoEffectsFeature;
+
+        private bool isCTE = false;
 
         #region Page initialization
         public MainPage()
@@ -57,29 +63,67 @@ namespace CallingQuickstart
         #endregion
 
         #region UI event handlers
+        private void CallMethodList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if ((CallMethodList.SelectedItem as string).Equals("ACS"))
+            {
+                isCTE = false;
+            }
+            else if ((CallMethodList.SelectedItem as string).Equals("CTE"))
+            {
+                isCTE = true;
+            }
+        }
+
         private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (tryRawMedia) return;
 
-            if (cameraStream != null)
+            if (isCTE)
             {
-                await cameraStream?.StopPreviewAsync();
-                if (call != null)
+                if (cameraStream != null)
                 {
-                    await call?.StopVideoAsync(cameraStream);
+                    await cameraStream?.StopPreviewAsync();
+                    if (teamsCall != null)
+                    {
+                        await teamsCall?.StopVideoAsync(cameraStream);
+                    }
+                }
+                var selectedCamerea = CameraList.SelectedItem as VideoDeviceDetails;
+                cameraStream = new LocalOutgoingVideoStream(selectedCamerea);
+
+                InitVideoEffectsFeature(cameraStream);
+
+                var localUri = await cameraStream.StartPreviewAsync();
+                LocalVideo.Source = MediaSource.CreateFromUri(localUri);
+
+                if (teamsCall != null)
+                {
+                    await teamsCall?.StartVideoAsync(cameraStream);
                 }
             }
-            var selectedCamerea = CameraList.SelectedItem as VideoDeviceDetails;
-            cameraStream = new LocalOutgoingVideoStream(selectedCamerea);
-
-            InitVideoEffectsFeature(cameraStream);
-
-            var localUri = await cameraStream.StartPreviewAsync();
-            LocalVideo.Source = MediaSource.CreateFromUri(localUri);
-
-            if (call != null)
+            else
             {
-                await call?.StartVideoAsync(cameraStream);
+                if (cameraStream != null)
+                {
+                    await cameraStream?.StopPreviewAsync();
+                    if (call != null)
+                    {
+                        await call?.StopVideoAsync(cameraStream);
+                    }
+                }
+                var selectedCamerea = CameraList.SelectedItem as VideoDeviceDetails;
+                cameraStream = new LocalOutgoingVideoStream(selectedCamerea);
+
+                InitVideoEffectsFeature(cameraStream);
+
+                var localUri = await cameraStream.StartPreviewAsync();
+                LocalVideo.Source = MediaSource.CreateFromUri(localUri);
+
+                if (call != null)
+                {
+                    await call?.StartVideoAsync(cameraStream);
+                }
             }
         }
 
@@ -91,41 +135,87 @@ namespace CallingQuickstart
             {
                 if (callString.StartsWith("8:")) // 1:1 ACS call
                 {
-                    call = await StartAcsCallAsync(callString);
+                    if (isCTE)
+                    {
+                        teamsCall = await StartCteCallAsync(callString);
+                    }
+                    else 
+                    {
+                        call = await StartAcsCallAsync(callString);
+                    }
                 }
                 else if (callString.StartsWith("+")) // 1:1 phone call
                 {
-                    call = await StartPhoneCallAsync(callString, "+19876543210");
+                    if (isCTE)
+                    {
+                        teamsCall = await StartPhoneCallAsync(callString);
+                    }
+                    else
+                    {
+                        call = await StartPhoneCallAsync(callString, "+19876543210");
+                    }
                 }
                 else if (callString.All(char.IsDigit)) // rooms call
                 {
-                    call = await StartRoomsCallAsync(callString);
+                    if (isCTE)
+                    {
+                        
+                    }
+                    else
+                    {
+                        call = await StartRoomsCallAsync(callString);
+                    }
+                    
                 }
                 else if (Guid.TryParse(callString, out Guid groupId))// Join group call by group guid
                 {
-                    call = await JoinGroupCallByIdAsync(groupId);
+                    if (isCTE)
+                    {
+
+                    }
+                    else
+                    {
+                        call = await JoinGroupCallByIdAsync(groupId);
+                    }
+                    
                 }
                 else if (Uri.TryCreate(callString, UriKind.Absolute, out Uri teamsMeetinglink)) //Teams meeting link
                 {
-                    call = await JoinTeamsMeetingByLinkAsync(teamsMeetinglink);
+                    if (isCTE)
+                    {
+                        teamsCall = await JoinTeamsMeetingByLinkWithCteAsync(teamsMeetinglink);
+                    }
+                    else
+                    {
+                        call = await JoinTeamsMeetingByLinkWithAcsAsync(teamsMeetinglink);
+                    }
+                    
                 }
             }
 
-            if (call != null)
+            if (isCTE && teamsCall != null)
+            {
+                teamsCall.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
+                teamsCall.StateChanged += OnStateChangedAsync;
+                CallMethodList.IsEnabled = false;
+            }
+            else if (call != null)
             {
                 call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
                 call.StateChanged += OnStateChangedAsync;
+                CallMethodList.IsEnabled = false;
             }
         }
 
         private async void HangupButton_Click(object sender, RoutedEventArgs e)
         {
-            var call = this.callAgent?.Calls?.FirstOrDefault();
-            if (call != null)
+            var acsCall = this.callAgent?.Calls?.FirstOrDefault();
+            var cteCall = this.teamsCallAgent?.Calls?.FirstOrDefault();
+            if (acsCall != null)
             {
-                foreach (var localVideoStream in call.OutgoingVideoStreams)
+                foreach (var localVideoStream in acsCall.OutgoingVideoStreams)
                 {
-                    await call.StopVideoAsync(localVideoStream);
+                    await acsCall.StopVideoAsync(localVideoStream);
                 }
 
                 try
@@ -135,10 +225,37 @@ namespace CallingQuickstart
                         await cameraStream.StopPreviewAsync();
                     }
 
-                    await call.HangUpAsync(new HangUpOptions() { ForEveryone = false });
+                    await acsCall.HangUpAsync(new HangUpOptions() { ForEveryone = false });
+                    CallMethodList.IsEnabled = true;
                 }
                 catch(Exception ex) 
                 { 
+                    var errorCode = unchecked((int)(0x0000FFFFU & ex.HResult));
+                    if (errorCode != 98) // sam_status_failed_to_hangup_for_everyone (98)
+                    {
+                        throw;
+                    }
+                }
+            }
+            else if (cteCall != null)
+            {
+                foreach (var localVideoStream in cteCall.OutgoingVideoStreams)
+                {
+                    await cteCall.StopVideoAsync(localVideoStream);
+                }
+
+                try
+                {
+                    if (cameraStream != null)
+                    {
+                        await cameraStream.StopPreviewAsync();
+                    }
+
+                    await cteCall.HangUpAsync(new HangUpOptions() { ForEveryone = false });
+                    CallMethodList.IsEnabled = true;
+                }
+                catch (Exception ex)
+                {
                     var errorCode = unchecked((int)(0x0000FFFFU & ex.HResult));
                     if (errorCode != 98) // sam_status_failed_to_hangup_for_everyone (98)
                     {
@@ -154,22 +271,35 @@ namespace CallingQuickstart
 
             if (muteCheckbox != null)
             {
-                var call = this.callAgent?.Calls?.FirstOrDefault();
-                if (call != null)
+                var acsCall = this.callAgent?.Calls?.FirstOrDefault();
+                var cteCall = this.teamsCallAgent?.Calls?.FirstOrDefault();
+
+                if (acsCall != null)
                 {
                     if ((bool)muteCheckbox.IsChecked)
                     {
-                        await call.MuteOutgoingAudioAsync();
+                        await acsCall.MuteOutgoingAudioAsync();
                     }
                     else
                     {
-                        await call.UnmuteOutgoingAudioAsync();
+                        await acsCall.UnmuteOutgoingAudioAsync();
+                    }
+                }
+                else if (cteCall != null)
+                {
+                    if ((bool)muteCheckbox.IsChecked)
+                    {
+                        await cteCall.MuteOutgoingAudioAsync();
+                    }
+                    else
+                    {
+                        await cteCall.UnmuteOutgoingAudioAsync();
                     }
                 }
 
                 this.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    m_AppWindow.TitleBar.BackgroundColor = call.IsOutgoingAudioMuted ? Colors.PaleVioletRed : Colors.SeaGreen;
+                    m_AppWindow.TitleBar.BackgroundColor = (isCTE ? cteCall.IsOutgoingAudioMuted : acsCall.IsOutgoingAudioMuted) ? Colors.PaleVioletRed : Colors.SeaGreen;
                 });
             }
         }
@@ -241,6 +371,24 @@ namespace CallingQuickstart
             await OnParticipantChangedAsync(removedParticipants, addedParticipants);
         }
 
+        private async void OnCallsUpdatedAsync(object sender, TeamsCallsUpdatedEventArgs args)
+        {
+            var removedParticipants = new List<RemoteParticipant>();
+            var addedParticipants = new List<RemoteParticipant>();
+
+            foreach (var teamsCall in args.RemovedCalls)
+            {
+                removedParticipants.AddRange(teamsCall.RemoteParticipants.ToList<RemoteParticipant>());
+            }
+
+            foreach (var teamsCall in args.AddedCalls)
+            {
+                addedParticipants.AddRange(teamsCall.RemoteParticipants.ToList<RemoteParticipant>());
+            }
+
+            await OnParticipantChangedAsync(removedParticipants, addedParticipants);
+        }
+
         private async void OnIncomingCallAsync(object sender, IncomingCallReceivedEventArgs args)
         {
             var incomingCall = args.IncomingCall;
@@ -257,49 +405,117 @@ namespace CallingQuickstart
             call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
         }
 
+        private async void OnIncomingCallAsync(object sender, TeamsIncomingCallReceivedEventArgs args)
+        {
+            var teamsIncomingCall = args.IncomingCall;
+
+            var acceptCallOptions = new AcceptCallOptions()
+            {
+                IncomingVideoOptions = new IncomingVideoOptions()
+                {
+                    StreamKind = VideoStreamKind.RemoteIncoming
+                }
+            };
+
+            teamsCall = await teamsIncomingCall.AcceptAsync(acceptCallOptions);
+            teamsCall.StateChanged += OnStateChangedAsync;
+            teamsCall.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
+        }
+
         private async void OnStateChangedAsync(object sender, PropertyChangedEventArgs args)
         {
-            var call = sender as CommunicationCall;
-
-            if (call != null)
+            if (isCTE)
             {
-                var state = call.State;
+                var call = sender as TeamsCommunicationCall;
 
-                this.DispatcherQueue.TryEnqueue(() => {
-                    m_AppWindow.Title = $"{Package.Current.DisplayName} - {state.ToString()}";
-
-                    HangupButton.IsEnabled = state == CallState.Connected || state == CallState.Ringing;
-                    CallButton.IsEnabled = !HangupButton.IsEnabled;
-                    MuteLocal.IsEnabled = !CallButton.IsEnabled;
-                });
-
-                switch (state)
+                if (call != null)
                 {
-                    case CallState.Connected:
-                        {
-                            await call.StartAudioAsync(micStream);
-                            this.DispatcherQueue.TryEnqueue(() =>
+                    var state = call.State;
+
+                    this.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        m_AppWindow.Title = $"{Package.Current.DisplayName} - {state.ToString()}";
+
+                        HangupButton.IsEnabled = state == CallState.Connected || state == CallState.Ringing;
+                        CallButton.IsEnabled = !HangupButton.IsEnabled;
+                        MuteLocal.IsEnabled = !CallButton.IsEnabled;
+                    });
+
+                    switch (state)
+                    {
+                        case CallState.Connected:
                             {
-                                Stats.Text = $"Call id: {Guid.Parse(call.Id).ToString("D")}, Remote caller id: {call.RemoteParticipants.FirstOrDefault()?.Identifier.RawId}";
-                            });
+                                await call.StartAudioAsync(micStream);
+                                this.DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    Stats.Text = $"Call id: {Guid.Parse(call.Id).ToString("D")}, Remote caller id: {call.RemoteParticipants.FirstOrDefault()?.Identifier.RawId}";
+                                });
 
-                            break;
-                        }
-                    case CallState.Disconnected:
-                        {
-                            call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
-                            call.StateChanged -= OnStateChangedAsync;
-
-                            this.DispatcherQueue.TryEnqueue(() =>
+                                break;
+                            }
+                        case CallState.Disconnected:
                             {
-                                Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
-                            });
+                                call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
+                                call.StateChanged -= OnStateChangedAsync;
 
-                            call.Dispose();
+                                this.DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
+                                });
 
-                            break;
-                        }
-                    default: break;
+                                call.Dispose();
+
+                                break;
+                            }
+                        default: break;
+                    }
+                }
+            }
+            else
+            {
+                var call = sender as CommunicationCall;
+
+                if (call != null)
+                {
+                    var state = call.State;
+
+                    this.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        m_AppWindow.Title = $"{Package.Current.DisplayName} - {state.ToString()}";
+
+                        HangupButton.IsEnabled = state == CallState.Connected || state == CallState.Ringing;
+                        CallButton.IsEnabled = !HangupButton.IsEnabled;
+                        MuteLocal.IsEnabled = !CallButton.IsEnabled;
+                    });
+
+                    switch (state)
+                    {
+                        case CallState.Connected:
+                            {
+                                await call.StartAudioAsync(micStream);
+                                this.DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    Stats.Text = $"Call id: {Guid.Parse(call.Id).ToString("D")}, Remote caller id: {call.RemoteParticipants.FirstOrDefault()?.Identifier.RawId}";
+                                });
+
+                                break;
+                            }
+                        case CallState.Disconnected:
+                            {
+                                call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdatedAsync;
+                                call.StateChanged -= OnStateChangedAsync;
+
+                                this.DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    Stats.Text = $"Call ended: {call.CallEndReason.ToString()}";
+                                });
+
+                                call.Dispose();
+
+                                break;
+                            }
+                        default: break;
+                    }
                 }
             }
         }
@@ -414,6 +630,7 @@ namespace CallingQuickstart
             callTokenRefreshOptions.TokenRefreshRequested += OnTokenRefreshRequestedAsync;
 
             var tokenCredential = new CallTokenCredential(authToken, callTokenRefreshOptions);
+            var teamsTokenCredential = new CallTokenCredential(teamsAuthToken);
 
             var callAgentOptions = new CallAgentOptions()
             {
@@ -422,11 +639,17 @@ namespace CallingQuickstart
                 EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
             };
 
+            var teamsCallAgentOptions = new TeamsCallAgentOptions();
+
             try
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
+
+                this.teamsCallAgent = await this.callClient.CreateTeamsCallAgentAsync(teamsTokenCredential, teamsCallAgentOptions);
+                this.teamsCallAgent.CallsUpdated += OnCallsUpdatedAsync;
+                this.teamsCallAgent.IncomingCallReceived += OnIncomingCallAsync;
 
             }
             catch(Exception ex)
@@ -453,12 +676,27 @@ namespace CallingQuickstart
             return call;
         }
 
+        private async Task<TeamsCommunicationCall> StartCteCallAsync(string cteCallee)
+        {
+            var options = GetStartTeamsCallOptions();
+            var call = await this.teamsCallAgent.StartCallAsync( new MicrosoftTeamsUserCallIdentifier(cteCallee) , options);
+            return call;
+        }
+
         private async Task<CommunicationCall> StartPhoneCallAsync(string acsCallee, string alternateCallerId)
         {
             var options = GetStartCallOptions();
             options.AlternateCallerId = new PhoneNumberCallIdentifier(alternateCallerId);
 
             var call = await this.callAgent.StartCallAsync( new [] { new PhoneNumberCallIdentifier(acsCallee) }, options);
+            return call;
+        }
+
+        private async Task<TeamsCommunicationCall> StartPhoneCallAsync(string cteCallee)
+        {
+            var options = GetStartTeamsCallOptions();
+
+            var call = await this.teamsCallAgent.StartCallAsync( new PhoneNumberCallIdentifier(cteCallee), options);
             return call;
         }
 
@@ -471,7 +709,7 @@ namespace CallingQuickstart
             return call;
         }
 
-        private async Task<CommunicationCall> JoinTeamsMeetingByLinkAsync(Uri teamsCallLink)
+        private async Task<CommunicationCall> JoinTeamsMeetingByLinkWithAcsAsync(Uri teamsCallLink)
         {
             var joinCallOptions = GetJoinCallOptions();
 
@@ -479,6 +717,16 @@ namespace CallingQuickstart
             var call = await callAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
             return call;
         }
+
+        private async Task<TeamsCommunicationCall> JoinTeamsMeetingByLinkWithCteAsync(Uri teamsCallLink)
+        {
+            var joinCallOptions = GetJoinCallOptions();
+
+            var teamsMeetingLinkLocator = new TeamsMeetingLinkLocator(teamsCallLink.AbsoluteUri);
+            var call = await teamsCallAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
+            return call;
+        }
+
         private async Task<CommunicationCall> StartRoomsCallAsync(String roomId)
         {
             var joinCallOptions = GetJoinCallOptions();
@@ -503,6 +751,22 @@ namespace CallingQuickstart
             }
 
             return startCallOptions;
+        }
+
+        private StartTeamsCallOptions GetStartTeamsCallOptions()
+        {
+            var startTeamsCallOptions = GetStartTeamsCallOptionsWithRawMedia();
+
+            if (startTeamsCallOptions == null)
+            {
+                startTeamsCallOptions = new StartTeamsCallOptions()
+                {
+                    OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream },
+                    OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
+                };
+            }
+
+            return startTeamsCallOptions;
         }
 
         private JoinCallOptions GetJoinCallOptions()

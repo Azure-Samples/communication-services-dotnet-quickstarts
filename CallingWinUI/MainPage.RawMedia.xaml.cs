@@ -150,6 +150,27 @@ namespace CallingQuickstart
             } : null;
         }
 
+        private StartTeamsCallOptions GetStartTeamsCallOptionsWithRawMedia()
+        {
+            if (tryRawMedia)
+            {
+                virtualOutgoingVideoStream.StateChanged += OnVideoStreamStateChanged;
+            }
+
+            return tryRawMedia ? new StartTeamsCallOptions()
+            {
+                IncomingVideoOptions = new IncomingVideoOptions
+                {
+                    StreamKind = VideoStreamKind.RemoteIncoming,
+                },
+                OutgoingVideoOptions = new OutgoingVideoOptions()
+                {
+                    Streams = new OutgoingVideoStream[] { virtualOutgoingVideoStream }
+                },
+                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream }
+            } : null;
+        }
+
         private unsafe void GenerateRandomVideoFrame(byte** rgbaArrayBuffer, int w, int h)
         {
             byte r = (byte)random.Next(1, 255);
