@@ -1,6 +1,7 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
@@ -308,69 +309,6 @@ namespace CallingQuickstart
             }
         }
 
-        // Demo code for starting Captions Call Feature
-        private async Task StartTeamsCaptionsFeature()
-        {
-            // get captions feature
-            var captionsCallFeature = call.Features.Captions;
-
-            try
-            {
-                // call captions will be typecasted to TeamsCaptions
-                var callcaptions = await captionsCallFeature.GetCaptionsAsync();
-
-                if (callcaptions.CaptionsKind == CaptionsKind.TeamsCaptions)
-                {
-                    var teamsCaptions = callcaptions as TeamsCaptions;
-
-                    // subscribe to captions events
-                    teamsCaptions.CaptionsReceived += TeamsCaptions_CaptionsReceived;
-                    teamsCaptions.ActiveCaptionLanguageChanged += TeamsCaptions_ActiveCaptionLanguageChanged;
-                    teamsCaptions.ActiveSpokenLanguageChanged += TeamsCaptions_ActiveSpokenLanguageChanged;
-                    teamsCaptions.CaptionsEnabledChanged += TeamsCaptions_CaptionsEnabledChanged;
-
-                    // set spoken langauge
-                    var supportedSpokenLanguages = teamsCaptions.SupportedSpokenLanguages.ToList();
-                    var options = new StartCaptionsOptions();
-                    options.SpokenLanguage = "en-us";
-
-                    // start captions
-                    await teamsCaptions.StartCaptionsAsync(options);
-
-                    // change spoken language
-                    await teamsCaptions.SetSpokenLanguageAsync(supportedSpokenLanguages.First());
-
-                    // set caption language
-                    var captionLanguages = teamsCaptions.SupportedCaptionLanguages.ToList();
-                    await teamsCaptions.SetCaptionLanguageAsync(captionLanguages.First());
-                }
-
-            } catch (Exception ex) {
-                Console.WriteLine("Captions failed " + ex.Message);
-            }
-        }
-
-        private void TeamsCaptions_CaptionsEnabledChanged(object sender, PropertyChangedEventArgs e)
-        {
-            var enabled = (sender as TeamsCaptions).IsEnabled;
-        }
-
-        private void TeamsCaptions_ActiveSpokenLanguageChanged(object sender, PropertyChangedEventArgs e)
-        {
-            var spokenLanguage = (sender as TeamsCaptions).ActiveSpokenLanguage;
-        }
-
-        private void TeamsCaptions_ActiveCaptionLanguageChanged(object sender, PropertyChangedEventArgs e)
-        {
-            var captionLanguage = (sender as TeamsCaptions).ActiveCaptionLanguage;
-        }
-
-        private async void TeamsCaptions_CaptionsReceived(object sender, TeamsCaptionsReceivedEventArgs args)
-        {
-            // on captions data received
-            Console.WriteLine(args.SpokenText + "/n" + args.CaptionText + "/n" + args.CaptionLanguage + "/n" + args.SpokenLanguage + "/n" + args.Speaker.Identifier);
-        }
-
         private async void OnRemoteParticipantsUpdatedAsync(object sender, ParticipantsUpdatedEventArgs args)
         {
             await OnParticipantChangedAsync(
@@ -451,6 +389,73 @@ namespace CallingQuickstart
                 case VideoStreamState.NotAvailable:
                     break;
             }
+        }
+        #endregion
+
+        #region CaptionsCallFeature
+        // Demo code for starting Captions Call Feature
+        private async Task StartTeamsCaptionsFeature()
+        {
+            // get captions feature
+            var captionsCallFeature = call.Features.Captions;
+
+            try
+            {
+                // call captions will be typecasted to TeamsCaptions
+                var callcaptions = await captionsCallFeature.GetCaptionsAsync();
+
+                if (callcaptions.CaptionsKind == CaptionsKind.TeamsCaptions)
+                {
+                    var teamsCaptions = callcaptions as TeamsCaptions;
+
+                    // subscribe to captions events
+                    teamsCaptions.CaptionsReceived += TeamsCaptions_CaptionsReceived;
+                    teamsCaptions.ActiveCaptionLanguageChanged += TeamsCaptions_ActiveCaptionLanguageChanged;
+                    teamsCaptions.ActiveSpokenLanguageChanged += TeamsCaptions_ActiveSpokenLanguageChanged;
+                    teamsCaptions.CaptionsEnabledChanged += TeamsCaptions_CaptionsEnabledChanged;
+
+                    // set spoken langauge
+                    var supportedSpokenLanguages = teamsCaptions.SupportedSpokenLanguages.ToList();
+                    var options = new StartCaptionsOptions();
+                    options.SpokenLanguage = "en-us";
+
+                    // start captions
+                    await teamsCaptions.StartCaptionsAsync(options);
+
+                    // change spoken language
+                    await teamsCaptions.SetSpokenLanguageAsync(supportedSpokenLanguages.First());
+
+                    // set caption language
+                    var captionLanguages = teamsCaptions.SupportedCaptionLanguages.ToList();
+                    await teamsCaptions.SetCaptionLanguageAsync(captionLanguages.First());
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Captions failed " + ex.Message);
+            }
+        }
+
+        private void TeamsCaptions_CaptionsEnabledChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var enabled = (sender as TeamsCaptions).IsEnabled;
+        }
+
+        private void TeamsCaptions_ActiveSpokenLanguageChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var spokenLanguage = (sender as TeamsCaptions).ActiveSpokenLanguage;
+        }
+
+        private void TeamsCaptions_ActiveCaptionLanguageChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var captionLanguage = (sender as TeamsCaptions).ActiveCaptionLanguage;
+        }
+
+        private async void TeamsCaptions_CaptionsReceived(object sender, TeamsCaptionsReceivedEventArgs args)
+        {
+            // on captions data received
+            Debug.WriteLine(args.SpokenText + "/n" + args.CaptionText + "/n" + args.CaptionLanguage + "/n" + args.SpokenLanguage + "/n" + args.Speaker.Identifier);
         }
         #endregion
 
