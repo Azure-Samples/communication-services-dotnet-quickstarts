@@ -27,9 +27,12 @@ namespace CallAutomation_Playground
         public async Task InvokeTopLevelMenu(
             CommunicationIdentifier originalTarget, 
             CallConnection callConnection,
-            string serverCallId)
+            string serverCallId,
+            string correlationId)
         {
             _logger.LogInformation($"Invoking top level menu, with CallConnectionId[{callConnection.CallConnectionId}]");
+            _logger.LogInformation($"============ CorrelationId =========== [{correlationId}]");
+            _logger.LogInformation($"============ ServerCallId =========== [{serverCallId}]");
 
             // prepare calling modules to interact with this established call
             ICallingModules callingModule = new CallingModules(callConnection, _playgroundConfig);
@@ -118,7 +121,11 @@ namespace CallAutomation_Playground
                             _logger.LogInformation($"Start Recording...");
                             CallLocator callLocator = new ServerCallLocator(serverCallId);
                             StartRecordingOptions startRecordingOptions = new StartRecordingOptions(callLocator);
-                            _ = await _callAutomation.GetCallRecording().StartAsync(startRecordingOptions);
+                            //_ = await _callAutomation.GetCallRecording().StartAsync(startRecordingOptions);
+                            var state =  _callAutomation.GetCallRecording().Start(startRecordingOptions);
+                            string test = "";
+                            state.GetRawResponse().Headers.TryGetValue("X-Microsoft-Skype-Chain-ID", out test);
+                            _logger.LogInformation($"Recording Skype-Chain-ID... " + test);
 
                             // Play message of start of recording
                             await callingModule.PlayMessageThenWaitUntilItEndsAsync(_playgroundConfig.AllPrompts.PlayRecordingStarted);

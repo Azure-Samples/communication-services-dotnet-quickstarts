@@ -2,6 +2,7 @@
 using Azure.Communication.CallAutomation;
 using CallAutomation_Playground.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace CallAutomation_Playground.Controllers
 {
@@ -46,8 +47,19 @@ namespace CallAutomation_Playground.Controllers
 
                 _logger.LogInformation($"Calling[{target.PhoneNumber}] from DirectOfferNumber[{_playgroundConfig.DirectOfferedPhonenumber}]");
 
+                var mediaStreamingOptions = new MediaStreamingOptions(
+                    new Uri("wss://c8f0-20-125-145-72.ngrok-free.app/"),
+                    MediaStreamingTransport.Websocket,
+                    MediaStreamingContent.Audio,
+                    MediaStreamingAudioChannel.Unmixed);
+
+                var createCallOptions = new CreateCallOptions(callInvite, _playgroundConfig.CallbackUri)
+                {
+                    MediaStreamingOptions = mediaStreamingOptions
+                };
+
                 // create an outbound call to target using caller number
-                CreateCallResult createCallResult = await _callAutomationClient.CreateCallAsync(callInvite, _playgroundConfig.CallbackUri);
+                CreateCallResult createCallResult = await _callAutomationClient.CreateCallAsync(createCallOptions);
                 callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
 
                 _ = Task.Run(async () =>
@@ -69,7 +81,8 @@ namespace CallAutomation_Playground.Controllers
                         await _topLevelMenuService.InvokeTopLevelMenu(
                             target, 
                             createCallResult.CallConnection,
-                            eventResult.SuccessResult.ServerCallId);
+                            eventResult.SuccessResult.ServerCallId,
+                            eventResult.SuccessResult.CorrelationId);
                     }
                 });
             }

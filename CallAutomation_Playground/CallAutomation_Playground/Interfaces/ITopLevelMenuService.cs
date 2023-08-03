@@ -5,6 +5,6 @@ namespace CallAutomation_Playground.Interfaces
 {
     public interface ITopLevelMenuService
     {
-        Task InvokeTopLevelMenu(CommunicationIdentifier originalTarget, CallConnection callConnection, string serverCallId);
+        Task InvokeTopLevelMenu(CommunicationIdentifier originalTarget, CallConnection callConnection, string serverCallId, string correlationId);
     }
 }

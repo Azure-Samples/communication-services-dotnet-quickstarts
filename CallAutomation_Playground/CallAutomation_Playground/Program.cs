@@ -6,8 +6,10 @@ using CallAutomation_Playground.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Uri pmaEndpoint = new UriBuilder("https://x-pma-uswe-04.plat.skype.com:6448").Uri;
+
 // CallAutomation client: Add with given Azure Communication Service's connection string
-CallAutomationClient callAutomationClient = new CallAutomationClient(ReadingConfigs(builder, "COMMUNICATION_CONNECTION_STRING"));
+CallAutomationClient callAutomationClient = new CallAutomationClient(pmaEndpoint, ReadingConfigs(builder, "COMMUNICATION_CONNECTION_STRING"));
 builder.Services.AddSingleton(callAutomationClient);
 
 // This is our main Top Level Menu service, which will include our business logic of IVR.
@@ -17,6 +19,7 @@ builder.Services.AddSingleton<IOngoingEventHandler, OngoingEventHandler>();
 // setting up callback endpoint
 // Note: we are using VS tunnel feature for hosting callback webhook
 // update this if it were to use other 3rd party tunnel program, such as ngrok.
+// This should be public access
 var callbackUriHost = builder.Configuration["VS_TUNNEL_URL"];
 
 // Get all configs, such as callback url and prompts url

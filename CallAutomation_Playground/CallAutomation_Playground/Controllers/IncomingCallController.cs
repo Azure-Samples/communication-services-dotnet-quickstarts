@@ -67,7 +67,18 @@ namespace CallAutomation_Playground.Controllers
 
                     // Answer Incoming call with incoming call event data
                     // IncomingCallContext can be used to answer the call
-                    AnswerCallResult answerCallResult = await _callAutomationClient.AnswerCallAsync(incomingCallEventData.IncomingCallContext, _playgroundConfig.CallbackUri);
+                    var mediaStreamingConfiguration = new MediaStreamingOptions(
+                        new Uri("wss://c8f0-20-125-145-72.ngrok-free.app/"),
+                        MediaStreamingTransport.Websocket,
+                        MediaStreamingContent.Audio,
+                        MediaStreamingAudioChannel.Unmixed);
+
+                    var answerCallOption = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, _playgroundConfig.CallbackUri)
+                    {
+                        MediaStreamingOptions = mediaStreamingConfiguration,
+                    };
+
+                    AnswerCallResult answerCallResult = await _callAutomationClient.AnswerCallAsync(answerCallOption);
                     callConnectionId = answerCallResult.CallConnectionProperties.CallConnectionId;
 
                     _ = Task.Run(async () =>
@@ -89,7 +100,8 @@ namespace CallAutomation_Playground.Controllers
                             await _topLevelMenuService.InvokeTopLevelMenu(
                                 CommunicationIdentifier.FromRawId(incomingCallEventData.FromCommunicationIdentifier.RawId),
                                 answerCallResult.CallConnection,
-                                eventResult.SuccessResult.ServerCallId);
+                                eventResult.SuccessResult.ServerCallId,
+                                eventResult.SuccessResult.CorrelationId);
                         }
                     });
                 }
