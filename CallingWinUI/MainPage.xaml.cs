@@ -191,6 +191,17 @@ namespace CallingQuickstart
         }
         #endregion
 
+        #region Midcall Outgoing Audio Filters
+        private async void EchoCancellation_Click(object sender, RoutedEventArgs e)
+        {
+            var echoCancellationCheckbox = sender as CheckBox;
+            var midcallOutgoingAudioFilter = new MidcallOutgoingAudioFilters();
+            midcallOutgoingAudioFilter.EnableAEC = echoCancellationCheckbox.IsChecked.Value;
+
+            call.ApplyOutgoingAudioFilters(midcallOutgoingAudioFilter);
+        }
+        #endregion
+
         #region Video Effects Event Handlers
         private void OnVideoEffectError(object sender, VideoEffectErrorEventArgs e)
         {
@@ -449,6 +460,15 @@ namespace CallingQuickstart
         private async Task<CommunicationCall> StartAcsCallAsync(string acsCallee)
         {
             var options = GetStartCallOptions();
+            var outgoingAudioOptions = options.GetOugoingAudioOptions();
+            var precallOutgoingAudioFilter = new PrecallOutgoingAudioFilters()
+            {
+                EnableAGC = true;   // setting automatic gain control
+                NoiseSuppressionMode = NoiseSuppressionMode.High;   // setting noise suppression
+            }
+
+            outgoingAudioOptions.SetPrecallOutgoingAudioFilters(precallOutgoingAudioFilter);
+
             var call = await this.callAgent.StartCallAsync( new [] { new UserCallIdentifier(acsCallee) }, options);
             return call;
         }
