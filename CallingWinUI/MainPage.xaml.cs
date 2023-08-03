@@ -194,11 +194,14 @@ namespace CallingQuickstart
         #region Midcall Outgoing Audio Filters
         private async void EchoCancellation_Click(object sender, RoutedEventArgs e)
         {
-            var echoCancellationCheckbox = sender as CheckBox;
-            var midcallOutgoingAudioFilter = new MidcallOutgoingAudioFilters();
-            midcallOutgoingAudioFilter.EnableAEC = echoCancellationCheckbox.IsChecked.Value;
+            if (call != null)
+            {
+                var echoCancellationCheckbox = sender as CheckBox;
+                var midcallOutgoingAudioFilter = new MidcallOutgoingAudioFilters();
+                midcallOutgoingAudioFilter.EnableAEC = echoCancellationCheckbox.IsChecked.Value;
 
-            call.ApplyOutgoingAudioFilters(midcallOutgoingAudioFilter);
+                call.ApplyOutgoingAudioFilters(midcallOutgoingAudioFilter);
+            }
         }
         #endregion
 
@@ -460,16 +463,16 @@ namespace CallingQuickstart
         private async Task<CommunicationCall> StartAcsCallAsync(string acsCallee)
         {
             var options = GetStartCallOptions();
-            var outgoingAudioOptions = options.GetOugoingAudioOptions();
+            var outgoingAudioOptions = options.OutgoingAudioOptions;
             var precallOutgoingAudioFilter = new PrecallOutgoingAudioFilters()
             {
-                EnableAGC = true;   // setting automatic gain control
-                NoiseSuppressionMode = NoiseSuppressionMode.High;   // setting noise suppression
-            }
+                EnableAGC = true,   // setting automatic gain control
+                NoiseSuppressionMode = NoiseSuppressionMode.High   // setting noise suppression
+            };
 
-            outgoingAudioOptions.SetPrecallOutgoingAudioFilters(precallOutgoingAudioFilter);
+            outgoingAudioOptions.AudioFilters = precallOutgoingAudioFilter;
 
-            var call = await this.callAgent.StartCallAsync( new [] { new UserCallIdentifier(acsCallee) }, options);
+            var call = await this.callAgent.StartCallAsync(new[] { new UserCallIdentifier(acsCallee) }, options);
             return call;
         }
 
