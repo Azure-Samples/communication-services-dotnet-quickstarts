@@ -191,7 +191,9 @@ namespace CallingQuickstart
                 }
             }
         }
+        #endregion
 
+        #region Midcall Outgoing Audio Filters
         private async void EchoCancellation_Click(object sender, RoutedEventArgs e)
         {
             var echoCancellationCheckbox = sender as CheckBox;
