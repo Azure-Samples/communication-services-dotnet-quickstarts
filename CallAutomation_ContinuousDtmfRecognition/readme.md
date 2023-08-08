@@ -39,9 +39,9 @@ Open the Program.cs file to configure the following settings
 3. `targetPhonenumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA".
 4. `callbackUriHost`: Base url of the app. (For local development replace the dev tunnel url).
 
-### Run app locally
+### Run the application
 
-1. Run the `CallAutomation_SendDtmfTones` project.
+1. Run the application.
 2. Open `http://localhost:8080/index.html` in a Web browser.
 3. To initiate the call, click on the `Place a call!` button.
-4. On the target phone, enter DTMF tones and watch the application console.
+4. From the target phone, enter some DTMF and watch the application console for the `DTMF tone received` log line.

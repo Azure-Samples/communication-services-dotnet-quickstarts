@@ -30,6 +30,7 @@ internal class Program
             var callInvite = new CallInvite(target, caller);
             var createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "/api/callbacks"));
             logger.LogInformation("CreateCallAsync result: {createCallResult}", createCallResult);
+            return Results.Redirect("/index.html");
         });
 
         app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
@@ -47,15 +48,15 @@ internal class Program
                     var tones = new DtmfTone[] { DtmfTone.One, DtmfTone.Two, DtmfTone.Three };
                     var targetParticipant = new PhoneNumberIdentifier(targetPhonenumber);
                     var operationContext = "Consultant IVR";
-                    var sendDtmfAsyncResult = await callMedia.SendDtmfAsync(tones, targetParticipant, operationContext);
+                    var sendDtmfAsyncResult = await callMedia.SendDtmfTonesAsync(tones, targetParticipant, operationContext);
                     logger.LogInformation("SendDtmfAsync result: {sendDtmfAsyncResult}", sendDtmfAsyncResult);
                 }
-                else if (parsedEvent is SendDtmfCompleted sendDtmfCompleted)
+                else if (parsedEvent is SendDtmfTonesCompleted sendDtmfCompleted)
                 {
                     logger.LogInformation("SendDtmf completed successfully");
                     await callConnection.HangUpAsync(true);
                 }
-                else if (parsedEvent is SendDtmfFailed sendDtmfFailed)
+                else if (parsedEvent is SendDtmfTonesFailed sendDtmfFailed)
                 {
                     logger.LogInformation("SendDtmf failed with ResultInformation: {resultInformation}", sendDtmfFailed.ResultInformation);
                     await callConnection.HangUpAsync(true);

@@ -19,7 +19,7 @@ internal class Program
 
         // Base url of the app
         var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
-        
+
         var callAutomationClient = new CallAutomationClient(acsConnectionString);
         var app = builder.Build();
 
@@ -30,6 +30,7 @@ internal class Program
             var callInvite = new CallInvite(target, caller);
             var createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "/api/callbacks"));
             logger.LogInformation("CreateCallAsync result: {createCallResult}", createCallResult);
+            return Results.Redirect("/index.html");
         });
 
         app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
