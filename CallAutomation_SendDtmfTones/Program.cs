@@ -53,12 +53,12 @@ internal class Program
                 }
                 else if (parsedEvent is SendDtmfTonesCompleted sendDtmfCompleted)
                 {
-                    logger.LogInformation("SendDtmf completed successfully");
+                    logger.LogInformation("SendDtmf completed successfully, OperationContext: {operationContext}", sendDtmfCompleted.OperationContext);
                     await callConnection.HangUpAsync(true);
                 }
                 else if (parsedEvent is SendDtmfTonesFailed sendDtmfFailed)
                 {
-                    logger.LogInformation("SendDtmf failed with ResultInformation: {resultInformation}", sendDtmfFailed.ResultInformation);
+                    logger.LogInformation("SendDtmf failed with ResultInformation: {resultInformation}, OperationContext: {operationContext}", sendDtmfFailed.ResultInformation, sendDtmfFailed.OperationContext);
                     await callConnection.HangUpAsync(true);
                 }
             }
