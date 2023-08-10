@@ -1,7 +1,6 @@
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Microsoft.Extensions.Logging;
 
 internal class Program
 {
@@ -11,12 +10,6 @@ internal class Program
 
         // Your ACS resource connection string
         var acsConnectionString = "<ACS_CONNECTION_STRING>";
-        
-        // Your ACS resource phone number will act as source number to start outbound call
-        var acsPhonenumber = "<ACS_PHONE_NUMBER>";
-
-        // Target phone number you want to receive the call.
-        var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
 
         // Base url of the app
         var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
@@ -24,21 +17,44 @@ internal class Program
         // Cognitive Service endpoint URI
         var cognitiveServiceEndpoint = "<COGNITIVE_SERVICE_ENDPOINT_URI>";
 
+        // Whether to use a phone number or ACS user ID
+        var usePhone = false;
+
+        // When usePhone is false: target ACS user id you want to receive the call.
+        var targetUserId = "<TARGET_USER_ID>";
+
+        // When usePhone is true: ACS resource phone number will act as source number to start outbound call
+        var acsPhonenumber = "<ACS_PHONE_NUMBER>";
+
+        // When usePhone is true: target phone number you want to receive the call.
+        var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
+
+        var operation = "RecognizeSpeechOrDtmf";
+
+
+        CommunicationIdentifier targetParticipant;
+        CallInvite callInvite;
+        if (usePhone)
+        {
+            var targetPhoneNumberIdentifier = new PhoneNumberIdentifier(targetPhonenumber);
+            targetParticipant = targetPhoneNumberIdentifier;
+            var callerPhoneNumberIdentifier = new PhoneNumberIdentifier(acsPhonenumber);
+            callInvite = new CallInvite(targetPhoneNumberIdentifier, callerPhoneNumberIdentifier);
+        }
+        else
+        {
+            var targetCommunicationUserIdentifier = new CommunicationUserIdentifier(targetUserId);
+            targetParticipant = targetCommunicationUserIdentifier;
+            callInvite = new CallInvite(targetCommunicationUserIdentifier);
+        }
         var audioUri = callbackUriHost + "/prompt.wav";
-        var playSourceCacheId = "1";
 
-
-        var operation = "PlayFile";
-        var playSourceType = "TextWithKind";
 
         var callAutomationClient = new CallAutomationClient(acsConnectionString);
         var app = builder.Build();
 
         app.MapGet("/outboundCall", async (ILogger<Program> logger) =>
         {
-            var target = new PhoneNumberIdentifier(targetPhonenumber);
-            var caller = new PhoneNumberIdentifier(acsPhonenumber);
-            var callInvite = new CallInvite(target, caller);
             var createCallOptions = new CreateCallOptions(callInvite, new Uri(callbackUriHost + "/api/callbacks"))
             {
                 CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
@@ -52,38 +68,37 @@ internal class Program
         {
             foreach (var cloudEvent in cloudEvents)
             {
-                CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
-                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}", parsedEvent?.GetType().Name, parsedEvent?.CallConnectionId);
-                var callConnection = callAutomationClient.GetCallConnection(parsedEvent?.CallConnectionId);
-                var callMedia = callConnection.GetCallMedia();
+                CallAutomationEventBase acsEvent = CallAutomationEventParser.Parse(cloudEvent);
+                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}", acsEvent?.GetType().Name, acsEvent?.CallConnectionId);
+                var callConnectionId = acsEvent?.CallConnectionId;
 
-                if (parsedEvent is CallConnected)
+                if (acsEvent is CallConnected)
                 {
                     if (operation == "PlayFile")
                     {
                         var playSource = new FileSource(new Uri(audioUri));
-                        var playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(targetPhonenumber) };
-                        var playAsyncResult = await callMedia.PlayAsync(playSource, playTo);
+                        var playTo = new List<CommunicationIdentifier> { targetParticipant };
+                        var playAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId).GetCallMedia().PlayAsync(playSource, playTo);
                         logger.LogInformation("PlayAsync result: {playAsyncResult}", playAsyncResult);
                     }
                     else if (operation == "PlayTextWithKind")
                     {
                         String textToPlay = "Welcome to Contoso";
 
-                        //you can provide SourceLocale and VoiceKind to select an appropriate voice
+                        // Provide SourceLocale and VoiceKind to select an appropriate voice. SourceLocale or VoiceName needs to be provided.
                         var playSource = new TextSource(textToPlay, "en-US", VoiceKind.Female);
-                        var playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(targetPhonenumber) };
-                        var playAsyncResult = await callMedia.PlayAsync(playSource, playTo);
+                        var playTo = new List<CommunicationIdentifier> { targetParticipant };
+                        var playAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId).GetCallMedia().PlayAsync(playSource, playTo);
                         logger.LogInformation("PlayAsync result: {playAsyncResult}", playAsyncResult);
                     }
                     else if (operation == "PlayTextWithVoice")
                     {
                         String textToPlay = "Welcome to Contoso";
 
-                        //you can provide VoiceName to select a specific voice
+                        // Provide VoiceName to select a specific voice. SourceLocale or VoiceName needs to be provided.
                         var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
-                        var playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(targetPhonenumber) };
-                        var playAsyncResult = await callMedia.PlayAsync(playSource, playTo);
+                        var playTo = new List<CommunicationIdentifier> { targetParticipant };
+                        var playAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId).GetCallMedia().PlayAsync(playSource, playTo);
                         logger.LogInformation("PlayAsync result: {playAsyncResult}", playAsyncResult);
                     }
                     else if (operation == "PlaySSML")
@@ -91,16 +106,20 @@ internal class Program
                         String ssmlToPlay = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hello World!</voice></speak>";
 
                         var playSource = new SsmlSource(ssmlToPlay);
-                        var playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(targetPhonenumber) };
-                        var playAsyncResult = await callMedia.PlayAsync(playSource, playTo);
-                        logger.LogInformation("PlayAsync result: {playAsyncResult}", playAsyncResult);
+                        var playTo = new List<CommunicationIdentifier> { targetParticipant };
+                        var playResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .PlayAsync(playSource, playTo);
+                        logger.LogInformation("PlayAsync result: {playAsyncResult}", playResult);
                     }
                     else if (operation == "PlayToAllAsync")
                     {
                         String textToPlay = "Welcome to Contoso";
                         var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
-                        var playToAllAsyncResult = await callMedia.PlayToAllAsync(playSource);
-                        logger.LogInformation("PlayToAllAsync result: {playToAllAsyncResult}", playToAllAsyncResult);
+                        var playResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .PlayToAllAsync(playSource);
+                        logger.LogInformation("PlayToAllAsync result: {playToAllAsyncResult}", playResult);
                     }
                     else if (operation == "PlayLoop")
                     {
@@ -108,61 +127,65 @@ internal class Program
                         var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
                         var playOptions = new PlayToAllOptions(playSource)
                         {
-                            Loop = true,
-                            OperationContext = "PlayAudio"
+                            Loop = true
                         };
-                        var playToAllAsyncResult = await callMedia.PlayToAllAsync(playOptions);
-                        logger.LogInformation("PlayToAllAsync result: {playToAllAsyncResult}", playToAllAsyncResult);
+                        var playResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .PlayToAllAsync(playOptions);
+                        logger.LogInformation("PlayToAllAsync result: {playToAllAsyncResult}", playResult);
                     }
                     else if (operation == "PlayWithCache")
                     {
+                        var playTo = new List<CommunicationIdentifier> { targetParticipant };
                         var playSource = new FileSource(new Uri(audioUri))
                         {
-                            PlaySourceCacheId = playSourceCacheId
+                            PlaySourceCacheId = "<playSourceId>"
                         };
-                        var playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(targetPhonenumber) };
-                        var playAsyncResult = await callMedia.PlayAsync(playSource, playTo);
-                        logger.LogInformation("PlayAsync result: {playAsyncResult}", playAsyncResult);
+                        var playResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .PlayAsync(playSource, playTo);
+                        logger.LogInformation("PlayAsync result: {playAsyncResult}", playResult);
                     }
                     else if (operation == "CancelMedia")
                     {
-                        var cancelResult = await callMedia.CancelAllMediaOperationsAsync();
+                        var cancelResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .CancelAllMediaOperationsAsync();
                         logger.LogInformation("CancelAllMediaOperationsAsync result: {cancelResult}", cancelResult);
                     }
                     else if (operation == "RecognizeDTMF")
                     {
-                        var targetParticipant = new PhoneNumberIdentifier(targetPhonenumber);
                         var maxTonesToCollect = 3;
-                        String textToPlay = "Welcome to Contoso";
-                        var playSource = new TextSource(textToPlay);
+                        String textToPlay = "Welcome to Contoso, please enter 3 DTMF.";
+                        var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
                         var recognizeOptions = new CallMediaRecognizeDtmfOptions(targetParticipant, maxTonesToCollect)
                         {
-                            InterruptCallMediaOperation = true,
                             InitialSilenceTimeout = TimeSpan.FromSeconds(30),
                             Prompt = playSource,
                             InterToneTimeout = TimeSpan.FromSeconds(5),
                             InterruptPrompt = true,
                             StopTones = new DtmfTone[] { DtmfTone.Pound },
                         };
-                        var recognizeResult = await callMedia.StartRecognizingAsync(recognizeOptions);
+                        var recognizeResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .StartRecognizingAsync(recognizeOptions);
                         logger.LogInformation("StartRecognizingAsync result: {recognizeResult}", recognizeResult);
                     }
                     else if (operation == "RecognizeChoice")
                     {
-                        var targetParticipant = new PhoneNumberIdentifier(targetPhonenumber);
                         var choices = new List<RecognitionChoice>
-                        {
-                            new RecognitionChoice("Confirm", new List<string> { "Confirm", "First", "One"})
-                            {
-                                Tone = DtmfTone.One
-                            },
-                            new RecognitionChoice("Cancel", new List<string> { "Cancel", "Second", "Two"})
-                            {
-                                Tone = DtmfTone.Two
-                            }
-                        };
+{
+    new RecognitionChoice("Confirm", new List<string> { "Confirm", "First", "One"})
+    {
+        Tone = DtmfTone.One
+    },
+    new RecognitionChoice("Cancel", new List<string> { "Cancel", "Second", "Two"})
+    {
+        Tone = DtmfTone.Two
+    }
+};
                         String textToPlay = "Hello, This is a reminder for your appointment at 2 PM, Say Confirm to confirm your appointment or Cancel to cancel the appointment. Thank you!";
-                        var playSource = new TextSource(textToPlay);
+                        var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
                         var recognizeOptions = new CallMediaRecognizeChoiceOptions(targetParticipant, choices)
                         {
                             InterruptPrompt = true,
@@ -170,40 +193,70 @@ internal class Program
                             Prompt = playSource,
                             OperationContext = "AppointmentReminderMenu"
                         };
-                        var recognizeResult = await callMedia.StartRecognizingAsync(recognizeOptions);
+                        var recognizeResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .StartRecognizingAsync(recognizeOptions);
                         logger.LogInformation("StartRecognizingAsync result: {recognizeResult}", recognizeResult);
                     }
                     else if (operation == "RecognizeSpeech")
                     {
-                        var targetParticipant = new PhoneNumberIdentifier(targetPhonenumber);
                         String textToPlay = "Hi, how can I help you today?";
-                        var playSource = new TextSource(textToPlay);
+                        var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
                         var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant)
                         {
-                            InterruptCallMediaOperation = true,
                             Prompt = playSource,
                             EndSilenceTimeout = TimeSpan.FromMilliseconds(1000),
                             OperationContext = "OpenQuestionSpeech"
                         };
-                        var recognizeResult = await callMedia.StartRecognizingAsync(recognizeOptions);
+                        var recognizeResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .StartRecognizingAsync(recognizeOptions);
+                        logger.LogInformation("StartRecognizingAsync result: {recognizeResult}", recognizeResult);
+                    }
+                    else if (operation == "RecognizeSpeechOrDtmf")
+                    {
+                        var maxTonesToCollect = 1;
+                        String textToPlay = "Hi, how can I help you today, you can press 0 to speak to an agent?";
+                        var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
+                        var recognizeOptions = new CallMediaRecognizeSpeechOrDtmfOptions(targetParticipant, maxTonesToCollect)
+                        {
+                            Prompt = playSource,
+                            EndSilenceTimeout = TimeSpan.FromMilliseconds(1000),
+                            InitialSilenceTimeout = TimeSpan.FromSeconds(30),
+                            InterruptPrompt = true,
+                            OperationContext = "OpenQuestionSpeechOrDtmf"
+                        };
+                        var recognizeResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .StartRecognizingAsync(recognizeOptions);
                         logger.LogInformation("StartRecognizingAsync result: {recognizeResult}", recognizeResult);
                     }
 
                 }
-                else if (parsedEvent is PlayCompleted playCompleted)
+                if (acsEvent is PlayCompleted playCompleted)
                 {
                     logger.LogInformation("Play completed successfully, context={context}", playCompleted.OperationContext);
                 }
-                else if (parsedEvent is PlayFailed playFailed)
+                if (acsEvent is PlayFailed playFailed)
                 {
-                    logger.LogInformation("Play failed, ResultInformation: {resultInformation}, context={context}", playFailed.ResultInformation, playFailed.OperationContext);
-                    await callConnection.HangUpAsync(true);
+                    if (MediaEventReasonCode.PlayDownloadFailed.Equals(playFailed.ReasonCode))
+                    {
+                        logger.LogInformation("Play failed: download failed, context={context}", playFailed.OperationContext);
+                    }
+                    else if (MediaEventReasonCode.PlayInvalidFileFormat.Equals(playFailed.ReasonCode))
+                    {
+                        logger.LogInformation("Play failed: invalid file format, context={context}", playFailed.OperationContext);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Play failed, result={result}, context={context}", playFailed.ResultInformation?.Message, playFailed.OperationContext);
+                    }
                 }
-                else if (parsedEvent is PlayCanceled playCanceled)
+                if (acsEvent is PlayCanceled playCanceled)
                 {
-                    logger.LogInformation("Play canceled");
+                    logger.LogInformation("Play canceled, context={context}", playCanceled.OperationContext);
                 }
-                else if (parsedEvent is RecognizeCompleted recognizeCompleted)
+                if (acsEvent is RecognizeCompleted recognizeCompleted)
                 {
                     switch (recognizeCompleted.RecognizeResult)
                     {
@@ -230,7 +283,7 @@ internal class Program
                             break;
                     }
                 }
-                else if (parsedEvent is RecognizeFailed recognizeFailed)
+                if (acsEvent is RecognizeFailed recognizeFailed)
                 {
                     if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailed.ReasonCode))
                     {
@@ -246,6 +299,10 @@ internal class Program
                     {
                         // Take action for incorrect tone
                         logger.LogInformation("Recognition failed: incorrect tone detected");
+                    }
+                    else
+                    {
+                        logger.LogInformation("Recognition failed, result={result}, context={context}", recognizeFailed.ResultInformation?.Message, recognizeFailed.OperationContext);
                     }
                 }
             }

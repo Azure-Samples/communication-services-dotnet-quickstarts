@@ -15,17 +15,18 @@ internal class Program
         var acsPhonenumber = "<ACS_PHONE_NUMBER>";
 
         // Target phone number you want to receive the call.
-        var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
+        var c2Target = "<TARGET_PHONE_NUMBER>";
 
         // Base url of the app
         var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
 
+        
         var callAutomationClient = new CallAutomationClient(acsConnectionString);
         var app = builder.Build();
 
         app.MapGet("/outboundCall", async (ILogger<Program> logger) =>
         {
-            var target = new PhoneNumberIdentifier(targetPhonenumber);
+            var target = new PhoneNumberIdentifier(c2Target);
             var caller = new PhoneNumberIdentifier(acsPhonenumber);
             var callInvite = new CallInvite(target, caller);
             var createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "/api/callbacks"));
@@ -37,29 +38,27 @@ internal class Program
         {
             foreach (var cloudEvent in cloudEvents)
             {
-                CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
-                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}", parsedEvent?.GetType().Name, parsedEvent?.CallConnectionId);
-                var callConnection = callAutomationClient.GetCallConnection(parsedEvent?.CallConnectionId);
-                var callMedia = callConnection.GetCallMedia();
+                CallAutomationEventBase acsEvent = CallAutomationEventParser.Parse(cloudEvent);
+                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}", acsEvent?.GetType().Name, acsEvent?.CallConnectionId);
+                var callConnectionId = acsEvent?.CallConnectionId;
 
-                if (parsedEvent is CallConnected)
+                if (acsEvent is CallConnected)
                 {
                     // Send DTMF tones
-                    var tones = new DtmfTone[] { DtmfTone.One, DtmfTone.Two, DtmfTone.Three };
-                    var targetParticipant = new PhoneNumberIdentifier(targetPhonenumber);
-                    var operationContext = "Consultant IVR";
-                    var sendDtmfAsyncResult = await callMedia.SendDtmfTonesAsync(tones, targetParticipant, operationContext);
+                    var tones = new DtmfTone[] { DtmfTone.One, DtmfTone.Two, DtmfTone.Three, DtmfTone.Pound };
+                    var sendDtmfAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                        .GetCallMedia()
+                        .SendDtmfTonesAsync(tones, new PhoneNumberIdentifier(c2Target), "dtmfs-to-ivr");
                     logger.LogInformation("SendDtmfAsync result: {sendDtmfAsyncResult}", sendDtmfAsyncResult);
                 }
-                else if (parsedEvent is SendDtmfTonesCompleted sendDtmfCompleted)
+                if (acsEvent is SendDtmfTonesCompleted sendDtmfCompleted)
                 {
-                    logger.LogInformation("SendDtmf completed successfully, OperationContext: {operationContext}", sendDtmfCompleted.OperationContext);
-                    await callConnection.HangUpAsync(true);
+                    logger.LogInformation("Send dtmf succeeded, context={context}", sendDtmfCompleted.OperationContext);
                 }
-                else if (parsedEvent is SendDtmfTonesFailed sendDtmfFailed)
+                if (acsEvent is SendDtmfTonesFailed sendDtmfFailed)
                 {
-                    logger.LogInformation("SendDtmf failed with ResultInformation: {resultInformation}, OperationContext: {operationContext}", sendDtmfFailed.ResultInformation, sendDtmfFailed.OperationContext);
-                    await callConnection.HangUpAsync(true);
+                    logger.LogInformation("Send dtmf failed: result={result}, context={context}",
+                        sendDtmfFailed.ResultInformation?.Message, sendDtmfFailed.OperationContext);
                 }
             }
             return Results.Ok();
