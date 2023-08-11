@@ -22,7 +22,7 @@ It makes an outbound call to a phone number and plays audio and recognize speech
 2. git clone `https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`.
 3. Navigate to `CallAutomation_SendDtmfTones` folder and open `CallAutomation_SendDtmfTones.sln` file.
 
-### Setup and host your Azure DevTunnel
+## Setup and host your Azure DevTunnel
 
 [Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
 
@@ -31,9 +31,8 @@ devtunnel create --allow-anonymous
 devtunnel port create -p 8080
 devtunnel host
 ```
-### Configure application settings
 
-## Configuration
+## Configure application settings
 
 Right-click on project and choose Manage User Secrets
 
@@ -48,7 +47,7 @@ secrets.json
   "targetPhonenumber": "<When usePhone is true: target phone number to add in the call. For e.g. +1425XXXAAAA>"
 ```
 
-### Run the application
+## Run the application
 
 1. Run the application.
 2. Open `http://localhost:8080/index.html` in a Web browser.
