@@ -1,6 +1,10 @@
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
+using Azure.Messaging.EventGrid.SystemEvents;
+using Azure.Messaging.EventGrid;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Nodes;
 
 internal class Program
 {
@@ -9,25 +13,25 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Your ACS resource connection string
-        var acsConnectionString = "<ACS_CONNECTION_STRING>";
+        var acsConnectionString = builder.Configuration["acsConnectionString"];
 
         // Base url of the app
-        var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
+        var callbackUriHost = builder.Configuration["callbackUriHost"];
 
         // Cognitive Service endpoint URI
-        var cognitiveServiceEndpoint = "<COGNITIVE_SERVICE_ENDPOINT_URI>";
+        var cognitiveServiceEndpoint = builder.Configuration["cognitiveServiceEndpoint"];
 
         // Whether to use a phone number or ACS user ID
-        var usePhone = false;
+        var usePhone = true;
 
         // When usePhone is false: target ACS user id you want to receive the call.
-        var targetUserId = "<TARGET_USER_ID>";
+        var targetUserId = builder.Configuration["targetUserId"];
 
         // When usePhone is true: ACS resource phone number will act as source number to start outbound call
-        var acsPhonenumber = "<ACS_PHONE_NUMBER>";
+        var acsPhonenumber = builder.Configuration["acsPhonenumber"];
 
         // When usePhone is true: target phone number you want to receive the call.
-        var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
+        var targetPhonenumber = builder.Configuration["targetPhonenumber"];
 
         var operation = "RecognizeSpeechOrDtmf";
 
@@ -47,11 +51,67 @@ internal class Program
             targetParticipant = targetCommunicationUserIdentifier;
             callInvite = new CallInvite(targetCommunicationUserIdentifier);
         }
-        var audioUri = callbackUriHost + "/prompt.wav";
+        var audioUri = callbackUriHost + "/audio/mainmenu.wav";
 
 
         var callAutomationClient = new CallAutomationClient(acsConnectionString);
         var app = builder.Build();
+
+
+        app.MapPost("/api/incomingCall", async (
+            [FromBody] EventGridEvent[] eventGridEvents,
+            ILogger<Program> logger) =>
+        {
+            foreach (var eventGridEvent in eventGridEvents)
+            {
+                // Handle system events
+                if (eventGridEvent.TryGetSystemEventData(out object eventData))
+                {
+                    // Handle the subscription validation event.
+                    if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+                    {
+                        logger.LogInformation("SubscriptionValidationEvent");
+                        var responseData = new SubscriptionValidationResponse
+                        {
+                            ValidationResponse = subscriptionValidationEventData.ValidationCode
+                        };
+                        return Results.Ok(responseData);
+                    }
+                }
+
+                var jsonObject = JsonNode.Parse(eventGridEvent.Data)?.AsObject();
+                logger.LogInformation("jsonObject={jsonObject}", jsonObject);
+                var toId = (string)(jsonObject["to"]["rawId"]);
+                var fromId = (string)(jsonObject["from"]["rawId"]);
+                var incomingCallContext = (string)jsonObject["incomingCallContext"];
+                var correlationId = (string)jsonObject["correlationId"];
+
+
+                var toKind = (string)(jsonObject["to"]["kind"]);
+                if (toKind.Equals("phoneNumber"))
+                {
+                    var toPhoneNumber = (string)(jsonObject["to"]["phoneNumber"]["value"]);
+                    if (toPhoneNumber == acsPhonenumber)
+                    {
+                        var answerCallOptions = new AnswerCallOptions(incomingCallContext, new Uri(callbackUriHost + "/api/callbacks"))
+                        {
+                            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+                        };
+                        var answerCallResult = await callAutomationClient.AnswerCallAsync(answerCallOptions);
+                        logger.LogInformation("AnswerCallAsync result: {answerCallResult}, correlationId={correlationId}", answerCallResult, correlationId);
+                    }
+                    else
+                    {
+                        logger.LogInformation("incoming call, phone number not found");
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("incoming call, not a phone number");
+                }
+            }
+            return Results.Ok();
+        });
 
         app.MapGet("/outboundCall", async (ILogger<Program> logger) =>
         {
@@ -69,7 +129,7 @@ internal class Program
             foreach (var cloudEvent in cloudEvents)
             {
                 CallAutomationEventBase acsEvent = CallAutomationEventParser.Parse(cloudEvent);
-                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}", acsEvent?.GetType().Name, acsEvent?.CallConnectionId);
+                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}, correlationId={correlationId}", acsEvent?.GetType().Name, acsEvent?.CallConnectionId, acsEvent?.CorrelationId);
                 var callConnectionId = acsEvent?.CallConnectionId;
 
                 if (acsEvent is CallConnected)
@@ -103,7 +163,7 @@ internal class Program
                     }
                     else if (operation == "PlaySSML")
                     {
-                        String ssmlToPlay = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hello World!</voice></speak>";
+                        String ssmlToPlay = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\"> Hello World!</voice></speak>";
 
                         var playSource = new SsmlSource(ssmlToPlay);
                         var playTo = new List<CommunicationIdentifier> { targetParticipant };
@@ -174,16 +234,16 @@ internal class Program
                     else if (operation == "RecognizeChoice")
                     {
                         var choices = new List<RecognitionChoice>
-{
-    new RecognitionChoice("Confirm", new List<string> { "Confirm", "First", "One"})
-    {
-        Tone = DtmfTone.One
-    },
-    new RecognitionChoice("Cancel", new List<string> { "Cancel", "Second", "Two"})
-    {
-        Tone = DtmfTone.Two
-    }
-};
+                        {
+                            new RecognitionChoice("Confirm", new List<string> { "Confirm", "First", "One"})
+                            {
+                                Tone = DtmfTone.One
+                            },
+                            new RecognitionChoice("Cancel", new List<string> { "Cancel", "Second", "Two"})
+                            {
+                                Tone = DtmfTone.Two
+                            }
+                        };
                         String textToPlay = "Hello, This is a reminder for your appointment at 2 PM, Say Confirm to confirm your appointment or Cancel to cancel the appointment. Thank you!";
                         var playSource = new TextSource(textToPlay, "en-US-ElizabethNeural");
                         var recognizeOptions = new CallMediaRecognizeChoiceOptions(targetParticipant, choices)
@@ -288,7 +348,7 @@ internal class Program
                     if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailed.ReasonCode))
                     {
                         // Take action for time out
-                        logger.LogInformation("Recognition failed: initial silencev time out");
+                        logger.LogInformation("Recognition failed: initial silence time out");
                     }
                     else if (MediaEventReasonCode.RecognizeSpeechOptionNotMatched.Equals(recognizeFailed.ReasonCode))
                     {
@@ -304,6 +364,10 @@ internal class Program
                     {
                         logger.LogInformation("Recognition failed, result={result}, context={context}", recognizeFailed.ResultInformation?.Message, recognizeFailed.OperationContext);
                     }
+                }
+                if (acsEvent is CallDisconnected callDisconnected)
+                {
+                    logger.LogInformation("callDisconnected, result={result}, context={context}", callDisconnected.ResultInformation?.Message, callDisconnected.OperationContext);
                 }
             }
             return Results.Ok();

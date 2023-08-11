@@ -21,7 +21,7 @@ It makes an outbound call to a phone number and collects DTMF tones. The applica
 2. git clone `https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`.
 3. Navigate to `CallAutomation_SendDtmfTones` folder and open `CallAutomation_SendDtmfTones.sln` file.
 
-### Setup and host your Azure DevTunnel
+## Setup and host your Azure DevTunnel
 
 [Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
 
@@ -30,17 +30,21 @@ devtunnel create --allow-anonymous
 devtunnel port create -p 8080
 devtunnel host
 ```
-### Configuring application
 
-Open the Program.cs file to configure the following settings
+## Configure application settings
 
-1. `acsConnectionString`: Azure Communication Service resource's connection string.
-2. `acsPhonenumber`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
-3. `targetPhonenumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA".
-4. `callbackUriHost`: Base url of the app. (For local development replace the dev tunnel url).
+Right-click on project and choose Manage User Secrets
 
-### Run the application
+secrets.json
 
+```
+  "acsConnectionString": "<Azure Communication Service connection string>",
+  "callbackUriHost":  "<Base url of the app. For local development use the dev tunnel url>",
+  "acsPhonenumber": "<When usePhone is true: phone number associated with the Azure Communication Service resource. For e.g. +1425XXXAAAA>",
+  "targetPhonenumber": "<When usePhone is true: target phone number to add in the call. For e.g. +1425XXXAAAA>"
+```
+
+## Run the application
 1. Run the application.
 2. Open `http://localhost:8080/index.html` in a Web browser.
 3. To initiate the call, click on the `Place a call!` button.

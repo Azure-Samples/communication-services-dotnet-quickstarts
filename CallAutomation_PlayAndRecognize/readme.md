@@ -31,15 +31,22 @@ devtunnel create --allow-anonymous
 devtunnel port create -p 8080
 devtunnel host
 ```
-### Configuring application
+### Configure application settings
 
-Open the Program.cs file to configure the following settings
+## Configuration
 
-1. `acsConnectionString`: Azure Communication Service resource's connection string.
-2. `acsPhonenumber`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
-3. `targetPhonenumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA".
-4. `callbackUriHost`: Base url of the app. (For local development replace the dev tunnel url).
-5. `cognitiveServiceEndpoint`: Azure Cognitive Service endpoint URI
+Right-click on project and choose Manage User Secrets
+
+secrets.json
+
+```
+  "acsConnectionString": "<Azure Communication Service connection string>",
+  "callbackUriHost":  "<Base url of the app. For local development use the dev tunnel url>",
+  "cognitiveServiceEndpoint": "<Azure Cognitive Service endpoint URI>",
+  "targetUserId": "<When usePhone is false: target ACS user id you want to receive the call.>",
+  "acsPhonenumber": "<When usePhone is true: phone number associated with the Azure Communication Service resource. For e.g. +1425XXXAAAA>",
+  "targetPhonenumber": "<When usePhone is true: target phone number to add in the call. For e.g. +1425XXXAAAA>"
+```
 
 ### Run the application
 
