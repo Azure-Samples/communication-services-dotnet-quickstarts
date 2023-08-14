@@ -53,11 +53,11 @@ namespace IncomingCallRouting.Utils
             try
             {
                 // var create = await _callAutomationClient.CreateCallAsync(
-                //     new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)),
+                //     new CallInvite(new MicrosoftTeamsUserIdentifier(_targetParticipant)),
                 //     new Uri(_callConfiguration.AppCallbackUrl));
                 // Logger.LogMessage(Logger.MessageType.INFORMATION, $"CreateCallAsync Response -----> {create.GetRawResponse()}");
 
-                // var redirect = await _callAutomationClient.RedirectCallAsync(incomingCallContext, new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)));
+                // var redirect = await _callAutomationClient.RedirectCallAsync(incomingCallContext, new CallInvite(new MicrosoftTeamsUserIdentifier(_targetParticipant)));
                 // Logger.LogMessage(Logger.MessageType.INFORMATION, $"RedirectCallAsync Response -----> {redirect.Status}");
 
                 // Answer Call
@@ -114,13 +114,14 @@ namespace IncomingCallRouting.Utils
                 // }
 
                 // var participants = await _callConnection.GetParticipantsAsync();
-                // await _callConnection.TransferCallToParticipantAsync(
-                //     new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)));
 
-                // await _callConnection.RemoveParticipantAsync(new MicrosoftTeamsUserIdentifier(_consultTarget));Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_consultTarget} to call");
+                // await _callConnection.TransferCallToParticipantAsync(
+                //     new CallInvite(new MicrosoftTeamsUserIdentifier(_targetParticipant)));
+
+                // await _callConnection.RemoveParticipantAsync(new MicrosoftTeamsUserIdentifier(_targetParticipant));Logger.LogMessage(Logger.MessageType.INFORMATION, $"Adding participant {_consultTarget} to call");
 
                 var addParticipant2 = await _callConnection.AddParticipantAsync(
-                    new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget))
+                    new CallInvite(new MicrosoftTeamsUserIdentifier(_targetParticipant))
                     {
                         SourceDisplayName = "Jack (Contoso Tech Support)"
                     }, cancellationToken: _reportCancellationToken);
@@ -128,7 +129,7 @@ namespace IncomingCallRouting.Utils
 
                 // await PlayAudioAsync(_targetParticipant);
 
-                // await _callConnection.TransferCallToParticipantAsync(new CallInvite(new MicrosoftTeamsUserIdentifier(_consultTarget)), _reportCancellationToken);
+                // await _callConnection.TransferCallToParticipantAsync(new CallInvite(new MicrosoftTeamsUserIdentifier(_targetParticipant)), _reportCancellationToken);
 
                 // await _callConnection.HangUpAsync(false);
 
