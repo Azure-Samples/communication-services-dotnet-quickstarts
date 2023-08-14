@@ -1,13 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using IncomingCallRouting.EventHandler;
-using IncomingCallRouting.Models;
 using IncomingCallRouting.Utils;
 using Azure.Communication.CallAutomation;
 using Logger = IncomingCallRouting.Utils.Logger;
@@ -25,8 +23,7 @@ namespace IncomingCallRouting.Controllers
         {
             Logger.SetLoggerInstance(logger);
             var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
-            callAutomationClient = new CallAutomationClient(new Uri(configuration["PmaUri"]), configuration["ResourceConnectionString"], options);
-            // callAutomationClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
+            callAutomationClient = new CallAutomationClient(configuration["PmaUri"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
@@ -58,13 +55,13 @@ namespace IncomingCallRouting.Controllers
                 else if (eventGridEvent.EventType.Equals("Microsoft.Communication.IncomingCall"))
                 {
                     //Fetch incoming call context and ivr participant from request
-                    var eventData = eventGridEvent.Data.ToObjectFromJson<IncomingCallData>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+                    var eventData = eventGridEvent.Data.ToObjectFromJson<AcsIncomingCallEventData>();
                     if (eventData != null)
                     {
                         var incomingCallContext = eventData.IncomingCallContext;
-                        var ivrParticipant = eventData?.To?.RawId;
+                        var ivrParticipant = eventData?.ToCommunicationIdentifier?.RawId;
                         
-                        if ( (callConfiguration.IvrParticipants.Contains(ivrParticipant) || callConfiguration.IvrParticipants[0] == "*")
+                        if ((callConfiguration.IvrParticipants.Contains(ivrParticipant) || callConfiguration.IvrParticipants[0] == "*")
                             && callConfiguration.TargetParticipant != ivrParticipant)
                         {
                             _ = new IncomingCallHandler(callAutomationClient, callConfiguration).Report(incomingCallContext);

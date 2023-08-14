@@ -86,12 +86,12 @@ namespace IncomingCallRouting.Utils
                 // Logger.LogMessage(Logger.MessageType.INFORMATION, $"AddParticipant Response -----> {addParticipant.GetRawResponse()}");
                 
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"Start recording call on serverCallId: {_callConnectionProperties.ServerCallId}");
-                var recording = await _callRecording.StartRecordingAsync(
+                var recording = await _callRecording.StartAsync(
                     new StartRecordingOptions(new ServerCallLocator(_callConnectionProperties.ServerCallId))
                     {
                         RecordingChannel = RecordingChannel.Mixed,
                         // RecordingStorageType = RecordingStorageType.External,
-                        RecordingStateCallbackEndpoint = new Uri(_callConfiguration.AppCallbackUrl),
+                        RecordingStateCallbackUri = new Uri(_callConfiguration.AppCallbackUrl),
                         // AudioChannelParticipantOrdering = { new CommunicationUserIdentifier(_targetParticipant), new CommunicationUserIdentifier("abc") }
                     }, _reportCancellationToken);
                 Logger.LogMessage(Logger.MessageType.INFORMATION, $"Start Recording Response -----> {recording.GetRawResponse()}");
