@@ -27,7 +27,7 @@ var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("Cognitiv
 builder.Services.AddSingleton(client);
 var app = builder.Build();
 
-var devTunnelUri = "YOUR_DEVTUNNEL_URI";
+var devTunnelUri = "MY_DEVTUNNEL_URI";
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
 
@@ -52,13 +52,14 @@ app.MapPost("/api/incomingCall", async (
                 return Results.Ok(responseData);
             }
         }
+        
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
         var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(devTunnelUri + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
-            AzureCognitiveServicesEndpointUrl = new Uri(cognitiveServicesEndpoint)
+            CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint)
         };
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -70,14 +71,14 @@ app.MapPost("/api/incomingCall", async (
         {
             Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleWelcomeMessageAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+            await HandleWelcomeMessageAsync(callConnectionMedia, callerId);
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
         {
             Console.WriteLine($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleWelcomeMessageAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+            await HandleWelcomeMessageAsync(callConnectionMedia, callerId);
         });
 
         client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
@@ -91,7 +92,7 @@ app.MapPost("/api/incomingCall", async (
 
                 var chatGPTResponse = await GetChatGPTResponse(speech_result?.Speech);
 
-                await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), answer_result.SuccessResult.CallConnectionId);
+                await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), callerId);
             }
         });
     }
@@ -127,7 +128,7 @@ async Task HandleChatResponse(string chatResponse, CallMedia callConnectionMedia
             //InitialSilenceTimeout = TimeSpan.FromSeconds(20),
             Prompt = chatGPTResponseSource,
             OperationContext = "GetFreeFormText",
-            EndSilenceTimeoutInMs = TimeSpan.FromMilliseconds(500)
+            EndSilenceTimeout = TimeSpan.FromMilliseconds(500)
         };
 
     var recognize_result = await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
@@ -151,7 +152,7 @@ async Task<string> GetChatGPTResponse(string speech_input)
     };
 
     Response<ChatCompletions> response = await ai_client.GetChatCompletionsAsync(
-        deploymentOrModelName: "gpt-35-turbo",
+        deploymentOrModelName: "MY_DEPLOYEMENT_MODEL_NAME",
         chatCompletionsOptions);
 
     var response_content = response.Value.Choices[0].Message.Content;
@@ -165,7 +166,7 @@ async Task HandleWelcomeMessageAsync(CallMedia callConnectionMedia, string calle
     {
         VoiceName = "en-US-NancyNeural"
     };
-
+    
     var recognizeOptions =
         new CallMediaRecognizeSpeechOptions(
             targetParticipant: CommunicationIdentifier.FromRawId(callerId))
@@ -174,7 +175,7 @@ async Task HandleWelcomeMessageAsync(CallMedia callConnectionMedia, string calle
             InitialSilenceTimeout = TimeSpan.FromSeconds(20),
             Prompt = greetingPlaySource,
             OperationContext = "GetFreeFormText",
-            EndSilenceTimeoutInMs = TimeSpan.FromMilliseconds(500)
+            EndSilenceTimeout = TimeSpan.FromMilliseconds(500)
         };
 
     var recognize_result = await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
