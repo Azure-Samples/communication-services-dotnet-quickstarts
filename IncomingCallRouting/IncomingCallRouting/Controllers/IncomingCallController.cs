@@ -23,7 +23,7 @@ namespace IncomingCallRouting.Controllers
         {
             Logger.SetLoggerInstance(logger);
             var options = new CallAutomationClientOptions { Diagnostics = { LoggedHeaderNames = { "*" } } };
-            callAutomationClient = new CallAutomationClient(configuration["PmaUri"], options);
+            callAutomationClient = new CallAutomationClient(configuration["ResourceConnectionString"], options);
             eventAuthHandler = new EventAuthHandler(configuration["SecretValue"]);
             callConfiguration = CallConfiguration.GetCallConfiguration(configuration, eventAuthHandler.GetSecretQuerystring);
         }
