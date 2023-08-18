@@ -22,7 +22,7 @@ var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("Cognitiv
 builder.Services.AddSingleton(client);
 var app = builder.Build();
 
-var devTunnelUri = "MY_DEVTUNNEL_URI";
+var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
 var maxTimeout = 2;
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
@@ -167,7 +167,7 @@ async Task<string> GetChatGPTResponse(string speech_input)
     };
 
     Response<ChatCompletions> response = await ai_client.GetChatCompletionsAsync(
-        deploymentOrModelName: "MY_DEPLOYEMENT_MODEL_NAME",
+        deploymentOrModelName: builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"),
         chatCompletionsOptions);
 
     var response_content = response.Value.Choices[0].Message.Content;
