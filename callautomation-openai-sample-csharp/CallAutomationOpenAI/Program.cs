@@ -1,15 +1,10 @@
-using System.Text.Json;
 using System.ComponentModel.DataAnnotations;
-
 using Microsoft.AspNetCore.Mvc;
-
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
-
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Azure.Messaging;
-
 using Azure;
 using Azure.AI.OpenAI;
 
@@ -28,6 +23,7 @@ builder.Services.AddSingleton(client);
 var app = builder.Build();
 
 var devTunnelUri = "MY_DEVTUNNEL_URI";
+var maxTimeout = 2;
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
 
@@ -37,7 +33,7 @@ app.MapPost("/api/incomingCall", async (
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
-        logger.LogInformation($"Incoming Call event received : {JsonSerializer.Serialize(eventGridEvent)}");
+        logger.LogInformation($"Incoming Call event received.");
 
         // Handle system events
         if (eventGridEvent.TryGetSystemEventData(out object eventData))
@@ -52,7 +48,7 @@ app.MapPost("/api/incomingCall", async (
                 return Results.Ok(responseData);
             }
         }
-        
+
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
         var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
@@ -63,7 +59,7 @@ app.MapPost("/api/incomingCall", async (
         };
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-        Console.WriteLine($"Answer call result: {answerCallResult.CallConnection.CallConnectionId}");
+        Console.WriteLine($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
 
         //Use EventProcessor to process CallConnected event
         var answer_result = await answerCallResult.WaitForEventProcessorAsync();
@@ -71,14 +67,19 @@ app.MapPost("/api/incomingCall", async (
         {
             Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleWelcomeMessageAsync(callConnectionMedia, callerId);
+            await HandleRecognizeAsync(callConnectionMedia, callerId, "Hello. How can I help?");
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
         {
-            Console.WriteLine($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
-            var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleWelcomeMessageAsync(callConnectionMedia, callerId);
+            Console.WriteLine($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}. Hanging up call...");
+            await HandleHangupAsync(answerCallResult.CallConnection);
+        });
+
+        client.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
+        {
+            Console.WriteLine($"Play failed event received for connection id: {playFailedEvent.CallConnectionId}. Hanging up call...");
+            await HandleHangupAsync(answerCallResult.CallConnection);
         });
 
         client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
@@ -89,10 +90,25 @@ app.MapPost("/api/incomingCall", async (
             if (!string.IsNullOrWhiteSpace(speech_result?.Speech))
             {
                 Console.WriteLine($"Recognized speech: {speech_result.Speech}");
-
                 var chatGPTResponse = await GetChatGPTResponse(speech_result?.Speech);
+                await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), callerId, logger);
+            }
+        });
 
-                await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), callerId);
+        client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeFailed>(answerCallResult.CallConnection.CallConnectionId, async (recognizeFailedEvent) =>
+        {
+            var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+
+            if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailedEvent.ResultInformation.SubCode.Value.ToString()) && maxTimeout > 0)
+            {
+                Console.WriteLine($"Recognize failed event received for connection id: {recognizeFailedEvent.CallConnectionId}. Retrying recognize...");
+                maxTimeout--;
+                await HandleRecognizeAsync(callConnectionMedia, callerId, "I've noticed that you have been silent. Are you still there?");
+            }
+            else
+            {
+                Console.WriteLine($"Recognize failed event received for connection id: {recognizeFailedEvent.CallConnectionId}. Playing goodbye message...");
+                await HandlePlayAsync(callConnectionMedia);
             }
         });
     }
@@ -112,9 +128,8 @@ app.MapPost("/api/callbacks/{contextId}", async (
     return Results.Ok();
 });
 
-async Task HandleChatResponse(string chatResponse, CallMedia callConnectionMedia, string callerId)
+async Task HandleChatResponse(string chatResponse, CallMedia callConnectionMedia, string callerId, ILogger logger)
 {
-    // Play greeting message
     var chatGPTResponseSource = new TextSource(chatResponse)
     {
         VoiceName = "en-US-NancyNeural"
@@ -124,10 +139,10 @@ async Task HandleChatResponse(string chatResponse, CallMedia callConnectionMedia
         new CallMediaRecognizeSpeechOptions(
             targetParticipant: CommunicationIdentifier.FromRawId(callerId))
         {
-            InterruptPrompt = true,
-            //InitialSilenceTimeout = TimeSpan.FromSeconds(20),
+            InterruptPrompt = false,
+            InitialSilenceTimeout = TimeSpan.FromSeconds(15),
             Prompt = chatGPTResponseSource,
-            OperationContext = "GetFreeFormText",
+            OperationContext = "OpenAISample",
             EndSilenceTimeout = TimeSpan.FromMilliseconds(500)
         };
 
@@ -160,19 +175,20 @@ async Task<string> GetChatGPTResponse(string speech_input)
     return response_content;
 }
 
-async Task HandleWelcomeMessageAsync(CallMedia callConnectionMedia, string callerId)
+async Task HandleRecognizeAsync(CallMedia callConnectionMedia, string callerId, string message)
 {
-    var greetingPlaySource = new TextSource($"Hello. How can I help?")
+    // Play greeting message
+    var greetingPlaySource = new TextSource(message)
     {
         VoiceName = "en-US-NancyNeural"
     };
-    
+
     var recognizeOptions =
         new CallMediaRecognizeSpeechOptions(
             targetParticipant: CommunicationIdentifier.FromRawId(callerId))
         {
-            InterruptPrompt = true,
-            InitialSilenceTimeout = TimeSpan.FromSeconds(20),
+            InterruptPrompt = false,
+            InitialSilenceTimeout = TimeSpan.FromSeconds(15),
             Prompt = greetingPlaySource,
             OperationContext = "GetFreeFormText",
             EndSilenceTimeout = TimeSpan.FromMilliseconds(500)
@@ -181,5 +197,25 @@ async Task HandleWelcomeMessageAsync(CallMedia callConnectionMedia, string calle
     var recognize_result = await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
 }
 
-app.Run();
+async Task HandlePlayAsync(CallMedia callConnectionMedia)
+{
+    // Play goodbye message
+    var GoodbyePlaySource = new TextSource("Goodbye.")
+    {
+        VoiceName = "en-US-NancyNeural"
+    };
 
+    await callConnectionMedia.PlayToAllAsync(GoodbyePlaySource);
+}
+
+async Task HandleHangupAsync(CallConnection callConnection)
+{
+    var GoodbyePlaySource = new TextSource("Goodbye.")
+    {
+        VoiceName = "en-US-NancyNeural"
+    };
+
+    await callConnection.HangUpAsync(true);
+}
+
+app.Run();
