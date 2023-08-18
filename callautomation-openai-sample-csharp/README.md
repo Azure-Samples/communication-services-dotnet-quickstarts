@@ -3,8 +3,8 @@ page_type: sample
 languages:
 - csharp
 products:
-- azure
-- azure-functions
+- open ai
+- cognitive service
 - azure-communication-services
 ---
 
@@ -12,14 +12,11 @@ products:
 
 This is a sample application demonstrated during Microsoft Build 2023. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
-> Please note that you will have join the [Azure Communication Services TAP program](https://aka.ms/acs-tap-invite) to get access to some of the features used in this sample. We will be releasing public preview access to these features in the coming weeks. 
-
 ## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
-
 - Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://docs.tunnels.api.visualstudio.com/cli)
 - Create an Azure Cognitive Services resource. For details, see [Create an Azure Cognitive Services Resource](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account)
 - An Azure OpenAI Resource and Deployed Model. See [instructions](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal).
@@ -29,9 +26,28 @@ This is a sample application demonstrated during Microsoft Build 2023. It highli
 
 Before running this sample, you'll need to setup the resources above with the following configuration updates:
 
-1. Startup your Azure DevTunnel instance and note your DevTunnel URI, add it to the `devTunnelUri` variable in `Program.cs`
-3. Add a Managed Identity to the ACS Resource that connects to the Cognitive Services resource. See [instructions](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/azure-communication-services-azure-cognitive-services-integration).
-4. Add the required API Keys and endpoints to appsettings.json
+##### 1. Setup and host your Azure DevTunnel
+
+[Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
+
+```bash
+devtunnel create --allow-anonymous
+devtunnel port create -p 5165
+devtunnel host
+```
+
+##### 2. Add a Managed Identity to the ACS Resource that connects to the Cognitive Services resource
+Follow the instructions in this [documentation](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/azure-communication-services-azure-cognitive-services-integration).
+
+##### 3. Add the required API Keys and endpoints
+Open the appsettings.json file to configure the following settings:
+
+    - `DevTunnelUri`: your dev tunnel endpoint
+    - `CognitiveServiceEndpoint`: The Cognitive Services endpoint
+    - `AcsConnectionString`: Azure Communication Service resource's connection string.
+    - `AzureOpenAIServiceKey`: Open AI's Service Key
+    - `AzureOpenAIServiceEndpoint`: Open AI's Service Endpoint
+    - `AzureOpenAIDeploymentModelName`: Open AI's Model name
 
 
 ## Running the application
