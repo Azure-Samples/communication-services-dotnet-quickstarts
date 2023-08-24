@@ -640,10 +640,10 @@ namespace CallingQuickstart
 
             try
             {
-                //this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
+                this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
                 //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
-                //this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
-                //this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
+                this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
+                this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
 
                 this.teamsCallAgent = await this.callClient.CreateTeamsCallAgentAsync(teamsTokenCredential, teamsCallAgentOptions);
                 this.teamsCallAgent.CallsUpdated += OnCallsUpdatedAsync;
