@@ -38,6 +38,11 @@
         </Grid>
         <StackPanel Grid.Row="3" Orientation="Vertical" Grid.RowSpan="2">
             <StackPanel Orientation="Horizontal" Margin="10">
+                <TextBlock VerticalAlignment="Center">Call Method:</TextBlock>
+                <ComboBox x:Name="CallMethodList" HorizontalAlignment="Left" IsEditable="False" SelectedIndex="0" SelectionChanged="CallMethodList_SelectionChanged" Margin="10">
+                    <x:String>ACS</x:String>
+                    <x:String>CTE</x:String>
+                </ComboBox>
                 <TextBlock VerticalAlignment="Center">Cameras:</TextBlock>
                 <ComboBox x:Name="CameraList" HorizontalAlignment="Left" Grid.Column="0" DisplayMemberPath="Name" SelectionChanged="CameraList_SelectionChanged" Margin="10"/>
             </StackPanel>
