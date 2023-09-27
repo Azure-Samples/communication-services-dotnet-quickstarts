@@ -17,7 +17,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/).
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/).
-- [.NET core 3.1](https://dotnet.microsoft.com/download/dotnet/3.1) (Make sure to install version that corresponds with your Visual Studio instance, 32 vs 64 bit).
+- [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0) (Make sure to install version that corresponds with your Visual Studio instance, 32 vs 64 bit).
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - Create an [Azure Email Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/email/create-email-communication-resource) to start sending emails.
 

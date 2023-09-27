@@ -36,13 +36,13 @@ var job = await routerClient.CreateJobAsync(
 var worker = await routerClient.CreateWorkerAsync(
     new CreateWorkerOptions(workerId: "worker-1", totalCapacity: 1)
     {
-        QueueIds = { [queue.Value.Id] = new RouterQueueAssignment() },
+        QueueAssignments = { [queue.Value.Id] = new RouterQueueAssignment() },
         Labels = { ["Some-Skill"] = new LabelValue(11) },
         ChannelConfigurations = { ["voice"] = new ChannelConfiguration(capacityCostPerJob: 1) },
         AvailableForOffers = true
     });
 
-await Task.Delay(TimeSpan.FromSeconds(5));
+await Task.Delay(TimeSpan.FromSeconds(10));
 worker = await routerClient.GetWorkerAsync(worker.Value.Id);
 foreach (var offer in worker.Value.Offers)
 {
