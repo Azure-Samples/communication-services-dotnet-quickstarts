@@ -92,8 +92,15 @@ namespace RoomsQuickstart
                 CancellationToken cancellationToken = new CancellationTokenSource().Token;
                 DateTimeOffset validFrom = DateTimeOffset.UtcNow;
                 DateTimeOffset validUntil = DateTimeOffset.UtcNow.AddDays(10);
+                CreateRoomOptions createRoomOptions = new CreateRoomOptions()
+                {
+                    ValidFrom = validFrom,
+                    ValidUntil = validUntil,
+                    PstnDialOutEnabled = false,
+                    Participants = roomParticipants
+                };
 
-                CommunicationRoom createdRoom = await RoomCollection.CreateRoomAsync(validFrom, validUntil, roomParticipants, cancellationToken);
+                CommunicationRoom createdRoom = await RoomCollection.CreateRoomAsync(createRoomOptions, cancellationToken);
                 rooms.Add(createdRoom.Id);
                 PrintRoom(createdRoom);
             }
@@ -112,7 +119,14 @@ namespace RoomsQuickstart
 
                 DateTimeOffset validFrom = DateTimeOffset.UtcNow;
                 DateTimeOffset validUntil = DateTimeOffset.UtcNow.AddDays(10);
-                CommunicationRoom updatedRoom = await RoomCollection.UpdateRoomAsync(roomId, validFrom, validUntil, cancellationToken);
+                UpdateRoomOptions updateRoomOptions = new UpdateRoomOptions()
+                {
+                    ValidFrom = validFrom,
+                    ValidUntil = validUntil,
+                    PstnDialOutEnabled = true
+                };
+
+                CommunicationRoom updatedRoom = await RoomCollection.UpdateRoomAsync(roomId, updateRoomOptions, cancellationToken);
                 PrintRoom(updatedRoom);
             }
             catch (Exception ex)
@@ -235,6 +249,7 @@ namespace RoomsQuickstart
             Console.WriteLine($"room_id: {roomInfo.Id}");
             Console.WriteLine($"created_date_time: {roomInfo.CreatedAt}");
             Console.WriteLine($"valid_from: {roomInfo.ValidFrom}, valid_until: {roomInfo.ValidUntil}");
+            Console.WriteLine($"Pstn_DialOut_Enabled: {roomInfo.PstnDialOutEnabled}");
         }
 
         static async Task GetRoomParticipants(string roomId)
