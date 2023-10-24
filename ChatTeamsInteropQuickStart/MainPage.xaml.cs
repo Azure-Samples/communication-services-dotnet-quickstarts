@@ -6,14 +6,13 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Azure.Communication.Chat;
 using Azure.Communication.Identity;
+using Azure.Communication.Calling.WindowsClient;
 using System.Threading.Tasks;
 using Azure.Communication;
 using Azure;
 using Azure.Core;
 using Windows.UI.Popups;
 using Windows.UI.Core;
-using Azure.Communication.Calling.WindowsClient;
-
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
