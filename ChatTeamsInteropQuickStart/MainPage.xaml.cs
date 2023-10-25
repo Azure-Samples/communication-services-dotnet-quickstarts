@@ -6,15 +6,13 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Azure.Communication.Chat;
 using Azure.Communication.Identity;
+using Azure.Communication.Calling.WindowsClient;
 using System.Threading.Tasks;
-using Azure.Communication.Calling;
 using Azure.Communication;
 using Azure;
 using Azure.Core;
-using System.Threading;
 using Windows.UI.Popups;
 using Windows.UI.Core;
-
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -27,10 +25,10 @@ namespace ChatTeamsInteropQuickStart
     {
         //ACS resource connection string i.e = "endpoint=https://your-resource.communication.azure.net/;accesskey=your-access-key";
         private const string connectionString_ = "";
-        private Call call_;
-        private Azure.WinRT.Communication.CommunicationTokenCredential token_credential;
-        CallClient call_client;
-        CallAgent call_agent;
+        private CommunicationCall call_;
+        private CallTokenCredential token_credential;
+        private CallClient call_client;
+        private CallAgent call_agent;
 
         private ChatClient chatClient_;
         private bool keepPolling_;
@@ -78,9 +76,9 @@ namespace ChatTeamsInteropQuickStart
 
             try
             {
-                token_credential = new Azure.WinRT.Communication.CommunicationTokenCredential(user_token_);
-                CallAgentOptions call_agent_options = new CallAgentOptions();
-                call_agent = await call_client.CreateCallAgent(token_credential, call_agent_options);
+                token_credential = new CallTokenCredential(user_token_);
+                CallAgentOptions call_agent_options = new ();
+                call_agent = await call_client.CreateCallAgentAsync(token_credential, call_agent_options);
             }
             catch
             {
@@ -105,7 +103,7 @@ namespace ChatTeamsInteropQuickStart
             thread_Id_ = ExtractThreadIdFromTeamsLink();
 
             //  Set up call callbacks
-            call_.OnStateChanged += Call_OnStateChangedAsync;
+            call_.StateChanged += Call_OnStateChangedAsync;
         }
 
         private async void Call_OnStateChangedAsync(object sender, PropertyChangedEventArgs args)
