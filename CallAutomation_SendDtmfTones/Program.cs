@@ -5,6 +5,7 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using Azure.Messaging.EventGrid;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 
 internal class Program
 {
@@ -18,11 +19,11 @@ internal class Program
         // Base url of the app
         var callbackUriHost = builder.Configuration["callbackUriHost"];
 
-        // ACS resource phone number will act as source number to start outbound call
-        var acsPhonenumber = builder.Configuration["acsPhonenumber"];
+        // ACS resource phone number that will act as caller number to create an outbound call
+        var callerPhonenumber = builder.Configuration["callerPhonenumber"];
 
-        // Target phone number you want to receive the call.
-        var c2Target = builder.Configuration["targetPhonenumber"];
+        // ACS resource phone number that will receive an inbound call.
+        var targetPhonenumber = builder.Configuration["targetPhonenumber"];
 
         var callAutomationClient = new CallAutomationClient(acsConnectionString);
         var app = builder.Build();
@@ -49,7 +50,7 @@ internal class Program
                 }
 
                 var jsonObject = JsonNode.Parse(eventGridEvent.Data)?.AsObject();
-                logger.LogInformation("jsonObject={jsonObject}", jsonObject);
+                // logger.LogInformation("jsonObject={jsonObject}", jsonObject);
                 var toId = (string)(jsonObject["to"]["rawId"]);
                 var fromId = (string)(jsonObject["from"]["rawId"]);
                 var incomingCallContext = (string)jsonObject["incomingCallContext"];
@@ -60,9 +61,9 @@ internal class Program
                 if (toKind.Equals("phoneNumber"))
                 {
                     var toPhoneNumber = (string)(jsonObject["to"]["phoneNumber"]["value"]);
-                    if (toPhoneNumber == acsPhonenumber)
+                    if (toPhoneNumber == targetPhonenumber)
                     {
-                        var answerCallResult = await callAutomationClient.AnswerCallAsync(incomingCallContext, new Uri(callbackUriHost + "/api/callbacks"));
+                        var answerCallResult = await callAutomationClient.AnswerCallAsync(incomingCallContext, new Uri(callbackUriHost + "/api/incomingCallCallbacks"));
                         logger.LogInformation("AnswerCallAsync result: {answerCallResult}, correlationId={correlationId}", answerCallResult, correlationId);
                     }
                     else
@@ -78,17 +79,7 @@ internal class Program
             return Results.Ok();
         });
 
-        app.MapGet("/outboundCall", async (ILogger<Program> logger) =>
-        {
-            var target = new PhoneNumberIdentifier(c2Target);
-            var caller = new PhoneNumberIdentifier(acsPhonenumber);
-            var callInvite = new CallInvite(target, caller);
-            var createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "/api/callbacks"));
-            logger.LogInformation("CreateCallAsync result: {createCallResult}", createCallResult);
-            return Results.Redirect("/index.html");
-        });
-
-        app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
+        app.MapPost("/api/incomingCallCallbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
         {
             foreach (var cloudEvent in cloudEvents)
             {
@@ -98,16 +89,92 @@ internal class Program
 
                 if (acsEvent is CallConnected)
                 {
-                    // Send DTMF tones
+                    // Start continuous DTMF recognition
+                    var startContinuousDtmfRecognitionAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                        .GetCallMedia()
+                        .StartContinuousDtmfRecognitionAsync(new PhoneNumberIdentifier(callerPhonenumber), "dtmf-reco-on-c2");
+                    logger.LogInformation("StartContinuousDtmfRecognitionAsync, status: {status}", startContinuousDtmfRecognitionAsyncResult.Status);
+                }
+                if (acsEvent is ContinuousDtmfRecognitionToneReceived continuousDtmfRecognitionToneReceived)
+                {
+                    logger.LogInformation("******************************************************************************");
+                    logger.LogInformation("***");
+                    logger.LogInformation("*** Tone detected: sequenceId={sequenceId}, tone={tone}",
+                    continuousDtmfRecognitionToneReceived.ToneInfo.SequenceId,
+                        continuousDtmfRecognitionToneReceived.ToneInfo.Tone);
+                    logger.LogInformation("***");
+                    logger.LogInformation("******************************************************************************");
+
+                    if (continuousDtmfRecognitionToneReceived.ToneInfo.Tone.Equals(DtmfTone.Pound))
+                    {
+                        // Stop continuous DTMF recognition
+                        var stopContinuousDtmfRecognitionAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .StopContinuousDtmfRecognitionAsync(new PhoneNumberIdentifier(callerPhonenumber), "dtmf-reco-on-c2");
+                        logger.LogInformation("StopContinuousDtmfRecognitionAsync, status: {status}", stopContinuousDtmfRecognitionAsyncResult.Status);
+                    }
+                }
+                if (acsEvent is ContinuousDtmfRecognitionToneFailed continuousDtmfRecognitionToneFailed)
+                {
+                    logger.LogInformation("Start continuous DTMF recognition failed, result={result}, context={context}",
+                        continuousDtmfRecognitionToneFailed.ResultInformation?.Message,
+                        continuousDtmfRecognitionToneFailed.OperationContext);
+                }
+                if (acsEvent is ContinuousDtmfRecognitionStopped continuousDtmfRecognitionStopped)
+                {
+                    logger.LogInformation("Continuous DTMF recognition stopped, context={context}", continuousDtmfRecognitionStopped.OperationContext);
+                }
+            }
+            return Results.Ok();
+        }).Produces(StatusCodes.Status200OK);
+
+        app.MapGet("/outboundCall", async (ILogger<Program> logger) =>
+        {
+            var target = new PhoneNumberIdentifier(targetPhonenumber);
+            var caller = new PhoneNumberIdentifier(callerPhonenumber);
+            var callInvite = new CallInvite(target, caller);
+            var createCallResult = await callAutomationClient.CreateCallAsync(callInvite, new Uri(callbackUriHost + "/api/outboundCallCallbacks"));
+            logger.LogInformation("CreateCallAsync result: {createCallResult}", createCallResult);
+            return Results.Redirect("/index.html");
+        });
+
+        app.MapPost("/api/outboundCallCallbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
+        {
+            foreach (var cloudEvent in cloudEvents)
+            {
+                CallAutomationEventBase acsEvent = CallAutomationEventParser.Parse(cloudEvent);
+                logger.LogInformation("Received event {eventName} for call connection id {callConnectionId}, correlationId={correlationId}", acsEvent?.GetType().Name, acsEvent?.CallConnectionId, acsEvent?.CorrelationId);
+                var callConnectionId = acsEvent?.CallConnectionId;
+
+                if (acsEvent is CallConnected callConnected)
+                {
+                    logger.LogInformation("******************************************************************************");
+                    logger.LogInformation("***");
+                    logger.LogInformation("*** Send DTMF tones 1 2 3 #");
+                    logger.LogInformation("***");
+                    logger.LogInformation("******************************************************************************");
                     var tones = new DtmfTone[] { DtmfTone.One, DtmfTone.Two, DtmfTone.Three, DtmfTone.Pound };
                     var sendDtmfAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId)
                         .GetCallMedia()
-                        .SendDtmfTonesAsync(tones, new PhoneNumberIdentifier(c2Target), "dtmfs-to-ivr");
+                        .SendDtmfTonesAsync(tones, new PhoneNumberIdentifier(targetPhonenumber), "dtmfs-to-ivr");
                     logger.LogInformation("SendDtmfAsync result: {sendDtmfAsyncResult}", sendDtmfAsyncResult);
                 }
                 if (acsEvent is SendDtmfTonesCompleted sendDtmfCompleted)
                 {
                     logger.LogInformation("Send dtmf succeeded, context={context}", sendDtmfCompleted.OperationContext);
+                    if (sendDtmfCompleted.OperationContext.Equals("dtmfs-to-ivr"))
+                    {
+                        logger.LogInformation("******************************************************************************");
+                        logger.LogInformation("***");
+                        logger.LogInformation("*** Send DTMF tones 4 5");
+                        logger.LogInformation("***");
+                        logger.LogInformation("******************************************************************************");
+                        var tones = new DtmfTone[] { DtmfTone.Four, DtmfTone.Five };
+                        var sendDtmfAsyncResult = await callAutomationClient.GetCallConnection(callConnectionId)
+                            .GetCallMedia()
+                            .SendDtmfTonesAsync(tones, new PhoneNumberIdentifier(targetPhonenumber), "dtmfs-to-ivr-2");
+                        logger.LogInformation("SendDtmfAsync result: {sendDtmfAsyncResult}", sendDtmfAsyncResult);
+                    }
                 }
                 if (acsEvent is SendDtmfTonesFailed sendDtmfFailed)
                 {
