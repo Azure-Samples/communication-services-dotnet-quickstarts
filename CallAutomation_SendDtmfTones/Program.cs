@@ -100,7 +100,7 @@ internal class Program
                     logger.LogInformation("******************************************************************************");
                     logger.LogInformation("***");
                     logger.LogInformation("*** Tone detected: sequenceId={sequenceId}, tone={tone}",
-                    continuousDtmfRecognitionToneReceived.ToneInfo.SequenceId,
+                        continuousDtmfRecognitionToneReceived.ToneInfo.SequenceId,
                         continuousDtmfRecognitionToneReceived.ToneInfo.Tone);
                     logger.LogInformation("***");
                     logger.LogInformation("******************************************************************************");
