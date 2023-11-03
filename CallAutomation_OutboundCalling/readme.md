@@ -18,6 +18,7 @@ This sample application is also capable of making multiple concurrent outbound c
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You will need to record your resource **connection string** for this sample.
 - Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=programming-language-csharp)
+- Create Cognitive Service resource. For details, see [Create an Azure Cognitive Search service](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal)
 - Create and host a Azure Dev Tunnel. Instructions [here](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started)
 - [.NET7 Framework](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
 
@@ -44,6 +45,7 @@ Open the Program.cs file to configure the following settings
 2. `acsPhonenumber`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
 3. `targetPhonenumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA"
 4. `callbackUriHost`: Base url of the app. (For local development replace the dev tunnel url)
+5. `cognitiveServiceEndpoint`: Cognitive Service Endpoint
 
 ### Run app locally
 
