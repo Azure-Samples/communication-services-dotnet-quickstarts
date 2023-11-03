@@ -59,7 +59,7 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
     CallInvite callInvite = new CallInvite(target, caller);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+        CallIntelligence = new CallIntelligenceOptions(new Uri(cognitiveServiceEndpoint))
     };
 
     CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
