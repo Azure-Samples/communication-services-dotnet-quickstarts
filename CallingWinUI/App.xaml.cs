@@ -52,8 +52,7 @@ namespace CallingQuickstart
 
         private void OnClosed(object sender, WindowEventArgs args)
         {
-            // TODO: this.Exit() is not existing the app as expected - it is being investigated.
-            // Calling Kill() for now before soft-landing on a more graceful exit.
+            // This less-graceful exit is a workaround for: https://github.com/microsoft/microsoft-ui-xaml/issues/7193
             Process.GetCurrentProcess().Kill();
         }
     }
