@@ -78,8 +78,6 @@ namespace CallingQuickstart
 
         private async void CameraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (tryRawMedia) return;
-
             if (isCTE)
             {
                 if (cameraStream != null)
@@ -569,9 +567,6 @@ namespace CallingQuickstart
 
             switch (callVideoStream.Direction)
             {
-                case StreamDirection.Outgoing:
-                    OnOutgoingVideoStreamStateChanged(callVideoStream as OutgoingVideoStream);
-                    break;
                 case StreamDirection.Incoming:
                     OnIncomingVideoStreamStateChangedAsync(callVideoStream as IncomingVideoStream);
                     break;
@@ -831,31 +826,21 @@ namespace CallingQuickstart
 
         private StartCallOptions GetStartCallOptions()
         {
-            var startCallOptions = GetStartCallOptionsWithRawMedia();
-
-            if (startCallOptions == null)
-            {
-                startCallOptions = new StartCallOptions() {
-                    OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream  },
-                    OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
-                };
-            }
+            var startCallOptions = new StartCallOptions() {
+                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream  },
+                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
+            };
 
             return startCallOptions;
         }
 
         private StartTeamsCallOptions GetStartTeamsCallOptions()
         {
-            var startTeamsCallOptions = GetStartTeamsCallOptionsWithRawMedia();
-
-            if (startTeamsCallOptions == null)
+            var startTeamsCallOptions = new StartTeamsCallOptions()
             {
-                startTeamsCallOptions = new StartTeamsCallOptions()
-                {
-                    OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream },
-                    OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
-                };
-            }
+                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream },
+                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
+            };
 
             return startTeamsCallOptions;
         }

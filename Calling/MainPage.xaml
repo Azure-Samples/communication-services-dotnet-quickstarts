@@ -38,11 +38,6 @@
         </Grid>
         <StackPanel Grid.Row="3" Orientation="Vertical" Grid.RowSpan="2">
             <StackPanel Orientation="Horizontal" Margin="10">
-                <TextBlock VerticalAlignment="Center">Call Method:</TextBlock>
-                <ComboBox x:Name="CallMethodList" HorizontalAlignment="Left" IsEditable="False" SelectedIndex="0" SelectionChanged="CallMethodList_SelectionChanged" Margin="10">
-                    <x:String>ACS</x:String>
-                    <x:String>CTE</x:String>
-                </ComboBox>
                 <TextBlock VerticalAlignment="Center">Cameras:</TextBlock>
                 <ComboBox x:Name="CameraList" HorizontalAlignment="Left" Grid.Column="0" DisplayMemberPath="Name" SelectionChanged="CameraList_SelectionChanged" Margin="10"/>
             </StackPanel>
@@ -51,7 +46,6 @@
                 <Button x:Name="HangupButton" Content="Hang up" Click="HangupButton_Click" VerticalAlignment="Center" Margin="10,0,0,0" Height="40" Width="123"/>
                 <CheckBox x:Name="MuteLocal" Content="Mute" Margin="10,0,0,0" Click="MuteLocal_Click" Width="74"/>
                 <CheckBox x:Name="BackgroundBlur" Content="Background blur" Width="142" Margin="10,0,0,0" Click="BackgroundBlur_Click"/>
-                <CheckBox x:Name="EchoCancellation" Content="Echo Cancellation" Width="142" Margin="10,0,0,0" Click="EchoCancellation_Click"/>
             </StackPanel>
         </StackPanel>
         <TextBox Grid.Row="4" x:Name="Stats" Text="" TextWrapping="Wrap" VerticalAlignment="Center" Height="30" Margin="0,2,0,0" BorderThickness="2" IsReadOnly="True" Foreground="LightSlateGray" />
