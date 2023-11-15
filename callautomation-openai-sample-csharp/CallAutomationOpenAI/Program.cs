@@ -7,7 +7,6 @@ using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,21 +20,23 @@ var client = new CallAutomationClient(connectionString: acsConnectionString);
 var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
 
 string answerPromptSystemTemplate = """ 
-    You are an assisant designed to answer the customer query, and analyze the sentiment score from the customer tone.
-    And determine the intent of the customer query and classify into categories such as sales, marketting, shopping etc.
-    Rate the sentiment score on a scale of 1-10 (10 being highest). Use this format, replacing the text in brackets with the result. 
-    Do not include the brackets in the output:
-    Content:[Answer the customer query in short as 2 lines]
-    Score:[Sentiment score of the customer tone]
-    Intent:[Determine the intent of the customer query]
-    Category:[Classify the intent to the categories]
+    You are an assisant designed to answer the customer query and analyze the sentiment score from the customer tone. 
+    You also need to determine the intent of the customer query and classify it into categories such as sales, marketing, shopping, etc.
+    Use a scale of 1-10 (10 being highest) to rate the sentiment score. 
+    Use the below format, replacing the text in brackets with the result. Do not include the brackets in the output: 
+    Content:[Answer the customer query briefly and clearly in two lines and ask if there is anything else you can help with] 
+    Score:[Sentiment score of the customer tone] 
+    Intent:[Determine the intent of the customer query] 
+    Category:[Classify the intent into one of the categories]
     """;
 
-string timeoutSilencePrompt = "I've noticed that you have been silent. Are you still there?";
-string goodbyePrompt = "Goodbye";
-string connectAgentPrompt = "Looks like my answers are not helping you to resolve the issue, let me connect with Agent to resolve this issue";
-string callTransferFailurePrompt = "Failed to connect to agent, agent will call back you in sometime";
-string agentPhoneNumberEmptyPrompt = "Currently all agents are busy, agent will call back in sometime. Goodbye!";
+string helloPrompt = "Hello, thank you for calling! How can I help you today?";
+string timeoutSilencePrompt = "I’m sorry, I didn’t hear anything. If you need assistance please let me know how I can help you.";
+string goodbyePrompt = "Thank you for calling! I hope I was able to assist you. Have a great day!";
+string connectAgentPrompt = "I'm sorry, I was not able to assist you with your request. Let me transfer you to an agent who can help you further. Please hold the line and I'll connect you shortly.";
+string callTransferFailurePrompt = "It looks like all I can’t connect you to an agent right now, but we will get the next available agent to call you back as soon as possible.";
+string agentPhoneNumberEmptyPrompt = "I’m sorry, we're currently experiencing high call volumes and all of our agents are currently busy. Our next available agent will call you back as soon as possible.";
+string EndCallPhraseToConnectAgent = "Sure, please stay on the line. I’m going to transfer you to an agent.";
 
 string transferFailedContext = "TransferFailed";
 string connectAgentContext = "ConnectAgent";
@@ -43,8 +44,14 @@ string connectAgentContext = "ConnectAgent";
 string agentPhonenumber = builder.Configuration.GetValue<string>("AgentPhoneNumber");
 string chatResponseExtractPattern = @"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)";
 
+var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
+var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
+
+var ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
+builder.Services.AddSingleton(ai_client);
 var app = builder.Build();
 
 var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
@@ -92,7 +99,7 @@ app.MapPost("/api/incomingCall", async (
         {
             Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleRecognizeAsync(callConnectionMedia, callerId, "Hello. How can I help?");
+            await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
@@ -144,34 +151,43 @@ app.MapPost("/api/incomingCall", async (
             if (!string.IsNullOrWhiteSpace(speech_result?.Speech))
             {
                 Console.WriteLine($"Recognized speech: {speech_result.Speech}");
-                var chatGPTResponse = await GetChatGPTResponse(speech_result?.Speech);
-                logger.LogInformation($"Chat GPT response: {chatGPTResponse}");
-                Regex regex = new Regex(chatResponseExtractPattern);
-                Match match = regex.Match(chatGPTResponse);
-                if (match.Success)
-                {
-                    string answer = match.Groups[1].Value;
-                    string sentimentScore = match.Groups[2].Value.Trim();
-                    string intent = match.Groups[3].Value;
-                    string category = match.Groups[4].Value;
 
-                    logger.LogInformation("Chat GPT Answer={ans}, Sentiment Rating={rating}, Intent={Int}, Category={cat}",
-                        answer, sentimentScore, intent, category);
-                    var score = getSentimentScore(sentimentScore);
-                    if (score > -1 && score < 5)
-                    {
-                        await HandlePlayAsync(connectAgentPrompt,
-                            connectAgentContext, answerCallResult.CallConnection.GetCallMedia());
-                    }
-                    else
-                    {
-                        await HandleChatResponse(answer, answerCallResult.CallConnection.GetCallMedia(), callerId, logger);
-                    }
+                if (await DetectEscalateToAgentIntent(speech_result.Speech, logger))
+                {
+                    await HandlePlayAsync(EndCallPhraseToConnectAgent,
+                               connectAgentContext, answerCallResult.CallConnection.GetCallMedia());
                 }
                 else
                 {
-                    logger.LogInformation("No match found");
-                    await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), callerId, logger);
+                    var chatGPTResponse = await GetChatGPTResponse(speech_result.Speech);
+                    logger.LogInformation($"Chat GPT response: {chatGPTResponse}");
+                    Regex regex = new Regex(chatResponseExtractPattern);
+                    Match match = regex.Match(chatGPTResponse);
+                    if (match.Success)
+                    {
+                        string answer = match.Groups[1].Value;
+                        string sentimentScore = match.Groups[2].Value.Trim();
+                        string intent = match.Groups[3].Value;
+                        string category = match.Groups[4].Value;
+
+                        logger.LogInformation("Chat GPT Answer={ans}, Sentiment Rating={rating}, Intent={Int}, Category={cat}",
+                            answer, sentimentScore, intent, category);
+                        var score = getSentimentScore(sentimentScore);
+                        if (score > -1 && score < 5)
+                        {
+                            await HandlePlayAsync(connectAgentPrompt,
+                                connectAgentContext, answerCallResult.CallConnection.GetCallMedia());
+                        }
+                        else
+                        {
+                            await HandleChatResponse(answer, answerCallResult.CallConnection.GetCallMedia(), callerId, logger);
+                        }
+                    }
+                    else
+                    {
+                        logger.LogInformation("No match found");
+                        await HandleChatResponse(chatGPTResponse, answerCallResult.CallConnection.GetCallMedia(), callerId, logger);
+                    }
                 }
             }
         });
@@ -238,22 +254,39 @@ int getSentimentScore(string sentimentScore)
     return match.Success ? int.Parse(match.Value) : -1;
 }
 
+async Task<bool> DetectEscalateToAgentIntent(string speechText, ILogger logger) =>
+           await HasIntentAsync(userQuery: speechText, intentDescription: "talk to agent", logger);
+
+async Task<bool> HasIntentAsync(string userQuery, string intentDescription, ILogger logger)
+{
+    var systemPrompt = "You are a helpful assistant";
+    var baseUserPrompt = "In 1 word: does {0} have similar meaning as {1}?";
+    var combinedPrompt = string.Format(baseUserPrompt, userQuery, intentDescription);
+
+    var response = await GetChatCompletionsAsync(systemPrompt, combinedPrompt);
+
+    var isMatch = response.ToLowerInvariant().Contains("yes");
+    logger.LogInformation($"OpenAI results: isMatch={isMatch}, customerQuery='{userQuery}', intentDescription='{intentDescription}'");
+    return isMatch;
+}
+
 async Task<string> GetChatGPTResponse(string speech_input)
 {
-    var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
-    var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
+    return await GetChatCompletionsAsync(answerPromptSystemTemplate, speech_input);
+}
 
-    var ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+async Task<string> GetChatCompletionsAsync(string systemPrompt, string userPrompt)
+{
     var chatCompletionsOptions = new ChatCompletionsOptions()
     {
         Messages = {
-            new ChatMessage(ChatRole.System, answerPromptSystemTemplate),
-            new ChatMessage(ChatRole.User, speech_input),
+                    new ChatMessage(ChatRole.System, systemPrompt),
+                    new ChatMessage(ChatRole.User, userPrompt),
                     },
         MaxTokens = 1000
     };
 
-    Response<ChatCompletions> response = await ai_client.GetChatCompletionsAsync(
+    var response = await ai_client.GetChatCompletionsAsync(
         deploymentOrModelName: builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"),
         chatCompletionsOptions);
 
