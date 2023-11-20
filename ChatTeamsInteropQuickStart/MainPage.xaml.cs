@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
 using Azure.Communication.Chat;
 using Azure.Communication.Identity;
 using Azure.Communication.Calling.WindowsClient;
@@ -13,6 +10,12 @@ using Azure;
 using Azure.Core;
 using Windows.UI.Popups;
 using Windows.UI.Core;
+using System.Text.RegularExpressions;
+using System.Collections.ObjectModel;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media.Imaging;
+using Windows.UI.Xaml;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -24,7 +27,6 @@ namespace ChatTeamsInteropQuickStart
     public sealed partial class MainPage : Page
     {
         //ACS resource connection string i.e = "endpoint=https://your-resource.communication.azure.net/;accesskey=your-access-key";
-        private const string connectionString_ = "";
         private CommunicationCall call_;
         private CallTokenCredential token_credential;
         private CallClient call_client;
@@ -41,6 +43,27 @@ namespace ChatTeamsInteropQuickStart
         {
             InitializeComponent();
             call_client = new();
+            Images = new ObservableCollection<BitmapImage>();
+
+            //using (var httpClient = new HttpClient())
+            //{
+            //    //Issue the GET request to a URL and read the response into a 
+            //    //stream that can be used to load the image
+            //    var imageContent = await httpClient.GetByteArrayAsync("<your image url>");
+
+            //    using (var imageBuffer = new MemoryStream(imageContent))
+            //    {
+            //        var image = Image.FromStream(imageBuffer);
+
+            //        //Do something with image
+            //    }
+            //}
+
+        }
+
+        public ObservableCollection<BitmapImage> Images
+        {
+            get; private set;
         }
 
         private async void CallButton_Click(object sender, RoutedEventArgs e)
@@ -110,7 +133,7 @@ namespace ChatTeamsInteropQuickStart
         {
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                CallStatusTextBlock.Text = call_.State.ToString();
+                CallStatusTextBlock.Text = "Call state : " + call_.State.ToString();
             });
 
             switch (call_.State)
@@ -152,6 +175,35 @@ namespace ChatTeamsInteropQuickStart
                         string userPrefix;
                         await foreach (ChatMessage message in allMessages)
                         {
+                            // Get message attachments that are of type 'image'
+                            IEnumerable<ChatAttachment> imageAttachments = message.Content.Attachments.Where(x => x.AttachmentType == ChatAttachmentType.Image);
+
+                            // Fetch Preview Images from previewUrl
+                            //foreach (ChatAttachment imageAttachment in imageAttachments)
+                            //{
+                            //    // Download image from previewUrl
+                            //    // var image = await DownloadImageAsync(imageAttachment.PreviewUrl);
+
+                            //    using var client = new HttpClient();
+                            //    //using var s = await client.GetStreamAsync(imageAttachment.PreviewUri);
+                            //    using var s = await client.GetStreamAsync("https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31");
+                            //    using var fs = new FileStream("image1.png", FileMode.OpenOrCreate);
+                            //    await s.CopyToAsync(fs);
+                            //    var image = new BitmapImage(new Uri("image1.png"));
+                            //    Images.Add(image);
+                            //}
+
+                            //using var client = new HttpClient();
+                            //using var s = await client.GetStreamAsync("https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31");
+                            //using var fs = new FileStream("image1.png", FileMode.OpenOrCreate);
+                            //await s.CopyToAsync(fs);
+                            //var image = new BitmapImage(new Uri("image1.png"));
+                            //Images.Add(image);
+
+                            // Setup on click handler for overlay
+
+                            // Render image in chat
+
                             if (message.Type == ChatMessageType.Html || message.Type == ChatMessageType.Text)
                             {
                                 textMessages++;
@@ -302,9 +354,10 @@ namespace ChatTeamsInteropQuickStart
         /// <returns></returns>
         private string StripHtml(string html)
         {
-            List<string> stripList = new() { "<p>", "</p>", "<i>", "</i>", "<strong>", "</strong>", "<em>", "</em>" };
-            stripList.ForEach(x => { html = html.Replace(x, string.Empty); });
-            return html;
+            //List<string> stripList = new() { "<p>", "</p>", "<i>", "</i>", "<strong>", "</strong>", "<em>", "</em>", "<img>", "</img>" };
+            //stripList.ForEach(x => { html = html.Replace(x, string.Empty); });
+            var tagsExpression = new Regex(@"</?.+?>");
+            return tagsExpression.Replace(html, " ");
         }
 
         #endregion
