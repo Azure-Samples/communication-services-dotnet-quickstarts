@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Height="742" Width="1098">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid Margin="20">
         <StackPanel Orientation="Vertical" Spacing="20">
@@ -17,17 +17,12 @@
                 <Button x:Name="HangupButton" Content="Hang Up" Click="HangupButton_Click" IsEnabled="False"/>
             </StackPanel>
             <TextBox x:Name="TxtChat" Height="300" Text="" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.VerticalScrollMode="Enabled" AcceptsReturn="True" TextChanged="TxtChat_TextChanged"/>
-            <ListView ItemsSource="{}" Height="200" BorderBrush="Black" BorderThickness="2">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <Image Source="{Binding}"/>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
             <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBox x:Name="TxtMessage" Width="300" Text="" PlaceholderText="Please enter message"/>
+                <TextBox x:Name="TxtMessage" MinWidth="600" Text="" PlaceholderText="Please enter message"/>
                 <Button x:Name="SendMessageButton" Content="Send Message" Click="SendMessageButton_Click" IsEnabled="False"/>
             </StackPanel>
         </StackPanel>
     </Grid>
 </Page>
+
+
