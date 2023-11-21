@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.JobRouter" Version="1.0.0-alpha.20231113.1" />
+    <PackageReference Include="Azure.Communication.JobRouter" Version="1.0.0" />
   </ItemGroup>
 
 </Project>
