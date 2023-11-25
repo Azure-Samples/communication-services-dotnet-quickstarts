@@ -45,7 +45,6 @@ const string CustomerQueryTimeout = "I’m sorry I didn’t receive a response, plea
 const string NoResponse = "I didn't receive an input, we will go ahead and confirm your appointment. Goodbye";
 const string InvalidAudio = "I’m sorry, I didn’t understand your response, please try again.";
 const string ConfirmChoiceLabel = "Confirm";
-const string CancelChoiceLabel = "Cancel";
 const string RetryContext = "retry";
 
 CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
@@ -84,14 +83,18 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         if (parsedEvent is CallConnected callConnected)
         {
             logger.LogInformation($"Start Recording...");
-            CallLocator callLocator = new ServerCallLocator(parsedEvent.ServerCallId);
+            CallLocator callLocator = new ServerCallLocator(callConnected.ServerCallId);
             var recordingResult = await callAutomationClient.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
+            
+            logger.LogInformation("Recording Started...");
             recordingId = recordingResult.Value.RecordingId;
 
-            var choices = GetChoices();
+            logger.LogInformation("Fetching recognize options...");
 
             // prepare recognize tones
-            var recognizeOptions = GetMediaRecognizeChoiceOptions(MainMenu, targetPhonenumber, choices);
+            var recognizeOptions = GetMediaRecognizeChoiceOptions(MainMenu, targetPhonenumber);
+
+            logger.LogInformation("Recognizing options...");
 
             // Send request to recognize tones
             await callMedia.StartRecognizingAsync(recognizeOptions);
@@ -132,7 +135,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                     _ => CustomerQueryTimeout,
                 };
 
-                var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, GetChoices(), RetryContext);
+                var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
                 await callMedia.StartRecognizingAsync(recognizeOptions);
             }
         }
@@ -182,12 +185,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, string targetParticipant, List<RecognitionChoice> choices, string context = "")
+CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, string targetParticipant, string context = "")
 {
     var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
 
     var recognizeOptions =
-        new CallMediaRecognizeChoiceOptions(targetParticipant: new PhoneNumberIdentifier(targetParticipant), choices)
+        new CallMediaRecognizeChoiceOptions(targetParticipant: new PhoneNumberIdentifier(targetParticipant), GetChoices())
         {
             InterruptCallMediaOperation = false,
             InterruptPrompt = false,
