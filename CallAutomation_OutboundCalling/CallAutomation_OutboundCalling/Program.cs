@@ -54,7 +54,7 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
 {
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
-    var callbackUri = new Uri(callbackUriHost + "/api/callbacks");
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     CallInvite callInvite = new CallInvite(target, caller);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
