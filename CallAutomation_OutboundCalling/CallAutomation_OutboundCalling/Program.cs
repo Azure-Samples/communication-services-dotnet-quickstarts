@@ -111,12 +111,9 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             await HandlePlayAsync(callMedia, textToPlay);
         }
-        else if (parsedEvent is RecognizeFailed recognizeFailed && 
-        !string.IsNullOrWhiteSpace(recognizeFailed.OperationContext) &&
-        recognizeFailed.OperationContext.Equals(RetryContext, StringComparison.OrdinalIgnoreCase))
+        else if (parsedEvent is RecognizeFailed { OperationContext: RetryContext })
         {
-            logger.LogError("Encountered error during recognize, operationContext={context}",
-              recognizeFailed.OperationContext);
+            logger.LogError("Encountered error during recognize, operationContext={context}", RetryContext);
             await HandlePlayAsync(callMedia, NoResponse);
         }
         else if (parsedEvent is RecognizeFailed recognizeFailedEvent)
