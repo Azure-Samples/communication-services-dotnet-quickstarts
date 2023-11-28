@@ -13,11 +13,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 //Get ACS Connection String from appsettings.json
 var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
+ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
+
 //Call Automation Client
 var client = new CallAutomationClient(connectionString: acsConnectionString);
 
 //Grab the Cognitive Services endpoint from appsettings.json
 var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
+ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
 
 string answerPromptSystemTemplate = """ 
     You are an assisant designed to answer the customer query and analyze the sentiment score from the customer tone. 
@@ -45,7 +48,10 @@ string agentPhonenumber = builder.Configuration.GetValue<string>("AgentPhoneNumb
 string chatResponseExtractPattern = @"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)";
 
 var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
+ArgumentNullException.ThrowIfNullOrEmpty(key);
+
 var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
+ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
 var ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 
@@ -55,6 +61,7 @@ builder.Services.AddSingleton(ai_client);
 var app = builder.Build();
 
 var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
+ArgumentNullException.ThrowIfNullOrEmpty(devTunnelUri);
 var maxTimeout = 2;
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
@@ -84,7 +91,8 @@ app.MapPost("/api/incomingCall", async (
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
         var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
-        var callbackUri = new Uri(devTunnelUri + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+        var callbackUri = new Uri(new Uri(devTunnelUri), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+        Console.WriteLine($"Callback Url: {callbackUri}");
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
             CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint)
@@ -105,19 +113,22 @@ app.MapPost("/api/incomingCall", async (
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
         {
             logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}.");
-            if (playCompletedEvent.OperationContext.Equals(transferFailedContext, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext) && playCompletedEvent.OperationContext.Equals(transferFailedContext, StringComparison.OrdinalIgnoreCase))
             {
+                logger.LogInformation($"Call transfer failed, disconnecting the call...");
                 await answerCallResult.CallConnection.HangUpAsync(true);
             }
-            else if (playCompletedEvent.OperationContext.Equals(connectAgentContext, StringComparison.OrdinalIgnoreCase))
+            else if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext)&& playCompletedEvent.OperationContext.Equals(connectAgentContext, StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(agentPhonenumber))
                 {
+                    logger.LogInformation($"Agent phone number is empty");
                     await HandlePlayAsync(agentPhoneNumberEmptyPrompt,
                       transferFailedContext, answerCallResult.CallConnection.GetCallMedia());
                 }
                 else
                 {
+                    logger.LogInformation($"Initializing the Call transfer...");
                     CommunicationIdentifier transferDestination = new PhoneNumberIdentifier(agentPhonenumber);
                     TransferCallToParticipantResult result = await answerCallResult.CallConnection.TransferCallToParticipantAsync(transferDestination);
                     logger.LogInformation($"Transfer call initiated: {result.OperationContext}");
