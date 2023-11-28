@@ -29,16 +29,16 @@ var job = await routerClient.CreateJobAsync(
         Priority = 1,
         RequestedWorkerSelectors =
         {
-            new RouterWorkerSelector(key: "Some-Skill", labelOperator: LabelOperator.GreaterThan, value: new LabelValue(10))
+            new RouterWorkerSelector(key: "Some-Skill", labelOperator: LabelOperator.GreaterThan, value: new RouterValue(10))
         }
     });
 
 var worker = await routerClient.CreateWorkerAsync(
-    new CreateWorkerOptions(workerId: "worker-1", totalCapacity: 1)
+    new CreateWorkerOptions(workerId: "worker-1", capacity: 1)
     {
-        QueueAssignments = { [queue.Value.Id] = new RouterQueueAssignment() },
-        Labels = { ["Some-Skill"] = new LabelValue(11) },
-        ChannelConfigurations = { ["voice"] = new ChannelConfiguration(capacityCostPerJob: 1) },
+        Queues = { queue.Value.Id },
+        Labels = { ["Some-Skill"] = new RouterValue(11) },
+        Channels = { new RouterChannel(channelId: "voice", capacityCostPerJob: 1) },
         AvailableForOffers = true
     });
 
