@@ -85,7 +85,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             logger.LogInformation($"Start Recording...");
             CallLocator callLocator = new ServerCallLocator(callConnected.ServerCallId);
             var recordingResult = await callAutomationClient.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
-            
+
             logger.LogInformation("Recording Started...");
             recordingId = recordingResult.Value.RecordingId;
 
@@ -99,7 +99,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             // Send request to recognize tones
             await callMedia.StartRecognizingAsync(recognizeOptions);
         }
-        if (parsedEvent is RecognizeCompleted recognizeCompleted)
+        else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
             var choiceResult = recognizeCompleted.RecognizeResult as ChoiceResult;
             var labelDetected = choiceResult?.Label;
@@ -111,35 +111,35 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             await HandlePlayAsync(callMedia, textToPlay);
         }
-        if (parsedEvent is RecognizeFailed recognizeFailedEvent)
+        else if (parsedEvent is RecognizeFailed recognizeFailed && 
+        !string.IsNullOrWhiteSpace(recognizeFailed.OperationContext) &&
+        recognizeFailed.OperationContext.Equals(RetryContext, StringComparison.OrdinalIgnoreCase))
         {
-            var context = recognizeFailedEvent.OperationContext;
-            if (!string.IsNullOrWhiteSpace(context) && context.Equals(RetryContext, StringComparison.OrdinalIgnoreCase))
-            {
-                await HandlePlayAsync(callMedia, NoResponse);
-            }
-            else
-            {
-                var resultInformation = recognizeFailedEvent.ResultInformation;
-                logger.LogError("Encountered error during recognize, message={msg}, code={code}, subCode={subCode}",
-                    resultInformation?.Message,
-                    resultInformation?.Code,
-                    resultInformation?.SubCode);
-
-                var reasonCode = recognizeFailedEvent.ReasonCode;
-                string replyText = reasonCode switch
-                {
-                    var _ when reasonCode.Equals(MediaEventReasonCode.RecognizePlayPromptFailed) ||
-                    reasonCode.Equals(MediaEventReasonCode.RecognizeInitialSilenceTimedOut) => CustomerQueryTimeout,
-                    var _ when reasonCode.Equals(MediaEventReasonCode.RecognizeIncorrectToneDetected) => InvalidAudio,
-                    _ => CustomerQueryTimeout,
-                };
-
-                var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
-                await callMedia.StartRecognizingAsync(recognizeOptions);
-            }
+            logger.LogError("Encountered error during recognize, operationContext={context}",
+              recognizeFailed.OperationContext);
+            await HandlePlayAsync(callMedia, NoResponse);
         }
-        if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
+        else if (parsedEvent is RecognizeFailed recognizeFailedEvent)
+        {
+            var resultInformation = recognizeFailedEvent.ResultInformation;
+            logger.LogError("Encountered error during recognize, message={msg}, code={code}, subCode={subCode}",
+                resultInformation?.Message,
+                resultInformation?.Code,
+                resultInformation?.SubCode);
+
+            var reasonCode = recognizeFailedEvent.ReasonCode;
+            string replyText = reasonCode switch
+            {
+                var _ when reasonCode.Equals(MediaEventReasonCode.RecognizePlayPromptFailed) ||
+                reasonCode.Equals(MediaEventReasonCode.RecognizeInitialSilenceTimedOut) => CustomerQueryTimeout,
+                var _ when reasonCode.Equals(MediaEventReasonCode.RecognizeIncorrectToneDetected) => InvalidAudio,
+                _ => CustomerQueryTimeout,
+            };
+
+            var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
+            await callMedia.StartRecognizingAsync(recognizeOptions);
+        }
+        else if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
         {
             logger.LogInformation($"Stop recording and terminating call.");
             callAutomationClient.GetCallRecording().Stop(recordingId);
@@ -224,6 +224,8 @@ List<RecognitionChoice> GetChoices()
 
 async Task HandlePlayAsync(CallMedia callConnectionMedia, string text)
 {
+    Console.WriteLine($"Playing text to customer: {text}.");
+
     // Play goodbye message
     var GoodbyePlaySource = new TextSource(text)
     {
