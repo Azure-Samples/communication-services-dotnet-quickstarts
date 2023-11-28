@@ -43,6 +43,7 @@ string EndCallPhraseToConnectAgent = "Sure, please stay on the line. I’m going t
 
 string transferFailedContext = "TransferFailed";
 string connectAgentContext = "ConnectAgent";
+string goodbyeContext = "Goodbye";
 
 string agentPhonenumber = builder.Configuration.GetValue<string>("AgentPhoneNumber");
 string chatResponseExtractPattern = @"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)";
@@ -113,9 +114,10 @@ app.MapPost("/api/incomingCall", async (
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
         {
             logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}.");
-            if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext) && playCompletedEvent.OperationContext.Equals(transferFailedContext, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext) && (playCompletedEvent.OperationContext.Equals(transferFailedContext, StringComparison.OrdinalIgnoreCase) 
+            || playCompletedEvent.OperationContext.Equals(goodbyeContext, StringComparison.OrdinalIgnoreCase)))
             {
-                logger.LogInformation($"Call transfer failed, disconnecting the call...");
+                logger.LogInformation($"Disconnecting the call...");
                 await answerCallResult.CallConnection.HangUpAsync(true);
             }
             else if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext) && playCompletedEvent.OperationContext.Equals(connectAgentContext, StringComparison.OrdinalIgnoreCase))
@@ -216,7 +218,7 @@ app.MapPost("/api/incomingCall", async (
             else
             {
                 Console.WriteLine($"Recognize failed event received for connection id: {recognizeFailedEvent.CallConnectionId}. Playing goodbye message...");
-                await HandlePlayAsync(goodbyePrompt, "RecognizeFailed", callConnectionMedia);
+                await HandlePlayAsync(goodbyePrompt, goodbyeContext, callConnectionMedia);
             }
         });
     }
