@@ -95,7 +95,7 @@ app.MapPost("/api/incomingCall", async (
         Console.WriteLine($"Callback Url: {callbackUri}");
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
-            CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint)
+            CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
         };
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -118,7 +118,7 @@ app.MapPost("/api/incomingCall", async (
                 logger.LogInformation($"Call transfer failed, disconnecting the call...");
                 await answerCallResult.CallConnection.HangUpAsync(true);
             }
-            else if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext)&& playCompletedEvent.OperationContext.Equals(connectAgentContext, StringComparison.OrdinalIgnoreCase))
+            else if (!string.IsNullOrWhiteSpace(playCompletedEvent.OperationContext) && playCompletedEvent.OperationContext.Equals(connectAgentContext, StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(agentPhonenumber))
                 {
