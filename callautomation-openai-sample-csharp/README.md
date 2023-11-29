@@ -48,6 +48,7 @@ Open the appsettings.json file to configure the following settings:
     - `AzureOpenAIServiceKey`: Open AI's Service Key
     - `AzureOpenAIServiceEndpoint`: Open AI's Service Endpoint
     - `AzureOpenAIDeploymentModelName`: Open AI's Model name
+	- `AgentPhoneNumber`: Agent phone number to transfer the call to resolve queries
 
 
 ## Running the application
