@@ -14,11 +14,12 @@ using System.Text.RegularExpressions;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using Windows.ApplicationModel.Chat;
 using PropertyChangedEventArgs = Azure.Communication.Calling.WindowsClient.PropertyChangedEventArgs;
 using ChatMessage = Azure.Communication.Chat.ChatMessage;
+using System.IO;
+using Windows.UI.Xaml.Media.Imaging;
+
+
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -29,6 +30,8 @@ namespace ChatTeamsInteropInlineImageQuickStart
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        private const int pollingDelayMs = 5000;
+
         //ACS resource connection string i.e = "endpoint=https://your-resource.communication.azure.net/;accesskey=your-access-key";
         private const string connectionString_ = "";
         private CommunicationCall call_;
@@ -42,6 +45,8 @@ namespace ChatTeamsInteropInlineImageQuickStart
         private string user_Id_;
         private string user_token_;
         private string thread_Id_;
+
+        System.Net.Http.HttpClient client = new();
 
         public MainPage()
         {
@@ -160,12 +165,24 @@ namespace ChatTeamsInteropInlineImageQuickStart
                             // Get message attachments that are of type 'image'
                             IEnumerable<ChatAttachment> imageAttachments = message.Content.Attachments.Where(x => x.AttachmentType == ChatAttachmentType.Image);
 
+                            // Fetch image and render
                             var chatAttachmentImageUris = new List<Uri>();
                             foreach (ChatAttachment imageAttachment in imageAttachments)
                             {
+                                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", communicationTokenCredential.GetToken().Token);
+                                var response = await client.GetAsync(imageAttachment.PreviewUri);
+                                var randomAccessStream = await response.Content.ReadAsStreamAsync();
+                                await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+                                {
+                                    var bitmapImage = new BitmapImage();
+                                    await bitmapImage.SetSourceAsync(randomAccessStream.AsRandomAccessStream());
+                                    InlineImage.Source = bitmapImage;
+                                });
+
                                 chatAttachmentImageUris.Add(imageAttachment.PreviewUri);
                             }
 
+                            // Build message list
                             if (message.Type == ChatMessageType.Html || message.Type == ChatMessageType.Text)
                             {
                                 textMessages++;
@@ -192,7 +209,7 @@ namespace ChatTeamsInteropInlineImageQuickStart
                         }
 
                         await SetInCallState(true);
-                        await Task.Delay(3000);
+                        await Task.Delay(pollingDelayMs);
                     }
                     catch (Exception e)
                     {

@@ -21,6 +21,8 @@
                 <TextBox x:Name="TxtMessage" MinWidth="600" Text="" PlaceholderText="Please enter message"/>
                 <Button x:Name="SendMessageButton" Content="Send Message" Click="SendMessageButton_Click" IsEnabled="False"/>
             </StackPanel>
+            <TextBlock Text="Last Received Image:" />
+            <Image x:Name="InlineImage" Width="300" Height="300" Stretch="Uniform"/>
         </StackPanel>
     </Grid>
 </Page>
