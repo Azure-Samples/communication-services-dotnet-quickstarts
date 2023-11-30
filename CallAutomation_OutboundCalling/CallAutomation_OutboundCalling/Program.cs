@@ -23,18 +23,13 @@ var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
 // Your cognitive service endpoint
 var cognitiveServiceEndpoint = "<COGNITIVE_SERVICE_ENDPOINT>";
 
-// This will be set by fileStatus endpoints
-string recordingLocation = "";
-
-string recordingId = "";
-
 // text to play
 const string SpeechToTextVoice = "en-US-NancyNeural";
 const string MainMenu =
     """ 
     Hello this is Contoso Bank, we’re calling in regard to your appointment tomorrow 
-    at 9am to open a new account. Please confirm if this time is still suitable for you or if you would like to cancel. 
-    This call is recorded for quality purposes.
+    at 9am to open a new account. Please say confirm if this time is still suitable for you or say cancel 
+    if you would like to cancel this appointment.
     """;
 const string ConfirmedText = "Thank you for confirming your appointment tomorrow at 9am, we look forward to meeting with you.";
 const string CancelText = """
@@ -81,14 +76,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         var callMedia = callConnection.GetCallMedia();
 
         if (parsedEvent is CallConnected callConnected)
-        {
-            logger.LogInformation($"Start Recording...");
-            CallLocator callLocator = new ServerCallLocator(callConnected.ServerCallId);
-            var recordingResult = await callAutomationClient.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
-
-            logger.LogInformation("Recording Started...");
-            recordingId = recordingResult.Value.RecordingId;
-
+        {   
             logger.LogInformation("Fetching recognize options...");
 
             // prepare recognize tones
@@ -138,43 +126,12 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         }
         else if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
         {
-            logger.LogInformation($"Stop recording and terminating call.");
-            callAutomationClient.GetCallRecording().Stop(recordingId);
+            logger.LogInformation($"Terminating call.");
             await callConnection.HangUpAsync(true);
         }
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
-
-app.MapPost("/api/recordingFileStatus", (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
-{
-    foreach (var eventGridEvent in eventGridEvents)
-    {
-        if (eventGridEvent.TryGetSystemEventData(out object eventData))
-        {
-            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
-            {
-                var responseData = new SubscriptionValidationResponse
-                {
-                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                };
-                return Results.Ok(responseData);
-            }
-            if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
-            {
-                recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                logger.LogInformation($"The recording location is : {recordingLocation}");
-            }
-        }
-    }
-    return Results.Ok();
-});
-
-app.MapGet("/download", (ILogger<Program> logger) =>
-{
-    callAutomationClient.GetCallRecording().DownloadTo(new Uri(recordingLocation), "testfile.wav");
-    return Results.Ok();
-});
 
 if (app.Environment.IsDevelopment())
 {

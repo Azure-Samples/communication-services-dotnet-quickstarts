@@ -2,12 +2,9 @@
 |---|---|---|
 |sample|<table><tr><td>csharp</tr></td></table>|<table><tr><td>azure</td><td>azure-communication-services</td></tr></table>|
 
-# Call Automation - Quick Start Sample
+# Call Automation - Quick Start
 
-This sample application shows how the Azure Communication Services  - Call Automation SDK can be used to build IVR related solutions. 
-It makes an outbound call to a phone number, performs DTMF recognition, plays a different audio message based on the key pressed by the callee and hangs-up the call. 
-This sample application configured for accepting tone 1 (tone1), 2 (tone2) , If the callee pressed any other key than expected, the call will be disconnected.
-This sample application is also capable of making multiple concurrent outbound calls. The application is a web-based application built on .Net7 framework.
+In this quickstart, we cover how you can use Call Automation SDK to make an outbound call to a phone number and use the newly announced integration with Azure AI services to play dynamic prompts to participants using Text-to-Speech and recognize user voice input through Speech-to-Text to drive business logic in your application.
 
 # Design
 
