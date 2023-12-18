@@ -4,7 +4,7 @@
 
 # Call Live Transcription - Quick Start Sample
 
-This sample application shows how the Azure Communication Services  - Call Automation SDK can be used generate the live tranascription between PSTN calls. 
+This sample application shows how the Azure Communication Services  - Call Automation SDK can be used generate the live transcription between PSTN calls. 
 It accepts an incoming call from a phone number, performs DTMF recognition, and transfer the call to agent. You can see the live transcription in websocket during the conversation between agent and user. The application is a web-based application built on .Net7 framework.
 
 ## Prerequisites
@@ -21,7 +21,7 @@ It accepts an incoming call from a phone number, performs DTMF recognition, and 
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you would like to clone the sample to.
 2. git clone `https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`.
-3. Navigate to `CallAutomation_CallLivwTranscription` folder and open `CallAutomation_CallLiveTanscription.sln` file.
+3. Navigate to `CallAutomation_CallLiveTanscription` folder and open `CallAutomation_CallLiveTanscription.sln` file.
 
 ### Setup and host ngrok
 
