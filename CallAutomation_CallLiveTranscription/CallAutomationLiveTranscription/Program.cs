@@ -27,8 +27,8 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsPhoneNumber);
 var locale = builder.Configuration.GetValue<string>("Locale");
 ArgumentNullException.ThrowIfNullOrEmpty(locale);
 
-var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
-ArgumentNullException.ThrowIfNullOrEmpty(devTunnelUri);
+var callbackUriHost = builder.Configuration.GetValue<string>("CallbackUriHost");
+ArgumentNullException.ThrowIfNullOrEmpty(callbackUriHost);
 
 var agentPhoneNumber = builder.Configuration.GetValue<string>("AgentPhoneNumber");
 ArgumentNullException.ThrowIfNullOrEmpty(agentPhoneNumber);
@@ -82,7 +82,7 @@ app.MapPost("/api/incomingCall", async (
         if (eventData is AcsIncomingCallEventData incomingCallEventData)
         {
             var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
-            var callbackUri = new Uri(new Uri(devTunnelUri), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+            var callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
             logger.LogInformation("Incoming call - correlationId: {cor}, Callback url: {callbackuri}, transport Url: {transurl}",
                 incomingCallEventData.CorrelationId, callbackUri, transportUrl);
 
