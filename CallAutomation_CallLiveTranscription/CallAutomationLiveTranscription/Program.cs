@@ -40,12 +40,12 @@ var client = new CallAutomationClient(pmaEndpoint: new Uri("PMA_ENDPOINT"), conn
 builder.Services.AddSingleton(client);
 var app = builder.Build();
 
-string hellpIVRPrompt = "Hello, thank you for calling Contoso Utility service. Please type your date of birth in the format of Date, Month, Year. Example 01011990. before adding Agent to the call. This call is being recorded.";
-string addAgentPrompt = "Sure, please stay on the line. I’m going to add the adgent to the call";
-string incorrectDobPrompt = "I’m sorry, Date of birth seems incorrect format. Please type your date of birth in the format of Date, Month, Year. Example 01011990 ";
-string addParticipantFailurePrompt = "It looks like all I can’t connect you to an agent right now, but we will get the next available agent to call you back as soon as possible.";
-string goodbyePrompt = "Thank you for calling! Goodbye";
-string timeoutSilencePrompt = "I’m sorry, I didn’t receive input from you. Please type your date of birth in the format of Date, Month, Year. Example 01011990. to help you further";
+string helpIVRPrompt = "Welcome to the Contoso Utilities. To access your account, we need to verify your identity. Please enter your date of birth in the format DDMMYYYY using the keypad on your phone. Once we’ve validated your identity we will connect you to the next available agent. Please note this call will be recorded!";
+string addAgentPrompt = "Thank you for verifying your identity. We are now connecting you to the next available agent. Please hold the line and we will be with you shortly. Thank you for your patience.";
+string incorrectDobPrompt = "Sorry, we were unable to verify your identity based on the date of birth you entered. Please try again. Remember to enter your date of birth in the format DDMMYYYY using the keypad on your phone. Once you've entered your date of birth, press the pound key. Thank you!";
+string addParticipantFailurePrompt = "We're sorry, we were unable to connect you to an agent at this time, we will get the next available agent to call you back as soon as possible.";
+string goodbyePrompt = "Thank you for calling Contoso Utilities. We hope we were able to assist you today. Goodbye";
+string timeoutSilencePrompt = "I’m sorry, I didn’t receive any input. Please type your date of birth in the format of DDMMYYYY.";
 string goodbyeContext = "Goodbye";
 string addAgentContext = "AddAgent";
 string incorrectDobContext = "IncorrectDob";
@@ -121,7 +121,7 @@ app.MapPost("/api/incomingCall", async (
                 await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, false, recordingId);
 
                 /* Play hello prompt to user */
-                await HandleDtmfRecognizeAsync(callConnectionMedia, callerId, hellpIVRPrompt, "hellocontext");
+                await HandleDtmfRecognizeAsync(callConnectionMedia, callerId, helpIVRPrompt, "hellocontext");
             }
             client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(
                  answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
