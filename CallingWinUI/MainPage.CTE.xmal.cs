@@ -277,7 +277,7 @@ namespace CallingQuickstart
                         NoiseSuppressionMode = NoiseSuppressionMode.High
                     }
                 },
-                OutgoingVideoOptions = new OutgoingVideoOptions() { /*Streams = new OutgoingVideoStream[] { cameraStream }*/ }
+                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
 
             return startCallOptions;
