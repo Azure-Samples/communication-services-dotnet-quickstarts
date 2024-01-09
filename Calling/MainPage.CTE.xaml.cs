@@ -52,11 +52,9 @@ namespace CallingQuickstart
                 EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
             };
 
-            var teamsCallAgentOptions = new TeamsCallAgentOptions();
-
             try
             {
-                this.teamsCallAgent = await this.callClient.CreateTeamsCallAgentAsync(teamsTokenCredential, teamsCallAgentOptions);
+                this.teamsCallAgent = await this.callClient.CreateTeamsCallAgentAsync(teamsTokenCredential);
                 this.teamsCallAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.teamsCallAgent.IncomingCallReceived += OnIncomingCallAsync;
             }
@@ -259,11 +257,21 @@ namespace CallingQuickstart
             return call;
         }
 
-        private StartTeamsCallOptions GetStartTeamsCallOptions()
+        private StartCallOptions GetStartTeamsCallOptions()
         {
-            var startCallOptions = new StartTeamsCallOptions()
+            var startCallOptions = new StartCallOptions()
             {
-                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream },
+                OutgoingAudioOptions = new OutgoingAudioOptions()
+                {
+                    IsMuted = true,
+                    Stream = micStream,
+                    Filters = new OutgoingAudioFilters()
+                    {
+                        AnalogAutomaticGainControlEnabled = true,
+                        AcousticEchoCancellationEnabled = true,
+                        NoiseSuppressionMode = NoiseSuppressionMode.High
+                    }
+                },
                 OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
 

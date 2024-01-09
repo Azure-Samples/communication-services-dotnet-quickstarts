@@ -67,6 +67,7 @@ namespace CallingQuickstart
             localVideoEffectsFeature.VideoEffectError += OnVideoEffectError;
         }
 
+#if ACS
         private StartCallOptions GetStartCallOptions()
         {
             var startCallOptions = new StartCallOptions() {
@@ -85,6 +86,7 @@ namespace CallingQuickstart
 
             return startCallOptions;
         }
+#endif
 
         private JoinCallOptions GetJoinCallOptions()
         {
@@ -579,6 +581,6 @@ namespace CallingQuickstart
         }
         #endregion
 #endif
-        #endregion
+#endregion
     }
 }
