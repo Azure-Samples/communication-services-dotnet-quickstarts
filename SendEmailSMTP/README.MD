@@ -34,15 +34,13 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 
 ### Locally configuring the application
 
-1. Navigate to the SendEmail folder and open the `SendEmail.sln` solution in Visual Studio.
+1. Navigate to the SendEmailSMTP folder and open the `SendEmailSMTP.sln` solution in Visual Studio.
 2. Open the program.cs file to configure the following settings:
 
-- `connectionString`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
+- ` smtpAuthUsername`: Replace `<Azure Communication Services Resource name>|<Entra Application Id>|<Entra Application Tenant Id>` as mentioned. For more details please refer:[Microsoft Docs](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/email/send-email-smtp/smtp-authentication).
+- ` smtpAuthPassword`: Replace `<Entra Application Client Secret>` which is your Microsoft Entra Application Secret. 
 - `sender`: Replace `<SENDER_EMAIL>` with the sender email obtained from Azure Communication Service.
 - `recipient`: Replace `<RECIPIENT_EMAIL>` with the recipient email.
+- The body and message can be added as per your wish. The parameters such as hostname, port, should be kept intact. 
 
 1. Run `SendEmail` project.
-
-## ❤️ Feedback
-
-We appreciate your feedback and energy in helping us improve our services. [Please let us know if you are satisfied with ACS through this survey](https://microsoft.qualtrics.com/jfe/form/SV_5dtYL81xwHnUVue).
