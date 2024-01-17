@@ -25,7 +25,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 
 ## Code structure
 
-- ./SendEmail/Program.cs: Entry point for sending email.
+- ./SendEmailSMTP/SendEmailSMTP/Program.cs: Entry point for sending email.
 
 ## Before running the sample for the first time
 
