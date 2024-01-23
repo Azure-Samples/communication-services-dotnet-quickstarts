@@ -41,7 +41,7 @@ namespace JR_AOAI_Integration
 
                     while (waitForOffer)
                     {
-                        Task.Delay(new TimeSpan(0,0,2));
+                        await Task.Delay(TimeSpan.FromSeconds(2));
 
                         Console.WriteLine("Checking for Offers");
 
@@ -51,9 +51,9 @@ namespace JR_AOAI_Integration
                             {
                                 Console.WriteLine($"Worker {worker.Id} has received the offer for new Job. Taking the Job to Closes state.");
                                 var acceptOffer = await JobRouterClient.AcceptJobOfferAsync(worker.Id, worker.Offers.FirstOrDefault().OfferId);
-                                Task.Delay(new TimeSpan (0,0,2));
+                                await Task.Delay(TimeSpan.FromSeconds(2));
                                 await JobRouterClient.CompleteJobAsync(new CompleteJobOptions(jobId, acceptOffer.Value.AssignmentId));
-                                Task.Delay(new TimeSpan(0, 0, 1));
+                                await Task.Delay(TimeSpan.FromSeconds(2));
                                 await JobRouterClient.CloseJobAsync(new CloseJobOptions(jobId, acceptOffer.Value.AssignmentId));
                                 waitForOffer = false;
                             }
@@ -207,9 +207,7 @@ namespace JR_AOAI_Integration
             var mode = new BestWorkerMode() { ScoringRule = new FunctionRouterRule(new Uri(Configuration["OpenAiPairing:AzureFunctionUri"]))
             {
                 Credential = new FunctionRouterRuleCredential(Configuration["OpenAiPairing:AzureFunctionKey"])
-            },
-                MinConcurrentOffers = 1,
-                MaxConcurrentOffers = 1,
+            }
                 ScoringRuleOptions = 
                 new ScoringRuleOptions() { 
                     IsBatchScoringEnabled = true
