@@ -18,9 +18,7 @@ namespace SendEmailPlainText
 
             //Input email information
             var sender = "<SENDER_EMAIL>";
-            var recipient = new EmailAddress(
-                address: "<RECIPIENT_EMAIL>",
-                displayName: "<RECIPIENT_DISPLAY_NAME>");
+            var recipient = "<RECIPIENT_EMAIL>";
             var subject = "Send bulk email sample with optional throttle policy";
 
             // Add optional throttling policy to handle any throttling errors
@@ -31,7 +29,12 @@ namespace SendEmailPlainText
             // Create custom email content for each recipient.
             // This is an optional step, you could also use the same content for all recipients.
             var emailMessages = new List<EmailMessage>();
-            for (int i = 0; i < 210; i++)
+            
+            // Update this value to send more or less emails.
+            // Note that running this program multiple times in a short period of time may result in your subscription getting throttled.
+            var numberOfEmailsToSend = 20;
+
+            for (int i = 0; i < numberOfEmailsToSend; i++)
             {
                 var emailContent = new EmailContent(subject)
                 {
