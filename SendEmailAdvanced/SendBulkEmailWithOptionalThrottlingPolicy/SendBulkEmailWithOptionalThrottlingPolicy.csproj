@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Azure.Communication.Email" Version="1.0.0" />
+  </ItemGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SendEmail</RootNamespace>
+    <AssemblyName>SendBulkEmailWithOptionalThrottlingPolicy</AssemblyName>
+  </PropertyGroup>
+
+</Project>
