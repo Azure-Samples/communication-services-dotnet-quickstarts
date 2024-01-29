@@ -262,9 +262,9 @@ namespace CallingQuickstart
             return call;
         }
 
-        private StartCallOptions GetStartTeamsCallOptions()
+        private StartTeamsCallOptions GetStartTeamsCallOptions()
         {
-            var startCallOptions = new StartCallOptions()
+            var startTeamsCallOptions = new StartTeamsCallOptions()
             {
                 OutgoingAudioOptions = new OutgoingAudioOptions()
                 {
@@ -280,7 +280,7 @@ namespace CallingQuickstart
                 OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
 
-            return startCallOptions;
+            return startTeamsCallOptions;
         }
 
         private async Task<TeamsCommunicationCall> StartCteCallAsync(string callee)
