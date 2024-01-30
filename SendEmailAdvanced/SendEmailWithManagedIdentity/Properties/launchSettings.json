@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "SendEmailWithManagedIdentity": {
-      "commandName": "Project",
-      "commandLineArgs": "--port 7287",
-      "launchBrowser": false
-    }
-  }
-}
