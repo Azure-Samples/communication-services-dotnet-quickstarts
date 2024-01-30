@@ -18,7 +18,7 @@ namespace SendEmailWithManagedIdentity
     // This example uses DefaultAzureCredential, but ManagedIdentityCredential could have also been used.
     // DefaultAzureCredential allows the same code to be used during local development and in the deployed environment
     // because DefaultAzureCredential supports many authentication types.
-    public static class Function1
+    public static class SendEmailWithManagedIdentityFunction
     {
         [FunctionName("SendEmailWithManagedIdentity")]
         public static async Task<IActionResult> Run(
@@ -32,8 +32,8 @@ namespace SendEmailWithManagedIdentity
 
             var subject = "Welcome to Azure Communication Service Email APIs.";
             var htmlContent = "<html><body><h1>Quick send email managed identity test</h1><br/><h4>This email message is sent from Azure Communication Service Email using a function app.</h4><p>This mail was sent using .NET SDK!!</p></body></html>";
-            var sender = "donotreply@xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.azurecomm.net";
-            var recipient = "emailalias@contoso.com";
+            var sender = "<SENDER_EMAIL>";
+            var recipient = "<RECIPIENT_EMAIL>";
 
             try
             {

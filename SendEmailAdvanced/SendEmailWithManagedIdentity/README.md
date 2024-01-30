@@ -7,11 +7,13 @@ products:
 - azure-communication-services
 ---
 
-# Email Sample Advanced
+# Email Sample Send Email With Managed Identity
 
 This sample sends an email to the selected recipients of any domain using an [Email Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/email/create-email-communication-resource).
+An [Azure Function](https://learn.microsoft.com/azure/azure-functions/functions-overview) that has been given permission to the Email Communication Services resource has been used.
 
 Additional documentation for this sample can be found on [Microsoft Docs](https://docs.microsoft.com/azure/communication-services/concepts/email/email-overview).
+Additional documentation on using Azure functions with Managed Identities can be found on [Microsoft Docs](https://learn.microsoft.com/azure/azure-functions/functions-identity-based-connections-tutorial).
 
 ## Prerequisites
 
@@ -25,11 +27,9 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 
 ## Code structure
 
-- ./SendEmailPlainText/Program.cs: Entry point for sending plain text email.
-- ./SendEmailWithAttachments/Program.cs: Entry point for sending email with attachments.
-- ./SendEmailWithManualPollingForStatus/Program.cs: Entry point for sending emails and manually poll for the email send status.
-- ./SendHighImportanceEmailToMultipleRecipients/Program.cs: Entry point for sending high importance email to multiple recipients.
-- ./SendEmailWithManagedIdentity/SendEmailWithManagedIdentityFunction.cs: Entry point for sending an email using a function app with a managed identity.
+This sample uses an [Azure Functions project created using Visual Studio](https://learn.microsoft.com/azure/azure-functions/functions-create-your-first-function-visual-studio).
+
+- SendEmailWithManagedIdentityFunction.cs: Entry point for sending an email using a function app with a managed identity.
 
 ## Before running the sample for the first time
 
@@ -41,7 +41,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 1. Navigate to the SendEmailAdvanced folder and open the `SendMailAdvanced.sln` solution in Visual Studio.
 1. Open the program.cs file of each project in code structure to configure the following settings:
 
-   - `connectionString`: Replace `<ACS_CONNECTION_STRING>` with Azure Communication Service resource's connection string.
+   - `endpoint`: Replace `<ACS_RESOURCE_ENDPOINT>` with the Azure Communication Service resource's endpoint.
    - `sender`: Replace `<SENDER_EMAIL>` with the sender email obtained from Azure Communication Service.
    - `recipient`: Replace `<RECIPIENT_EMAIL>` with the recipient email.
 1. Run respective project.
