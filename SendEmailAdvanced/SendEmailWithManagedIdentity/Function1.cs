@@ -15,8 +15,9 @@ namespace SendEmailWithManagedIdentity
     // This function app should be given a managed identity with "Contributor" access to the Azure Communication
     // Service resouce or a custom role with both the "Microsoft.Communication/CommunicationServices/Read" and
     // "Microsoft.Communication/CommunicationServices/Write" can also be used.
-    // This example uses DefaultAzureCredential but ManagedIdentityCredential could also have been used.
-    // DefaultAzureCredential allows the same code to be used during local development and in the deployed environment.
+    // This example uses DefaultAzureCredential, but ManagedIdentityCredential could have also been used.
+    // DefaultAzureCredential allows the same code to be used during local development and in the deployed environment
+    // because DefaultAzureCredential supports many authentication types.
     public static class Function1
     {
         [FunctionName("SendEmailWithManagedIdentity")]
