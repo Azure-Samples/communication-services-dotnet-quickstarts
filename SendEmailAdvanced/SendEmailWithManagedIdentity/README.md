@@ -12,9 +12,7 @@ products:
 [Microsoft Managed Identities](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview) are a secure way for Azure services and resources to authenticate to other Azure services, eliminating the need for explicit credentials or secrets. It provides an automatically managed identity in Microsoft Entra for applications to use when connecting to resources that support Microsoft Entra authentication. Resources such as [Azure Functions](https://learn.microsoft.com/azure/azure-functions/functions-overview) and [Azure Logic Apps](https://learn.microsoft.com/azure/logic-apps/logic-apps-overview) can be given a managed identity. The managed identity can then be given access to an Azure Communication Services resource.
 
 This sample sends an email to the selected recipients of any domain using an [Email Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/email/create-email-communication-resource).
-using an [Azure Function configured to use identies instead of secrets](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity#enable-system-assigned-managed-identity-on-azure-function).
-
-Additional documentation for this sample can be found on [Microsoft Docs](https://docs.microsoft.com/azure/communication-services/concepts/email/email-overview).
+using an [Azure Function configured to use identies instead of secrets](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity#enable-system-assigned-managed-identity-on-azure-function). Additional documentation for this sample can be found on [Microsoft Docs](https://docs.microsoft.com/azure/communication-services/concepts/email/email-overview).
 
 ## Prerequisites
 
@@ -22,7 +20,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 - [Visual Studio (2019 and above)](https://visualstudio.microsoft.com/vs/).
 - [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0) (Make sure to install version that corresponds with your Visual Studio instance, 32 vs 64 bit).
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource).
-- Create an [Azure Email Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/email/create-email-communication-resource) to start sending emails.
+- Create an [Azure Function](https://learn.microsoft.com/azure/azure-functions/functions-overview?pivots=programming-language-csharp).
 
 > Note: We can send an email from our own verified domain also [Add custom verified domains to Email Communication Service](https://docs.microsoft.com/azure/communication-services/quickstarts/email/add-custom-verified-domains).
 
