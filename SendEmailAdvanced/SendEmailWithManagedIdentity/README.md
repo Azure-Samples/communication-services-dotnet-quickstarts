@@ -26,7 +26,7 @@ using an [Azure Function configured to use identies instead of secrets](https://
 
 ## Granting the system-assigned identity for the Azure Function access to the Azure Communication Services Resource
 
-To grant an Azure Function access to an Azure Communication Services resource using managed identities, the Azure Function should first by assigned a [system-assigned managed identity](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity#enable-system-assigned-managed-identity-on-azure-function).
+To grant an Azure Function access to an Azure Communication Services resource using managed identities, the Azure Function should first be assigned a [system-assigned managed identity](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity#enable-system-assigned-managed-identity-on-azure-function).
 
 Next, in the Azure portal, navigate to the Azure Communication Services resource.
 
