@@ -5,13 +5,14 @@ using Windows.Graphics.Imaging;
 using Windows.Media.Core;
 using Buffer = Windows.Storage.Streams.Buffer;
 
-namespace CallingTestApp
+namespace RawVideo
 {
     internal abstract class CaptureService
     {
+        public event EventHandler<RawVideoFrame> FrameArrived;
         protected readonly RawOutgoingVideoStream rawOutgoingVideoStream;
 
-        protected CaptureService(RawOutgoingVideoStream rawOutgoingVideoStream) 
+        protected CaptureService(RawOutgoingVideoStream rawOutgoingVideoStream)
         {
             this.rawOutgoingVideoStream = rawOutgoingVideoStream;
         }
@@ -20,11 +21,17 @@ namespace CallingTestApp
         {
             if (bitmap != null && CanSendRawVideoFrames())
             {
-                RawVideoFrame rawVideoFrame = ConvertSoftwareBitmapToRawVideoFrame(bitmap);
-
-                using (rawVideoFrame)
+                try
                 {
-                    await rawOutgoingVideoStream.SendRawVideoFrameAsync(rawVideoFrame);
+                    RawVideoFrame frame = ConvertSoftwareBitmapToRawVideoFrame(bitmap);
+
+                    await rawOutgoingVideoStream.SendRawVideoFrameAsync(frame);
+
+                    FrameArrived?.Invoke(this, frame);
+                }
+                catch (Exception ex)
+                {
+                    string msg = ex.Message;
                 }
             }
         }

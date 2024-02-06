@@ -121,14 +121,16 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="BufferExtensions.cs" />
+    <Compile Include="CameraCaptureService.cs" />
     <Compile Include="CaptureService.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ScreenCaptureService.cs" />
+    <Compile Include="UIHelper.cs" />
     <Compile Include="VideoFrameRenderer.cs" />
-    <Compile Include="VideoFrameSender.cs" />
+    <Compile Include="VideoStreamRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -164,9 +166,6 @@
     </PackageReference>
     <PackageReference Include="Win2D.uwp">
       <Version>1.27.0-preview3</Version>
-    </PackageReference>
-    <PackageReference Include="WindowsAzure.Messaging.Managed">
-      <Version>0.1.7.9</Version>
     </PackageReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
