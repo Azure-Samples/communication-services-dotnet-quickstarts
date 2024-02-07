@@ -7,9 +7,11 @@ using Windows.Graphics.Capture;
 using Windows.Media.Capture.Frames;
 using Windows.Security.Authorization.AppCapabilityAccess;
 using Windows.Storage;
+using Windows.UI;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Xamarin.Essentials;
 
 namespace RawVideo
@@ -85,15 +87,11 @@ namespace RawVideo
                 VideoStreamKind.ScreenShareOutgoing
             };
 
-            incomingVideoStreamKindList.ForEach(kind =>
-            {
-                incomingVideoStreamKindComboBox.Items.Add(kind.ToString());
-            });
+            incomingVideoStreamKindList
+                .ForEach(kind => incomingVideoStreamKindComboBox.Items.Add(kind.ToString()));
 
-            outgoingVideoStreamKindList.ForEach(kind =>
-            {
-                outgoingVideoStreamKindComboBox.Items.Add(kind.ToString());
-            });
+            outgoingVideoStreamKindList
+                .ForEach(kind => outgoingVideoStreamKindComboBox.Items.Add(kind.ToString()));
 
             incomingVideoStreamKindComboBox.SelectedIndex = 1;
             outgoingVideoStreamKindComboBox.SelectedIndex = 1;
@@ -322,9 +320,9 @@ namespace RawVideo
                     h = format.Height;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
-                    GraphicsCaptureItem item = displayList[selectedDisplayListIndex];
-                    w = item.Size.Width;
-                    h = item.Size.Height;
+                    GraphicsCaptureItem display = displayList[selectedDisplayListIndex];
+                    w = display.Size.Width;
+                    h = display.Size.Height;
 
                     format.Width = w;
                     format.Height = h;
@@ -409,6 +407,7 @@ namespace RawVideo
                             break;
                     }
 
+                    outgoingVideoStream = null;
                     break;
             }
         }
@@ -483,7 +482,7 @@ namespace RawVideo
             }
         }
 
-        private async void FrameArrived(object sender, RawVideoFrame frame)
+        private async void RawVideoFrameCaptured(object sender, RawVideoFrame frame)
         {
             using (frame)
             {
@@ -510,8 +509,8 @@ namespace RawVideo
             {
                 await this.RunOnUIThread(async () =>
                 {
-                    await incomingVideoStreamRenderer.StopPreviewAsync();
                     incomingVideoContainer.Children.Remove(incomingVideoStreamRenderer.GetView());
+                    await incomingVideoStreamRenderer.StopPreviewAsync();
                     incomingVideoStreamRenderer = null;
                 });
             }
@@ -524,6 +523,7 @@ namespace RawVideo
                 await this.RunOnUIThread(() =>
                 {
                     incomingVideoFrameRenderer = new VideoFrameRenderer();
+                    incomingVideoContainer.Background = new SolidColorBrush(Colors.Black);
                     incomingVideoContainer.Children.Add(incomingVideoFrameRenderer.GetView());
                 });
             }
@@ -535,8 +535,9 @@ namespace RawVideo
             {
                 await this.RunOnUIThread(() =>
                 {
-                    incomingVideoFrameRenderer.ClearView();
                     incomingVideoContainer.Children.Remove(incomingVideoFrameRenderer.GetView());
+                    incomingVideoContainer.Background = null;
+                    incomingVideoFrameRenderer.ClearView();
                     incomingVideoFrameRenderer = null;
                 });
             }
@@ -559,11 +560,10 @@ namespace RawVideo
         {
             if (outgoingVideoStreamRenderer != null)
             {
-                ;
                 await this.RunOnUIThread(async () =>
                 {
-                    await outgoingVideoStreamRenderer.StopPreviewAsync();
                     outgoingVideoContainer.Children.Remove(outgoingVideoStreamRenderer.GetView());
+                    await outgoingVideoStreamRenderer.StopPreviewAsync();
                     outgoingVideoStreamRenderer = null;
                 });
             }
@@ -575,12 +575,13 @@ namespace RawVideo
             {
                 cameraCaptureService = new CameraCaptureService(virtualOutgoingVideoStream,
                     cameraList[selectedCameraListIndex]);
-                cameraCaptureService.FrameArrived += FrameArrived;
+                cameraCaptureService.FrameArrived += RawVideoFrameCaptured;
                 await cameraCaptureService.StartAsync();
 
                 await this.RunOnUIThread(() =>
                 {
                     outgoingVideoFrameRenderer = new VideoFrameRenderer();
+                    outgoingVideoContainer.Background = new SolidColorBrush(Colors.Black);
                     outgoingVideoContainer.Children.Add(outgoingVideoFrameRenderer.GetView());
                 });
             }
@@ -592,12 +593,13 @@ namespace RawVideo
             {
                 await this.RunOnUIThread(() =>
                 {
-                    outgoingVideoFrameRenderer.ClearView();
                     outgoingVideoContainer.Children.Remove(outgoingVideoFrameRenderer.GetView());
+                    outgoingVideoContainer.Background = null;
+                    outgoingVideoFrameRenderer.ClearView();
                     outgoingVideoFrameRenderer = null;
                 });
 
-                cameraCaptureService.FrameArrived -= FrameArrived;
+                cameraCaptureService.FrameArrived -= RawVideoFrameCaptured;
                 await cameraCaptureService.StopAsync();
                 cameraCaptureService = null;
             }
@@ -609,12 +611,13 @@ namespace RawVideo
             {
                 screenCaptureService = new ScreenCaptureService(screenShareOutgoingVideoStream,
                     displayList[selectedDisplayListIndex]);
-                screenCaptureService.FrameArrived += FrameArrived;
+                screenCaptureService.FrameArrived += RawVideoFrameCaptured;
                 screenCaptureService.Start();
 
                 await this.RunOnUIThread(() =>
                 {
                     outgoingVideoFrameRenderer = new VideoFrameRenderer();
+                    outgoingVideoContainer.Background = new SolidColorBrush(Colors.Black);
                     outgoingVideoContainer.Children.Add(outgoingVideoFrameRenderer.GetView());
                 });
             }
@@ -626,12 +629,13 @@ namespace RawVideo
             {
                 await this.RunOnUIThread(() =>
                 {
-                    outgoingVideoFrameRenderer.ClearView();
                     outgoingVideoContainer.Children.Remove(outgoingVideoFrameRenderer.GetView());
+                    outgoingVideoContainer.Background = null;
+                    outgoingVideoFrameRenderer.ClearView();
                     outgoingVideoFrameRenderer = null;
                 });
 
-                screenCaptureService.FrameArrived -= FrameArrived;
+                screenCaptureService.FrameArrived -= RawVideoFrameCaptured;
                 screenCaptureService.Stop();
                 screenCaptureService = null;
             }
@@ -727,7 +731,10 @@ namespace RawVideo
 
         private async void ShowMessage(string message)
         {
-            await new MessageDialog(message).ShowAsync();
+            await this.RunOnUIThread(async () =>
+            {
+                await new MessageDialog(message).ShowAsync();
+            });
         }
 
         private void IncomingVideoStreamKindSelected(object sender, SelectionChangedEventArgs args)

@@ -1,5 +1,4 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
-using Windows.UI;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
@@ -15,7 +14,7 @@ namespace RawVideo
         {
             imageElement = new Image
             {
-                //Fit
+                // Fit
                 Stretch = Stretch.Uniform
             };
 
@@ -54,13 +53,11 @@ namespace RawVideo
             }
 
             imageElement.Source = bitmap;
-            (imageElement.Parent as RelativePanel).Background = new SolidColorBrush(Colors.Black);
         }
 
         public void ClearView()
         {
             imageElement.Source = null;
-            (imageElement.Parent as RelativePanel).Background = null;
         }
 
         public UIElement GetView()
