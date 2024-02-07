@@ -44,9 +44,11 @@ namespace RawVideo
                 mediaFrameReader = await mediaCapture.CreateFrameReaderAsync(selectedSource);
                 mediaFrameReaderStatus = await mediaFrameReader.StartAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 mediaFrameReaderStatus = MediaFrameReaderStartStatus.UnknownFailure;
+
+                Console.WriteLine(ex.Message);
             }
 
             if (mediaFrameReaderStatus == MediaFrameReaderStartStatus.Success)
@@ -85,7 +87,7 @@ namespace RawVideo
             }
         }
 
-        public static async Task<List<Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo>>> GetCameraList()
+        public static async Task<List<Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo>>> GetCameraListAsync()
         {
             IReadOnlyList<MediaFrameSourceGroup> groups = await MediaFrameSourceGroup.FindAllAsync();
             var cameraList = new List<Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo>>();

@@ -9,14 +9,10 @@
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="White" />
                     <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="Black" />
-
-                    <SolidColorBrush x:Key="styleYellow" Color="#FFF9BF3B"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="White" />
                     <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="Black" />
-
-                    <SolidColorBrush x:Key="styleYellow" Color="#FFF9BF3B"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>

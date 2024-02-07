@@ -69,26 +69,15 @@
         VerticalAlignment="Center"
         HorizontalAlignment="Center"
         >
-        <Popup
-            x:Name="PopUp"
-            Width="200"
-            Height="200"
-            IsOpen="False"
-            LightDismissOverlayMode="On"
-            IsLightDismissEnabled="True"
-            RelativePanel.AlignVerticalCenterWithPanel="True"
-            RelativePanel.AlignHorizontalCenterWithPanel="True"
-            >
-            <TextBox
-                Text="PopUp"
-                FontSize="25"
-                Background="Black"
-                Opacity="100"
-                >
-            </TextBox>
-        </Popup>
+        <ProgressRing
+            x:Name="loadingProgressRing"
+            Width="50"
+            Height="50"
+            Foreground="Gray"
+            />
 
         <StackPanel
+            x:Name="tokenContainer"
             Width="Auto"
             Height="Auto"
             Background="White"
@@ -96,35 +85,78 @@
             VerticalAlignment="Center"
             HorizontalAlignment="Center"
             Padding="0,25,0,25"
+            Visibility="Visible"
+            >
+            <TextBox
+                x:Name="tokenTextBox"
+                PlaceholderText="ACS token"
+                Width="500"
+                Height="50"
+                FontSize="25"
+                HorizontalAlignment="Center"
+                SelectionHighlightColor="White"
+                BorderBrush="Black"
+                BorderThickness="2"
+                CornerRadius="8"
+                Foreground="Black"
+                Background="White"
+                PlaceholderForeground="Black"
+                >
+                <TextBox.Resources>
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="white"/>
+                    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="Black"/>
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Black"/>
+                </TextBox.Resources>
+            </TextBox>
+
+            <Button
+                x:Name="initResourcesButton"
+                Content="Init Resources"
+                Background="#0000FF"
+                Width="250"
+                Height="50"
+                FontSize="25"
+                Click="GetPermissions"
+                RenderTransformOrigin="0.5,0.5"
+                CornerRadius="8"
+                Foreground="White"
+                Margin="0,10,0,0"
+                HorizontalAlignment="Center"
+                >
+                <Button.Resources>
+                    <ResourceDictionary>
+                        <ResourceDictionary.ThemeDictionaries>
+                            <ResourceDictionary x:Key="Dark">
+                                <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
+                                <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#0000FF"/>
+                            </ResourceDictionary>
+                            <ResourceDictionary x:Key="Light">
+                                <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
+                                <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#0000FF"/>
+                            </ResourceDictionary>
+                        </ResourceDictionary.ThemeDictionaries>
+                    </ResourceDictionary>
+                </Button.Resources>
+            </Button>
+        </StackPanel>
+
+        <StackPanel
+            x:Name="callContainer"
+            Width="Auto"
+            Height="Auto"
+            Background="White"
+            Orientation="Vertical"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center"
+            Padding="0,25,0,25"
+            Visibility="Collapsed"
             >
             <StackPanel
-                x:Name="settingsContainer"
+                x:Name="callSettingsContainer"
                 Width="Auto"
                 Height="Auto"
                 Orientation="Vertical"
                 >
-                <TextBox
-                    x:Name="tokenTextBox"
-                    PlaceholderText="ACS token"
-                    Width="500"
-                    Height="50"
-                    FontSize="25"
-                    HorizontalAlignment="Center"
-                    SelectionHighlightColor="White"
-                    BorderBrush="Black"
-                    BorderThickness="2"
-                    CornerRadius="8"
-                    Foreground="Black"
-                    Background="White"
-                    PlaceholderForeground="Black"
-                    >
-                    <TextBox.Resources>
-                        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="white"/>
-                        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="Black"/>
-                        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Black"/>
-                    </TextBox.Resources>
-                </TextBox>
-
                 <TextBox
                     x:Name="meetingLinkTextBox"
                     PlaceholderText="Teams meeting link"
@@ -153,7 +185,6 @@
                     SelectionChanged="IncomingVideoStreamKindSelected"
                     Style="{StaticResource ComboBoxStyle}"
                     ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
-                    ItemsSource="{x:Bind incomingVideoStreamKindList}"
                     >
                     <ComboBox.Resources>
                         <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
@@ -168,7 +199,6 @@
                     SelectionChanged="OutgoingVideoStreamKindSelected"
                     Style="{StaticResource ComboBoxStyle}"
                     ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
-                    ItemsSource="{x:Bind outgoingVideoStreamKindList}"
                     >
                     <ComboBox.Resources>
                         <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
@@ -252,7 +282,7 @@
                 </RelativePanel>
             </RelativePanel>
 
-            <StackPanel  
+            <StackPanel
                 Width="Auto"
                 Height="auto"
                 Orientation="Horizontal"
@@ -261,8 +291,8 @@
                 HorizontalAlignment="Center"
                     Margin="0,10,0,0"
                 >
-                <Button 
-                    x:Name="StartCallButton" 
+                <Button
+                    x:Name="startCallButton"
                     Content="Start Call"
                     Background="#00FF00"
                     Width="250"
@@ -290,7 +320,7 @@
                 </Button>
 
                 <Button
-                    x:Name="EndCallButton" 
+                    x:Name="endCallButton"
                     Content="End Call"
                     Background="#FF0000"
                     Width="250"

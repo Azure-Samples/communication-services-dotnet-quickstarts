@@ -79,7 +79,7 @@ namespace RawVideo
                 }
                 catch (Exception ex)
                 {
-                    string msg = ex.Message;
+                    Console.WriteLine(ex.Message);
                 }
             }
 

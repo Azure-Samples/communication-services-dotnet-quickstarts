@@ -1,16 +1,16 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.Graphics.Capture;
 using Windows.Media.Capture.Frames;
 using Windows.Security.Authorization.AppCapabilityAccess;
-using Windows.UI;
+using Windows.Storage;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
+using Xamarin.Essentials;
 
 namespace RawVideo
 {
@@ -48,21 +48,27 @@ namespace RawVideo
         private VideoStreamKind incomingVideoStreamKind;
         private RawVideoFrameKind outgoingVideoFrameKind;
         private RawVideoFrameKind incomingVideoFrameKind;
-        private AppCapabilityAccessStatus screenSharePermissionStatus;
+        private ApplicationDataContainer settings;
         private int w = 0;
         private int h = 0;
-        private int framerate = 0;
+        private int framerate = 30;
         private bool callInProgress = false;
 
         public MainPage()
         {
             InitializeComponent();
-            InitializeTestCase();
+
+            settings = ApplicationData.Current.LocalSettings;
+
+            var savedToken = settings.Values["Token"];
+            if (savedToken != null)
+            {
+                tokenTextBox.Text = savedToken.ToString();
+            }
         }
 
-        private async void InitializeTestCase()
+        private async void InitResources()
         {
-            framerate = 30;
             outgoingVideoFrameKind = RawVideoFrameKind.Texture;
             incomingVideoFrameKind = RawVideoFrameKind.Texture;
 
@@ -79,10 +85,25 @@ namespace RawVideo
                 VideoStreamKind.ScreenShareOutgoing
             };
 
+            incomingVideoStreamKindList.ForEach(kind =>
+            {
+                incomingVideoStreamKindComboBox.Items.Add(kind.ToString());
+            });
+
+            outgoingVideoStreamKindList.ForEach(kind =>
+            {
+                outgoingVideoStreamKindComboBox.Items.Add(kind.ToString());
+            });
+
             incomingVideoStreamKindComboBox.SelectedIndex = 1;
             outgoingVideoStreamKindComboBox.SelectedIndex = 1;
 
             await CreateCallAgent();
+
+            if (deviceManager == null)
+            {
+                return;
+            }
 
             videoDeviceInfoList = deviceManager.Cameras.OrderBy(item => item.Name).ToList();
             foreach (VideoDeviceDetails item in videoDeviceInfoList)
@@ -95,7 +116,7 @@ namespace RawVideo
                 videoDeviceInfoComboBox.SelectedIndex = 0;
             }
 
-            cameraList = await CameraCaptureService.GetCameraList();
+            cameraList = await CameraCaptureService.GetCameraListAsync();
             foreach (Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo> item in cameraList)
             {
                 cameraComboBox.Items.Add(item.Item2.DeviceInformation.Name);
@@ -111,7 +132,7 @@ namespace RawVideo
             displayList = ScreenCaptureService.GetDisplayList();
             foreach (GraphicsCaptureItem item in displayList)
             {
-                displayComboBox.Items.Add(string.Format("{0}  ({1}x{2})",
+                displayComboBox.Items.Add(string.Format("{0} ({1}x{2})",
                     item.DisplayName,
                     item.Size.Width,
                     item.Size.Height));
@@ -121,20 +142,42 @@ namespace RawVideo
             {
                 displayComboBox.SelectedIndex = 0;
             }
+
+            tokenContainer.Visibility = Visibility.Collapsed;
+            callContainer.Visibility = Visibility.Visible;
+
+            var savedMeetingLink = settings.Values["MeetingLink"];
+            if (savedMeetingLink != null)
+            {
+                meetingLinkTextBox.Text = savedMeetingLink.ToString();
+            }
+        }
+
+        private async void GetPermissions(object sender, RoutedEventArgs args)
+        {
+            if (string.IsNullOrEmpty(tokenTextBox.Text))
+            {
+                ShowMessage("Invalid token");
+                return;
+            }
+
+            PermissionStatus cameraPermission = 
+                await Permissions.RequestAsync<Permissions.Camera>();
+            PermissionStatus microphonePermission = 
+                await Permissions.RequestAsync<Permissions.Microphone>();
+
+            if (cameraPermission == PermissionStatus.Granted && 
+                microphonePermission == PermissionStatus.Granted)
+            {
+                InitResources();
+            }
         }
 
         private async Task GetScreenSharePermission()
         {
-            screenSharePermissionStatus = AppCapabilityAccessStatus.UserPromptRequired;
-            try
-            {
-                screenSharePermissionStatus = await GraphicsCaptureAccess.RequestAccessAsync(
+            AppCapabilityAccessStatus screenSharePermission = 
+                await GraphicsCaptureAccess.RequestAccessAsync(
                     GraphicsCaptureAccessKind.Programmatic);
-            }
-            catch (Exception ex)
-            {
-                string msg = ex.Message;
-            }
         }
 
         private async Task CreateCallAgent()
@@ -152,14 +195,17 @@ namespace RawVideo
                 callAgent = await callClient.CreateCallAgentAsync(credential, options);
 
                 deviceManager = await callClient.GetDeviceManagerAsync();
+
+                settings.Values["Token"] = tokenTextBox.Text;
             }
             catch (Exception ex)
             {
-                string msg = ex.Message;
+                ShowMessage("Failed to create call agent");
+                Console.WriteLine(ex.Message);
             }
         }
 
-        private async void StartCall(object sender, RoutedEventArgs e)
+        private async void StartCall(object sender, RoutedEventArgs args)
         {
             if (callInProgress)
             {
@@ -189,6 +235,7 @@ namespace RawVideo
 
             var locator = new TeamsMeetingLinkLocator(meetingLinkTextBox.Text);
 
+            loadingProgressRing.IsActive = true;
             try
             {
                 call = await callAgent.JoinAsync(locator, joinCallOptions);
@@ -198,14 +245,21 @@ namespace RawVideo
 
                 await this.RunOnUIThread(() =>
                 {
-                    settingsContainer.Visibility = Visibility.Collapsed;
+                    callSettingsContainer.Visibility = Visibility.Collapsed;
                     videoContainer.Visibility = Visibility.Visible;
                 });
+
+                settings.Values["MeetingLink"] = meetingLinkTextBox.Text;
             }
-            catch
+            catch (Exception ex)
             {
                 callInProgress = false;
+
+                ShowMessage("Call failed to start");
+                Console.WriteLine(ex.Message);
             }
+
+            loadingProgressRing.IsActive = false;
 
             if (call != null)
             {
@@ -361,27 +415,35 @@ namespace RawVideo
 
         private async void OnIncomingVideoStreamStateChanged(IncomingVideoStream stream)
         {
+            if (incomingVideoStream != null && incomingVideoStream != stream)
+            {
+                if (stream.State == VideoStreamState.Available)
+                {
+                    ShowMessage("This app only support 1 incoming video stream from 1 remote participant");
+                }
+
+                return;
+            }
+
             switch (stream.State)
             {
                 case VideoStreamState.Available:
-                    if (incomingVideoStream == null)
+                    switch (stream.Kind)
                     {
-                        switch (stream.Kind)
-                        {
-                            case VideoStreamKind.RemoteIncoming:
-                                remoteIncomingVideoStream = stream as RemoteIncomingVideoStream;
-                                await StartRemotePreview();
+                        case VideoStreamKind.RemoteIncoming:
+                            remoteIncomingVideoStream = stream as RemoteIncomingVideoStream;
+                            await StartRemotePreview();
 
-                                break;
-                            case VideoStreamKind.RawIncoming:
-                                rawIncomingVideoStream = stream as RawIncomingVideoStream;
-                                rawIncomingVideoStream.RawVideoFrameReceived += RawVideoFrameReceived;
-                                rawIncomingVideoStream.Start();
+                            break;
+                        case VideoStreamKind.RawIncoming:
+                            rawIncomingVideoStream = stream as RawIncomingVideoStream;
+                            rawIncomingVideoStream.RawVideoFrameReceived += RawVideoFrameReceived;
+                            rawIncomingVideoStream.Start();
 
-                                break;
-                        }
+                            break;
                     }
 
+                    incomingVideoStream = stream;
                     break;
                 case VideoStreamState.Started:
                     if (stream.Kind == VideoStreamKind.RawIncoming)
@@ -575,22 +637,29 @@ namespace RawVideo
             }
         }
 
-        private async void EndCall(object sender, RoutedEventArgs e)
+        private async void EndCall(object sender, RoutedEventArgs args)
         {
             if (!callInProgress)
             {
                 return;
             }
 
+            loadingProgressRing.IsActive = true;
             try
             {
                 if (call != null)
                 {
+                    foreach (RemoteParticipant remoteParticipant in call.RemoteParticipants)
+                    {
+                        remoteParticipant.VideoStreamStateChanged -= OnVideoStreamStateChanged;
+                    }
+
                     call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdated;
 
                     await StopRemotePreview();
                     await StopRawIncomingPreview();
 
+                    incomingVideoStream = null;
                     remoteIncomingVideoStream = null;
                     rawIncomingVideoStream = null;
 
@@ -617,18 +686,28 @@ namespace RawVideo
 
                 await this.RunOnUIThread(() =>
                 {
-                    settingsContainer.Visibility = Visibility.Visible;
+                    callSettingsContainer.Visibility = Visibility.Visible;
                     videoContainer.Visibility = Visibility.Collapsed;
                 });
             }
             catch (Exception ex)
             {
-                string msg = ex.Message;
+                ShowMessage("Call failed to stop");
+                Console.WriteLine(ex.Message);
             }
+
+            loadingProgressRing.IsActive = false;
         }
 
         private bool ValidateCallSettings()
         {
+            string meetingLink = meetingLinkTextBox.Text;
+            if (string.IsNullOrEmpty(meetingLink) || !meetingLink.StartsWith("https://"))
+            {
+                ShowMessage("Invalid teams meeting link");
+                return false;
+            }
+
             bool isValid = true;
             switch (outgoingVideoStreamKind)
             {
@@ -644,6 +723,11 @@ namespace RawVideo
             }
 
             return isValid;
+        }
+
+        private async void ShowMessage(string message)
+        {
+            await new MessageDialog(message).ShowAsync();
         }
 
         private void IncomingVideoStreamKindSelected(object sender, SelectionChangedEventArgs args)
