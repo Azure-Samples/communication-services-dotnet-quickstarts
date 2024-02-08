@@ -1,74 +1,136 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
-using CallingTestApp;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Windows.Graphics.Capture;
+using Windows.Media.Capture.Frames;
 using Windows.Security.Authorization.AppCapabilityAccess;
+using Windows.Storage;
+using Windows.UI;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
+using Xamarin.Essentials;
 
-namespace CallingQuickstart
+namespace RawVideo
 {
     public sealed partial class MainPage : Page
     {
-        private Dictionary<int, IncomingVideoStream> incomingVideoStreamDictionary;
-        private List<RemoteParticipant> remoteParticipantList = new List<RemoteParticipant>();
+        // UI
+        private int selectedVideoDeviceInfoListIndex = -1;
+        private int selectedCameraListIndex = -1;
+        private int selectedDisplayListIndex = -1;
+
+        // App
+        private IReadOnlyList<VideoDeviceDetails> videoDeviceInfoList;
+        private List<Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo>> cameraList;
         private List<GraphicsCaptureItem> displayList;
         private List<VideoStreamKind> outgoingVideoStreamKindList;
+        private List<VideoStreamKind> incomingVideoStreamKindList;
         private CallClient callClient;
         private CallAgent callAgent;
         private CommunicationCall call;
-        private RawOutgoingVideoStream rawOutgoingVideoStream;
+        private DeviceManager deviceManager;
+        private ScreenCaptureService screenCaptureService;
+        private CameraCaptureService cameraCaptureService;
+        private OutgoingVideoStream outgoingVideoStream;
+        private LocalOutgoingVideoStream localOutgoingVideoStream;
+        private VirtualOutgoingVideoStream virtualOutgoingVideoStream;
+        private ScreenShareOutgoingVideoStream screenShareOutgoingVideoStream;
+        private IncomingVideoStream incomingVideoStream;
+        private RemoteIncomingVideoStream remoteIncomingVideoStream;
+        private RawIncomingVideoStream rawIncomingVideoStream;
+        private VideoStreamRenderer outgoingVideoStreamRenderer;
+        private VideoStreamRenderer incomingVideoStreamRenderer;
         private VideoFrameRenderer incomingVideoFrameRenderer;
+        private VideoFrameRenderer outgoingVideoFrameRenderer;
         private VideoStreamKind outgoingVideoStreamKind;
         private VideoStreamKind incomingVideoStreamKind;
-        private ScreenCaptureService screenCaptureService;
-        private VideoFrameSender videoFrameSender;
-        private AppCapabilityAccessStatus screenSharePermissionStatus;
+        private RawVideoFrameKind outgoingVideoFrameKind;
+        private RawVideoFrameKind incomingVideoFrameKind;
+        private ApplicationDataContainer settings;
         private int w = 0;
         private int h = 0;
-        private int framerate = 0;
+        private int framerate = 30;
         private bool callInProgress = false;
-        private int displayListIndex = -1;
 
         public MainPage()
         {
             InitializeComponent();
 
-            InitializeUIVariables();
+            settings = ApplicationData.Current.LocalSettings;
 
-            incomingVideoFrameRenderer = new VideoFrameRenderer(incomingVideoContainer, 640, 360);
+            var savedToken = settings.Values["Token"];
+            if (savedToken != null)
+            {
+                tokenTextBox.Text = savedToken.ToString();
+            }
         }
 
-        private async void InitializeUIVariables()
+        private async void InitResources()
         {
-            incomingVideoStreamDictionary = new Dictionary<int, IncomingVideoStream>();
+            outgoingVideoFrameKind = RawVideoFrameKind.Texture;
+            incomingVideoFrameKind = RawVideoFrameKind.Texture;
+
+            incomingVideoStreamKindList = new List<VideoStreamKind>
+            {
+                VideoStreamKind.RemoteIncoming,
+                VideoStreamKind.RawIncoming,
+            };
 
             outgoingVideoStreamKindList = new List<VideoStreamKind>
             {
+                VideoStreamKind.LocalOutgoing,
                 VideoStreamKind.VirtualOutgoing,
                 VideoStreamKind.ScreenShareOutgoing
             };
 
-            outgoingVideoStreamKindPicker.Items.Add("Virtual");
-            outgoingVideoStreamKindPicker.Items.Add("ScreenShare");
-            outgoingVideoStreamKindPicker.SelectedIndex = 0;
+            incomingVideoStreamKindList
+                .ForEach(kind => incomingVideoStreamKindComboBox.Items.Add(kind.ToString()));
 
-            displayList = ScreenCaptureService.GetDisplayList();
-            if (displayList.Count == 0)
+            outgoingVideoStreamKindList
+                .ForEach(kind => outgoingVideoStreamKindComboBox.Items.Add(kind.ToString()));
+
+            incomingVideoStreamKindComboBox.SelectedIndex = 1;
+            outgoingVideoStreamKindComboBox.SelectedIndex = 1;
+
+            await CreateCallAgent();
+
+            if (deviceManager == null)
             {
-                await GetScreenSharePermission();
-
-                if (screenSharePermissionStatus == AppCapabilityAccessStatus.Allowed)
-                {
-                    displayList = ScreenCaptureService.GetDisplayList();
-                }
+                return;
             }
 
+            videoDeviceInfoList = deviceManager.Cameras.OrderBy(item => item.Name).ToList();
+            foreach (VideoDeviceDetails item in videoDeviceInfoList)
+            {
+                videoDeviceInfoComboBox.Items.Add(item.Name);
+            }
+
+            if (videoDeviceInfoList.Count > 0)
+            {
+                videoDeviceInfoComboBox.SelectedIndex = 0;
+            }
+
+            cameraList = await CameraCaptureService.GetCameraListAsync();
+            foreach (Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo> item in cameraList)
+            {
+                cameraComboBox.Items.Add(item.Item2.DeviceInformation.Name);
+            }
+
+            if (cameraList.Count > 0)
+            {
+                cameraComboBox.SelectedIndex = 0;
+            }
+
+            await GetScreenSharePermission();
+
+            displayList = ScreenCaptureService.GetDisplayList();
             foreach (GraphicsCaptureItem item in displayList)
             {
-                displayPicker.Items.Add(string.Format("{0}  ({1}x{2})",
+                displayComboBox.Items.Add(string.Format("{0} ({1}x{2})",
                     item.DisplayName,
                     item.Size.Width,
                     item.Size.Height));
@@ -76,67 +138,89 @@ namespace CallingQuickstart
 
             if (displayList.Count > 0)
             {
-                displayPicker.SelectedIndex = 0;
+                displayComboBox.SelectedIndex = 0;
             }
+
+            tokenContainer.Visibility = Visibility.Collapsed;
+            callContainer.Visibility = Visibility.Visible;
+
+            var savedMeetingLink = settings.Values["MeetingLink"];
+            if (savedMeetingLink != null)
+            {
+                meetingLinkTextBox.Text = savedMeetingLink.ToString();
+            }
+        }
+
+        private async void GetPermissions(object sender, RoutedEventArgs args)
+        {
+            if (string.IsNullOrEmpty(tokenTextBox.Text))
+            {
+                ShowMessage("Invalid token");
+                return;
+            }
+
+            PermissionStatus cameraPermission = 
+                await Permissions.RequestAsync<Permissions.Camera>();
+            PermissionStatus microphonePermission = 
+                await Permissions.RequestAsync<Permissions.Microphone>();
+
+            if (cameraPermission == PermissionStatus.Granted && 
+                microphonePermission == PermissionStatus.Granted)
+            {
+                InitResources();
+            }
+        }
+
+        private async Task GetScreenSharePermission()
+        {
+            AppCapabilityAccessStatus screenSharePermission = 
+                await GraphicsCaptureAccess.RequestAccessAsync(
+                    GraphicsCaptureAccessKind.Programmatic);
         }
 
         private async Task CreateCallAgent()
         {
             try
             {
-                var credential = new CallTokenCredential(TokenTextBox.Text);
-
+                var credential = new CallTokenCredential(tokenTextBox.Text);
                 callClient = new CallClient();
 
-                var callAgentOptions = new CallAgentOptions
+                var options = new CallAgentOptions
                 {
-                    DisplayName = "Windows User"
+                    DisplayName = "Windows Quickstart User"
                 };
 
-                callAgent = await callClient.CreateCallAgentAsync(credential, callAgentOptions);
+                callAgent = await callClient.CreateCallAgentAsync(credential, options);
+
+                deviceManager = await callClient.GetDeviceManagerAsync();
+
+                settings.Values["Token"] = tokenTextBox.Text;
             }
             catch (Exception ex)
             {
-                string msg = ex.Message;
+                ShowMessage("Failed to create call agent");
+                Console.WriteLine(ex.Message);
             }
         }
 
-        private async Task GetScreenSharePermission()
+        private async void StartCall(object sender, RoutedEventArgs args)
         {
-            screenSharePermissionStatus = AppCapabilityAccessStatus.UserPromptRequired;
-
-            try
-            {
-                screenSharePermissionStatus = await GraphicsCaptureAccess.RequestAccessAsync(GraphicsCaptureAccessKind.Programmatic);
-            }
-            catch (Exception ex)
-            {
-                string msg = ex.Message;
-            }
-        }
-
-        private async void StartCall(object sender, RoutedEventArgs e)
-        {
-            if (outgoingVideoStreamKind == VideoStreamKind.ScreenShareOutgoing && displayListIndex == -1)
-            {
-                return;
-            }
-
             if (callInProgress)
             {
                 return;
             }
 
-            callInProgress = true;
-            if (callClient == null)
+            if (!ValidateCallSettings())
             {
-                await CreateCallAgent();
+                return;
             }
+
+            callInProgress = true;
 
             var incomingVideoOptions = new IncomingVideoOptions
             {
-                StreamKind = VideoStreamKind.RawIncoming,
-                FrameKind = RawVideoFrameKind.Buffer
+                StreamKind = incomingVideoStreamKind,
+                FrameKind = incomingVideoFrameKind
             };
 
             OutgoingVideoOptions outgoingVideoOptions = CreateOutgoingVideoOptions();
@@ -147,57 +231,81 @@ namespace CallingQuickstart
                 OutgoingVideoOptions = outgoingVideoOptions
             };
 
-            var locator = new TeamsMeetingLinkLocator(MeetingLinkTextBox.Text);
+            var locator = new TeamsMeetingLinkLocator(meetingLinkTextBox.Text);
 
+            loadingProgressRing.IsActive = true;
             try
             {
                 call = await callAgent.JoinAsync(locator, joinCallOptions);
+
                 await call.MuteOutgoingAudioAsync();
                 await call.MuteIncomingAudioAsync();
+
+                await this.RunOnUIThread(() =>
+                {
+                    callSettingsContainer.Visibility = Visibility.Collapsed;
+                    videoContainer.Visibility = Visibility.Visible;
+                });
+
+                settings.Values["MeetingLink"] = meetingLinkTextBox.Text;
             }
             catch (Exception ex)
             {
                 callInProgress = false;
+
+                ShowMessage("Call failed to start");
+                Console.WriteLine(ex.Message);
             }
+
+            loadingProgressRing.IsActive = false;
 
             if (call != null)
             {
-                AddRemoteParticipants(call.RemoteParticipants);
-
                 call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdated;
+
+                AddRemoteParticipants(call.RemoteParticipants);
             }
         }
 
-        private void OnRemoteParticipantsUpdated(object sender, ParticipantsUpdatedEventArgs args)
+        private OutgoingVideoOptions CreateOutgoingVideoOptions()
         {
-            AddRemoteParticipants(args.AddedParticipants);
+            VideoStreamFormat format = CreateVideoStreamFormat();
 
-            foreach (RemoteParticipant remoteParticipant in args.RemovedParticipants)
+            var options = new RawOutgoingVideoStreamOptions
             {
-                remoteParticipant.VideoStreamStateChanged -= OnVideoStreamStateChanged;
-                remoteParticipantList.Remove(remoteParticipant);
-            }
-        }
+                Formats = new VideoStreamFormat[] { format }
+            };
 
-        private void AddRemoteParticipants(IReadOnlyList<RemoteParticipant> remoteParticipantList)
-        {
-            foreach (RemoteParticipant remoteParticipant in remoteParticipantList)
+            switch (outgoingVideoStreamKind)
             {
-                IReadOnlyList<IncomingVideoStream> incomingVideoStreamList = remoteParticipant.IncomingVideoStreams;
-                foreach (IncomingVideoStream incomingVideoStream in incomingVideoStreamList)
-                {
-                    OnIncomingVideoStreamStateChanged(incomingVideoStream);
-                }
+                case VideoStreamKind.LocalOutgoing:
+                    localOutgoingVideoStream = new LocalOutgoingVideoStream(
+                        videoDeviceInfoList[selectedVideoDeviceInfoListIndex]);
+                    outgoingVideoStream = localOutgoingVideoStream;
 
-                remoteParticipant.VideoStreamStateChanged += OnVideoStreamStateChanged;
-                this.remoteParticipantList.Add(remoteParticipant);
+                    break;
+                case VideoStreamKind.VirtualOutgoing:
+                    virtualOutgoingVideoStream = new VirtualOutgoingVideoStream(options);
+                    outgoingVideoStream = virtualOutgoingVideoStream;
+
+                    break;
+                case VideoStreamKind.ScreenShareOutgoing:
+                    screenShareOutgoingVideoStream = new ScreenShareOutgoingVideoStream(options);
+                    outgoingVideoStream = screenShareOutgoingVideoStream;
+
+                    break;
             }
+
+            outgoingVideoStream.StateChanged += OnVideoStreamStateChanged;
+
+            return new OutgoingVideoOptions()
+            {
+                Streams = new OutgoingVideoStream[] { outgoingVideoStream }
+            };
         }
 
         private VideoStreamFormat CreateVideoStreamFormat()
         {
-            framerate = 15;
-
             var format = new VideoStreamFormat
             {
                 PixelFormat = VideoStreamPixelFormat.Rgba,
@@ -207,12 +315,15 @@ namespace CallingQuickstart
             switch (outgoingVideoStreamKind)
             {
                 case VideoStreamKind.VirtualOutgoing:
-                    w = 640;
-                    h = 360;
                     format.Resolution = VideoStreamResolution.P360;
+                    w = format.Width;
+                    h = format.Height;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
-                    GetDisplaySize();
+                    GraphicsCaptureItem display = displayList[selectedDisplayListIndex];
+                    w = display.Size.Width;
+                    h = display.Size.Height;
+
                     format.Width = w;
                     format.Height = h;
                     break;
@@ -223,223 +334,453 @@ namespace CallingQuickstart
             return format;
         }
 
-        private OutgoingVideoOptions CreateOutgoingVideoOptions()
+        private void OnRemoteParticipantsUpdated(object sender, ParticipantsUpdatedEventArgs args)
         {
-            VideoStreamFormat videoFormat = CreateVideoStreamFormat();
+            AddRemoteParticipants(args.AddedParticipants);
 
-            var rawOutgoingVideoStreamOptions = new RawOutgoingVideoStreamOptions
+            foreach (RemoteParticipant remoteParticipant in args.RemovedParticipants)
             {
-                Formats = new VideoStreamFormat[] { videoFormat }
-            };
-
-            switch (outgoingVideoStreamKind)
-            {
-                case VideoStreamKind.VirtualOutgoing:
-                    rawOutgoingVideoStream = new VirtualOutgoingVideoStream(rawOutgoingVideoStreamOptions);
-                    break;
-                case VideoStreamKind.ScreenShareOutgoing:
-                    rawOutgoingVideoStream = new ScreenShareOutgoingVideoStream(rawOutgoingVideoStreamOptions);
-                    break;
+                remoteParticipant.VideoStreamStateChanged -= OnVideoStreamStateChanged;
             }
+        }
 
-            rawOutgoingVideoStream.FormatChanged += OnVideoStreamFormatChanged;
-            rawOutgoingVideoStream.StateChanged += OnVideoStreamStateChanged;
-
-            return new OutgoingVideoOptions()
+        private void AddRemoteParticipants(IReadOnlyList<RemoteParticipant> remoteParticipantList)
+        {
+            foreach (RemoteParticipant remoteParticipant in remoteParticipantList)
             {
-                Streams = new OutgoingVideoStream[] { rawOutgoingVideoStream }
-            };
+                remoteParticipant.VideoStreamStateChanged += OnVideoStreamStateChanged;
+                foreach (IncomingVideoStream stream in remoteParticipant.IncomingVideoStreams)
+                {
+                    OnIncomingVideoStreamStateChanged(stream);
+                }
+            }
         }
 
         private void OnVideoStreamStateChanged(object sender, VideoStreamStateChangedEventArgs args)
         {
-            CallVideoStream callVideoStream = args.Stream;
-
-            switch (callVideoStream.Direction)
+            CallVideoStream stream = args.Stream;
+            switch (stream.Direction)
             {
                 case StreamDirection.Outgoing:
-                    OnOutgoingVideoStreamStateChanged(callVideoStream as OutgoingVideoStream);
+                    OnOutgoingVideoStreamStateChanged(stream as OutgoingVideoStream);
                     break;
                 case StreamDirection.Incoming:
-                    OnIncomingVideoStreamStateChanged(callVideoStream as IncomingVideoStream);
+                    OnIncomingVideoStreamStateChanged(stream as IncomingVideoStream);
                     break;
             }
         }
 
-        private async void OnOutgoingVideoStreamStateChanged(OutgoingVideoStream outgoingVideoStream)
+        private async void OnOutgoingVideoStreamStateChanged(OutgoingVideoStream stream)
         {
-            switch (outgoingVideoStream.State)
+            switch (stream.State)
             {
+                case VideoStreamState.Available:
+                    if (stream.Kind == VideoStreamKind.LocalOutgoing)
+                    {
+                        await StartLocalPreview();
+                    }
+
+                    break;
                 case VideoStreamState.Started:
-                    switch (outgoingVideoStream.Kind)
+                    switch (stream.Kind)
                     {
                         case VideoStreamKind.VirtualOutgoing:
-                            if (videoFrameSender == null)
-                            {
-                                videoFrameSender = new VideoFrameSender(outgoingVideoStream as RawOutgoingVideoStream);
-                            }
-
-                            videoFrameSender.Start();
+                            await StartCameraCaptureService();
                             break;
                         case VideoStreamKind.ScreenShareOutgoing:
-                            await GetScreenSharePermission();
-
-                            if (screenSharePermissionStatus == AppCapabilityAccessStatus.Allowed)
-                            {
-                                screenCaptureService = new ScreenCaptureService(
-                                    rawOutgoingVideoStream,
-                                    displayList[displayListIndex]);
-
-                                screenCaptureService?.Start();
-                            }
-
+                            await StartScreenShareCaptureService();
                             break;
                     }
 
                     break;
                 case VideoStreamState.Stopped:
-                    switch (outgoingVideoStream.Kind)
+                    switch (stream.Kind)
                     {
+                        case VideoStreamKind.LocalOutgoing:
+                            await StopLocalPreview();
+                            break;
                         case VideoStreamKind.VirtualOutgoing:
-                            videoFrameSender?.Stop();
+                            await StopCameraCaptureService();
                             break;
                         case VideoStreamKind.ScreenShareOutgoing:
-                            screenCaptureService?.Stop();
+                            await StopScreenShareCaptureService();
                             break;
                     }
 
+                    outgoingVideoStream = null;
                     break;
             }
         }
 
-        private async void OnIncomingVideoStreamStateChanged(IncomingVideoStream incomingVideoStream)
+        private async void OnIncomingVideoStreamStateChanged(IncomingVideoStream stream)
         {
-            switch (incomingVideoStream.State)
+            if (incomingVideoStream != null && incomingVideoStream != stream)
+            {
+                if (stream.State == VideoStreamState.Available)
+                {
+                    ShowMessage("This app only support 1 incoming video stream from 1 remote participant");
+                }
+
+                return;
+            }
+
+            switch (stream.State)
             {
                 case VideoStreamState.Available:
+                    switch (stream.Kind)
                     {
-                        if (!incomingVideoStreamDictionary.ContainsKey(incomingVideoStream.Id))
-                        {
-                            var rawIncomingVideoStream = incomingVideoStream as RawIncomingVideoStream;
+                        case VideoStreamKind.RemoteIncoming:
+                            remoteIncomingVideoStream = stream as RemoteIncomingVideoStream;
+                            await StartRemotePreview();
+
+                            break;
+                        case VideoStreamKind.RawIncoming:
+                            rawIncomingVideoStream = stream as RawIncomingVideoStream;
                             rawIncomingVideoStream.RawVideoFrameReceived += RawVideoFrameReceived;
                             rawIncomingVideoStream.Start();
 
-                            incomingVideoStreamDictionary.Add(incomingVideoStream.Id, incomingVideoStream);
-                        }
-
-                        break;
+                            break;
                     }
+
+                    incomingVideoStream = stream;
+                    break;
+                case VideoStreamState.Started:
+                    if (stream.Kind == VideoStreamKind.RawIncoming)
+                    {
+                        await StartRawIncomingPreview();
+                    }
+
+                    break;
                 case VideoStreamState.Stopped:
-                    await this.RunOnUIThread(() => incomingVideoFrameRenderer.ClearView());
+                    switch (stream.Kind)
+                    {
+                        case VideoStreamKind.RemoteIncoming:
+                            await StopRemotePreview();
+                            break;
+                        case VideoStreamKind.RawIncoming:
+                            await StopRawIncomingPreview();
+                            break;
+                    }
+
                     break;
                 case VideoStreamState.NotAvailable:
-                    if (incomingVideoStreamDictionary.ContainsKey(incomingVideoStream.Id))
+                    if (stream.Kind == VideoStreamKind.RawIncoming)
                     {
-                        if (incomingVideoStreamKind == VideoStreamKind.RawIncoming)
-                        {
-                            var rawIncomingVideoStream = incomingVideoStreamDictionary[incomingVideoStream.Id] as RawIncomingVideoStream;
-                            rawIncomingVideoStream.RawVideoFrameReceived -= RawVideoFrameReceived;
-                        }
-
-                        incomingVideoStreamDictionary.Remove(incomingVideoStream.Id);
+                        rawIncomingVideoStream.RawVideoFrameReceived -= RawVideoFrameReceived;
                     }
 
+                    incomingVideoStream = null;
                     break;
             }
         }
 
         private async void RawVideoFrameReceived(object sender, RawVideoFrameReceivedEventArgs args)
         {
-            using (RawVideoFrame rawVideoFrame = args.Frame)
+            using (RawVideoFrame frame = args.Frame)
             {
-                await this.RunOnUIThread(() => incomingVideoFrameRenderer.RenderRawVideoFrame(rawVideoFrame as RawVideoFrameBuffer));
+                await this.RunOnUIThread(() => incomingVideoFrameRenderer?.RenderRawVideoFrame(frame));
             }
         }
 
-        private void OnVideoStreamFormatChanged(object sender, VideoStreamFormatChangedEventArgs args)
+        private async void RawVideoFrameCaptured(object sender, RawVideoFrame frame)
         {
-            VideoStreamFormat videoStreamFormat = args.Format;
+            using (frame)
+            {
+                await this.RunOnUIThread(() => outgoingVideoFrameRenderer?.RenderRawVideoFrame(frame));
+            }
         }
 
-        private async void EndCall(object sender, RoutedEventArgs e)
+        private async Task StartRemotePreview()
+        {
+            if (incomingVideoStreamRenderer == null)
+            {
+                await this.RunOnUIThread(async () =>
+                {
+                    incomingVideoStreamRenderer = new VideoStreamRenderer(remoteIncomingVideoStream);
+                    incomingVideoContainer.Children.Add(incomingVideoStreamRenderer.GetView());
+                    await incomingVideoStreamRenderer.StartPreviewAsync();
+                });
+            }
+        }
+
+        private async Task StopRemotePreview()
+        {
+            if (incomingVideoStreamRenderer != null)
+            {
+                await this.RunOnUIThread(async () =>
+                {
+                    incomingVideoContainer.Children.Remove(incomingVideoStreamRenderer.GetView());
+                    await incomingVideoStreamRenderer.StopPreviewAsync();
+                    incomingVideoStreamRenderer = null;
+                });
+            }
+        }
+
+        private async Task StartRawIncomingPreview()
+        {
+            if (incomingVideoFrameRenderer == null)
+            {
+                await this.RunOnUIThread(() =>
+                {
+                    incomingVideoFrameRenderer = new VideoFrameRenderer();
+                    incomingVideoContainer.Background = new SolidColorBrush(Colors.Black);
+                    incomingVideoContainer.Children.Add(incomingVideoFrameRenderer.GetView());
+                });
+            }
+        }
+
+        private async Task StopRawIncomingPreview()
+        {
+            if (incomingVideoFrameRenderer != null)
+            {
+                await this.RunOnUIThread(() =>
+                {
+                    incomingVideoContainer.Children.Remove(incomingVideoFrameRenderer.GetView());
+                    incomingVideoContainer.Background = null;
+                    incomingVideoFrameRenderer.ClearView();
+                    incomingVideoFrameRenderer = null;
+                });
+            }
+        }
+
+        private async Task StartLocalPreview()
+        {
+            if (outgoingVideoStreamRenderer == null)
+            {
+                await this.RunOnUIThread(async () =>
+                {
+                    outgoingVideoStreamRenderer = new VideoStreamRenderer(localOutgoingVideoStream);
+                    outgoingVideoContainer.Children.Add(outgoingVideoStreamRenderer.GetView());
+                    await outgoingVideoStreamRenderer.StartPreviewAsync();
+                });
+            }
+        }
+
+        private async Task StopLocalPreview()
+        {
+            if (outgoingVideoStreamRenderer != null)
+            {
+                await this.RunOnUIThread(async () =>
+                {
+                    outgoingVideoContainer.Children.Remove(outgoingVideoStreamRenderer.GetView());
+                    await outgoingVideoStreamRenderer.StopPreviewAsync();
+                    outgoingVideoStreamRenderer = null;
+                });
+            }
+        }
+
+        private async Task StartCameraCaptureService()
+        {
+            if (cameraCaptureService == null)
+            {
+                cameraCaptureService = new CameraCaptureService(virtualOutgoingVideoStream,
+                    cameraList[selectedCameraListIndex]);
+                cameraCaptureService.FrameArrived += RawVideoFrameCaptured;
+                await cameraCaptureService.StartAsync();
+
+                await this.RunOnUIThread(() =>
+                {
+                    outgoingVideoFrameRenderer = new VideoFrameRenderer();
+                    outgoingVideoContainer.Background = new SolidColorBrush(Colors.Black);
+                    outgoingVideoContainer.Children.Add(outgoingVideoFrameRenderer.GetView());
+                });
+            }
+        }
+
+        private async Task StopCameraCaptureService()
+        {
+            if (cameraCaptureService != null)
+            {
+                await this.RunOnUIThread(() =>
+                {
+                    outgoingVideoContainer.Children.Remove(outgoingVideoFrameRenderer.GetView());
+                    outgoingVideoContainer.Background = null;
+                    outgoingVideoFrameRenderer.ClearView();
+                    outgoingVideoFrameRenderer = null;
+                });
+
+                cameraCaptureService.FrameArrived -= RawVideoFrameCaptured;
+                await cameraCaptureService.StopAsync();
+                cameraCaptureService = null;
+            }
+        }
+
+        private async Task StartScreenShareCaptureService()
+        {
+            if (screenCaptureService == null)
+            {
+                screenCaptureService = new ScreenCaptureService(screenShareOutgoingVideoStream,
+                    displayList[selectedDisplayListIndex]);
+                screenCaptureService.FrameArrived += RawVideoFrameCaptured;
+                screenCaptureService.Start();
+
+                await this.RunOnUIThread(() =>
+                {
+                    outgoingVideoFrameRenderer = new VideoFrameRenderer();
+                    outgoingVideoContainer.Background = new SolidColorBrush(Colors.Black);
+                    outgoingVideoContainer.Children.Add(outgoingVideoFrameRenderer.GetView());
+                });
+            }
+        }
+
+        private async Task StopScreenShareCaptureService()
+        {
+            if (screenCaptureService != null)
+            {
+                await this.RunOnUIThread(() =>
+                {
+                    outgoingVideoContainer.Children.Remove(outgoingVideoFrameRenderer.GetView());
+                    outgoingVideoContainer.Background = null;
+                    outgoingVideoFrameRenderer.ClearView();
+                    outgoingVideoFrameRenderer = null;
+                });
+
+                screenCaptureService.FrameArrived -= RawVideoFrameCaptured;
+                screenCaptureService.Stop();
+                screenCaptureService = null;
+            }
+        }
+
+        private async void EndCall(object sender, RoutedEventArgs args)
         {
             if (!callInProgress)
             {
                 return;
             }
 
+            loadingProgressRing.IsActive = true;
             try
             {
                 if (call != null)
                 {
-                    if (videoFrameSender != null)
+                    foreach (RemoteParticipant remoteParticipant in call.RemoteParticipants)
                     {
-                        videoFrameSender.Stop();
-                        videoFrameSender = null;
+                        remoteParticipant.VideoStreamStateChanged -= OnVideoStreamStateChanged;
                     }
 
-                    if (screenCaptureService != null)
-                    {
-                        screenCaptureService.Stop();
-                        screenCaptureService = null;
-                    }
-
-                    rawOutgoingVideoStream.StateChanged -= OnVideoStreamStateChanged;
                     call.RemoteParticipantsUpdated -= OnRemoteParticipantsUpdated;
 
-                    if (rawOutgoingVideoStream != null)
+                    await StopRemotePreview();
+                    await StopRawIncomingPreview();
+
+                    incomingVideoStream = null;
+                    remoteIncomingVideoStream = null;
+                    rawIncomingVideoStream = null;
+
+                    await StopLocalPreview();
+                    await StopCameraCaptureService();
+                    await StopScreenShareCaptureService();
+
+                    virtualOutgoingVideoStream = null;
+                    screenShareOutgoingVideoStream = null;
+                    localOutgoingVideoStream = null;
+
+                    if (outgoingVideoStream != null)
                     {
-                        await call.StopVideoAsync(rawOutgoingVideoStream);
+                        outgoingVideoStream.StateChanged -= OnVideoStreamStateChanged;
+                        await call.StopVideoAsync(outgoingVideoStream);
+                        outgoingVideoStream = null;
                     }
 
                     await call.HangUpAsync(new HangUpOptions());
                     call = null;
                 }
 
-                incomingVideoStreamDictionary.Clear();
                 callInProgress = false;
 
-                await this.RunOnUIThread(() => incomingVideoFrameRenderer.ClearView());
+                await this.RunOnUIThread(() =>
+                {
+                    callSettingsContainer.Visibility = Visibility.Visible;
+                    videoContainer.Visibility = Visibility.Collapsed;
+                });
             }
             catch (Exception ex)
             {
-                string msg = ex.Message;
+                ShowMessage("Call failed to stop");
+                Console.WriteLine(ex.Message);
             }
+
+            loadingProgressRing.IsActive = false;
         }
 
-        private void GetDisplaySize()
+        private bool ValidateCallSettings()
         {
-            GraphicsCaptureItem item = displayList[displayListIndex];
-            w = item.Size.Width;
-            h = item.Size.Height;
+            string meetingLink = meetingLinkTextBox.Text;
+            if (string.IsNullOrEmpty(meetingLink) || !meetingLink.StartsWith("https://"))
+            {
+                ShowMessage("Invalid teams meeting link");
+                return false;
+            }
+
+            bool isValid = true;
+            switch (outgoingVideoStreamKind)
+            {
+                case VideoStreamKind.LocalOutgoing:
+                    isValid = selectedVideoDeviceInfoListIndex != -1;
+                    break;
+                case VideoStreamKind.VirtualOutgoing:
+                    isValid = selectedCameraListIndex != -1;
+                    break;
+                case VideoStreamKind.ScreenShareOutgoing:
+                    isValid = selectedDisplayListIndex != -1;
+                    break;
+            }
+
+            return isValid;
+        }
+
+        private async void ShowMessage(string message)
+        {
+            await this.RunOnUIThread(async () =>
+            {
+                await new MessageDialog(message).ShowAsync();
+            });
+        }
+
+        private void IncomingVideoStreamKindSelected(object sender, SelectionChangedEventArgs args)
+        {
+            incomingVideoStreamKind =
+                incomingVideoStreamKindList[incomingVideoStreamKindComboBox.SelectedIndex];
         }
 
         private void OutgoingVideoStreamKindSelected(object sender, SelectionChangedEventArgs args)
         {
-            outgoingVideoStreamKind = outgoingVideoStreamKindList[outgoingVideoStreamKindPicker.SelectedIndex];
+            outgoingVideoStreamKind =
+                outgoingVideoStreamKindList[outgoingVideoStreamKindComboBox.SelectedIndex];
 
-            switch (outgoingVideoStreamKindList[outgoingVideoStreamKindPicker.SelectedIndex])
+            switch (outgoingVideoStreamKind)
             {
+                case VideoStreamKind.LocalOutgoing:
+                    videoDeviceInfoComboBox.Visibility = Visibility.Visible;
+                    cameraComboBox.Visibility = Visibility.Collapsed;
+                    displayComboBox.Visibility = Visibility.Collapsed;
+                    break;
                 case VideoStreamKind.VirtualOutgoing:
-                    displayPicker.Visibility = Visibility.Collapsed;
+                    videoDeviceInfoComboBox.Visibility = Visibility.Collapsed;
+                    cameraComboBox.Visibility = Visibility.Visible;
+                    displayComboBox.Visibility = Visibility.Collapsed;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
-                    displayPicker.Visibility = Visibility.Visible;
+                    videoDeviceInfoComboBox.Visibility = Visibility.Collapsed;
+                    cameraComboBox.Visibility = Visibility.Collapsed;
+                    displayComboBox.Visibility = Visibility.Visible;
                     break;
             }
         }
 
+        private void VideoDeviceInfoSelected(object sender, SelectionChangedEventArgs args)
+        {
+            selectedVideoDeviceInfoListIndex = videoDeviceInfoComboBox.SelectedIndex;
+        }
+
+        private void CameraSelected(object sender, SelectionChangedEventArgs args)
+        {
+            selectedCameraListIndex = cameraComboBox.SelectedIndex;
+        }
+
         private void DisplaySelected(object sender, SelectionChangedEventArgs args)
         {
-            displayListIndex = displayPicker.SelectedIndex;
-        }
-    }
-
-    public static class UIHelper
-    {
-        public static Task RunOnUIThread(this Page p, Action a)
-        {
-            return p.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => { a(); }).AsTask();
+            selectedDisplayListIndex = displayComboBox.SelectedIndex;
         }
     }
 }

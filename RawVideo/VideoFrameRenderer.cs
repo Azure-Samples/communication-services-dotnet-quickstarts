@@ -1,53 +1,48 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
-using System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 
-namespace CallingTestApp
+namespace RawVideo
 {
-    internal class VideoFrameRenderer : IDisposable
+    internal class VideoFrameRenderer
     {
-        private static readonly string MediaEncodingSubtypes_NV12 = "{3231564E-0000-0010-8000-00AA00389B71}";
+        private readonly Image imageElement;
 
-        private MediaElement mediaElement;
-        private Image imageElement;
-        private MediaPlayerElement mediaPlayerElement;
-        private StackPanel parentView;
-        private UIElement childView;
-
-        public enum RenderType
+        public VideoFrameRenderer()
         {
-            MediaElement,
-            ImageElement,
-            MediaPlayerElement
-        }
-
-        public VideoFrameRenderer(StackPanel parentView, int w, int h)
-        {
-            childView = imageElement = new Image
+            imageElement = new Image
             {
-                Width = w,
-                Height = h,
-                Visibility = Visibility.Visible
+                // Fit
+                Stretch = Stretch.Uniform
             };
 
-            this.parentView = parentView;
-            parentView.Children.Add(childView);
+            RelativePanel.SetAlignVerticalCenterWithPanel(imageElement, true);
+            RelativePanel.SetAlignHorizontalCenterWithPanel(imageElement, true);
         }
 
-        public unsafe void RenderRawVideoFrame(RawVideoFrameBuffer videoFrameBuffer)
+        public unsafe void RenderRawVideoFrame(RawVideoFrame frame)
         {
-            VideoStreamFormat videoStreamFormat = videoFrameBuffer.StreamFormat;
-            int w = videoStreamFormat.Width;
-            int h = videoStreamFormat.Height;
-
-            var writeableBitmap = new WriteableBitmap(videoStreamFormat.Width, videoStreamFormat.Height);
-
-            byte* sourceArrayBuffer = BufferExtensions.GetArrayBuffer(videoFrameBuffer.Buffers[0]);
-            byte* destArrayBuffer = BufferExtensions.GetArrayBuffer(writeableBitmap.PixelBuffer);
-
+            VideoStreamFormat format = frame.StreamFormat;
+            int w = format.Width;
+            int h = format.Height;
             int rgbaCapacity = w * h * 4;
+
+            var bitmap = new WriteableBitmap(w, h);
+
+            byte* sourceArrayBuffer = null;
+            byte* destArrayBuffer = BufferExtensions.GetArrayBuffer(bitmap.PixelBuffer);
+
+            switch (frame.Kind)
+            {
+                case RawVideoFrameKind.Buffer:
+                    sourceArrayBuffer = BufferExtensions.GetArrayBuffer((frame as RawVideoFrameBuffer).Buffers[0]);
+                    break;
+                case RawVideoFrameKind.Texture:
+                    sourceArrayBuffer = BufferExtensions.GetArrayBuffer((frame as RawVideoFrameTexture).Texture.Buffer);
+                    break;
+            }
 
             for (int i = 0; i < rgbaCapacity; i += 4)
             {
@@ -57,7 +52,7 @@ namespace CallingTestApp
                 destArrayBuffer[i + 3] = sourceArrayBuffer[i + 3];
             }
 
-            imageElement.Source = writeableBitmap;
+            imageElement.Source = bitmap;
         }
 
         public void ClearView()
@@ -65,9 +60,9 @@ namespace CallingTestApp
             imageElement.Source = null;
         }
 
-        public void Dispose()
+        public UIElement GetView()
         {
-            ClearView();
+            return imageElement;
         }
     }
 }
