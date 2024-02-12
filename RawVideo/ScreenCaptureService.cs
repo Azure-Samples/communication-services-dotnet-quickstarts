@@ -20,8 +20,9 @@ namespace RawVideo
         private GraphicsCaptureSession session;
 
         public ScreenCaptureService(RawOutgoingVideoStream rawOutgoingVideoStream,
+            RawVideoFrameKind rawVideoFrameKind,
             GraphicsCaptureItem captureItem) :
-            base(rawOutgoingVideoStream)
+            base(rawOutgoingVideoStream, rawVideoFrameKind)
         {
             this.captureItem = captureItem;
         }

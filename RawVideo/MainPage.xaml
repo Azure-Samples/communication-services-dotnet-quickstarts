@@ -179,33 +179,78 @@
                     </TextBox.Resources>
                 </TextBox>
 
-                <ComboBox
-                    x:Name="incomingVideoStreamKindComboBox"
-                    PlaceholderText="IncomingVideoStreamKind"
-                    SelectionChanged="IncomingVideoStreamKindSelected"
-                    Style="{StaticResource ComboBoxStyle}"
-                    ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                <StackPanel
+                    Width="500"
+                    Orientation="Horizontal"
                     >
-                    <ComboBox.Resources>
-                        <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
-                        <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
-                        <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
-                    </ComboBox.Resources>
-                </ComboBox>
+                    <ComboBox
+                        Width="200"
+                        x:Name="incomingRawVideoFrameKindComboBox"
+                        PlaceholderText="IncomingRawVideoFrameKind"
+                        SelectionChanged="IncomingRawVideoFrameKindSelected"
+                        Style="{StaticResource ComboBoxStyle}"
+                        ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                        Margin="0,10,10,0"
+                        >
+                        <ComboBox.Resources>
+                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
+                            <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
+                        </ComboBox.Resources>
+                    </ComboBox>
+                    
+                    <ComboBox
+                        Width="290"
+                        x:Name="incomingVideoStreamKindComboBox"
+                        PlaceholderText="IncomingVideoStreamKind"
+                        SelectionChanged="IncomingVideoStreamKindSelected"
+                        Style="{StaticResource ComboBoxStyle}"
+                        ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                        >
+                        <ComboBox.Resources>
+                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
+                            <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
+                        </ComboBox.Resources>
+                    </ComboBox>
+                </StackPanel>
 
-                <ComboBox
-                    x:Name="outgoingVideoStreamKindComboBox"
-                    PlaceholderText="OutgoingVideoStreamKind"
-                    SelectionChanged="OutgoingVideoStreamKindSelected"
-                    Style="{StaticResource ComboBoxStyle}"
-                    ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+
+                <StackPanel
+                    Width="500"
+                    Orientation="Horizontal"
                     >
-                    <ComboBox.Resources>
-                        <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
-                        <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
-                        <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
-                    </ComboBox.Resources>
-                </ComboBox>
+                    <ComboBox
+                        Width="200"
+                        x:Name="outgoingRawVideoFrameKindComboBox"
+                        PlaceholderText="OutgoingRawVideoFrameKind"
+                        SelectionChanged="OutgoingRawVideoFrameKindSelected"
+                        Style="{StaticResource ComboBoxStyle}"
+                        ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                        Margin="0,10,10,0"
+                        >
+                        <ComboBox.Resources>
+                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
+                            <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
+                        </ComboBox.Resources>
+                    </ComboBox>
+
+                    <ComboBox
+                        Width="290"
+                        x:Name="outgoingVideoStreamKindComboBox"
+                        PlaceholderText="OutgoingVideoStreamKind"
+                        SelectionChanged="OutgoingVideoStreamKindSelected"
+                        Style="{StaticResource ComboBoxStyle}"
+                        ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                        >
+                        <ComboBox.Resources>
+                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
+                            <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
+                        </ComboBox.Resources>
+                    </ComboBox>
+                </StackPanel>
 
                 <ComboBox
                     x:Name="videoDeviceInfoComboBox"
