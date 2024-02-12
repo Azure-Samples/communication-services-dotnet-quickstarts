@@ -19,9 +19,9 @@ namespace RawVideo
     public sealed partial class MainPage : Page
     {
         // UI
-        private int selectedVideoDeviceInfoListIndex = -1;
-        private int selectedCameraListIndex = -1;
-        private int selectedDisplayListIndex = -1;
+        private int videoDeviceInfoListIndex = -1;
+        private int cameraListIndex = -1;
+        private int displayListIndex = -1;
 
         // App
         private IReadOnlyList<VideoDeviceDetails> videoDeviceInfoList;
@@ -29,6 +29,7 @@ namespace RawVideo
         private List<GraphicsCaptureItem> displayList;
         private List<VideoStreamKind> outgoingVideoStreamKindList;
         private List<VideoStreamKind> incomingVideoStreamKindList;
+        private List<RawVideoFrameKind> rawVideoFrameKindList;
         private CallClient callClient;
         private CallAgent callAgent;
         private CommunicationCall call;
@@ -71,14 +72,25 @@ namespace RawVideo
 
         private async void InitResources()
         {
-            outgoingVideoFrameKind = RawVideoFrameKind.Texture;
-            incomingVideoFrameKind = RawVideoFrameKind.Texture;
+            rawVideoFrameKindList = Enum.GetValues(typeof(RawVideoFrameKind)).Cast<RawVideoFrameKind>().ToList();
+            rawVideoFrameKindList
+                .ForEach(kind =>
+                {
+                    incomingRawVideoFrameKindComboBox.Items.Add(kind.ToString());
+                    outgoingRawVideoFrameKindComboBox.Items.Add(kind.ToString());
+                });
+            incomingRawVideoFrameKindComboBox.SelectedIndex = 0;
+            outgoingRawVideoFrameKindComboBox.SelectedIndex = 0;
 
             incomingVideoStreamKindList = new List<VideoStreamKind>
             {
                 VideoStreamKind.RemoteIncoming,
                 VideoStreamKind.RawIncoming,
             };
+
+            incomingVideoStreamKindList
+                .ForEach(kind => incomingVideoStreamKindComboBox.Items.Add(kind.ToString()));
+            incomingVideoStreamKindComboBox.SelectedIndex = 1;
 
             outgoingVideoStreamKindList = new List<VideoStreamKind>
             {
@@ -87,13 +99,8 @@ namespace RawVideo
                 VideoStreamKind.ScreenShareOutgoing
             };
 
-            incomingVideoStreamKindList
-                .ForEach(kind => incomingVideoStreamKindComboBox.Items.Add(kind.ToString()));
-
             outgoingVideoStreamKindList
                 .ForEach(kind => outgoingVideoStreamKindComboBox.Items.Add(kind.ToString()));
-
-            incomingVideoStreamKindComboBox.SelectedIndex = 1;
             outgoingVideoStreamKindComboBox.SelectedIndex = 1;
 
             await CreateCallAgent();
@@ -280,7 +287,7 @@ namespace RawVideo
             {
                 case VideoStreamKind.LocalOutgoing:
                     localOutgoingVideoStream = new LocalOutgoingVideoStream(
-                        videoDeviceInfoList[selectedVideoDeviceInfoListIndex]);
+                        videoDeviceInfoList[videoDeviceInfoListIndex]);
                     outgoingVideoStream = localOutgoingVideoStream;
 
                     break;
@@ -320,7 +327,7 @@ namespace RawVideo
                     h = format.Height;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
-                    GraphicsCaptureItem display = displayList[selectedDisplayListIndex];
+                    GraphicsCaptureItem display = displayList[displayListIndex];
                     w = display.Size.Width;
                     h = display.Size.Height;
 
@@ -574,7 +581,8 @@ namespace RawVideo
             if (cameraCaptureService == null)
             {
                 cameraCaptureService = new CameraCaptureService(virtualOutgoingVideoStream,
-                    cameraList[selectedCameraListIndex]);
+                    outgoingVideoFrameKind,
+                    cameraList[cameraListIndex]);
                 cameraCaptureService.FrameArrived += RawVideoFrameCaptured;
                 await cameraCaptureService.StartAsync();
 
@@ -610,7 +618,8 @@ namespace RawVideo
             if (screenCaptureService == null)
             {
                 screenCaptureService = new ScreenCaptureService(screenShareOutgoingVideoStream,
-                    displayList[selectedDisplayListIndex]);
+                    outgoingVideoFrameKind,
+                    displayList[displayListIndex]);
                 screenCaptureService.FrameArrived += RawVideoFrameCaptured;
                 screenCaptureService.Start();
 
@@ -716,13 +725,13 @@ namespace RawVideo
             switch (outgoingVideoStreamKind)
             {
                 case VideoStreamKind.LocalOutgoing:
-                    isValid = selectedVideoDeviceInfoListIndex != -1;
+                    isValid = videoDeviceInfoListIndex != -1;
                     break;
                 case VideoStreamKind.VirtualOutgoing:
-                    isValid = selectedCameraListIndex != -1;
+                    isValid = cameraListIndex != -1;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
-                    isValid = selectedDisplayListIndex != -1;
+                    isValid = displayListIndex != -1;
                     break;
             }
 
@@ -741,6 +750,18 @@ namespace RawVideo
         {
             incomingVideoStreamKind =
                 incomingVideoStreamKindList[incomingVideoStreamKindComboBox.SelectedIndex];
+
+            switch (incomingVideoStreamKind)
+            {
+                case VideoStreamKind.RemoteIncoming:
+                    incomingVideoStreamKindComboBox.Width = 500;
+                    incomingRawVideoFrameKindComboBox.Visibility = Visibility.Collapsed;
+                    break;
+                case VideoStreamKind.RawIncoming:
+                    incomingVideoStreamKindComboBox.Width = 290;
+                    incomingRawVideoFrameKindComboBox.Visibility = Visibility.Visible;
+                    break;
+            }
         }
 
         private void OutgoingVideoStreamKindSelected(object sender, SelectionChangedEventArgs args)
@@ -754,33 +775,52 @@ namespace RawVideo
                     videoDeviceInfoComboBox.Visibility = Visibility.Visible;
                     cameraComboBox.Visibility = Visibility.Collapsed;
                     displayComboBox.Visibility = Visibility.Collapsed;
+
+                    outgoingVideoStreamKindComboBox.Width = 500;
+                    outgoingRawVideoFrameKindComboBox.Visibility = Visibility.Collapsed;
                     break;
                 case VideoStreamKind.VirtualOutgoing:
                     videoDeviceInfoComboBox.Visibility = Visibility.Collapsed;
                     cameraComboBox.Visibility = Visibility.Visible;
                     displayComboBox.Visibility = Visibility.Collapsed;
+
+                    outgoingVideoStreamKindComboBox.Width = 290;
+                    outgoingRawVideoFrameKindComboBox.Visibility = Visibility.Visible;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
                     videoDeviceInfoComboBox.Visibility = Visibility.Collapsed;
                     cameraComboBox.Visibility = Visibility.Collapsed;
                     displayComboBox.Visibility = Visibility.Visible;
+
+                    outgoingVideoStreamKindComboBox.Width = 290;
+                    outgoingRawVideoFrameKindComboBox.Visibility = Visibility.Visible;
                     break;
             }
         }
 
         private void VideoDeviceInfoSelected(object sender, SelectionChangedEventArgs args)
         {
-            selectedVideoDeviceInfoListIndex = videoDeviceInfoComboBox.SelectedIndex;
+            videoDeviceInfoListIndex = videoDeviceInfoComboBox.SelectedIndex;
         }
 
         private void CameraSelected(object sender, SelectionChangedEventArgs args)
         {
-            selectedCameraListIndex = cameraComboBox.SelectedIndex;
+            cameraListIndex = cameraComboBox.SelectedIndex;
         }
 
         private void DisplaySelected(object sender, SelectionChangedEventArgs args)
         {
-            selectedDisplayListIndex = displayComboBox.SelectedIndex;
+            displayListIndex = displayComboBox.SelectedIndex;
+        }
+
+        private void IncomingRawVideoFrameKindSelected(object sender, SelectionChangedEventArgs args)
+        {
+            incomingVideoFrameKind = rawVideoFrameKindList[incomingRawVideoFrameKindComboBox.SelectedIndex];
+        }
+
+        private void OutgoingRawVideoFrameKindSelected(object sender, SelectionChangedEventArgs args)
+        {
+            outgoingVideoFrameKind = rawVideoFrameKindList[outgoingRawVideoFrameKindComboBox.SelectedIndex];
         }
     }
 }

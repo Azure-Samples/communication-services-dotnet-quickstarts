@@ -17,8 +17,9 @@ namespace RawVideo
         private MediaFrameSourceInfo sourceInfo;
 
         public CameraCaptureService(RawOutgoingVideoStream rawOutgoingVideoStream,
+            RawVideoFrameKind rawVideoFrameKind,
             Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo> mediaFrameSource) :
-            base(rawOutgoingVideoStream)
+            base(rawOutgoingVideoStream, rawVideoFrameKind)
         {
             sourceGroup = mediaFrameSource.Item1;
             sourceInfo = mediaFrameSource.Item2;

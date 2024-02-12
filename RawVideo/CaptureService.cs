@@ -1,6 +1,7 @@
 ﻿using Azure.Communication.Calling.WindowsClient;
 using System;
 using System.Threading.Tasks;
+using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Media.Core;
 using Buffer = Windows.Storage.Streams.Buffer;
@@ -11,10 +12,12 @@ namespace RawVideo
     {
         public event EventHandler<RawVideoFrame> FrameArrived;
         protected readonly RawOutgoingVideoStream rawOutgoingVideoStream;
+        private readonly RawVideoFrameKind rawVideoFrameKind;
 
-        protected CaptureService(RawOutgoingVideoStream rawOutgoingVideoStream)
+        protected CaptureService(RawOutgoingVideoStream rawOutgoingVideoStream, RawVideoFrameKind rawVideoFrameKind)
         {
             this.rawOutgoingVideoStream = rawOutgoingVideoStream;
+            this.rawVideoFrameKind = rawVideoFrameKind;
         }
 
         protected async Task SendRawVideoFrame(SoftwareBitmap bitmap)
@@ -44,21 +47,39 @@ namespace RawVideo
             int h = bitmap.PixelHeight;
             uint rgbaCapacity = (uint)(w * h * 4);
 
-            var rgbaBuffer = new Buffer(rgbaCapacity)
+            var bitmapBuffer = new Buffer(rgbaCapacity)
             {
                 Length = rgbaCapacity
             };
 
-            bitmap.CopyToBuffer(rgbaBuffer);
+            bitmap.CopyToBuffer(bitmapBuffer);
+            RawVideoFrame frame = null;
 
-            var timeSpan = new TimeSpan(rawOutgoingVideoStream.TimestampInTicks);
-            var mediaStreamSample = MediaStreamSample.CreateFromBuffer(rgbaBuffer, timeSpan);
-
-            return new RawVideoFrameTexture()
+            switch (rawVideoFrameKind)
             {
-                Texture = mediaStreamSample,
-                StreamFormat = rawOutgoingVideoStream.Format
-            };
+                case RawVideoFrameKind.Buffer:
+                    MemoryBuffer buffer = Buffer.CreateMemoryBufferOverIBuffer(bitmapBuffer);
+                    frame = new RawVideoFrameBuffer()
+                    {
+                        Buffers = new MemoryBuffer[] { buffer },
+                        StreamFormat = rawOutgoingVideoStream.Format
+                    };
+
+                    break;
+                case RawVideoFrameKind.Texture:
+                    var timeSpan = new TimeSpan(rawOutgoingVideoStream.TimestampInTicks);
+                    var sample = MediaStreamSample.CreateFromBuffer(bitmapBuffer, timeSpan);
+
+                    frame = new RawVideoFrameTexture()
+                    {
+                        Texture = sample,
+                        StreamFormat = rawOutgoingVideoStream.Format
+                    };
+
+                    break;
+            }
+
+            return frame;
         }
 
         private bool CanSendRawVideoFrames()
