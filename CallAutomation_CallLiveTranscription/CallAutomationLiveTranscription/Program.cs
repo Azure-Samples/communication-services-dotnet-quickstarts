@@ -245,12 +245,6 @@ app.MapPost("/api/incomingCall", async (
                     logger.LogInformation("Received transcription event: {type}", transcriptionStarted.GetType());
                 });
 
-            client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionResumed>(
-                answerCallResult.CallConnection.CallConnectionId, async (transcriptionResumed) =>
-                {
-                    logger.LogInformation("Received transcription event: {type}", transcriptionResumed.GetType());
-                });
-
             client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionStopped>(
                 answerCallResult.CallConnection.CallConnectionId, async (transcriptionStopped) =>
                 {
