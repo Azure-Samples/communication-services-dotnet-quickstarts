@@ -51,7 +51,7 @@ string addAgentContext = "AddAgent";
 string incorrectDobContext = "IncorrectDob";
 string addParticipantFailureContext = "FailedToAddParticipant";
 string DobRegex = "^(0[1-9]|[12][0-9]|3[01])(0[1-9]|1[012])[12][0-9]{3}$";
-bool isTrasncriptionActive = false;
+bool isTranscriptionActive = false;
 var maxTimeout = 2;
 
 string recordingId = string.Empty;
@@ -63,7 +63,7 @@ app.MapPost("/api/incomingCall", async (
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
-        logger.LogInformation("Call event received:{eventType}", eventGridEvent.EventType);
+        logger.LogInformation($"Call event received:{eventGridEvent.EventType}");
 
         /* Handle system events */
         if (eventGridEvent.TryGetSystemEventData(out object eventData))
@@ -83,8 +83,8 @@ app.MapPost("/api/incomingCall", async (
         {
             var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
             var callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
-            logger.LogInformation("Incoming call - correlationId: {cor}, Callback url: {callbackuri}, transport Url: {transurl}",
-                incomingCallEventData.CorrelationId, callbackUri, transportUrl);
+            logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
+                $"Callback url: {callbackUri}, transport Url: {transportUrl}");
 
             TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),
                 TranscriptionTransport.Websocket, locale, false);
@@ -102,17 +102,14 @@ app.MapPost("/api/incomingCall", async (
             var answer_result = await answerCallResult.WaitForEventProcessorAsync();
             if (answer_result.IsSuccess)
             {
-                logger.LogInformation(
-                "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}",
-                answer_result.GetType(),
-                answer_result.SuccessResult.CallConnectionId,
-                answer_result.SuccessResult.ServerCallId);
+                logger.LogInformation($"Received call event: {answer_result.GetType()}, callConnectionID: {answer_result.SuccessResult.CallConnectionId}, " +
+                    $"serverCallId: {answer_result.SuccessResult.ServerCallId}");
 
                 /* Start the recording */
                 CallLocator callLocator = new ServerCallLocator(answer_result.SuccessResult.ServerCallId);
                 var recordingResult = await client.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
                 recordingId = recordingResult.Value.RecordingId;
-                logger.LogInformation("Recording started. RecordingId: {recid}", recordingId);
+                logger.LogInformation($"Recording started. RecordingId: {recordingId}");
 
                 /* Start the Transcription */
                 await InitiateTranscription(callConnectionMedia);
@@ -126,7 +123,7 @@ app.MapPost("/api/incomingCall", async (
             client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(
                  answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
              {
-                 logger.LogInformation("Received call event: {type}, context: {con}", playCompletedEvent.GetType(), playCompletedEvent.OperationContext);
+                 logger.LogInformation($"Received call event: {playCompletedEvent.GetType()}, context: {playCompletedEvent.OperationContext}");
 
                  if (playCompletedEvent.OperationContext == addAgentContext)
                  {
@@ -151,7 +148,7 @@ app.MapPost("/api/incomingCall", async (
             client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(
                 answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
             {
-                logger.LogInformation("Received call event: {type}, context: {con}", recognizeCompletedEvent.GetType(), recognizeCompletedEvent.OperationContext);
+                logger.LogInformation($"Received call event: {recognizeCompletedEvent.GetType()}, context: {recognizeCompletedEvent.OperationContext}");
                 if (recognizeCompletedEvent.RecognizeResult is DtmfResult)
                 {
                     var dtmfResult = recognizeCompletedEvent.RecognizeResult as DtmfResult;
@@ -174,42 +171,31 @@ app.MapPost("/api/incomingCall", async (
             client.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantSucceeded>(
                answerCallResult.CallConnection.CallConnectionId, async (addParticipantSucceededEvent) =>
                {
-                   logger.LogInformation("Received call event: {type}, context: {con}", addParticipantSucceededEvent.GetType(), addParticipantSucceededEvent.OperationContext);
+                   logger.LogInformation($"Received call event: {addParticipantSucceededEvent.GetType()}, context: {addParticipantSucceededEvent.OperationContext}");
                });
             client.GetEventProcessor().AttachOngoingEventProcessor<ParticipantsUpdated>(
               answerCallResult.CallConnection.CallConnectionId, async (participantsUpdatedEvent) =>
               {
-                  logger.LogInformation("Received call event: {type}, participants: {parts}, sequenceId: {seqid}",
-                      participantsUpdatedEvent.GetType(), participantsUpdatedEvent.Participants.Count(), participantsUpdatedEvent.SequenceNumber);
+                  logger.LogInformation($"Received call event: {participantsUpdatedEvent.GetType()}, participants: {participantsUpdatedEvent.Participants.Count()}, sequenceId: {participantsUpdatedEvent.SequenceNumber}");
               });
             client.GetEventProcessor().AttachOngoingEventProcessor<CallDisconnected>(
               answerCallResult.CallConnection.CallConnectionId, async (callDisconnectedEvent) =>
               {
-                  logger.LogInformation("Received call event: {type}", callDisconnectedEvent.GetType());
+                  logger.LogInformation($"Received call event: {callDisconnectedEvent.GetType()}");
               });
             client.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(
               answerCallResult.CallConnection.CallConnectionId, async (addParticipantFailedEvent) =>
               {
-                  logger.LogInformation(
-                      "Received call event: {type}, CorrelationId: {corId}, subCode: {sCode}, message: {mess}, context: {con}",
-                      addParticipantFailedEvent.GetType(),
-                      addParticipantFailedEvent.CorrelationId,
-                      addParticipantFailedEvent.ResultInformation?.SubCode,
-                      addParticipantFailedEvent.ResultInformation?.Message,
-                      addParticipantFailedEvent.OperationContext);
+                  logger.LogInformation($"Received call event: {addParticipantFailedEvent.GetType()}, CorrelationId: {addParticipantFailedEvent.CorrelationId}, " +
+                      $"subCode: {addParticipantFailedEvent.ResultInformation?.SubCode}, message: {addParticipantFailedEvent.ResultInformation?.Message}, context: {addParticipantFailedEvent.OperationContext}");
 
                   await HandlePlayAsync(callConnectionMedia, addParticipantFailurePrompt, addParticipantFailureContext);
               });
             client.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(
                 answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
             {
-                logger.LogInformation(
-               "Received call event: {type}, callConnectionID: {connId}, subCode: {sCode}, message: {mess}, context: {con}",
-               playFailedEvent.GetType(),
-               playFailedEvent.CallConnectionId,
-               playFailedEvent.ResultInformation?.SubCode,
-               playFailedEvent.ResultInformation?.Message,
-               playFailedEvent.OperationContext);
+                logger.LogInformation($"Received call event: {playFailedEvent.GetType()}, CorrelationId: {playFailedEvent.CorrelationId}, " +
+                    $"subCode: {playFailedEvent.ResultInformation?.SubCode}, message: {playFailedEvent.ResultInformation?.Message}, context: {playFailedEvent.OperationContext}");
 
                 await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, true, recordingId);
                 await answerCallResult.CallConnection.HangUpAsync(true);
@@ -218,13 +204,8 @@ app.MapPost("/api/incomingCall", async (
             client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeFailed>(
                 answerCallResult.CallConnection.CallConnectionId, async (recognizeFailedEvent) =>
             {
-                logger.LogInformation(
-                "Received call event: {type}, CorrelationId: {corId}, subCode: {sCode}, message: {mess}, context: {con}",
-                recognizeFailedEvent.GetType(),
-                recognizeFailedEvent.CorrelationId,
-                recognizeFailedEvent.ResultInformation?.SubCode,
-                recognizeFailedEvent.ResultInformation?.Message,
-                recognizeFailedEvent.OperationContext);
+                logger.LogInformation($"Received call event: {recognizeFailedEvent.GetType()}, CorrelationId: {recognizeFailedEvent.CorrelationId}, " +
+                    $"subCode: {recognizeFailedEvent.ResultInformation?.SubCode}, message: {recognizeFailedEvent.ResultInformation?.Message}, context: {recognizeFailedEvent.OperationContext}");
 
                 if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailedEvent.ResultInformation?.SubCode.Value.ToString()) && maxTimeout > 0)
                 {
@@ -242,25 +223,21 @@ app.MapPost("/api/incomingCall", async (
             client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionStarted>(
                 answerCallResult.CallConnection.CallConnectionId, async (transcriptionStarted) =>
                 {
-                    logger.LogInformation("Received transcription event: {type}", transcriptionStarted.GetType());
+                    logger.LogInformation($"Received transcription event: {transcriptionStarted.GetType()}");
                 });
 
             client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionStopped>(
                 answerCallResult.CallConnection.CallConnectionId, async (transcriptionStopped) =>
                 {
-                    isTrasncriptionActive = false;
+                    isTranscriptionActive = false;
                     logger.LogInformation("Received transcription event: {type}", transcriptionStopped.GetType());
                 });
 
             client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionFailed>(
                 answerCallResult.CallConnection.CallConnectionId, async (TranscriptionFailed) =>
                 {
-                    logger.LogInformation(
-                     "Received transcription event: {type}, CorrelationId: {corId}, SubCode: {sode}, Message: {message}",
-                     TranscriptionFailed.GetType(),
-                     TranscriptionFailed.CorrelationId,
-                     TranscriptionFailed?.ResultInformation?.SubCode,
-                     TranscriptionFailed?.ResultInformation?.Message);
+                    logger.LogInformation($"Received transcription event: {TranscriptionFailed.GetType()}, CorrelationId: {TranscriptionFailed.CorrelationId}, " +
+                        $"SubCode: {TranscriptionFailed?.ResultInformation?.SubCode}, Message: {TranscriptionFailed?.ResultInformation?.Message}");
                 });
         }
     }
@@ -327,7 +304,7 @@ async Task ResumeTranscriptionAndRecording(CallMedia callMedia, ILogger logger, 
 
 async Task PauseOrStopTranscriptionAndRecording(CallMedia callMedia, ILogger logger, bool stopRecording, string recordingId)
 {
-    if (isTrasncriptionActive)
+    if (isTranscriptionActive)
     {
         await callMedia.StopTranscriptionAsync();
         logger.LogInformation("Transcription stopped.");
@@ -388,7 +365,7 @@ async Task InitiateTranscription(CallMedia callConnectionMedia)
     };
 
     await callConnectionMedia.StartTranscriptionAsync(startTrasnscriptionOption);
-    isTrasncriptionActive = true;
+    isTranscriptionActive = true;
 }
 
 app.Run();
