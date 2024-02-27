@@ -6,7 +6,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>SendEmail</RootNamespace>
-    <AssemblyName>SendEmailPlainText</AssemblyName>
+    <AssemblyName>SendEmailWithManualPollingForStatus</AssemblyName>
   </PropertyGroup>
 
 </Project>
