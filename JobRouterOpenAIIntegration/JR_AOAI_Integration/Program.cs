@@ -207,7 +207,7 @@ namespace JR_AOAI_Integration
             var mode = new BestWorkerMode() { ScoringRule = new FunctionRouterRule(new Uri(Configuration["OpenAiPairing:AzureFunctionUri"]))
             {
                 Credential = new FunctionRouterRuleCredential(Configuration["OpenAiPairing:AzureFunctionKey"])
-            }
+            },
                 ScoringRuleOptions = 
                 new ScoringRuleOptions() { 
                     IsBatchScoringEnabled = true
