@@ -29,6 +29,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 - ./SendEmailWithAttachments/Program.cs: Entry point for sending email with attachments.
 - ./SendEmailWithManualPollingForStatus/Program.cs: Entry point for sending emails and manually poll for the email send status.
 - ./SendHighImportanceEmailToMultipleRecipients/Program.cs: Entry point for sending high importance email to multiple recipients.
+- ./SendEmailWithManagedIdentity/SendEmailWithManagedIdentityFunction.cs: Entry point for sending an email using a function app with a managed identity.
 
 ## Before running the sample for the first time
 
