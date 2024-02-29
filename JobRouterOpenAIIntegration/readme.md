@@ -9,9 +9,7 @@ products:
 - azure-function-app
 ---
 
-# Job Router Integration with Azure OpenAI quick start
-
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Job Router using OpenAI for matching](https://learn.microsoft.com/azure/communication-services/quickstarts/router/job-router-azure-open-ai-integration)
+# Job Router Instructions on how to build this code sample from scratch, look at [Quickstart: Job Router using OpenAI for matching](https://review.learn.microsoft.com/en-us/azure/communication-services/quickstarts/router/job-router-aoai-integration)
 
 ## Prerequisites
 
