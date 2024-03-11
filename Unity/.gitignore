@@ -1,0 +1,59 @@
+﻿# Ignore bin and obj folders
+[Bb]in/
+[Oo]bj
+[Bb]uild/
+
+!/**/[Pp]ackages/*
+!/**/[Aa]ssets/**/*.meta
+/**/[Tt]emp/
+/**/[Aa]ssets/TextMesh Pro/
+/**/UserSettings/
+/**/Library/*/*
+
+Unity*.csproj
+Assembly-*.csproj
+Azure.Communication.Calling*.csproj
+*.sln
+*.csproj
+.collabignore
+.vsconfig
+
+# Ignore .vscode
+.vscode/
+
+# Ignore visual studio temp folder
+.vs
+
+# Ignore visual studo user files.
+*.user
+
+# Ignore certs
+*.pfx
+*.pfx.meta
+
+# Ignore logs
+*.etl
+*.etl.bak
+*.blog
+*.log
+
+# Ignore symbols
+*.pidb
+*.pidb.meta
+*.pdb
+*.pdb.meta
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Ignore Xaml app packages
+/**/Azure.Communication.Calling.Tutorial/AppPackages
+/**/Azure.Communication.Calling.Tutorial/BundleArtifacts
+
+/**/ArtifactDB
+/**/ArtifactDB-lock
+/**/SourceAssetDB
+/**/SourceAssetDB-lock
+/**/EditorInstance.json

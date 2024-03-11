@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>SendEmail</RootNamespace>
-    <AssemblyName>SendEmailToMultipleRecipients</AssemblyName>
+    <AssemblyName>SendHighImportanceEmailToMultipleRecipients</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Email" Version="1.0.1" />

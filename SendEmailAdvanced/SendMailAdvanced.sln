@@ -16,6 +16,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendEmailWithManagedIdentity", "SendEmailWithManagedIdentity\SendEmailWithManagedIdentity.csproj", "{921687CF-2217-4906-AA2F-2464E5C54C2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendBulkEmailWithOptionalThrottlingPolicy", "SendBulkEmailWithOptionalThrottlingPolicy\SendBulkEmailWithOptionalThrottlingPolicy.csproj", "{91D7D038-B1C1-4905-9AEC-B23F7C8485B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +41,14 @@ Global
 		{EF6A7D57-769A-40B3-B9FF-8165A657B304}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF6A7D57-769A-40B3-B9FF-8165A657B304}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF6A7D57-769A-40B3-B9FF-8165A657B304}.Release|Any CPU.Build.0 = Release|Any CPU
+		{921687CF-2217-4906-AA2F-2464E5C54C2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{921687CF-2217-4906-AA2F-2464E5C54C2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{921687CF-2217-4906-AA2F-2464E5C54C2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{921687CF-2217-4906-AA2F-2464E5C54C2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91D7D038-B1C1-4905-9AEC-B23F7C8485B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91D7D038-B1C1-4905-9AEC-B23F7C8485B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91D7D038-B1C1-4905-9AEC-B23F7C8485B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91D7D038-B1C1-4905-9AEC-B23F7C8485B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

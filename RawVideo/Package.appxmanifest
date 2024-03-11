@@ -17,7 +17,7 @@
   <mp:PhoneIdentity PhoneProductId="646c0233-13f7-4ea3-b02e-703b86c51a27" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Calling QuickStart</DisplayName>
+    <DisplayName>RawVideo</DisplayName>
     <PublisherDisplayName>Microsoft</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -33,12 +33,12 @@
   <Applications>
     <Application Id="App"
       Executable="$targetnametoken$.exe"
-      EntryPoint="Calling.App">
+      EntryPoint="RawVideo.App">
       <uap:VisualElements
-        DisplayName="Calling QuickStart"
+        DisplayName="RawVideo"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="Calling"
+        Description="RawVideo"
         BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
@@ -53,7 +53,7 @@
     <uap11:Capability Name="graphicsCaptureWithoutBorder"/>
     <DeviceCapability Name="microphone"/>
     <DeviceCapability Name="webcam"/>
-  </Capabilities>
+  </Capabilities> 
 
   <Extensions>
     <Extension Category="windows.activatableClass.inProcessServer">
