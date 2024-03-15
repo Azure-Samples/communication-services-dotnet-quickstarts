@@ -10,7 +10,7 @@ products:
 
 # Manage phone numbers Quickstart
 
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Look Up Phone Numbers](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/number-lookup?pivots=programming-language-java)
+For full instructions on how to build this code sample from scratch, look at [Quickstart: Look Up Phone Numbers](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/number-lookup?pivots=programming-language-csharp)
 
 ## Prerequisites
 
