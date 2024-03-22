@@ -29,8 +29,7 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 2. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
 3. With the `Connection String` procured in pre-requisites, add connection string as an environment variable named `COMMUNICATION_SERVICES_CONNECTION_STRING`
-4.  Update lines 14 and 20 with the phone number you want to look up.
-5.  Decide which lookup you would like to perform, and keep in mind that looking up all the operator details incurs a cost, while looking up only number formatting is free.
+4.  Decide which lookup you would like to perform, and keep in mind that looking up all the operator details incurs a cost, while looking up only number formatting is free.
 
 > [!WARNING]
 > If you want to avoid incurring a charge, comment out lines 20-22
@@ -40,3 +39,4 @@ For full instructions on how to build this code sample from scratch, look at [Qu
 
 1. Open `NumberLookupQuickstart.csproj`
 2. Run the `NumberLookupQuickstart` project
+3. Provide a phone number to look up when prompted
