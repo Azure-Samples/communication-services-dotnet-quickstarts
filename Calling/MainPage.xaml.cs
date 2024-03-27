@@ -446,9 +446,9 @@ namespace CallingQuickstart
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
                 
-                if (!string.IsNullOrEmpty((Application.Current as App).PNHChannelUri))
+                if ((Application.Current as App).PNHChannelUri != null)
                 {
-                    await this.callAgent.RegisterForPushNotificationAsync((Application.Current as App).PNHChannelUri);
+                    await this.callAgent.RegisterForPushNotificationAsync((Application.Current as App).PNHChannelUri.ToString());
                 }
 
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
@@ -580,9 +580,9 @@ namespace CallingQuickstart
 
         public async Task HandlePushNotificationIncomingCallAsync(string notificationContent)
         {
-            PushNotificationDetails pnDetails = PushNotificationDetails.Parse(notificationContent);
             if (this.callAgent != null)
             {
+                PushNotificationDetails pnDetails = PushNotificationDetails.Parse(notificationContent);
                 await callAgent.HandlePushNotificationAsync(pnDetails);
             }
         }

@@ -20,7 +20,7 @@ namespace CallingQuickstart
     /// </summary>
     sealed partial class App : Application
     {
-        public string PNHChannelUri { get; set; }
+        public Uri PNHChannelUri { get; set; }
 
         private string AZURE_PNH_HUB_NAME = "<AZURE_PNH_HUB_NAME>";
         private string AZURE_PNH_HUB_CONNECTION_STRING = "<AZURE_PNH_HUB_CONNECTION_STRING>";
@@ -40,22 +40,8 @@ namespace CallingQuickstart
         /// </summary>
         protected override async void OnActivated(IActivatedEventArgs e)
         {
-            await InitNotificationsAsync();
-
             if (e.Kind == ActivationKind.Protocol || e is ToastNotificationActivatedEventArgs)
             {
-                Frame rootFrame = CreateRootFrame();
-
-                rootFrame.NavigationFailed += OnNavigationFailed;
-
-                if (rootFrame.Content == null)
-                {
-                    if (!rootFrame.Navigate(typeof(MainPage), e))
-                    {
-                        throw new Exception("Failed to create initial page");
-                    }
-                }
-
                 // Ensure the current window is active
                 Window.Current.Activate();
 
@@ -87,25 +73,6 @@ namespace CallingQuickstart
         {
             await InitNotificationsAsync();
 
-            Frame rootFrame = CreateRootFrame();
-            rootFrame.NavigationFailed += OnNavigationFailed;
-
-            if (e.PrelaunchActivated == false)
-            {
-                if (rootFrame.Content == null)
-                {
-                    // When the navigation stack isn't restored navigate to the first page,
-                    // configuring the new page by passing required information as a navigation
-                    // parameter
-                    rootFrame.Navigate(typeof(MainPage), e);
-                }
-                // Ensure the current window is active
-                Window.Current.Activate();
-            }
-        }
-
-        private Frame CreateRootFrame()
-        {
             Frame rootFrame = Window.Current.Content as Frame;
 
             // Do not repeat app initialization when the Window already has content,
@@ -117,11 +84,27 @@ namespace CallingQuickstart
 
                 rootFrame.NavigationFailed += OnNavigationFailed;
 
+                if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
+                {
+                    //TODO: Load state from previously suspended application
+                }
+
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
             }
 
-            return rootFrame;
+            if (e.PrelaunchActivated == false)
+            {
+                if (rootFrame.Content == null)
+                {
+                    // When the navigation stack isn't restored navigate to the first page,
+                    // configuring the new page by passing required information as a navigation
+                    // parameter
+                    rootFrame.Navigate(typeof(MainPage), e.Arguments);
+                }
+                // Ensure the current window is active
+                Window.Current.Activate();
+            }
         }
 
         /// <summary>
@@ -148,6 +131,8 @@ namespace CallingQuickstart
             deferral.Complete();
         }
 
+        // Follow https://learn.microsoft.com/en-us/azure/notification-hubs/notification-hubs-windows-store-dotnet-get-started-wns-push-notification
+        // to setup and obtain AZURE_PNH_HUB_NAME and AZURE_PNH_HUB_CONNECTION_STRING
         private async Task InitNotificationsAsync()
         {
             if (AZURE_PNH_HUB_NAME != "<AZURE_PNH_HUB_NAME>" && AZURE_PNH_HUB_CONNECTION_STRING != "<AZURE_PNH_HUB_CONNECTION_STRING>")
@@ -160,7 +145,7 @@ namespace CallingQuickstart
 
                 if (result.ChannelUri != null)
                 {
-                    PNHChannelUri = result.ChannelUri.ToString();
+                    PNHChannelUri = new Uri(result.ChannelUri);
                 }
                 else
                 {
