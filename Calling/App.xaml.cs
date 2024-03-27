@@ -53,7 +53,7 @@ namespace CallingQuickstart
 
                     if (!string.IsNullOrEmpty(action))
                     {
-                        var frame = (Frame)Window.Current.Content;
+                        var frame = Window.Current.Content as Frame;
                         if (frame.Content is MainPage)
                         {
                             var mainPage = frame.Content as MainPage;
@@ -166,10 +166,10 @@ namespace CallingQuickstart
                 case PushNotificationType.Badge:
                     break;
                 case PushNotificationType.Raw:
-                    var frame = (Frame)Window.Current.Content;
+                    var frame = Window.Current.Content as Frame;
                     if (frame.Content is MainPage)
                     {
-                        var mainPage = (MainPage)frame.Content;
+                        var mainPage = frame.Content as MainPage;
                         await mainPage.HandlePushNotificationIncomingCallAsync(args.RawNotification.Content);
                     }
                     break;
