@@ -56,7 +56,7 @@ namespace CallingQuickstart
                         var frame = (Frame)Window.Current.Content;
                         if (frame.Content is MainPage)
                         {
-                            var mainPage = (MainPage)frame.Content;
+                            var mainPage = frame.Content as MainPage;
                             await mainPage.AnswerIncomingCall(action);
                         }
                     }
