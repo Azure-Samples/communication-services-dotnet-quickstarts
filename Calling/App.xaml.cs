@@ -1,9 +1,17 @@
-﻿using System;
+﻿using Azure.Communication.Calling.WindowsClient;
+using Microsoft.Toolkit.Uwp.Notifications;
+using Microsoft.WindowsAzure.Messaging;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.ApplicationModel.Store;
+using Windows.Networking.PushNotifications;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
+using static System.Collections.Specialized.BitVector32;
 
 namespace CallingQuickstart
 {
@@ -12,6 +20,11 @@ namespace CallingQuickstart
     /// </summary>
     sealed partial class App : Application
     {
+        public string PNHChannelUri { get; set; }
+
+        private string AZURE_PNH_HUB_NAME = "<AZURE_PNH_HUB_NAME>";
+        private string AZURE_PNH_HUB_CONNECTION_STRING = "<AZURE_PNH_HUB_CONNECTION_STRING>";
+
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -23,11 +36,75 @@ namespace CallingQuickstart
         }
 
         /// <summary>
+        // Handle protocol activations.
+        /// </summary>
+        protected override async void OnActivated(IActivatedEventArgs e)
+        {
+            await InitNotificationsAsync();
+
+            if (e.Kind == ActivationKind.Protocol || e is ToastNotificationActivatedEventArgs)
+            {
+                Frame rootFrame = CreateRootFrame();
+
+                rootFrame.NavigationFailed += OnNavigationFailed;
+
+                if (rootFrame.Content == null)
+                {
+                    if (!rootFrame.Navigate(typeof(MainPage), e))
+                    {
+                        throw new Exception("Failed to create initial page");
+                    }
+                }
+
+                // Ensure the current window is active
+                Window.Current.Activate();
+
+                // Handle notification activation
+                if (e is ToastNotificationActivatedEventArgs toastActivationArgs)
+                {
+                    ToastArguments args = ToastArguments.Parse(toastActivationArgs.Argument);
+                    string action = args?.Get("action");
+
+                    if (!string.IsNullOrEmpty(action))
+                    {
+                        var frame = (Frame)Window.Current.Content;
+                        if (frame.Content is MainPage)
+                        {
+                            var mainPage = (MainPage)frame.Content;
+                            await mainPage.AnswerIncomingCall(action);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Invoked when the application is launched normally by the end user.  Other entry points
         /// will be used such as when the application is launched to open a specific file.
         /// </summary>
         /// <param name="e">Details about the launch request and process.</param>
-        protected override void OnLaunched(LaunchActivatedEventArgs e)
+        protected override async void OnLaunched(LaunchActivatedEventArgs e)
+        {
+            await InitNotificationsAsync();
+
+            Frame rootFrame = CreateRootFrame();
+            rootFrame.NavigationFailed += OnNavigationFailed;
+
+            if (e.PrelaunchActivated == false)
+            {
+                if (rootFrame.Content == null)
+                {
+                    // When the navigation stack isn't restored navigate to the first page,
+                    // configuring the new page by passing required information as a navigation
+                    // parameter
+                    rootFrame.Navigate(typeof(MainPage), e);
+                }
+                // Ensure the current window is active
+                Window.Current.Activate();
+            }
+        }
+
+        private Frame CreateRootFrame()
         {
             Frame rootFrame = Window.Current.Content as Frame;
 
@@ -40,27 +117,11 @@ namespace CallingQuickstart
 
                 rootFrame.NavigationFailed += OnNavigationFailed;
 
-                if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
-                {
-                    //TODO: Load state from previously suspended application
-                }
-
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
             }
 
-            if (e.PrelaunchActivated == false)
-            {
-                if (rootFrame.Content == null)
-                {
-                    // When the navigation stack isn't restored navigate to the first page,
-                    // configuring the new page by passing required information as a navigation
-                    // parameter
-                    rootFrame.Navigate(typeof(MainPage), e.Arguments);
-                }
-                // Ensure the current window is active
-                Window.Current.Activate();
-            }
+            return rootFrame;
         }
 
         /// <summary>
@@ -85,6 +146,66 @@ namespace CallingQuickstart
             var deferral = e.SuspendingOperation.GetDeferral();
             //TODO: Save application state and stop any background activity
             deferral.Complete();
+        }
+
+        private async Task InitNotificationsAsync()
+        {
+            if (AZURE_PNH_HUB_NAME != "<AZURE_PNH_HUB_NAME>" && AZURE_PNH_HUB_CONNECTION_STRING != "<AZURE_PNH_HUB_CONNECTION_STRING>")
+            {
+                var channel = await PushNotificationChannelManager.CreatePushNotificationChannelForApplicationAsync();
+                channel.PushNotificationReceived += Channel_PushNotificationReceived;
+
+                var hub = new NotificationHub(AZURE_PNH_HUB_NAME, AZURE_PNH_HUB_CONNECTION_STRING);
+                var result = await hub.RegisterNativeAsync(channel.Uri);
+
+                if (result.ChannelUri != null)
+                {
+                    PNHChannelUri = result.ChannelUri.ToString();
+                }
+                else
+                {
+                    Debug.WriteLine("Cannot register WNS channel");
+                }
+            }
+        }
+
+        private async void Channel_PushNotificationReceived(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
+        {
+            args.Cancel = true;
+
+            switch (args.NotificationType)
+            {
+                case PushNotificationType.Toast:
+                case PushNotificationType.Tile:
+                case PushNotificationType.TileFlyout:
+                case PushNotificationType.Badge:
+                    break;
+                case PushNotificationType.Raw:
+                    var frame = (Frame)Window.Current.Content;
+                    if (frame.Content is MainPage)
+                    {
+                        var mainPage = (MainPage)frame.Content;
+                        await mainPage.HandlePushNotificationIncomingCallAsync(args.RawNotification.Content);
+                    }
+                    break;
+            }
+        }
+
+        public void ShowIncomingCallNotification(IncomingCall incomingCall)
+        {
+            string incomingCallType = incomingCall.IsVideoEnabled ? "Video" : "Audio";
+            string caller = incomingCall.CallerDetails.DisplayName != "" ? incomingCall.CallerDetails.DisplayName : incomingCall.CallerDetails.Identifier.RawId;
+            new ToastContentBuilder()
+            .SetToastScenario(ToastScenario.IncomingCall)
+            .AddText(caller + " is calling you.")
+            .AddText("New Incoming " + incomingCallType + " Call")
+                .AddButton(new ToastButton()
+                    .SetContent("Decline")
+                    .AddArgument("action", "decline"))
+                .AddButton(new ToastButton()
+                    .SetContent("Accept")
+                    .AddArgument("action", "accept"))
+                .Show();
         }
     }
 }

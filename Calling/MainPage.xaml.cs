@@ -31,6 +31,8 @@ namespace CallingQuickstart
         private BackgroundBlurEffect backgroundBlurVideoEffect = new BackgroundBlurEffect();
         private LocalVideoEffectsFeature localVideoEffectsFeature;
 
+        private IncomingCall incomingCall;
+
         #region Page initialization
         public MainPage()
         {
@@ -270,18 +272,8 @@ namespace CallingQuickstart
 
         private async void OnIncomingCallAsync(object sender, IncomingCallReceivedEventArgs args)
         {
-            var incomingCall = args.IncomingCall;
-
-            var acceptCallOptions = new AcceptCallOptions() { 
-                IncomingVideoOptions = new IncomingVideoOptions()
-                {
-                    StreamKind = VideoStreamKind.RemoteIncoming
-                } 
-            };
-
-            call = await incomingCall?.AcceptAsync(acceptCallOptions);
-            call.StateChanged += OnStateChangedAsync;
-            call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
+            incomingCall = args.IncomingCall;
+            (Application.Current as App).ShowIncomingCallNotification(incomingCall);
         }
 
         private async void OnStateChangedAsync(object sender, PropertyChangedEventArgs args)
@@ -453,7 +445,12 @@ namespace CallingQuickstart
             try
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
-                //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
+                
+                if (!string.IsNullOrEmpty((Application.Current as App).PNHChannelUri))
+                {
+                    await this.callAgent.RegisterForPushNotificationAsync((Application.Current as App).PNHChannelUri);
+                }
+
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
             }
@@ -580,5 +577,36 @@ namespace CallingQuickstart
         #endregion
 #endif
         #endregion
+
+        public async Task HandlePushNotificationIncomingCallAsync(string notificationContent)
+        {
+            PushNotificationDetails pnDetails = PushNotificationDetails.Parse(notificationContent);
+            if (this.callAgent != null)
+            {
+                await callAgent.HandlePushNotificationAsync(pnDetails);
+            }
+        }
+
+        public async Task AnswerIncomingCall(string action)
+        {
+            if (action == "accept")
+            {
+                var acceptCallOptions = new AcceptCallOptions()
+                {
+                    IncomingVideoOptions = new IncomingVideoOptions()
+                    {
+                        StreamKind = VideoStreamKind.RemoteIncoming
+                    }
+                };
+
+                call = await incomingCall?.AcceptAsync(acceptCallOptions);
+                call.StateChanged += OnStateChangedAsync;
+                call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
+            }
+            else if (action == "decline")
+            {
+                await incomingCall?.RejectAsync();
+            }
+        }
     }
 }
