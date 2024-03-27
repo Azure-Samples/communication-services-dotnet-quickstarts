@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
 using Azure.Communication.Chat;
 using Azure.Communication.Identity;
 using Azure.Communication.Calling.WindowsClient;
@@ -13,6 +10,10 @@ using Azure;
 using Azure.Core;
 using Windows.UI.Popups;
 using Windows.UI.Core;
+using System.Text.RegularExpressions;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -110,7 +111,7 @@ namespace ChatTeamsInteropQuickStart
         {
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                CallStatusTextBlock.Text = call_.State.ToString();
+                CallStatusTextBlock.Text = "Call state : " + call_.State.ToString();
             });
 
             switch (call_.State)
@@ -147,20 +148,20 @@ namespace ChatTeamsInteropQuickStart
                     {
                         CommunicationUserIdentifier currentUser = new(user_Id_);
                         AsyncPageable<ChatMessage> allMessages = chatThreadClient.GetMessagesAsync();
-                        SortedDictionary<long, string> messageList = new();
+                        SortedDictionary<long, string> messageList = [];
                         int textMessages = 0;
-                        string userPrefix;
                         await foreach (ChatMessage message in allMessages)
                         {
                             if (message.Type == ChatMessageType.Html || message.Type == ChatMessageType.Text)
                             {
                                 textMessages++;
-                                userPrefix = message.Sender.Equals(currentUser) ? "[you]:" : "";
-                                messageList.Add(long.Parse(message.SequenceId), $"{userPrefix}{StripHtml(message.Content.Message)}");
+                                var userPrefix = message.Sender.Equals(currentUser) ? "[you]:" : "";
+                                var strippedMessage = StripHtml(message.Content.Message);
+                                messageList.Add(long.Parse(message.SequenceId), $"{userPrefix}{strippedMessage}");
                             }
                         }
 
-                        //Update UI just when there are new messages
+                        // Update UI just when there are new messages
                         if (textMessages > previousTextMessages)
                         {
                             previousTextMessages = textMessages;
@@ -302,9 +303,8 @@ namespace ChatTeamsInteropQuickStart
         /// <returns></returns>
         private string StripHtml(string html)
         {
-            List<string> stripList = new() { "<p>", "</p>", "<i>", "</i>", "<strong>", "</strong>", "<em>", "</em>" };
-            stripList.ForEach(x => { html = html.Replace(x, string.Empty); });
-            return html;
+            var tagsExpression = new Regex(@"</?.+?>");
+            return tagsExpression.Replace(html, " ");
         }
 
         #endregion
