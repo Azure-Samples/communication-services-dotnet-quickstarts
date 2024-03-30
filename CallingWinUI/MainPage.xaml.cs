@@ -445,13 +445,13 @@ namespace CallingQuickstart
             {
                 DisplayName = $"{Environment.MachineName}/{Environment.UserName}",
                 //https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv
-                EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
+                EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" },
+                PushNotificationTtl = TimeSpan.FromSeconds(25*24*60*60) // Extend the push notification ttl to 25 days
             };
 
             try
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
-                //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
             }
