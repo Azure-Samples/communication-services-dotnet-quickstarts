@@ -117,6 +117,41 @@ app.MapGet("/startrecording", () =>
     }
 );
 
+app.MapGet("/startrecordingbyos", (
+    [FromQuery] string call,
+    [FromQuery] string blob
+    ) =>
+    {
+        Console.WriteLine("start recording byos endpoint");
+        Console.WriteLine(call);
+        Console.WriteLine(blob);
+
+        var callLocator = new GroupCallLocator(call);
+        var callRecording = client.GetCallRecording();
+        var recordingOptions = new StartRecordingOptions(callLocator)
+        {
+            ExternalStorage = new BlobStorage(new Uri(blob))
+        };
+        var recording = callRecording.Start(recordingOptions);
+        recordingId=recording.Value.RecordingId;
+        return Results.Ok(recordingId);
+    }
+);
+
+app.MapGet("/stoprecordingbyos", (
+    [FromQuery] string call
+    ) =>
+    {
+        Console.WriteLine("stop recording endpoint");
+
+        var callLocator = new GroupCallLocator(call);
+        var callRecording = client.GetCallRecording();
+        var recordingOptions = new StartRecordingOptions(callLocator);
+        callRecording.Stop(recordingId);
+        return Results.Ok();
+    }
+);
+
 app.MapGet("/stoprecording", () =>
     {
         Console.WriteLine("stop recording endpoint");
