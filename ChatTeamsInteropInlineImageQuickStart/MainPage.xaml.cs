@@ -162,24 +162,12 @@ namespace ChatTeamsInteropInlineImageQuickStart
                         int textMessages = 0;
                         await foreach (ChatMessage message in allMessages)
                         {
-                            // Get message attachments that are of type 'image'
-                            IEnumerable<ChatAttachment> imageAttachments = message.Content.Attachments.Where(x => x.AttachmentType == ChatAttachmentType.Image);
-
-                            // Fetch image and render
-                            var chatAttachmentImageUris = new List<Uri>();
-                            foreach (ChatAttachment imageAttachment in imageAttachments)
+                            // Get message attachments that are of type 'file'
+                            IEnumerable<ChatAttachment> fileAttachments = message.Content.Attachments.Where(x => x.AttachmentType == ChatAttachmentType.File);
+                            var chatAttachmentFileUris = new List<Uri>();
+                            foreach (var file in fileAttachments) 
                             {
-                                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", communicationTokenCredential.GetToken().Token);
-                                var response = await client.GetAsync(imageAttachment.PreviewUri);
-                                var randomAccessStream = await response.Content.ReadAsStreamAsync();
-                                await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
-                                {
-                                    var bitmapImage = new BitmapImage();
-                                    await bitmapImage.SetSourceAsync(randomAccessStream.AsRandomAccessStream());
-                                    InlineImage.Source = bitmapImage;
-                                });
-
-                                chatAttachmentImageUris.Add(imageAttachment.PreviewUri);
+                                chatAttachmentFileUris.Add(file.PreviewUri);
                             }
 
                             // Build message list
@@ -188,7 +176,10 @@ namespace ChatTeamsInteropInlineImageQuickStart
                                 textMessages++;
                                 var userPrefix = message.Sender.Equals(currentUser) ? "[you]:" : "";
                                 var strippedMessage = StripHtml(message.Content.Message);
-                                var chatAttachments = chatAttachmentImageUris.Count > 0 ? "[Attachments]:\n" + string.Join(",\n", chatAttachmentImageUris) : "";
+                             
+
+
+                                var chatAttachments = fileAttachments.Count() > 0 ? "[Attachments]:\n" + string.Join(",\n", chatAttachmentFileUris) : "";
                                 messageList.Add(long.Parse(message.SequenceId), $"{userPrefix}{strippedMessage}\n{chatAttachments}");
                             }
                         }
