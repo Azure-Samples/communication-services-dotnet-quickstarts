@@ -44,7 +44,26 @@ Open the Program.cs file to configure the following settings
 
 ### Setting up azure event grid for ACS  events
 
-##  TODO  ##
+1. Azure DevTunnel: Ensure your AzureDevTunnel URI is active and points to the correct port of your localhost application
+2. Run `dotnet run` to build and run the incoming-call-recording tool
+3. Register an EventGrid Webhook for the IncomingCall Event that points to your DevTunnel URI. Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
+   
+   - **Step 1** -> Go to your communication service resource in the Azure portal
+   - **Step 2** -> Left corner you might see the events and click event subsription on the right
+     
+     ![CS_EventCreation](data/step1.png)
+
+   - **Step 3** -> Give the Name under the Subscription Details, and provide the system topic name under Topic Details and select **"Incoming Call" & "Recording File Status Updated"** under Event Types, And select the "Web Hook" from the Endpoint Details section
+     
+   ![CS_EventCreation](data/step2.png)
+
+   - **Step 4** -> Click on Configure an endpoint, provide Subscriber Endpoint to your devtunnel url, and for the events endpoint. ex. **https://<devtunnelurl>/api/events**. And click on the Confirm Selection and Create
+     
+    ![CS_EventCreation](data/step3.png)
+
+   - **Step 5** -> once its created you will be able to see under the events section of the communication service
+   - 
+    ![CS_EventCreation](data/step4.png)
 
 
 ### Run app locally
