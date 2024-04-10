@@ -47,19 +47,20 @@ Open the Program.cs file to configure the following settings
    - **Step 1** -> Go to your communication service resource in the Azure portal
    - **Step 2** -> Left corner you might see the events and click event subsription on the right
      
-     ![CS_EventCreation](data/step1.png)
+        ![CS_EventCreation](data/step1.png)
 
    - **Step 3** -> Give the Name under the Subscription Details, and provide the system topic name under Topic Details and select **"Incoming Call" & "Recording File Status Updated"** under Event Types, And select the "Web Hook" from the Endpoint Details section
      
-   ![CS_EventCreation](data/step2.png)
+      ![CS_EventCreation](data/step2.png)
 
-   - **Step 4** -> Click on Configure an endpoint, provide Subscriber Endpoint to your devtunnel url, and for the events endpoint. ex. **https://<devtunnelurl>/api/events**. And click on the Confirm Selection and Create
+   - **Step 4** -> Click on Configure an endpoint, provide Subscriber Endpoint to your devtunnel url, and for the events endpoint. ex. **https://devtunnelurl/api/events**. And click on the Confirm Selection and Create
      
-    ![CS_EventCreation](data/step3.png)
+       ![CS_EventCreation](data/step3.png)
 
    - **Step 5** -> once its created you will be able to see under the events section of the communication service
-   - 
-    ![CS_EventCreation](data/step4.png)
+     
+     
+       ![CS_EventCreation](data/step4.png)
 
 
 ### Run app locally
