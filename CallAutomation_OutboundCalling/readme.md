@@ -46,9 +46,11 @@ Open the Program.cs file to configure the following settings
 5. `cognitiveServiceEndpoint`: Cognitive Service Endpoint
 6. `targetTeamsUserId`: (Optional) Update field with the Microsoft Teams user Id you would like to add to the call. See [Use Graph API to get Teams user Id](../../../how-tos/call-automation/teams-interop-call-automation.md#step-2-use-the-graph-api-to-get-microsoft-entra-object-id-for-teams-users-and-optionally-check-their-presence).  Uncomment the following code snippet
    ```
-   client.getCallConnection(callConnectionId).addParticipant(
+   await callConnection.AddParticipantAsync(
     new CallInvite(new MicrosoftTeamsUserIdentifier(targetTeamsUserId))
-        .setSourceDisplayName("Jack (Contoso Tech Support)"));
+    {
+        SourceDisplayName = "Jack (Contoso Tech Support)"
+    });
    ```
 
 ### Run app locally
