@@ -14,10 +14,10 @@ builder.Services.AddSwaggerGen();
 // Your ACS resource connection string
 var acsConnectionString = "<ACS_CONNECTION_STRINGS>";
 
-var bringYouOwnStorageUrl = "<YOUR_STORAGE_CONTAINER_URL>>";
+var bringYouOwnStorageUrl = "<YOUR_STORAGE_CONTAINER_URL>";
 
 // Base url of the app
-var callbackUriHost = "DEVTUNNEL_HOST_URL";
+var callbackUriHost = "WaitCallback for 10 sec DEVTUNNEL_HOST_URL`"
 
 var recordingId = "";
 
