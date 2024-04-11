@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Communication.Calling.WindowsClient" Version="1.4.0-beta.1" />
+    <PackageReference Include="Azure.Communication.Calling.WindowsClient" Version="1.6.0" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.2.230313.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.756" />
     <Manifest Include="$(ApplicationManifest)" />
