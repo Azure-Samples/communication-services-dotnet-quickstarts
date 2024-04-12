@@ -29,14 +29,6 @@ This quickstart contains samples for the following tutorials:
 - **src\ChatTeamsInteropInlineImageQuickStart:** Sample code to showcase how you can enable inline image support in a Teams Interoperability Chat.
 - **src\ChatTeamsInteropFileSharingQuickStart:** Sample code to showcase how you can enable file sharing support in a Teams Interoperability Chat.
 
-## Before running sample code
-
-1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
-2. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
-3. Add subscription id to environment variable using below command
-
-setx AZURE_SUBSCRIPTION_ID <AZURE_SUBSCRIPTION_ID>
-
 ## Run Locally
 
 1. Open `ChatTeamsInteropQuickStart.sln` in in Visual Studio
