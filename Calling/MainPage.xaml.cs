@@ -31,6 +31,8 @@ namespace CallingQuickstart
         private BackgroundBlurEffect backgroundBlurVideoEffect = new BackgroundBlurEffect();
         private LocalVideoEffectsFeature localVideoEffectsFeature;
 
+        private IncomingCall incomingCall;
+
         #region Page initialization
         public MainPage()
         {
@@ -272,18 +274,8 @@ namespace CallingQuickstart
 
         private async void OnIncomingCallAsync(object sender, IncomingCallReceivedEventArgs args)
         {
-            var incomingCall = args.IncomingCall;
-
-            var acceptCallOptions = new AcceptCallOptions() { 
-                IncomingVideoOptions = new IncomingVideoOptions()
-                {
-                    StreamKind = VideoStreamKind.RemoteIncoming
-                } 
-            };
-
-            call = await incomingCall?.AcceptAsync(acceptCallOptions);
-            call.StateChanged += OnStateChangedAsync;
-            call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
+            incomingCall = args.IncomingCall;
+            (Application.Current as App).ShowIncomingCallNotification(incomingCall);
         }
 
         private async void OnStateChangedAsync(object sender, PropertyChangedEventArgs args)
@@ -449,13 +441,19 @@ namespace CallingQuickstart
             {
                 DisplayName = $"{Environment.MachineName}/{Environment.UserName}",
                 //https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv
-                EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
+                EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" },
+                PushNotificationTtl = TimeSpan.FromSeconds(25*24*60*60) // Extend the push notification ttl to 25 days
             };
 
             try
             {
                 this.callAgent = await this.callClient.CreateCallAgentAsync(tokenCredential, callAgentOptions);
-                //await this.callAgent.RegisterForPushNotificationAsync(await this.RegisterWNS());
+                
+                if ((Application.Current as App).PNHChannelUri != null)
+                {
+                    await this.callAgent.RegisterForPushNotificationAsync((Application.Current as App).PNHChannelUri.ToString());
+                }
+
                 this.callAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.callAgent.IncomingCallReceived += OnIncomingCallAsync;
             }
@@ -582,5 +580,36 @@ namespace CallingQuickstart
         #endregion
 #endif
 #endregion
+
+        public async Task HandlePushNotificationIncomingCallAsync(string notificationContent)
+        {
+            if (this.callAgent != null)
+            {
+                PushNotificationDetails pnDetails = PushNotificationDetails.Parse(notificationContent);
+                await callAgent.HandlePushNotificationAsync(pnDetails);
+            }
+        }
+
+        public async Task AnswerIncomingCall(string action)
+        {
+            if (action == "accept")
+            {
+                var acceptCallOptions = new AcceptCallOptions()
+                {
+                    IncomingVideoOptions = new IncomingVideoOptions()
+                    {
+                        StreamKind = VideoStreamKind.RemoteIncoming
+                    }
+                };
+
+                call = await incomingCall?.AcceptAsync(acceptCallOptions);
+                call.StateChanged += OnStateChangedAsync;
+                call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
+            }
+            else if (action == "decline")
+            {
+                await incomingCall?.RejectAsync();
+            }
+        }
     }
 }

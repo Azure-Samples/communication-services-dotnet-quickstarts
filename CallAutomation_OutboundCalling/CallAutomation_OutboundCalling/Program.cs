@@ -23,6 +23,9 @@ var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
 // Your cognitive service endpoint
 var cognitiveServiceEndpoint = "<COGNITIVE_SERVICE_ENDPOINT>";
 
+// (Optional) User Id of the target teams user you want to receive the call.
+var targetTeamsUserId = "<TARGET_TEAMS_USER_ID>";
+
 // text to play
 const string SpeechToTextVoice = "en-US-NancyNeural";
 const string MainMenu =
@@ -76,7 +79,14 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         var callMedia = callConnection.GetCallMedia();
 
         if (parsedEvent is CallConnected callConnected)
-        {   
+        {
+            // (Optional) Add a Microsoft Teams user to the call.  Uncomment the below snippet to enable Teams Interop scenario.
+            // await callConnection.AddParticipantAsync(
+            //     new CallInvite(new MicrosoftTeamsUserIdentifier(targetTeamsUserId))
+            //     {
+            //         SourceDisplayName = "Jack (Contoso Tech Support)"
+            //     });
+
             logger.LogInformation("Fetching recognize options...");
 
             // prepare recognize tones

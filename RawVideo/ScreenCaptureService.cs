@@ -10,18 +10,19 @@ using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Graphics.Display;
 using Windows.Graphics.Imaging;
 
-namespace CallingTestApp
+namespace RawVideo
 {
     internal class ScreenCaptureService : CaptureService
     {
-        private GraphicsCaptureItem captureItem;
+        private readonly GraphicsCaptureItem captureItem;
         private Direct3D11CaptureFramePool framePool;
         private CanvasDevice canvasDevice;
         private GraphicsCaptureSession session;
 
-        public ScreenCaptureService(RawOutgoingVideoStream rawOutgoingVideoStream, 
-            GraphicsCaptureItem captureItem) : 
-            base(rawOutgoingVideoStream)
+        public ScreenCaptureService(RawOutgoingVideoStream rawOutgoingVideoStream,
+            RawVideoFrameKind rawVideoFrameKind,
+            GraphicsCaptureItem captureItem) :
+            base(rawOutgoingVideoStream, rawVideoFrameKind)
         {
             this.captureItem = captureItem;
         }
@@ -42,11 +43,11 @@ namespace CallingTestApp
 
         private new async void FrameArrived(Direct3D11CaptureFramePool framePool, object sender)
         {
-            using (Direct3D11CaptureFrame direct3D11VideoFrame = framePool.TryGetNextFrame())
+            using (Direct3D11CaptureFrame frame = framePool.TryGetNextFrame())
             {
-                if (direct3D11VideoFrame != null)
+                if (frame != null)
                 {
-                    IDirect3DSurface surface = direct3D11VideoFrame.Surface;
+                    IDirect3DSurface surface = frame.Surface;
                     SoftwareBitmap bitmap = await SoftwareBitmap.CreateCopyFromSurfaceAsync(surface);
 
                     await SendRawVideoFrame(bitmap);
@@ -56,15 +57,12 @@ namespace CallingTestApp
 
         public void Stop()
         {
-            if (framePool != null)
-            {
-                framePool.FrameArrived -= FrameArrived;
-            }
+            framePool.FrameArrived -= FrameArrived;
 
-            session?.Dispose();
+            session.Dispose();
             session = null;
 
-            framePool?.Dispose();
+            framePool.Dispose();
             framePool = null;
         }
 
@@ -82,7 +80,7 @@ namespace CallingTestApp
                 }
                 catch (Exception ex)
                 {
-                    string msg = ex.Message;
+                    Console.WriteLine(ex.Message);
                 }
             }
 

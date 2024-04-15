@@ -1,4 +1,6 @@
 ﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Navigation;
+using System;
 using System.Diagnostics;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -52,7 +54,7 @@ namespace CallingQuickstart
 
         private void OnClosed(object sender, WindowEventArgs args)
         {
-            // This less-graceful exit is a workaround for: https://github.com/microsoft/microsoft-ui-xaml/issues/7193
+            // This less-graceful exit is a workaround for an internal bug being worked on.
             Process.GetCurrentProcess().Kill();
         }
     }
