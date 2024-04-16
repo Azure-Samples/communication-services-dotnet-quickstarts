@@ -52,11 +52,9 @@ namespace CallingQuickstart
                 EmergencyCallOptions = new EmergencyCallOptions() { CountryCode = "840" }
             };
 
-            var teamsCallAgentOptions = new TeamsCallAgentOptions();
-
             try
             {
-                this.teamsCallAgent = await this.callClient.CreateTeamsCallAgentAsync(teamsTokenCredential, teamsCallAgentOptions);
+                this.teamsCallAgent = await this.callClient.CreateTeamsCallAgentAsync(teamsTokenCredential);
                 this.teamsCallAgent.CallsUpdated += OnCallsUpdatedAsync;
                 this.teamsCallAgent.IncomingCallReceived += OnIncomingCallAsync;
             }
@@ -170,7 +168,7 @@ namespace CallingQuickstart
         {
             var teamsIncomingCall = args.IncomingCall;
 
-            var acceptCallOptions = new AcceptCallOptions()
+            var acceptTeamsCallOptions = new AcceptTeamsCallOptions()
             {
                 IncomingVideoOptions = new IncomingVideoOptions()
                 {
@@ -178,7 +176,7 @@ namespace CallingQuickstart
                 }
             };
 
-            teamsCall = await teamsIncomingCall.AcceptAsync(acceptCallOptions);
+            teamsCall = await teamsIncomingCall.AcceptAsync(acceptTeamsCallOptions);
             teamsCall.StateChanged += OnStateChangedAsync;
             teamsCall.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
         }
@@ -252,22 +250,41 @@ namespace CallingQuickstart
 
         private async Task<TeamsCommunicationCall> JoinTeamsMeetingByLinkWithCteAsync(Uri teamsCallLink)
         {
-            var joinCallOptions = GetJoinCallOptions();
+            var joinTeamsCallOptions = GetJoinTeamsCallOptions();
 
             var teamsMeetingLinkLocator = new TeamsMeetingLinkLocator(teamsCallLink.AbsoluteUri);
-            var call = await teamsCallAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
+            var call = await teamsCallAgent.JoinAsync(teamsMeetingLinkLocator, joinTeamsCallOptions);
             return call;
+        }
+
+        private JoinTeamsCallOptions GetJoinTeamsCallOptions()
+        {
+            return new JoinTeamsCallOptions()
+            {
+                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true },
+                OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
+            };
         }
 
         private StartTeamsCallOptions GetStartTeamsCallOptions()
         {
-            var startCallOptions = new StartTeamsCallOptions()
+            var startTeamsCallOptions = new StartTeamsCallOptions()
             {
-                OutgoingAudioOptions = new OutgoingAudioOptions() { IsMuted = true, Stream = micStream },
+                OutgoingAudioOptions = new OutgoingAudioOptions()
+                {
+                    IsMuted = true,
+                    Stream = micStream,
+                    Filters = new OutgoingAudioFilters()
+                    {
+                        AnalogAutomaticGainControlEnabled = true,
+                        AcousticEchoCancellationEnabled = true,
+                        NoiseSuppressionMode = NoiseSuppressionMode.High
+                    }
+                },
                 OutgoingVideoOptions = new OutgoingVideoOptions() { Streams = new OutgoingVideoStream[] { cameraStream } }
             };
 
-            return startCallOptions;
+            return startTeamsCallOptions;
         }
 
         private async Task<TeamsCommunicationCall> StartCteCallAsync(string callee)
