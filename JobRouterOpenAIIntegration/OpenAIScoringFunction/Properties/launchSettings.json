@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "OpenAIScoringFunction": {
+      "commandName": "Project",
+      "commandLineArgs": "host start --port 7075"
+    }
+  }
+}
