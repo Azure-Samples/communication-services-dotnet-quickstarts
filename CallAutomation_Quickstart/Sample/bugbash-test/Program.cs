@@ -1,15 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
 using Azure.Communication.CallAutomation;
 using Azure.Communication;
 using Azure.Messaging.EventGrid;
-using Azure.Messaging.EventGrid.SystemEvents;
 using Azure.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-const string hostingEndpoint = "<HOSTING_ENDPOINT>";
+const string hostingEndpoint = "https://9ndqr7zn.usw2.devtunnels.ms:5000"; //This is an example, update it if you wish to use features that require it.
 const string acsConnectionString = "<ACS_CONNECTION_STRING>";
 var client = new CallAutomationClient(connectionString: acsConnectionString);
 var eventProcessor = client.GetEventProcessor(); //This will be used for the event processor later on
@@ -24,7 +22,6 @@ app.MapGet("/test", ()=>
     }
 );
 
-
 app.MapPost("/callback", (
     [FromBody] CloudEvent[] cloudEvents) =>
 {
@@ -35,7 +32,7 @@ app.MapPost("/callback", (
 app.MapGet("/startcall", (
     [FromQuery] string acsTarget) =>
     {
-        Console.WriteLine("start call endpoint");
+        Console.WriteLine("start call endpoint hit");
         Console.WriteLine($"starting a new call to user:{acsTarget}");
         CommunicationUserIdentifier targetUser = new CommunicationUserIdentifier(acsTarget);
         var invite = new CallInvite(targetUser);
@@ -53,10 +50,12 @@ app.MapGet("/playmedia", (
         Console.WriteLine($"playing media to user:{acsTarget}");
         var callConnection = client.GetCallConnection(callConnectionId);
         var callMedia = callConnection.GetCallMedia();
-        FileSource fileSource = new FileSource(new System.Uri("https://acstestapp1.azurewebsites.net/audio/bot-hold-music-1.wav"));
+        FileSource fileSource = new FileSource(new Uri("https://acstestapp1.azurewebsites.net/audio/bot-hold-music-1.wav"));
         CommunicationUserIdentifier targetUser = new CommunicationUserIdentifier(acsTarget);
-        var playOptions = new PlayOptions(new List<PlaySource> {fileSource},new List<CommunicationIdentifier> {targetUser});
-        playOptions.Loop=true;
+        var playOptions = new PlayOptions(new List<PlaySource> { fileSource }, new List<CommunicationIdentifier> { targetUser })
+        {
+            Loop = true
+        };
         callMedia.Play(playOptions);
         return Results.Ok();
     }
@@ -118,6 +117,25 @@ app.MapGet("/startrecording", () =>
 );
 
 app.MapGet("/startrecordingbyos", (
+    [FromQuery] string blob
+    ) =>
+    {
+        Console.WriteLine("start recording byos endpoint");
+        Console.WriteLine(blob);
+
+        var callConnection = client.GetCallConnection(callConnectionId);
+        var callLocator = new ServerCallLocator(callConnection.GetCallConnectionProperties().Value.ServerCallId);        var callRecording = client.GetCallRecording();
+        var recordingOptions = new StartRecordingOptions(callLocator)
+        {
+            RecordingStorage = RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri(blob))
+        };
+        var recording = callRecording.Start(recordingOptions);
+        recordingId=recording.Value.RecordingId;
+        return Results.Ok(recordingId);
+    }
+);
+
+app.MapGet("/startrecordingbyosgroup", (
     [FromQuery] string call,
     [FromQuery] string blob
     ) =>
@@ -130,7 +148,7 @@ app.MapGet("/startrecordingbyos", (
         var callRecording = client.GetCallRecording();
         var recordingOptions = new StartRecordingOptions(callLocator)
         {
-            ExternalStorage = new BlobStorage(new Uri(blob))
+            RecordingStorage = RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri(blob))
         };
         var recording = callRecording.Start(recordingOptions);
         recordingId=recording.Value.RecordingId;
@@ -138,29 +156,30 @@ app.MapGet("/startrecordingbyos", (
     }
 );
 
-app.MapGet("/stoprecordingbyos", (
-    [FromQuery] string call
-    ) =>
+app.MapGet("/stoprecording", () =>
     {
         Console.WriteLine("stop recording endpoint");
 
-        var callLocator = new GroupCallLocator(call);
         var callRecording = client.GetCallRecording();
-        var recordingOptions = new StartRecordingOptions(callLocator);
         callRecording.Stop(recordingId);
         return Results.Ok();
     }
 );
 
-app.MapGet("/stoprecording", () =>
+app.MapGet("/pauserecording", () =>
     {
-        Console.WriteLine("stop recording endpoint");
-
-        var callConnection = client.GetCallConnection(callConnectionId);
-        var callLocator = new ServerCallLocator(callConnection.GetCallConnectionProperties().Value.ServerCallId);
+        Console.WriteLine("pause recording endpoint");
         var callRecording = client.GetCallRecording();
-        var recordingOptions = new StartRecordingOptions(callLocator);
-        callRecording.Stop(recordingId);
+        callRecording.Pause(recordingId);
+        return Results.Ok();
+    }
+);
+
+app.MapGet("/resumerecording", () =>
+    {
+        Console.WriteLine("pause recording endpoint");
+        var callRecording = client.GetCallRecording();
+        callRecording.Resume(recordingId);
         return Results.Ok();
     }
 );
@@ -197,7 +216,6 @@ app.MapPost("/filestatus", ([FromBody] EventGridEvent[] eventGridEvents) =>
 app.MapGet("/download", () =>
     {
         Console.WriteLine("download recording endpoint");
-
         var callRecording = client.GetCallRecording();
         callRecording.DownloadTo(new Uri(contentLocation),"testfile.wav");
         return Results.Ok();
@@ -207,7 +225,6 @@ app.MapGet("/download", () =>
 app.MapGet("/delete", () =>
     {
         Console.WriteLine("delete recording endpoint");
-
         var callRecording = client.GetCallRecording();
         callRecording.Delete(new Uri(deleteLocation));
         return Results.Ok();

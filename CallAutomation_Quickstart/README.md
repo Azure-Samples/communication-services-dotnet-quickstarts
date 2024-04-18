@@ -17,113 +17,106 @@ This guide walks through simple call automation scenarios and endpoints.
 - VScode. [Download VScode](https://code.visualstudio.com/).
 - Dev-tunnel. download from the following [Dev-tunnel download](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows).
 
-## Setup dev tunnel
+## Two groups. One for Europe, one for NOAM. (PLEASE SEE DOC FOR THESE LINKS)
+- NOAM acs resource
+- NOAM storage account
+- NOAM blob Container
+- Europe ACS Resource
+- Europe storage Account 
+- Europe blob container
+
+## Setup dev tunnel (Only needed for testing the Optional Actions section)
 - Run `devtunnel user login` and login with your msft account or `devtunnel user login -g` for github.
 - Run `devtunnel create --allow-anonymous`.
 - Run `devtunnel port create -p 5000`.
 - Run `devtunnel host` to begin hosting. Copy the url similar to `https://9ndqr7mn.usw2.devtunnels.ms:5000` that is returned. This will be the hostingEndpoint variable.
 
-## Actions to test (included in guide and sample file)
-- start call
-- start group call
+## GA3 features/pathways to test BYOS
+- Start BYOS recording with groupcall
+- Start BYOS recording with servercall
+- Pause BYOS recording and resume 
+- Same call multiple BYOS Recordings
+
+## Optional Actions to test (included in guide and sample file)
 - play media (audio will not be recorded)
 - play media to all (audio will be recorded)
-- start recording
+- start regular recording
 - download recording
 - delete recording
 - *inbound pstn call
 - *dtmf recognition
 
 
-## Additional actions to test (must create endpoints yourself)
-- pause recording
-- resume recording
-- hang up call
-- transfer call
-- modify start recording settings
-- *modify dtmf timing settings, tones required, and act on one specific tone
-
-## Two ways to test.
-1. Follow the guide and setup the project from scratch, follow test instructions.
-2. Run the sample bugbash-test project.
+## How to test.
+1. Run the sample bugbash-test project.
     - from the sample/bugbash-test folder run `dotnet restore`.
     - update the hostingEndpoint and acsConnectionString variables.
     - run `dotnet run` and follow the test instructions in the guide.
-
-## Setup empty project
-1. Create a folder for our project.
-2. Run `dotnet new web --language c# --name bugbash-testing` in the folder we created to initialize the project.
-3. In the new project folder that was created in step 1 Run `dotnet add package Azure.Communication.CallAutomation -v 1.0.0-alpha.20230526.8`. 
-4. Run `dotnet add package Azure.Messaging.EventGrid` in the new project folder we created to install the event grid package .
-5. Run `dotnet restore` to ensure we can build the required packages.
-    - If you have issues building the correct package, create a new nuget.config file in the project directory and add the following to it.
-        ```
-        <?xml version="1.0" encoding="utf-8"?>
-        <configuration>
-        <packageSources>
-            <clear />
-            <add key="azure-sdk-for-net" value="https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-net/nuget/v3/index.json" />
-        </packageSources>
-        </configuration>
-        ```
-    - Run `dotnet restore` and it should now work
-
-## NOTE after every code change make sure you end the server and restart it. 
-
-## Setup variables and imports that will be reused later on in this sample in the program.cs file
-Update the program.cs file to the following.
-```c#
-using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
-using Azure.Communication.CallAutomation;
-using Azure.Communication;
-using Azure.Messaging.EventGrid;
-using Azure.Messaging.EventGrid.SystemEvents;
-using Azure.Messaging;
-
-var builder = WebApplication.CreateBuilder(args);
-var app = builder.Build();
-
-const string hostingEndpoint = "<HOSTING_ENDPOINT>";
-const string acsConnectionString = "<ACS_CONNECTION_STRING>";
-var client = new CallAutomationClient(connectionString: acsConnectionString);
-var eventProcessor = client.GetEventProcessor(); //This will be used for the event processor later on
-string callConnectionId = "";
-string recordingId = "";
-string contentLocation = "";
-string deleteLocation = "";
-
-app.MapGet("/test", ()=>
-    {
-        Console.WriteLine("test endpoint");
-    }
-);
-
-app.Run();
-```
-
-
 2. In the projectFolder/Properties/launchSettings.json update the http.applicationUrl to have port 5000.
 3. Update the hosting endpoint with our dev tunnel. example `https://9ndqr7mn.usw2.devtunnels.ms:5000`.
 5. From the terminal run `dotnet run` in our project folder".
 6. From cmd run "curl http://localhost:5000/test" and ensure you can see test endpoint being written to the console.  
 
+## Start BYOS recording with a groupcall
+1. Generate a guid for a group call. https://guidgenerator.com/ and note the guid somewhere.
+2. Login with the connection string of your test resrource on this site https://acs-sample-app.azurewebsites.net/ and join the group call with the guid we generated (make sure we unmute)
+3. Start a BYOS Group call by running the following from a cmd prompt `curl "http://localhost:5000/startrecordingbyosgroup?call={GUID}&blob={container}"`
+4. After the recording begins, wait 5-10 seconds. and either stop the recording via this app, or end the call on the websites UI. 
+5. Wait another 5-10 seconds after ending the call, check your storage account and the recording should be there. It will be organzined by `date\callid\{last 8 char of recordingID + Unique guid per recording}`
 
-## This can be used as a dummy callback URL for testing or the eventproccesor 
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
+## Start BYOS recording with a servercall
+1. Login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. 
+2. Run the following from a cmd prompt `curl http://localhost:5000/startcall?acstarget=INSERTACSTARGETUSERHERE` using the acs user you created
+3. On the ACS Test App, you should see the incoming call. (make sure we unmute)
+3. Start a BYOS server call recording by running the following from a cmd prompt `curl "http://localhost:5000/startrecordingbyos?blob={container}"`
+4. After the recording begins, wait 5-10 seconds. and either stop the recording via this app, or end the call on the websites UI. 
+5. Wait another 5-10 seconds after ending the call, check your storage account and the recording should be there. It will be organzined by `date\callid\{last 8 char of recordingID + Unique guid per recording}`
 
+## How to modify settings for start recording
 ```c#
-app.MapPost("/callback", (
-    [FromBody] CloudEvent[] cloudEvents) =>
-{
-    eventProcessor.ProcessEvents(cloudEvents);
-    return Results.Ok();
-});
+app.MapGet("/startrecordingbyosgroup", (
+    [FromQuery] string call,
+    [FromQuery] string blob
+    ) =>
+    {
+        Console.WriteLine("start recording byos endpoint");
+        Console.WriteLine(call);
+        Console.WriteLine(blob);
+
+        var callLocator = new GroupCallLocator(call);
+        var callRecording = client.GetCallRecording();
+        var recordingOptions = new StartRecordingOptions(callLocator)
+        {
+            RecordingStorage = RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri(blob))
+        };
+
+        // Example of modifying start recording options. Play arround with the other values we have in these enums and other options.
+        recordingOptions.RecordingFormat = RecordingFormat.Wav;
+        recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+
+
+        var recording = callRecording.Start(recordingOptions);
+        recordingId=recording.Value.RecordingId;
+        return Results.Ok(recordingId);
+    }
+);
 ```
 
+## Pause BYOS recording and resume 
+1. Follow either servercall or groupcall byos recording steps, but do not end the call.
+2. pause the recording by running the following command `curl http://localhost:5000/pauserecording`
+3. resume the recording by running the following command `curl http://localhost:5000/resumerecording`
+4. Wait 5-10 seconds. and either stop the recording via this app, or end the call on the websites UI. 
+5. Wait another 5-10 seconds after ending the call, check your storage account and the recording should be there. It will be organzined by `date\callid\{last 8 char of recordingID + Unique guid per recording}`
+
+## Same call multiple BYOS Recordings
+1. Follow either servercall or groupcall byos recording steps, but do not end the call.
+2. stop the recording by running the following command `curl http://localhost:5000/stoprecording`
+3. wait 5-10 seconds and start another recording as you did in the previous steps but for the same call (Do not end the call or handup)
+4. Wait 5-10 seconds. and either stop the call via this app, or end the call on the websites UI. 
+5. Wait another 5-10 seconds after ending the call, check your storage account and the recording should be there. It will be organzined by `date\callid\{last 8 char of recordingID + Unique guid per recording}` in this case, you should see two recording folders under the same callid.
 
 ## Create a call to an ACS user 
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/startcall", (
     [FromQuery] string acsTarget) =>
@@ -139,14 +132,13 @@ app.MapGet("/startcall", (
     }
 );
 ```
-2. Login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. 
-3. To test this, run the following form a cmd prompt `curl http://localhost:5000/startcall?acstarget=INSERTACSTARGETUSERHERE` using the acs user you created
-4. On the ACS Test App, you should see the incoming call. 
-5. you can hang up the call now. You can keep this tab and user open for upcoming steps.
+1. Login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. 
+2. To test this, run the following from a cmd prompt `curl http://localhost:5000/startcall?acstarget=INSERTACSTARGETUSERHERE` using the acs user you created
+3. On the ACS Test App, you should see the incoming call. 
+4. you can hang up the call now. You can keep this tab and user open for upcoming steps.
 
 
 ## Playback media to a specific user 
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/playmedia", (
     [FromQuery] string acsTarget) =>
@@ -164,12 +156,10 @@ app.MapGet("/playmedia", (
     }
 );
 ```
-2. redo the previus step, while the call is still active, call this endpoint with `curl http://localhost:5000/playmedia?acstarget=ACSTARGETUSERHERE`
+1. redo the previous step, while the call is still active, call this endpoint with `curl http://localhost:5000/playmedia?acstarget=ACSTARGETUSERHERE`
 you should notice audio will start to play from the call.
 
-
 ## Cancel media playback
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/stopmedia", () =>
     {
@@ -181,12 +171,10 @@ app.MapGet("/stopmedia", () =>
     }
 );
 ```
-2. while the previous call is still active and playing media, call this endpoint with `curl http://localhost:5000/stopmedia`
+1. while the previous call is still active and playing media, call this endpoint with `curl http://localhost:5000/stopmedia`
 you should notice audio will stop playing in the call.
 
-
 ## Create a group call to 2 ACS users 
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/startgroupcall", (
     [FromQuery] string acsTarget) =>
@@ -205,13 +193,12 @@ app.MapGet("/startgroupcall", (
     }
 );
 ```
-2. login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. open a second tab and log in with another user
-3. To test this, run the following form a cmd prompt `curl http://localhost:5000/startgroupcall?acstarget=INSERTACSTARGETUSERHERE,INSERTACSTARGETUSE2RHERE` using the acs users you created
-4. On the ACS Test App, you should see the incoming call on both tabs. 
+1. login with an acs user on this site https://acs-sample-app.azurewebsites.net/ with the connection string of the resource we are testing. open a second tab and log in with another user
+2. To test this, run the following form a cmd prompt `curl http://localhost:5000/startgroupcall?acstarget=INSERTACSTARGETUSERHERE,INSERTACSTARGETUSE2RHERE` using the acs users you created
+3. On the ACS Test App, you should see the incoming call on both tabs. 
 
 
 ## Playback media to all users
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/playmediatoall", () =>
     {
@@ -227,11 +214,10 @@ app.MapGet("/playmediatoall", () =>
     }
 );
 ```
-2. To test this, run the following form a cmd prompt `curl http://localhost:5000/playmediatoall`
+1. To test this, run the following form a cmd prompt `curl http://localhost:5000/playmediatoall`
 
 
 ## Start recording
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/startrecording", () =>
     {
@@ -247,29 +233,23 @@ app.MapGet("/startrecording", () =>
     }
 );
 ```
-2. To test this, after you have started a call, run the following form a cmd prompt `curl http://localhost:5000/startrecording`
+1. To test this, after you have started a call, run the following form a cmd prompt `curl http://localhost:5000/startrecording`
 
 
 ## stop recording
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/stoprecording", () =>
     {
         Console.WriteLine("stop recording endpoint");
-
-        var callConnection = client.GetCallConnection(callConnectionId);
-        var callLocator = new ServerCallLocator(callConnection.GetCallConnectionProperties().Value.ServerCallId);
         var callRecording = client.GetCallRecording();
-        var recordingOptions = new StartRecordingOptions(callLocator);
         callRecording.Stop(recordingId);
         return Results.Ok();
     }
 );
 ```
-2. To test this, after you have started a recording, run the following form a cmd prompt `curl http://localhost:5000/stoprecording`
+1. To test this, after you have started a recording, run the following form a cmd prompt `curl http://localhost:5000/stoprecording`
 
 ## handle file status updated event (get notified when call recording file is ready for download)
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapPost("/filestatus", ([FromBody] EventGridEvent[] eventGridEvents) =>
 {
@@ -300,7 +280,7 @@ app.MapPost("/filestatus", ([FromBody] EventGridEvent[] eventGridEvents) =>
     return Results.Ok();
 });
 ```
-2. First we need to register an event handler with our acs resource. 
+1. First we need to register an event handler with our acs resource. 
     - go to your acs resource in portal https://portal.azure.com/signin/index/
     - click on events from the left side bar
     - click + event subscription to create a new subscription
@@ -314,16 +294,11 @@ app.MapPost("/filestatus", ([FromBody] EventGridEvent[] eventGridEvents) =>
 
 4. after we get this, we are setting the content location and delete location for testing with out other endpoints. 
 
-
-
-
 ## Download recording
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/download", () =>
     {
         Console.WriteLine("download recording endpoint");
-
         var callRecording = client.GetCallRecording();
         callRecording.DownloadTo(new Uri(contentLocation),"testfile.wav");
         return Results.Ok();
@@ -331,16 +306,14 @@ app.MapGet("/download", () =>
 );
 ```
 1. the previous endpoint has been setup so after we get the filestatus updated event, we update the content location. 
-2. to delete the file, you only need to call `curl http://localhost:5000/download`
+2. to download the file, you only need to call `curl http://localhost:5000/download`
 
 
 ## Delete recording
-1. insert the following code snippets above `app.Run()`
 ```c#
 app.MapGet("/delete", () =>
     {
         Console.WriteLine("delete recording endpoint");
-
         var callRecording = client.GetCallRecording();
         callRecording.Delete(new Uri(deleteLocation));
         return Results.Ok();
@@ -348,12 +321,9 @@ app.MapGet("/delete", () =>
 );
 ```
 1. the previous endpoint has been setup so after we get the filestatus updated event, we update the delete location. 
-2. to download the file, you only need to call `curl http://localhost:5000/delete`
-
-
+2. to delete the file, you only need to call `curl http://localhost:5000/delete`
 
 ## **Inbound pstn call
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapPost("/incomingcall", async (
     [FromBody] Azure.Messaging.EventGrid.EventGridEvent[] eventGridEvents) =>
@@ -383,7 +353,7 @@ app.MapPost("/incomingcall", async (
     return Results.Ok();
 });
 ```
-2. First we need to register an event handler with our acs resource. 
+1. First we need to register an event handler with our acs resource. 
     - go to your acs resource in portal https://portal.azure.com/signin/index/
     - click on events from the left side bar
     - click event subscription to create a new subscription
@@ -395,7 +365,6 @@ app.MapPost("/incomingcall", async (
 
 
 ## **Dtmf recogntion
-1. insert the following code snippets above `app.Run()`, rerun the server, and end existing calls. 
 ```c#
 app.MapGet("/recognize", async () =>
     {
