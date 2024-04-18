@@ -25,6 +25,10 @@ This guide walks through simple call automation scenarios and endpoints.
 - Europe storage Account 
 - Europe blob container
 
+## Optionally, if you would like to test on your own resource, you can follow this guide to attach a storage account to your own test resoruce.
+- You need an acs resource, and a storage account under the same subscription to do this. 
+- https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/call-automation/call-recording/bring-your-own-storage?pivots=programming-language-csharp#pre-requisite-setting-up-managed-identity-and-rbac-role-assignments
+
 ## Setup dev tunnel (Only needed for testing the Optional Actions section)
 - Run `devtunnel user login` and login with your msft account or `devtunnel user login -g` for github.
 - Run `devtunnel create --allow-anonymous`.
