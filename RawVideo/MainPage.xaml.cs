@@ -22,13 +22,11 @@ namespace RawVideo
         private int videoDeviceInfoListIndex = -1;
         private int cameraListIndex = -1;
         private int displayListIndex = -1;
-        private int videoFormatListIndex = -1;
 
         // App
         private IReadOnlyList<VideoDeviceDetails> videoDeviceInfoList;
-        private List<MediaFrameSourceBundle> cameraList;
+        private List<Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo>> cameraList;
         private List<GraphicsCaptureItem> displayList;
-        private List<VideoFormatBundle> videoFormatList;
         private List<VideoStreamKind> outgoingVideoStreamKindList;
         private List<VideoStreamKind> incomingVideoStreamKindList;
         private List<RawVideoFrameKind> rawVideoFrameKindList;
@@ -70,8 +68,6 @@ namespace RawVideo
             {
                 tokenTextBox.Text = savedToken.ToString();
             }
-
-            tokenTextBox.Text = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNUVCMzFEMzBBMjBEQkRBNTMxODU2MkM4QTM2RDFCMzIyMkE2MTkiLCJ4NXQiOiJZRjZ6SFRDaURiMmxNWVZpeUtOdEd6SWlwaGsiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmVmZDNjMjI5LWIyMTItNDM3YS05NDVkLTkyMzI2ZjEzYTFiZV8wMDAwMDAxZi1hZDkxLTA0YTgtZWVkYy00NDQ4MjIwMGMzNDIiLCJzY3AiOjE3OTIsImNzaSI6IjE3MTM5MjE1NDgiLCJleHAiOjE3MTQwMDc5NDgsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6InZvaXAiLCJyZXNvdXJjZUlkIjoiZWZkM2MyMjktYjIxMi00MzdhLTk0NWQtOTIzMjZmMTNhMWJlIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTcxMzkyMTU0OH0.oJofuKlboMdVG3DGwz2n_IsEKdhsI42vXBFAJ0Xe-3pJYvybE17GapMVt8Hranjx1JQ-qYdH5612rf0IPfkq3HEuwe3vOUqwhLXJ5835t5HLtXpW-2m5cHk19LY6wxBIveu0Ej28jVuXndfHJi8FfSBN0dj2WaZEnQzxgUY-DWod0jZHNTjGgfkHY3tytU0c7SjMhGNeRKWN6T_isHW-l0ivcknYIG2_KuZ5C7dKB1ycJnmUMdlQeBuAEAKFeXdhpjfiM7_5Bqd_u0TXsofxWKw9LMjTVqrE3fDbzLd2lHIDlJRs_B43caP3_ivyaQvRmGu71YYwevhs8AshQChBVA";
         }
 
         private async void InitResources()
@@ -114,10 +110,7 @@ namespace RawVideo
                 return;
             }
 
-            videoDeviceInfoList = deviceManager.Cameras
-                .OrderBy(item => item.Name)
-                .ToList();
-
+            videoDeviceInfoList = deviceManager.Cameras.OrderBy(item => item.Name).ToList();
             foreach (VideoDeviceDetails item in videoDeviceInfoList)
             {
                 videoDeviceInfoComboBox.Items.Add(item.Name);
@@ -129,9 +122,9 @@ namespace RawVideo
             }
 
             cameraList = await CameraCaptureService.GetCameraListAsync();
-            foreach (MediaFrameSourceBundle item in cameraList)
+            foreach (Tuple<MediaFrameSourceGroup, MediaFrameSourceInfo> item in cameraList)
             {
-                cameraComboBox.Items.Add(item.Info.DeviceInformation.Name);
+                cameraComboBox.Items.Add(item.Item2.DeviceInformation.Name);
             }
 
             if (cameraList.Count > 0)
@@ -163,8 +156,6 @@ namespace RawVideo
             {
                 meetingLinkTextBox.Text = savedMeetingLink.ToString();
             }
-
-            meetingLinkTextBox.Text = "https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZTNlM2M4ZDUtOGI1Zi00YmQ3LWJkMGUtM2E2OTY3ZTdmZjYx%40thread.v2/0?context=%7b%22Tid%22%3a%2272f988bf-86f1-41af-91ab-2d7cd011db47%22%2c%22Oid%22%3a%22744e8f01-fbf6-40b3-b594-00792ff4276e%22%7d";
         }
 
         private async void GetPermissions(object sender, RoutedEventArgs args)
@@ -331,14 +322,17 @@ namespace RawVideo
             switch (outgoingVideoStreamKind)
             {
                 case VideoStreamKind.VirtualOutgoing:
-                    VideoFormatBundle bundle = videoFormatList[videoFormatListIndex];
-                    format.Width = w = bundle.Size.Width;
-                    format.Height = h = bundle.Size.Height;
+                    format.Resolution = VideoStreamResolution.P360;
+                    w = format.Width;
+                    h = format.Height;
                     break;
                 case VideoStreamKind.ScreenShareOutgoing:
                     GraphicsCaptureItem display = displayList[displayListIndex];
-                    format.Width = w = display.Size.Width;
-                    format.Height = h = display.Size.Height;
+                    w = display.Size.Width;
+                    h = display.Size.Height;
+
+                    format.Width = w;
+                    format.Height = h;
                     break;
             }
 
@@ -586,8 +580,6 @@ namespace RawVideo
         {
             if (cameraCaptureService == null)
             {
-                cameraList[cameraListIndex].Format = videoFormatList[videoFormatListIndex].Format;
-
                 cameraCaptureService = new CameraCaptureService(virtualOutgoingVideoStream,
                     outgoingVideoFrameKind,
                     cameraList[cameraListIndex]);
@@ -784,8 +776,6 @@ namespace RawVideo
                     cameraComboBox.Visibility = Visibility.Collapsed;
                     displayComboBox.Visibility = Visibility.Collapsed;
 
-                    outgoingVideoFormatComboBox.Visibility = Visibility.Collapsed;
-
                     outgoingVideoStreamKindComboBox.Width = 500;
                     outgoingRawVideoFrameKindComboBox.Visibility = Visibility.Collapsed;
                     break;
@@ -794,8 +784,6 @@ namespace RawVideo
                     cameraComboBox.Visibility = Visibility.Visible;
                     displayComboBox.Visibility = Visibility.Collapsed;
 
-                    outgoingVideoFormatComboBox.Visibility = Visibility.Visible;
-
                     outgoingVideoStreamKindComboBox.Width = 290;
                     outgoingRawVideoFrameKindComboBox.Visibility = Visibility.Visible;
                     break;
@@ -803,8 +791,6 @@ namespace RawVideo
                     videoDeviceInfoComboBox.Visibility = Visibility.Collapsed;
                     cameraComboBox.Visibility = Visibility.Collapsed;
                     displayComboBox.Visibility = Visibility.Visible;
-
-                    outgoingVideoFormatComboBox.Visibility = Visibility.Collapsed;
 
                     outgoingVideoStreamKindComboBox.Width = 290;
                     outgoingRawVideoFrameKindComboBox.Visibility = Visibility.Visible;
@@ -817,25 +803,9 @@ namespace RawVideo
             videoDeviceInfoListIndex = videoDeviceInfoComboBox.SelectedIndex;
         }
 
-        private async void CameraSelected(object sender, SelectionChangedEventArgs args)
+        private void CameraSelected(object sender, SelectionChangedEventArgs args)
         {
             cameraListIndex = cameraComboBox.SelectedIndex;
-            videoFormatListIndex = -1;
-            outgoingVideoFormatComboBox.Items.Clear();
-
-            videoFormatList = await CameraCaptureService.GetSupportedVideoFormats(
-                cameraList[cameraListIndex]);
-
-            foreach (VideoFormatBundle bundle in videoFormatList)
-            {
-                outgoingVideoFormatComboBox.Items.Add(
-                    string.Format("{0}x{1}", bundle.Size.Width, bundle.Size.Height));
-            }
-
-            if (videoFormatList.Count > 0)
-            {
-                outgoingVideoFormatComboBox.SelectedIndex = 0;
-            }
         }
 
         private void DisplaySelected(object sender, SelectionChangedEventArgs args)
@@ -845,19 +815,12 @@ namespace RawVideo
 
         private void IncomingRawVideoFrameKindSelected(object sender, SelectionChangedEventArgs args)
         {
-            incomingVideoFrameKind = 
-                rawVideoFrameKindList[incomingRawVideoFrameKindComboBox.SelectedIndex];
+            incomingVideoFrameKind = rawVideoFrameKindList[incomingRawVideoFrameKindComboBox.SelectedIndex];
         }
 
         private void OutgoingRawVideoFrameKindSelected(object sender, SelectionChangedEventArgs args)
         {
-            outgoingVideoFrameKind = 
-                rawVideoFrameKindList[outgoingRawVideoFrameKindComboBox.SelectedIndex];
-        }
-
-        private void OutgoingVideoFormatSelected(object sender, SelectionChangedEventArgs e)
-        {
-            videoFormatListIndex = outgoingVideoFormatComboBox.SelectedIndex;
+            outgoingVideoFrameKind = rawVideoFrameKindList[outgoingRawVideoFrameKindComboBox.SelectedIndex];
         }
     }
 }
