@@ -11,24 +11,25 @@ namespace RawVideo
     internal abstract class CaptureService
     {
         public event EventHandler<RawVideoFrame> FrameArrived;
-        protected readonly RawOutgoingVideoStream rawOutgoingVideoStream;
+        protected readonly RawOutgoingVideoStream stream;
         private readonly RawVideoFrameKind rawVideoFrameKind;
 
-        protected CaptureService(RawOutgoingVideoStream rawOutgoingVideoStream, RawVideoFrameKind rawVideoFrameKind)
+        protected CaptureService(RawOutgoingVideoStream stream, RawVideoFrameKind rawVideoFrameKind)
         {
-            this.rawOutgoingVideoStream = rawOutgoingVideoStream;
+            this.stream = stream;
             this.rawVideoFrameKind = rawVideoFrameKind;
         }
 
         protected async Task SendRawVideoFrame(SoftwareBitmap bitmap)
         {
-            if (bitmap != null && CanSendRawVideoFrames())
+            var format = stream.Format;
+            if (bitmap != null && format != null && CanSendRawVideoFrames())
             {
                 try
                 {
-                    RawVideoFrame frame = ConvertSoftwareBitmapToRawVideoFrame(bitmap);
+                    RawVideoFrame frame = ConvertSoftwareBitmapToRawVideoFrame(bitmap, format);
 
-                    await rawOutgoingVideoStream.SendRawVideoFrameAsync(frame);
+                    await stream.SendRawVideoFrameAsync(frame);
 
                     FrameArrived?.Invoke(this, frame);
                 }
@@ -39,7 +40,9 @@ namespace RawVideo
             }
         }
 
-        private unsafe RawVideoFrame ConvertSoftwareBitmapToRawVideoFrame(SoftwareBitmap bitmap)
+        private unsafe RawVideoFrame ConvertSoftwareBitmapToRawVideoFrame(
+            SoftwareBitmap bitmap, 
+            VideoStreamFormat format)
         {
             bitmap = SoftwareBitmap.Convert(bitmap, BitmapPixelFormat.Rgba8);
 
@@ -59,21 +62,22 @@ namespace RawVideo
             {
                 case RawVideoFrameKind.Buffer:
                     MemoryBuffer buffer = Buffer.CreateMemoryBufferOverIBuffer(bitmapBuffer);
+
                     frame = new RawVideoFrameBuffer()
                     {
                         Buffers = new MemoryBuffer[] { buffer },
-                        StreamFormat = rawOutgoingVideoStream.Format
+                        StreamFormat = format
                     };
 
                     break;
                 case RawVideoFrameKind.Texture:
-                    var timeSpan = new TimeSpan(rawOutgoingVideoStream.TimestampInTicks);
+                    var timeSpan = new TimeSpan(stream.TimestampInTicks);
                     var sample = MediaStreamSample.CreateFromBuffer(bitmapBuffer, timeSpan);
 
                     frame = new RawVideoFrameTexture()
                     {
                         Texture = sample,
-                        StreamFormat = rawOutgoingVideoStream.Format
+                        StreamFormat = stream.Format
                     };
 
                     break;
@@ -84,9 +88,7 @@ namespace RawVideo
 
         private bool CanSendRawVideoFrames()
         {
-            return rawOutgoingVideoStream != null &&
-                    rawOutgoingVideoStream.Format != null &&
-                    rawOutgoingVideoStream.State == VideoStreamState.Started;
+            return stream != null && stream.State == VideoStreamState.Started;
         }
     }
 }

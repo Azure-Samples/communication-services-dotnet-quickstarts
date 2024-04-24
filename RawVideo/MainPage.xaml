@@ -23,11 +23,12 @@
                                 </VisualStateGroup>
                             </VisualStateManager.VisualStateGroups>
                             <ContentPresenter
-                                Width="500"
+                                Width="Auto"
                                 Height="50"
                                 FontSize="25"
                                 Background="White"
                                 Foreground="Black"
+                                Padding="20,0,20,0"
                                 />
                         </Grid>
                     </ControlTemplate>
@@ -215,9 +216,8 @@
                     </ComboBox>
                 </StackPanel>
 
-
                 <StackPanel
-                    Width="500"
+                    Width="Auto"
                     Orientation="Horizontal"
                     >
                     <ComboBox
@@ -243,6 +243,22 @@
                         SelectionChanged="OutgoingVideoStreamKindSelected"
                         Style="{StaticResource ComboBoxStyle}"
                         ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                        >
+                        <ComboBox.Resources>
+                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
+                            <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="Black"/>
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Black"/>
+                        </ComboBox.Resources>
+                    </ComboBox>
+
+                    <ComboBox
+                        Width="200"
+                        x:Name="outgoingVideoFormatComboBox"
+                        PlaceholderText="OutgoingVideoFormat"
+                        SelectionChanged="OutgoingVideoFormatSelected"
+                        Style="{StaticResource ComboBoxStyle}"
+                        ItemContainerStyle="{StaticResource ComboBoxItemStyle}"
+                        Margin="10,10,0,0"
                         >
                         <ComboBox.Resources>
                             <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="white"/>
@@ -298,34 +314,33 @@
                 </ComboBox>
             </StackPanel>
 
-            <RelativePanel
+            <StackPanel
                 x:Name="videoContainer"
-                Width="640"
-                Height="360"
                 Margin="0,10,0,0"
                 Visibility="Collapsed"
+                Orientation="Vertical"
                 >
                 <RelativePanel
                     x:Name="incomingVideoContainer"
-                    Width="640"
-                    Height="360"
+                    Width="480"
+                    Height="270"
                     BorderBrush="Black"
                     BorderThickness="2"
                     CornerRadius="8"
+                    Margin="0,0,0,10"
                     >
                 </RelativePanel>
 
                 <RelativePanel
                     x:Name="outgoingVideoContainer"
-                    Width="224"
-                    Height="108"
-                    Margin="10,10,0,0"
+                    Width="480"
+                    Height="270"
                     BorderBrush="Black"
                     BorderThickness="2"
                     CornerRadius="8"
                     >
                 </RelativePanel>
-            </RelativePanel>
+            </StackPanel>
 
             <StackPanel
                 Width="Auto"
@@ -334,7 +349,7 @@
                 Spacing="10"
                 Background="White"
                 HorizontalAlignment="Center"
-                    Margin="0,10,0,0"
+                Margin="0,10,0,0"
                 >
                 <Button
                     x:Name="startCallButton"
