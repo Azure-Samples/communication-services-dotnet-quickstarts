@@ -37,7 +37,6 @@
         </Grid>
         <StackPanel Grid.Row="3" Orientation="Vertical" Grid.RowSpan="2">
             <StackPanel Orientation="Horizontal" Margin="10">
-                <TextBlock VerticalAlignment="Center">Call Method:</TextBlock>
                 <TextBlock VerticalAlignment="Center">Cameras:</TextBlock>
                 <ComboBox x:Name="CameraList" HorizontalAlignment="Left" Grid.Column="0" DisplayMemberPath="Name" SelectionChanged="CameraList_SelectionChanged" Margin="10"/>
             </StackPanel>

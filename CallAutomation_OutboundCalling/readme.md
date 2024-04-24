@@ -18,7 +18,8 @@ In this quickstart, we cover how you can use Call Automation SDK to make an outb
 - Create Azure AI Multi Service resource. For details, see [Create an Azure AI Multi service](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account).
 - Create and host a Azure Dev Tunnel. Instructions [here](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started)
 - [.NET7 Framework](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (Make sure to install version that corresponds with your visual studio instance, 32 vs 64 bit)
-
+- (Optional) A Microsoft Teams user with a phone license that is `voice` enabled. Teams phone license is required to add Teams users to the call. Learn more about Teams licenses [here](https://www.microsoft.com/microsoft-teams/compare-microsoft-teams-bundle-options).  Learn about enabling phone system with `voice` [here](https://learn.microsoft.com/microsoftteams/setting-up-your-phone-system).   You also need to complete the prerequisite step [Authorization for your Azure Communication Services Resource](https://learn.microsoft.com/azure/communication-services/how-tos/call-automation/teams-interop-call-automation?pivots=programming-language-javascript#step-1-authorization-for-your-azure-communication-services-resource-to-enable-calling-to-microsoft-teams-users) to enable calling to Microsoft Teams users.
+- 
 ## Before running the sample for the first time
 
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you would like to clone the sample to.
@@ -43,6 +44,14 @@ Open the Program.cs file to configure the following settings
 3. `targetPhonenumber`: Target phone number to add in the call. For e.g. "+1425XXXAAAA"
 4. `callbackUriHost`: Base url of the app. (For local development replace the dev tunnel url)
 5. `cognitiveServiceEndpoint`: Cognitive Service Endpoint
+6. `targetTeamsUserId`: (Optional) Update field with the Microsoft Teams user Id you would like to add to the call. See [Use Graph API to get Teams user Id](../../../how-tos/call-automation/teams-interop-call-automation.md#step-2-use-the-graph-api-to-get-microsoft-entra-object-id-for-teams-users-and-optionally-check-their-presence).  Uncomment the following code snippet
+   ```
+   await callConnection.AddParticipantAsync(
+    new CallInvite(new MicrosoftTeamsUserIdentifier(targetTeamsUserId))
+    {
+        SourceDisplayName = "Jack (Contoso Tech Support)"
+    });
+   ```
 
 ### Run app locally
 
