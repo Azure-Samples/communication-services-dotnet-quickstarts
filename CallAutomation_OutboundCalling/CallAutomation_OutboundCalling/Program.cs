@@ -3,25 +3,27 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Your ACS resource connection string
-var acsConnectionString = "<ACS_CONNECTION_STRING>";
+var acsConnectionString = "";
 
 // Your ACS resource phone number will act as source number to start outbound call
-var acsPhonenumber = "<ACS_PHONE_NUMBER>";
+var acsPhonenumber = "";
 
 // Target phone number you want to receive the call.
-var targetPhonenumber = "<TARGET_PHONE_NUMBER>";
+var targetPhonenumber = "";
 
 // Base url of the app
-var callbackUriHost = "<CALLBACK_URI_HOST_WITH_PROTOCOL>";
+var callbackUriHost = "";
 
 // Your cognitive service endpoint
-var cognitiveServiceEndpoint = "<COGNITIVE_SERVICE_ENDPOINT>";
+var cognitiveServiceEndpoint = "";
 
 // (Optional) User Id of the target teams user you want to receive the call.
 var targetTeamsUserId = "<TARGET_TEAMS_USER_ID>";
@@ -45,7 +47,7 @@ const string InvalidAudio = "I’m sorry, I didn’t understand your response, pleas
 const string ConfirmChoiceLabel = "Confirm";
 const string RetryContext = "retry";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
+CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("https://x-pma-uswe-04.plat.skype.com:6448"), acsConnectionString);
 var app = builder.Build();
 
 app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
@@ -54,9 +56,18 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     CallInvite callInvite = new CallInvite(target, caller);
+
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+        new Uri("wss://e9d8-2409-40c2-4016-dbfe-c1d8-5d16-594b-61ce.ngrok-free.app"),
+        MediaStreamingTransport.Websocket,
+        MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Mixed,
+        false);
+
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) }
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
+        MediaStreamingOptions = mediaStreamingOptions
     };
 
     CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
@@ -87,6 +98,16 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             //         SourceDisplayName = "Jack (Contoso Tech Support)"
             //     });
 
+            StartMediaStreamingOptions options = new StartMediaStreamingOptions()
+            {
+                OperationCallbackUrl = "https://dggfkdlb-8080.inc1.devtunnels.ms",
+                OperationContext = "startMediaStreamingContext"
+            };
+
+            callMedia.StartMediaStreaming(options);
+
+            //await callMedia.StartMediaStreamingAsync(options);
+
             logger.LogInformation("Fetching recognize options...");
 
             // prepare recognize tones
@@ -99,6 +120,15 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         }
         else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
+            StopMediaStreamingOptions options = new StopMediaStreamingOptions()
+            {
+                OperationCallbackUrl = "https://dggfkdlb-8080.inc1.devtunnels.ms"
+            };
+
+            callMedia.StopMediaStreaming(options);
+
+            //await callMedia.StopMediaStreamingAsync(options);
+
             var choiceResult = recognizeCompleted.RecognizeResult as ChoiceResult;
             var labelDetected = choiceResult?.Label;
             var phraseDetected = choiceResult?.RecognizedPhrase;
@@ -133,6 +163,28 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
             await callMedia.StartRecognizingAsync(recognizeOptions);
+        }
+        else if ((parsedEvent is MediaStreamingStarted mediaStreamingStarted))
+        {
+            logger.LogInformation("************"+JsonSerializer.Serialize(mediaStreamingStarted));
+
+            logger.LogInformation("MediaStreaming started");
+            logger.LogInformation(mediaStreamingStarted.OperationContext);
+            //logger.LogInformation(string.Format("Media Streaming status:-{0}", mediaStreamingStarted.MediaStreamingUpdateResult.MediaStreamingStatus));
+            //logger.LogInformation(string.Format("Media Streaming status details:-{0}", mediaStreamingStarted.MediaStreamingUpdateResult.MediaStreamingStatusDetails));
+            //logger.LogInformation(string.Format("Media Streaming content type:-{0}", mediaStreamingStarted.MediaStreamingUpdateResult.ContentType));
+        }
+        else if ((parsedEvent is MediaStreamingStopped mediaStreamingStopped))
+        {
+            logger.LogInformation("MediaStreaming stopped");
+            logger.LogInformation(mediaStreamingStopped.OperationContext);
+            //logger.LogInformation(string.Format("Media Streaming status:-{0}", mediaStreamingStopped.MediaStreamingUpdateResult.MediaStreamingStatus));
+            //logger.LogInformation(string.Format("Media Streaming status details:-{0}", mediaStreamingStopped.MediaStreamingUpdateResult.MediaStreamingStatusDetails));
+            //logger.LogInformation(string.Format("Media Streaming content type:-{0}", mediaStreamingStopped.MediaStreamingUpdateResult.ContentType));
+        }
+        else if ((parsedEvent is MediaStreamingFailed mediaStreamingFailed))
+        {
+            logger.LogInformation("MediaStreaming Failed");
         }
         else if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
         {
