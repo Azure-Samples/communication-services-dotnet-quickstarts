@@ -1,12 +1,12 @@
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Azure.Messaging.EventGrid;
-using Azure.Messaging.EventGrid.SystemEvents;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 // Your ACS resource connection string
 var acsConnectionString = "<ACS_CONNECTION_STRING>";
@@ -42,7 +42,7 @@ const string InvalidAudio = "I’m sorry, I didn’t understand your response, pleas
 const string ConfirmChoiceLabel = "Confirm";
 const string RetryContext = "retry";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
+CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri(""), acsConnectionString);
 var app = builder.Build();
 
 app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
@@ -53,12 +53,17 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
     CallInvite callInvite = new CallInvite(target, caller);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) }
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
+        //MediaStreamingOptions = new MediaStreamingOptions(new Uri("wss://866a-103-180-73-34.ngrok-free.app"), MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed) { StartMediaStreaming = true },
+        //TranscriptionOptions = new TranscriptionOptions(new Uri("wss://866a-103-180-73-34.ngrok-free.app"), TranscriptionTransport.Websocket, "", true),
     };
 
     CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
 
     logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+    //logger.LogInformation($"Answered By: {createCallResult.CallConnectionProperties.AnsweredBy}");
+    //logger.LogInformation($"Media Streaming: {createCallResult.CallConnectionProperties.MediaStreamingSubscription}");
+    //logger.LogInformation($"Media Streaming: {createCallResult.CallConnectionProperties.TranscriptionSubscription}");
 });
 
 app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
@@ -73,10 +78,14 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                     parsedEvent.ServerCallId);
 
         var callConnection = callAutomationClient.GetCallConnection(parsedEvent.CallConnectionId);
+
+        logger.LogInformation($"CALL CONNECTION ID : {parsedEvent.CallConnectionId}");
+        logger.LogInformation($"CORRELATION ID : {parsedEvent.CorrelationId}");
+
         var callMedia = callConnection.GetCallMedia();
 
         if (parsedEvent is CallConnected callConnected)
-        {   
+        {
             logger.LogInformation("Fetching recognize options...");
 
             // prepare recognize tones
@@ -86,6 +95,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             // Send request to recognize tones
             await callMedia.StartRecognizingAsync(recognizeOptions);
+            await HandlePlayAsync(callMedia, "Play Started");
         }
         else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
@@ -98,6 +108,22 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             var textToPlay = labelDetected.Equals(ConfirmChoiceLabel, StringComparison.OrdinalIgnoreCase) ? ConfirmedText : CancelText;
 
             await HandlePlayAsync(callMedia, textToPlay);
+
+            PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
+            var options = new HoldOptions(target)
+            {
+                OperationCallbackUri = new Uri(callbackUriHost)
+            };
+            var a = await callMedia.HoldAsync(target);
+            logger.LogInformation("Hold target user completed succesfully");
+            var parti = await callConnection.GetParticipantAsync(target);
+            var isHold = parti.Value.IsOnHold;
+
+            var b = await callMedia.UnholdAsync(target);
+            var partic = await callConnection.GetParticipantAsync(target);
+            var isHolds = partic.Value.IsOnHold;
+            logger.LogInformation("Un Hold target user completed succesfully");
+
         }
         else if (parsedEvent is RecognizeFailed { OperationContext: RetryContext })
         {
@@ -124,6 +150,10 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
             await callMedia.StartRecognizingAsync(recognizeOptions);
         }
+        else if ((parsedEvent is PlayStarted))
+        {
+            logger.LogInformation($"Play started event triggered.");
+        }
         else if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
         {
             logger.LogInformation($"Terminating call.");
@@ -142,6 +172,7 @@ if (app.Environment.IsDevelopment())
 CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, string targetParticipant, string context = "")
 {
     var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+    var playSources = new List<PlaySource>() { new TextSource("Recognize Prompt One") { VoiceName = SpeechToTextVoice }, new TextSource("Recognize Prompt Two") { VoiceName = SpeechToTextVoice }, new TextSource(content) { VoiceName = SpeechToTextVoice } };
 
     var recognizeOptions =
         new CallMediaRecognizeChoiceOptions(targetParticipant: new PhoneNumberIdentifier(targetParticipant), GetChoices())
@@ -149,7 +180,8 @@ CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, s
             InterruptCallMediaOperation = false,
             InterruptPrompt = false,
             InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-            Prompt = playSource,
+            //Prompt = playSource,
+            PlayPrompts = playSources,
             OperationContext = context
         };
 
@@ -185,8 +217,27 @@ async Task HandlePlayAsync(CallMedia callConnectionMedia, string text)
     {
         VoiceName = "en-US-NancyNeural"
     };
+    
+    PlayToAllOptions playOptions = new PlayToAllOptions(GoodbyePlaySource)
+    {
+        InterruptCallMediaOperation = false,
+        OperationCallbackUri = new Uri(callbackUriHost),
+        Loop = false
+    };
+    
+    await callConnectionMedia.PlayToAllAsync(playOptions);
+    //var interrupt = new TextSource("Interrupt prompt message")
+    //{
+    //    VoiceName = "en-US-NancyNeural"
+    //};
 
-    await callConnectionMedia.PlayToAllAsync(GoodbyePlaySource);
+    //PlayToAllOptions playInterrupt = new PlayToAllOptions(interrupt)
+    //{
+    //    InterruptCallMediaOperation = true,
+    //    OperationCallbackUri = new Uri(callbackUriHost),
+    //    Loop = false
+    //};
+    //await callConnectionMedia.PlayToAllAsync(playInterrupt);
 }
 
 app.Run();
