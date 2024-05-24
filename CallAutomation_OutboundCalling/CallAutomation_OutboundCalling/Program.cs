@@ -42,7 +42,7 @@ const string InvalidAudio = "I’m sorry, I didn’t understand your response, pleas
 const string ConfirmChoiceLabel = "Confirm";
 const string RetryContext = "retry";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri(""), acsConnectionString);
+CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
 var app = builder.Build();
 
 app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
@@ -51,19 +51,26 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     CallInvite callInvite = new CallInvite(target, caller);
+
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+        new Uri("wss://a016-103-190-198-138.ngrok-free.app"),
+        MediaStreamingTransport.Websocket,
+        MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Mixed,
+        false);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
-        //MediaStreamingOptions = new MediaStreamingOptions(new Uri("wss://866a-103-180-73-34.ngrok-free.app"), MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed) { StartMediaStreaming = true },
+        MediaStreamingOptions = mediaStreamingOptions
         //TranscriptionOptions = new TranscriptionOptions(new Uri("wss://866a-103-180-73-34.ngrok-free.app"), TranscriptionTransport.Websocket, "", true),
     };
 
     CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
 
     logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-    //logger.LogInformation($"Answered By: {createCallResult.CallConnectionProperties.AnsweredBy}");
-    //logger.LogInformation($"Media Streaming: {createCallResult.CallConnectionProperties.MediaStreamingSubscription}");
-    //logger.LogInformation($"Media Streaming: {createCallResult.CallConnectionProperties.TranscriptionSubscription}");
+    logger.LogInformation($"Answered By: {createCallResult.CallConnectionProperties.AnsweredBy}");
+    logger.LogInformation($"Media Streaming: {createCallResult.CallConnectionProperties.MediaStreamingSubscription}");
+    //logger.LogInformation($"Transcription Subscription: {createCallResult.CallConnectionProperties.TranscriptionSubscription}");
 });
 
 app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
@@ -86,6 +93,17 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
         if (parsedEvent is CallConnected callConnected)
         {
+            StartMediaStreamingOptions options = new StartMediaStreamingOptions()
+            {
+                OperationCallbackUrl = callbackUriHost,
+                OperationContext = "startMediaStreamingContext"
+            };
+
+            //callMedia.StartMediaStreaming(options);
+
+            await callMedia.StartMediaStreamingAsync(options);
+            logger.LogInformation("Start Media Streaming.....");
+
             logger.LogInformation("Fetching recognize options...");
 
             // prepare recognize tones
@@ -99,6 +117,15 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         }
         else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
+            StopMediaStreamingOptions options = new StopMediaStreamingOptions()
+            {
+                OperationCallbackUrl = callbackUriHost
+            };
+
+            //callMedia.StopMediaStreaming(options);
+            await callMedia.StopMediaStreamingAsync(options);
+            logger.LogInformation("Stop Media Streaming.....");
+
             var choiceResult = recognizeCompleted.RecognizeResult as ChoiceResult;
             var labelDetected = choiceResult?.Label;
             var phraseDetected = choiceResult?.RecognizedPhrase;
@@ -108,22 +135,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             var textToPlay = labelDetected.Equals(ConfirmChoiceLabel, StringComparison.OrdinalIgnoreCase) ? ConfirmedText : CancelText;
 
             await HandlePlayAsync(callMedia, textToPlay);
-
-            PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
-            var options = new HoldOptions(target)
-            {
-                OperationCallbackUri = new Uri(callbackUriHost)
-            };
-            var a = await callMedia.HoldAsync(target);
-            logger.LogInformation("Hold target user completed succesfully");
-            var parti = await callConnection.GetParticipantAsync(target);
-            var isHold = parti.Value.IsOnHold;
-
-            var b = await callMedia.UnholdAsync(target);
-            var partic = await callConnection.GetParticipantAsync(target);
-            var isHolds = partic.Value.IsOnHold;
-            logger.LogInformation("Un Hold target user completed succesfully");
-
+            
         }
         else if (parsedEvent is RecognizeFailed { OperationContext: RetryContext })
         {
@@ -149,6 +161,14 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
             await callMedia.StartRecognizingAsync(recognizeOptions);
+        }
+        else if ((parsedEvent is MediaStreamingStarted))
+        {
+            logger.LogInformation($"MediaStreamingStarted started event triggered.");
+        }
+        else if ((parsedEvent is MediaStreamingStopped))
+        {
+            logger.LogInformation($"MediaStreamingStopped started event triggered.");
         }
         else if ((parsedEvent is PlayStarted))
         {
