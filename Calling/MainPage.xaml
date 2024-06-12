@@ -23,8 +23,13 @@
             <TextBlock x:Name="QuickstartTitle" Text="Calling Quickstart sample title bar" Style="{StaticResource CaptionTextBlockStyle}" Padding="4,4,0,0"/>
         </Grid>
 
-        <TextBox Grid.Row="1" x:Name="CalleeTextBox" PlaceholderText="Who would you like to call?" TextWrapping="Wrap" VerticalAlignment="Center" />
-
+        <StackPanel Grid.Row="1">
+            <TextBox x:Name="CalleeTextBox" PlaceholderText="Who would you like to call?" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <TextBlock Text="or" Padding="4,4,0,0" />
+            <TextBox x:Name="CalleeMeetingId" PlaceholderText="Teams Meeting Id" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <TextBox x:Name="CalleeMeetingPasscode" PlaceholderText="Teams Meeting Passcode" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </StackPanel>
+        
         <Grid Grid.Row="2" Background="LightGray">
             <Grid.RowDefinitions>
                 <RowDefinition/>
