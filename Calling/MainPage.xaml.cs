@@ -121,6 +121,8 @@ namespace CallingQuickstart
         private async void CallButton_Click(object sender, RoutedEventArgs e)
         {
             var callString = CalleeTextBox.Text.Trim();
+            var meetingId = CalleeMeetingId.Text.Trim();
+            var passcode = CalleeMeetingPasscode.Text.Trim();
 
             if (!string.IsNullOrEmpty(callString))
             {
@@ -144,6 +146,10 @@ namespace CallingQuickstart
                 {
                     call = await JoinTeamsMeetingByLinkWithAcsAsync(teamsMeetinglink);
                 }
+            }
+            else if (!string.IsNullOrEmpty(meetingId) && !string.IsNullOrEmpty(passcode))
+            {
+                call = await JoinTeamsMeetingByMeetingIdWithAcsAsync(meetingId, passcode);
             }
 
             call.RemoteParticipantsUpdated += OnRemoteParticipantsUpdatedAsync;
@@ -498,6 +504,15 @@ namespace CallingQuickstart
 
             var teamsMeetingLinkLocator = new TeamsMeetingLinkLocator(meetingLink.AbsoluteUri);
             var call = await callAgent.JoinAsync(teamsMeetingLinkLocator, joinCallOptions);
+            return call;
+        }
+
+        private async Task<CommunicationCall> JoinTeamsMeetingByMeetingIdWithAcsAsync(String meetingId, String passcode)
+        {
+            var joinCallOptions = GetJoinCallOptions();
+
+            var teamsMeetingIdLocator = new TeamsMeetingIdLocator(meetingId, passcode);
+            var call = await callAgent.JoinAsync(teamsMeetingIdLocator, joinCallOptions);
             return call;
         }
 
