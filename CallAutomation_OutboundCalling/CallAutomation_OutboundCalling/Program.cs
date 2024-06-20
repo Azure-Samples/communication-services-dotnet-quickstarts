@@ -9,19 +9,19 @@ builder.Services.AddSwaggerGen();
 
 
 // Your ACS resource connection string
-var acsConnectionString = "endpoint=https://dacsrecordingtest.unitedstates.communication.azure.com/;accesskey=P03pgjuvw8Yo9nlRkdgjrm/TmT0yIkYt3fXowddBQ0QbOYZ6GbDaAir6om8N8sHOt7ifhJqT20aOsy4EDulO+A==";
+var acsConnectionString = "";
 
 // Your ACS resource phone number will act as source number to start outbound call
-var acsPhonenumber = "+18332638155";
+var acsPhonenumber = "";
 
 // Target phone number you want to receive the call.
-var targetPhonenumber = "+918688023395";
+var targetPhonenumber = "";
 
 // Base url of the app
-var callbackUriHost = "https://95tzzklf-8081.inc1.devtunnels.ms";
+var callbackUriHost = "";
 
 // Your cognitive service endpoint
-var cognitiveServiceEndpoint = "https://cognitive-service-waferwire.cognitiveservices.azure.com/";
+var cognitiveServiceEndpoint = "";
 
 // text to play
 const string SpeechToTextVoice = "en-US-NancyNeural";
@@ -44,7 +44,7 @@ const string RetryContext = "retry";
 const string dtmfPrompt = "Thank you for the update. Please type  one two three four on your keypad to close call.";
 string cancelLabel = "Cancel";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("https://x-pma-uswe-07.plat.skype.com"), acsConnectionString);
+CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("<PMA>"), acsConnectionString);
 var app = builder.Build();
 
 app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
