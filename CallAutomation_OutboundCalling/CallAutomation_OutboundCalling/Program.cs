@@ -255,6 +255,25 @@ app.MapPost("/connectApi", async (string serverCallId, ILogger<Program> logger) 
     var addParticipant = await callConnection.AddParticipantAsync(callInvite);
     logger.LogInformation($"Adding Participant to the call: {addParticipant.Value?.InvitationId}");
 
+    ////Cancel Add Participant
+    //var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipant.Value.InvitationId)
+    //{
+    //    OperationContext = "operationContext",
+    //    OperationCallbackUri = callbackUri
+    //};
+    //await callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+
+    ////Tranfer Call
+    //var transferOption = new TransferToParticipantOptions(target);
+    //transferOption.Transferee = caller;
+    //transferOption.OperationContext = "transferCallContext";
+
+    //// Sending event to a non-default endpoint.
+    //transferOption.OperationCallbackUri = callbackUri;
+    //TransferCallToParticipantResult transferResult = await callConnection.TransferCallToParticipantAsync(transferOption);
+    //logger.LogInformation($"Call Transfered successfully");
+
+   
     //get participant
     var participants = await callConnection.GetParticipantsAsync();
     logger.LogInformation($"Participants Count in call: {participants.Value.Count}");
