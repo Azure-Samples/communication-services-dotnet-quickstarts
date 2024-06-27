@@ -25,12 +25,7 @@ var cognitiveServiceEndpoint = "";
 
 // text to play
 const string SpeechToTextVoice = "en-US-NancyNeural";
-const string MainMenu =
-    """ 
-    Hello this is Contoso Bank, we re calling in regard to your appointment tomorrow 
-    at 9am to open a new account. Please say confirm if this time is still suitable for you or say cancel 
-    if you would like to cancel this appointment.
-    """;
+const string MainMenu ="Say confirm or cancel to proceed further";
 const string ConfirmedText = "Thank you for confirming your appointment tomorrow at 9am, we look forward to meeting with you.";
 const string CancelText = """
 Your appointment tomorrow at 9am has been cancelled. Please call the bank directly 
@@ -44,36 +39,8 @@ const string RetryContext = "retry";
 const string dtmfPrompt = "Thank you for the update. Please type  one two three four on your keypad to close call.";
 string cancelLabel = "Cancel";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("<PMA>"), acsConnectionString);
+CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("https://x-pma-uswe-07.plat.skype.com"), acsConnectionString);
 var app = builder.Build();
-
-app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
-{
-    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
-    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    CallInvite callInvite = new CallInvite(target, caller);
-
-    //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-    //    new Uri("wss://a016-103-190-198-138.ngrok-free.app"),
-    //    MediaStreamingTransport.Websocket,
-    //    MediaStreamingContent.Audio,
-    //    MediaStreamingAudioChannel.Mixed,
-    //    false);
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
-        //MediaStreamingOptions = mediaStreamingOptions
-        //TranscriptionOptions = new TranscriptionOptions(new Uri("wss://866a-103-180-73-34.ngrok-free.app"), TranscriptionTransport.Websocket, "", true),
-    };
-
-    CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
-
-    logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-    logger.LogInformation($"Answered By: {createCallResult.CallConnectionProperties.AnsweredBy}");
-    //logger.LogInformation($"Media Streaming: {createCallResult.CallConnectionProperties.MediaStreamingSubscription}");
-    //logger.LogInformation($"Transcription Subscription: {createCallResult.CallConnectionProperties.TranscriptionSubscription}");
-});
 
 app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
 {
@@ -88,35 +55,13 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
         var callConnection = callAutomationClient.GetCallConnection(parsedEvent.CallConnectionId);
 
-        //logger.LogInformation($"CALL CONNECTION ID : {parsedEvent.CallConnectionId}");
         logger.LogInformation($"CORRELATION ID : {parsedEvent.CorrelationId}");
 
         var callMedia = callConnection.GetCallMedia();
 
         if (parsedEvent is CallConnected callConnected)
         {
-            //StartMediaStreamingOptions options = new StartMediaStreamingOptions()
-            //{
-            //    OperationCallbackUrl = callbackUriHost,
-            //    OperationContext = "startMediaStreamingContext"
-            //};
-
-            //callMedia.StartMediaStreaming(options);
-
-            //await callMedia.StartMediaStreamingAsync(options);
-            //logger.LogInformation("Start Media Streaming.....");
-
-            //logger.LogInformation("Fetching recognize options...");
-
-            //// prepare recognize tones
-            //var recognizeOptions = GetMediaRecognizeChoiceOptions(MainMenu, targetPhonenumber);
-
-            //logger.LogInformation("Recognizing options...");
-
-            //// Send request to recognize tones
-            //await callMedia.StartRecognizingAsync(recognizeOptions);
-            //await HandlePlayAllAsync(callMedia, "Play Started");
-
+            logger.LogInformation($"CallConnected event Received.");
         }
         else if ((parsedEvent is SendDtmfTonesCompleted))
         {
@@ -129,15 +74,6 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
         else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
-            //StopMediaStreamingOptions options = new StopMediaStreamingOptions()
-            //{
-            //    OperationCallbackUrl = callbackUriHost
-            //};
-
-            ////callMedia.StopMediaStreaming(options);
-            //await callMedia.StopMediaStreamingAsync(options);
-            //logger.LogInformation("Stop Media Streaming.....");
-
             var choiceResult = recognizeCompleted.RecognizeResult as ChoiceResult;
             var labelDetected = choiceResult?.Label;
             var phraseDetected = choiceResult?.RecognizedPhrase;
@@ -170,22 +106,9 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                 var _ when reasonCode.Equals(MediaEventReasonCode.RecognizeIncorrectToneDetected) => InvalidAudio,
                 _ => CustomerQueryTimeout,
             };
-
-            await StartRecognizing(callMedia, replyText, targetPhonenumber, false, RetryContext);
-            //await callMedia.StartRecognizingAsync(recognizeOptions);
+           
         }
-        ////else if ((parsedEvent is MediaStreamingStarted))
-        //{
-        //    logger.LogInformation($"MediaStreamingStarted started event triggered.");
-        //}
-        //else if ((parsedEvent is MediaStreamingStopped))
-        //{
-        //    logger.LogInformation($"MediaStreamingStopped started event triggered.");
-        //}
-        //else if ((parsedEvent is PlayStarted))
-        //{
-        //    logger.LogInformation($"Play started event triggered.");
-        //}
+        
         else if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
         {
             logger.LogInformation($"PlayCompleted or PlayFailed Received.");
@@ -220,10 +143,12 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
 
-app.MapPost("/connectApi", async (string serverCallId, ILogger<Program> logger) =>
+app.MapPost("/connectApi", async (ILogger<Program> logger) =>
 {
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    CallLocator callLocator = new RoomCallLocator("99431062370875888");
+    //CallLocator callLocator = new GroupCallLocator("29228d3e-040e-4656-a70e-890ab4e173e5");
+    //CallLocator callLocator = new ServerCallLocator("aHR0cHM6Ly9hcGkuZmxpZ2h0cHJveHkuc2t5cGUuY29tL2FwaS92Mi9jcC9jb252LWpwd2UtMDUtcHJvZC1ha3MuY29udi5za3lwZS5jb20vY29udi81bnRQMDIxeDdFYWdObUJEOHlpZ3hBP2k9MTAtNjAtMTItMTExJmU9NjM4NTQ1OTgzMDA1MTQxNjUw");
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions()
@@ -235,10 +160,9 @@ app.MapPost("/connectApi", async (string serverCallId, ILogger<Program> logger) 
 
     ConnectCallResult result = await callAutomationClient.ConnectCallAsync(connectCallOptions);
     logger.LogInformation($"CALL CONNECTION ID : {result.CallConnectionProperties.CallConnectionId}");
-    //logger.LogInformation($"CORRELATION ID : {result.CallConnectionProperties.CorrelationId}");
 
     var callConnection = callAutomationClient.GetCallConnection(result.CallConnectionProperties.CallConnectionId);
-    //CommunicationUserIdentifier target = new CommunicationUserIdentifier("8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_00000020-67e3-e152-d68a-08482200cbb3");
+    //CommunicationUserIdentifier target = new CommunicationUserIdentifier("8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_00000020-f97d-9169-28c5-593a0d004d5f");
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
     CallInvite callInvite = new CallInvite(target, caller);
@@ -284,64 +208,81 @@ app.MapPost("/connectApi", async (string serverCallId, ILogger<Program> logger) 
 
     logger.LogInformation("Fetching recognize options...");
 
-    // prepare recognize tones
-    //await StartRecognizing(callMedia, MainMenu, targetPhonenumber, false, string.Empty);
+    //// prepare dtmf tones
+    //var recognizeOptions = GetMediaRecognizeDTMFOptions(dtmfPrompt, targetPhonenumber, string.Empty);
 
-    // prepare dtmf tones
-    await StartRecognizing(callMedia, dtmfPrompt, targetPhonenumber, true, string.Empty);
+    //// prepare Speech tones
+    //var recognizeOptions = GetMediaRecognizeSpeechOptions(MainMenu, targetPhonenumber, string.Empty);
+
+    //// prepare Speech or dtmf tones
+    //var recognizeOptions = GetMediaRecognizeSpeechOrDtmfOptions("Say conform or press one two three on you keypad", targetPhonenumber, string.Empty);
+
+    // prepare Choice options for pstn user
+    var recognizeOptions = GetMediaRecognizeChoiceOptions(MainMenu, targetPhonenumber, string.Empty);
+
+    //// prepare Choice options for ACS user
+    //var recognizeOptions = GetMediaRecognizeChoiceOptions(MainMenu, participants.Value.LastOrDefault()?.Identifier.ToString(), string.Empty);
 
     // Send request to recognize tones
-    //await callMedia.StartRecognizing(recognizeOptions);
-    //await HandlePlayAsync(callMedia, "Connect API play started test", participants.Value.FirstOrDefault().Identifier);
-    //logger.LogInformation(" Play Audio to target participants completed event");
+    callMedia.StartRecognizing(recognizeOptions);
+
+    await Task.Delay(5000);
+    await HandlePlayAsync(callMedia, "Connect API play started test", participants.Value.FirstOrDefault()?.Identifier);
 
     #region Mute participant
-    //var muteResponse = await callConnection.MuteParticipantAsync(participants.Value.LastOrDefault()?.Identifier);
+    //var muteParticipant = participants.Value[1]?.Identifier;
+    //var muteResponse = await callConnection.MuteParticipantAsync(muteParticipant);
 
     //if (muteResponse.GetRawResponse().Status == 200)
     //{
     //    logger.LogInformation("Participant is muted. Waiting for confirmation...");
-    //    var participant = await callConnection.GetParticipantAsync(participants.Value.LastOrDefault()?.Identifier);
+    //    var participant = await callConnection.GetParticipantAsync(muteParticipant);
     //    logger.LogInformation($"Is participant muted: {participant.Value.IsMuted}");
     //    logger.LogInformation("Mute participant test completed.");
     //}
     #endregion
+    //Start Continuous Dtmf
+    await StartContinuousDtmfAsync(callMedia);
+    await Task.Delay(5000);
 
-    //Remove participant
-    //var removeParticipant = await callConnection.RemoveParticipantAsync(target);
+    //Stop Continuous Dtmf
+    await StopContinuousDtmfAsync(callMedia);
 
     #region Recording
-    //StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId))
-    //{
-    //    RecordingContent = RecordingContent.Audio,
-    //    RecordingChannel = RecordingChannel.Unmixed,
-    //    RecordingFormat = RecordingFormat.Wav
-    //};
-    //var recordingTask = callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
-    //var recordingId = recordingTask.Result.Value.RecordingId;
-    //logger.LogInformation($"Call recording id--> {recordingId}");
-    //await Task.Delay(5000);
+    StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(callConnection.GetCallConnectionProperties().Value.ServerCallId))
+    {
+        RecordingContent = RecordingContent.Audio,
+        RecordingChannel = RecordingChannel.Unmixed,
+        RecordingFormat = RecordingFormat.Wav
+    };
+    var recordingTask = await callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+    var recordingId = recordingTask.Value.RecordingId;
+    logger.LogInformation($"Call recording id--> {recordingId}");
+    await Task.Delay(5000);
 
-    //await callAutomationClient.GetCallRecording().PauseAsync(recordingId);
-    //logger.LogInformation($"Recording is Paused.");
-    //var recordingState = await callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
-    //string state = recordingState.Value.RecordingState.ToString();
-    //logger.LogInformation($"Recording Status:->  {state}");
+    await callAutomationClient.GetCallRecording().PauseAsync(recordingId);
+    logger.LogInformation($"Recording is Paused.");
+    var recordingState = await callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
+    string state = recordingState.Value.RecordingState.ToString();
+    logger.LogInformation($"Recording Status:->  {state}");
 
-    //await Task.Delay(5000);
-    //await callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
-    //logger.LogInformation($"Recording is resumed.");
-    //recordingState = await callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
-    //state = recordingState.Value.RecordingState.ToString();
-    //logger.LogInformation($"Recording Status:->  {state}");
+    await Task.Delay(5000);
+    await callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+    logger.LogInformation($"Recording is resumed.");
+    recordingState = await callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
+    state = recordingState.Value.RecordingState.ToString();
+    logger.LogInformation($"Recording Status:->  {state}");
 
-    //await Task.Delay(5000);
-    //await callAutomationClient.GetCallRecording().StopAsync(recordingId);
-    //logger.LogInformation($"Recording is Stopped.");
+    await Task.Delay(5000);
+    await callAutomationClient.GetCallRecording().StopAsync(recordingId);
+    logger.LogInformation($"Recording is Stopped.");
     #endregion
 
+    //Remove participant
+    var removeParticipant = await callConnection.RemoveParticipantAsync(target);
+
     //HangUp call
-    //await callConnection.HangUpAsync(true);
+    await callConnection.HangUpAsync(true);
 
 });
 
@@ -381,15 +322,85 @@ async Task StartRecognizing(CallMedia callMedia, string content, string targetPa
     CallMediaRecognizeOptions recognizeOptions = dtmf ? recognizeDtmfOptions : recognizeChoiceOptions;
     await callMedia.StartRecognizingAsync(recognizeOptions);
 }
+
+
+CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, string targetParticipant, string context = "")
+{
+    var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+    var recognizeOptions =
+        new CallMediaRecognizeChoiceOptions(targetParticipant: new PhoneNumberIdentifier(targetParticipant), GetChoices())
+        {
+            InterruptCallMediaOperation = false,
+            InterruptPrompt = false,
+            InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+            Prompt = playSource,
+            //PlayPrompts = playSources,
+            OperationContext = context
+        };
+
+    return recognizeOptions;
+}
+
+CallMediaRecognizeDtmfOptions GetMediaRecognizeDTMFOptions(string content, string targetParticipant, string context = "")
+{
+    var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+   
+    var recognizeOptions =
+                new CallMediaRecognizeDtmfOptions(
+                    targetParticipant: new PhoneNumberIdentifier(targetParticipant), maxTonesToCollect: 8)
+                {
+                    InterruptPrompt = false,
+                    InterToneTimeout = TimeSpan.FromSeconds(5),
+                    OperationContext = context,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    Prompt = playSource
+                };
+    return recognizeOptions;
+}
+
+CallMediaRecognizeSpeechOptions GetMediaRecognizeSpeechOptions(string content, string targetParticipant, string context = "")
+{
+    var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+    
+    var recognizeOptions =
+                new CallMediaRecognizeSpeechOptions(
+                    targetParticipant: new PhoneNumberIdentifier(targetParticipant))
+                {
+                    InterruptPrompt = false,
+                    OperationContext = context,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    Prompt = playSource,
+                    EndSilenceTimeout = TimeSpan.FromSeconds(15)
+                };
+    return recognizeOptions;
+}
+
+CallMediaRecognizeSpeechOrDtmfOptions GetMediaRecognizeSpeechOrDtmfOptions(string content, string targetParticipant, string context = "")
+{
+    var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+   
+    var recognizeOptions =
+                new CallMediaRecognizeSpeechOrDtmfOptions(
+                    targetParticipant: new PhoneNumberIdentifier(targetParticipant), maxTonesToCollect: 8)
+                {
+                    InterruptPrompt = false,
+                    OperationContext = context,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    Prompt = playSource,
+                    EndSilenceTimeout = TimeSpan.FromSeconds(5)
+                };
+    return recognizeOptions;
+}
+
 async Task StartContinuousDtmfAsync(CallMedia callMedia)
 {
-    await callMedia.StartContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
+    await callMedia.StartContinuousDtmfRecognitionAsync(new PhoneNumberIdentifier(targetPhonenumber));
     Console.WriteLine("Continuous Dtmf recognition started. Press one on dialpad.");
 }
 
 async Task StopContinuousDtmfAsync(CallMedia callMedia)
 {
-    await callMedia.StopContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
+    await callMedia.StopContinuousDtmfRecognitionAsync(new PhoneNumberIdentifier(targetPhonenumber));
     Console.WriteLine("Continuous Dtmf recognition stopped. Wait for sending dtmf tones.");
 }
 
