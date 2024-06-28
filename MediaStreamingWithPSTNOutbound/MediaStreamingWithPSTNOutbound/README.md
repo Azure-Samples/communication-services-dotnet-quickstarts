@@ -48,7 +48,9 @@ You can run multiple tunnels on ngrok by changing ngrok.yml file as follows:
 
 1. Open the ngrok.yml file from a powershell using the command ngrok config edit
 2. Update the ngrok.yml file as follows:
-    authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxx
+   
+   
+    _authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxx
     version: "2"
     region: us
     tunnels:
@@ -59,10 +61,11 @@ You can run multiple tunnels on ngrok by changing ngrok.yml file as follows:
     second:
         proto: http
         addr: 5001
-        host_header: localhost:5001
-NOTE: Make sure the "addr:" field has only the port number, not the localhost url.
-3. Start all ngrok tunnels configured using the following command on a powershell - ngrok start --all
-4. Once you have setup the websocket server, note down the the ngrok url on your server's port as the websocket url in this application for incoming call scenario. Just replace the https:// with wss:// and update in the appsettings.json file.
+        host_header: localhost:5001_
+   
+**NOTE:** Make sure the "addr:" field has only the port number, not the localhost url.
+4. Start all ngrok tunnels configured using the following command on a powershell - ngrok start --all
+5. Once you have setup the websocket server, note down the the ngrok url on your server's port as the websocket url in this application for incoming call scenario. Just replace the https:// with wss:// and update in the appsettings.json file.
 
 ## Running the application
 
