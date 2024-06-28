@@ -66,7 +66,7 @@ NOTE: Make sure the "addr:" field has only the port number, not the localhost ur
 
 ## Running the application
 
-Best way to test this application, by calling to communication identifier [you can refer this web ui to make call to communication identitifer or acs phone number](https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md)
+Best way to test this application, call to pstn user [you can refer this web ui to make call to communication identitifer or acs phone number](https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md)
 
 1. Provide the ngrok url for port 8080 in the BaseUrl
 2. Provide the ngrok url for port 5001 in the TransportUrl
