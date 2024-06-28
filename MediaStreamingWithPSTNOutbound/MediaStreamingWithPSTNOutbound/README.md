@@ -1,6 +1,6 @@
-# Incoming Call Recording
+# MediaStreamingWithPSTNOutbound
 
-Receives the incoming call event, and answer the incoming call, starts the recording, and play text to user and allow user to record the message and then it stops the recording until user disconnect the call. Once the recorded file is available for downloading it will be downloaded to project location
+The application will enable the websocket server and provides the swagger page with the supported api's. Currently we have **createOutBoundCall** api endpoint to makes the outbuond call to the pstn with media streaming enabled. And when the call is connected, application will add the acs user as participant.When the call is disconnected the audio stream is converted to wav and save it to the user profile download folder.
 
 ## Features
 
