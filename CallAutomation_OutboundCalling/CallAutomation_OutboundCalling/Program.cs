@@ -39,7 +39,7 @@ const string RetryContext = "retry";
 const string dtmfPrompt = "Thank you for the update. Please type  one two three four on your keypad to close call.";
 string cancelLabel = "Cancel";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("https://x-pma-uswe-07.plat.skype.com"), acsConnectionString);
+CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("https://uswe-02.sdf.pma.teams.microsoft.com:6448"), acsConnectionString);
 var app = builder.Build();
 
 app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
