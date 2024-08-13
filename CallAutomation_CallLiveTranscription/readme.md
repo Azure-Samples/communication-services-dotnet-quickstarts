@@ -53,7 +53,7 @@ Open the appsettings.json file to configure the following settings
 1. `CognitiveServiceEndpoint`: Azure Multi Service endpoint.
 1. `AcsConnectionString`: Azure Communication Service resource's connection string.
 2. `AcsPhoneNumber`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
-3. `TransportUrl`: Ngrok url for the server port (in this example port 5001) make sure to replace https:// with wss://
+3. `TransportUrl`: Ngrok url for the server port (in this example port 5001) make sure to replace https:// with wss:// and add the /ws at the end ex. wss://xxxxxx.ngrok.app/ws
 3. `Locale`: Transcription locale
 4. `AgentPhoneNumber`: Phone number associated to with Agent
 

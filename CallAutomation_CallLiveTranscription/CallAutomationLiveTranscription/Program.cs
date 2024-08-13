@@ -3,6 +3,7 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using CallAutomation_LiveTranscription;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
@@ -34,7 +35,7 @@ var agentPhoneNumber = builder.Configuration.GetValue<string>("AgentPhoneNumber"
 ArgumentNullException.ThrowIfNullOrEmpty(agentPhoneNumber);
 
 /* Call Automation Client */
-var client = new CallAutomationClient(pmaEndpoint: new Uri("PMA_ENDPOINT"), connectionString: acsConnectionString);
+var client = new CallAutomationClient(connectionString: acsConnectionString);
 
 /* Register and make CallAutomationClient accessible via dependency injection */
 builder.Services.AddSingleton(client);
@@ -87,7 +88,7 @@ app.MapPost("/api/incomingCall", async (
                 $"Callback url: {callbackUri}, transport Url: {transportUrl}");
 
             TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),
-                TranscriptionTransport.Websocket, locale, false);
+                locale, false, TranscriptionTransport.Websocket);
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
             {
@@ -307,6 +308,7 @@ async Task PauseOrStopTranscriptionAndRecording(CallMedia callMedia, ILogger log
     if (isTranscriptionActive)
     {
         await callMedia.StopTranscriptionAsync();
+        isTranscriptionActive = false;
         logger.LogInformation("Transcription stopped.");
     }
 
@@ -367,5 +369,26 @@ async Task InitiateTranscription(CallMedia callConnectionMedia)
     await callConnectionMedia.StartTranscriptionAsync(startTrasnscriptionOption);
     isTranscriptionActive = true;
 }
+
+app.UseWebSockets();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/ws")
+    {
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            await Helper.ProcessRequest(webSocket);
+        }
+        else
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }
+    }
+    else
+    {
+        await next(context);
+    }
+});
 
 app.Run();
