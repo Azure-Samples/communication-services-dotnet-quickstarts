@@ -24,8 +24,6 @@ namespace CallAutomation_LiveTranscription
                     {
                         string msg = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
 
-                        //var response = StreamingDataParser.Parse(buffer.Take(receiveResult.Count).ToArray());
-
                         var response = StreamingDataParser.Parse(msg);
 
                         if (response != null)
@@ -51,9 +49,9 @@ namespace CallAutomation_LiveTranscription
                                 Console.WriteLine("RESULT STATUS-->" + transcriptionData.ResultState);
                                 foreach (var word in transcriptionData.Words)
                                 {
-                                    Console.WriteLine("TEXT-->" + word.Text);
-                                    Console.WriteLine("OFFSET-->" + word.Offset.Ticks);
-                                    Console.WriteLine("DURATION-->" + word.Duration.Ticks);
+                                    Console.WriteLine("WORDS TEXT-->" + word.Text);
+                                    Console.WriteLine("WORDS OFFSET-->" + word.Offset.Ticks);
+                                    Console.WriteLine("WORDS DURATION-->" + word.Duration.Ticks);
                                 }
                                 Console.WriteLine("***************************************************************************************");
                             }
@@ -65,9 +63,6 @@ namespace CallAutomation_LiveTranscription
                             receiveResult.MessageType,
                             receiveResult.EndOfMessage,
                             CancellationToken.None);
-
-                        receiveResult = await webSocket.ReceiveAsync(
-                            new ArraySegment<byte>(buffer), CancellationToken.None);
                     }
 
                     await webSocket.CloseAsync(receiveResult.CloseStatus.Value, receiveResult.CloseStatusDescription, CancellationToken.None);
