@@ -3,7 +3,9 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
@@ -24,6 +26,7 @@ var callbackUriHost = "";
 // Your cognitive service endpoint
 var cognitiveServiceEndpoint = "";
 
+
 // text to play
 const string SpeechToTextVoice = "en-US-NancyNeural";
 const string MainMenu = "Please say confirm or say cancel to proceed further.";
@@ -40,7 +43,9 @@ const string RetryContext = "retry";
 const string dtmfPrompt = "Thank you for the update. Please type  one two three four on your keypad to close call.";
 string cancelLabel = "Cancel";
 
-CallAutomationClient callAutomationClient = new CallAutomationClient(new Uri("<Pma>"), acsConnectionString);
+bool isPlayInterrupt = false;
+
+CallAutomationClient callAutomationClient = new CallAutomationClient(acsConnectionString);
 var app = builder.Build();
 
 app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
@@ -49,9 +54,9 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber);
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     CallInvite callInvite = new CallInvite(target, caller);
-    
+
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-       new Uri("wss://t9x01h42-5000.inc1.devtunnels.ms/ws"),
+       new Uri("wss://0rv989s0-8081.inc1.devtunnels.ms/ws"),
        MediaStreamingContent.Audio,
        MediaStreamingAudioChannel.Mixed,
        MediaStreamingTransport.Websocket,
@@ -59,8 +64,8 @@ app.MapPost("/outboundCall", async (ILogger<Program> logger) =>
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
-        //MediaStreamingOptions = mediaStreamingOptions,
-        //TranscriptionOptions = new TranscriptionOptions(new Uri("wss://jg1tlgbv-5000.inc1.devtunnels.ms/ws"), "en-US", false,  TranscriptionTransport.Websocket)
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = new TranscriptionOptions(new Uri("wss://0rv989s0-8081.inc1.devtunnels.ms/ws"), "en-US", false,  TranscriptionTransport.Websocket)
     };
     CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
 
@@ -82,6 +87,29 @@ app.MapPost("/createPSTNCall", async (ILogger<Program> logger) =>
     logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
 });
 
+app.MapPost("/createGroupCall", async (ILogger<Program> logger) =>
+{
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var pstnEndpoint = new PhoneNumberIdentifier("+18772119545");
+    var voipEndpoint = new CommunicationUserIdentifier("8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_00000021-e5a7-40d5-0d8b-08482200d459");
+
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+      new Uri("wss://0rv989s0-8081.inc1.devtunnels.ms/ws"),
+      MediaStreamingContent.Audio,
+      MediaStreamingAudioChannel.Mixed,
+      MediaStreamingTransport.Websocket,
+      false);
+
+    var groupCallOptions = new CreateGroupCallOptions(new List<CommunicationIdentifier> { pstnEndpoint, voipEndpoint }, callbackUri)
+    {
+        MediaStreamingOptions = mediaStreamingOptions,
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
+        SourceCallerIdNumber = new PhoneNumberIdentifier(acsPhonenumber), // This is the Azure Communication Services provisioned phone number for the caller
+    };
+    CreateCallResult response = await callAutomationClient.CreateGroupCallAsync(groupCallOptions);
+    logger.LogInformation($"Group call is created  : {JsonSerializer.Serialize(response)}");
+});
+
 app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
 {
     foreach (var cloudEvent in cloudEvents)
@@ -99,7 +127,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         logger.LogInformation($"CALL CONNECTION ID ----> {parsedEvent.CallConnectionId}");
         logger.LogInformation($"CORRELATION ID ----> {parsedEvent.CorrelationId}");
         var connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-        logger.LogInformation($"ANSWERED FOR ----> {connectionProperties.Value.AnsweredFor}");
+        //logger.LogInformation($"ANSWERED FOR ----> {connectionProperties.Value.AnsweredFor}");
 
         
 
@@ -120,43 +148,48 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             #endregion
 
             #region Media streaming
-            //StartMediaStreamingOptions options = new StartMediaStreamingOptions()
-            //{
-            //    OperationCallbackUri = new Uri(callbackUriHost),
-            //    OperationContext = "startMediaStreamingContext"
-            //};
-            //await callMedia.StartMediaStreamingAsync(options);
-            //logger.LogInformation("Start Media Streaming.....");
-            //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-            //logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
-            //await Task.Delay(5000);
+            StartMediaStreamingOptions options = new StartMediaStreamingOptions()
+            {
+                OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+                OperationContext = "startMediaStreamingContext"
+            };
+            await callMedia.StartMediaStreamingAsync(options);
+            logger.LogInformation("Start Media Streaming.....");
+            connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+            logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
+            await Task.Delay(5000);
+            //var voipUser = new CommunicationUserIdentifier("8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_00000021-e5ee-8396-2c8a-08482200dcc8");
 
-            ////Stop Media Streaming
-            //StopMediaStreamingOptions stopOptions = new StopMediaStreamingOptions()
-            //{
-            //    OperationCallbackUri = new Uri(callbackUriHost)
-            //};
+            var addCallInvite = new CallInvite(new PhoneNumberIdentifier("+918712321814"), new PhoneNumberIdentifier(acsPhonenumber));
+            var addpart = await callConnection.AddParticipantAsync(addCallInvite);
+            await Task.Delay(5000);
 
-            //await callMedia.StopMediaStreamingAsync(stopOptions);
-            //logger.LogInformation("Stop Media Streaming.....");
-            //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-            //logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
-            //await Task.Delay(5000);
+            //Stop Media Streaming
+            StopMediaStreamingOptions stopOptions = new StopMediaStreamingOptions()
+            {
+                OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks")
+            };
 
-            ////Start media streaming
-            //await callMedia.StartMediaStreamingAsync(options);
-            //logger.LogInformation("Start Media Streaming.....");
-            //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-            //logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
+            await callMedia.StopMediaStreamingAsync(stopOptions);
+            logger.LogInformation("Stop Media Streaming.....");
+            connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+            logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
+            await Task.Delay(5000);
+
+            //Start media streaming
+            await callMedia.StartMediaStreamingAsync(options);
+            logger.LogInformation("Start Media Streaming.....");
+            connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+            logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
             #endregion
 
             #region Transcription
-            //StartTranscriptionOptions options = new StartTranscriptionOptions()
+            //StartTranscriptionOptions tOptions = new StartTranscriptionOptions()
             //{
             //    OperationContext = "startMediaStreamingContext",
             //    //Locale = "en-US",
             //};
-            //await callMedia.StartTranscriptionAsync(options);
+            //await callMedia.StartTranscriptionAsync(tOptions);
             //logger.LogInformation("Start Transcription.....");
             //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
             //logger.LogInformation($"Transcription Subscription state ----> {connectionProperties.Value.TranscriptionSubscription.State}");
@@ -209,64 +242,88 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             // If choice is detected using dtmf tone, phrase will be null 
             logger.LogInformation("Recognize completed succesfully, labelDetected={labelDetected}, phraseDetected={phraseDetected}", labelDetected, phraseDetected);
             //var textToPlay = labelDetected.Equals(ConfirmChoiceLabel, StringComparison.OrdinalIgnoreCase) ? ConfirmedText : CancelText;
-            var textToPlay = "Recognized DTMF tone";
-
+            var textToPlay = "Recognized tone";
+            //await HandlePlayAsync(callMedia, textToPlay);
             #region Hold and Unhold
             ////Hold
-            //var holdOptions = new HoldOptions(target) {
-            //    OperationCallbackUri = new Uri(callbackUriHost),
-            //    OperationContext = "holdPstnParticipant"
+            //var holdPlaySource = new TextSource("You are in hold... please wait") { VoiceName = SpeechToTextVoice };
+            //var holdOptions = new HoldOptions(target)
+            //{
+            //    OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+            //    OperationContext = "holdPstnParticipant",
+            //    PlaySourceInfo = holdPlaySource,
             //};
-            //////hold participant with options
-            ////var holdParticipant = await callMedia.HoldAsync(holdOptions);
+            ////hold participant with options and music
+            //var holdParticipant = await callMedia.HoldAsync(holdOptions);
 
-            ////hold participant without options
-            //var holdParticipant = await callMedia.HoldAsync(target);
+            //////hold participant without options and with music
+            ////var holdParticipant = await callMedia.HoldAsync(target, holdPlaySource);
 
+            //////hold participant without options and music
+            ////var holdParticipant = await callMedia.HoldAsync(target);
+
+            ////without async
+            //////hold participant with options and music
+            ////var holdParticipant = callMedia.Hold(holdOptions);
+
+            //////hold participant without options and with music
+            ////var holdParticipant = callMedia.Hold(target, holdPlaySource);
+
+            //////hold participant without options and music
+            ////var holdParticipant = callMedia.Hold(target);
             //var isParticipantHold = (await callConnection.GetParticipantAsync(target)).Value.IsOnHold;
             //logger.LogInformation($"Is participant on hold ----> {isParticipantHold}");
+
+            //await Task.Delay(5000);
             ////Un-Hold
             //var unHoldOptions = new UnholdOptions(target)
             //{
             //    OperationContext = "UnHoldPstnParticipant"
             //};
-            //////Un-Hold participant with options
-            ////var UnHoldParticipant = await callMedia.UnholdAsync(unHoldOptions);
+            ////Un-Hold participant with options
+            //var UnHoldParticipant = await callMedia.UnholdAsync(unHoldOptions);
 
-            ////Un-Hold participant without options
-            //var UnHoldParticipant = await callMedia.UnholdAsync(target);
+            //////Un-Hold participant without options
+            ////var UnHoldParticipant = await callMedia.UnholdAsync(target);
+
+            ////without async
+            //////Un-Hold participant with options
+            ////var UnHoldParticipant = callMedia.Unhold(unHoldOptions);
+
+            //////Un-Hold participant without options
+            ////var UnHoldParticipant = callMedia.Unhold(target);
             //var isParticipantUnHold = (await callConnection.GetParticipantAsync(target)).Value.IsOnHold;
             //logger.LogInformation($"Is participant on hold ----> {isParticipantUnHold}");
             #endregion
 
             #region Media Streaming
-            //StopMediaStreamingOptions options = new StopMediaStreamingOptions()
-            //{
-            //    OperationCallbackUri = new Uri(callbackUriHost)
-            //};
+            StopMediaStreamingOptions options = new StopMediaStreamingOptions()
+            {
+                OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks")
+            };
 
-            //await callMedia.StopMediaStreamingAsync(options);
-            //logger.LogInformation("Stop Media Streaming.....");
-            //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-            //logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
-            //await Task.Delay(5000);
+            await callMedia.StopMediaStreamingAsync(options);
+            logger.LogInformation("Stop Media Streaming.....");
+            connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+            logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
+            await Task.Delay(5000);
 
-            ////Start media streaming
-            //StartMediaStreamingOptions startOptions = new StartMediaStreamingOptions()
-            //{
-            //    OperationCallbackUri = new Uri(callbackUriHost),
-            //    OperationContext = "startMediaStreamingContext"
-            //};
-            //await callMedia.StartMediaStreamingAsync(startOptions);
-            //logger.LogInformation("Start Media Streaming.....");
-            //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-            //logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
-            //await Task.Delay(5000);
+            //Start media streaming
+            StartMediaStreamingOptions startOptions = new StartMediaStreamingOptions()
+            {
+                OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+                OperationContext = "startMediaStreamingContext"
+            };
+            await callMedia.StartMediaStreamingAsync(startOptions);
+            logger.LogInformation("Start Media Streaming.....");
+            connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+            logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
+            await Task.Delay(5000);
 
-            //await callMedia.StopMediaStreamingAsync(options);
-            //logger.LogInformation("Stop Media Streaming.....");
-            //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
-            //logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
+            await callMedia.StopMediaStreamingAsync(options);
+            logger.LogInformation("Stop Media Streaming.....");
+            connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+            logger.LogInformation($"Media Streaming Subscription state ----> {connectionProperties.Value.MediaStreamingSubscription.State}");
             #endregion
 
             #region Transcription
@@ -298,16 +355,21 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             //connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
             //logger.LogInformation($"Transcription Subscription state ----> {connectionProperties.Value.TranscriptionSubscription.State}");
             #endregion
+            //await Task.Delay(5000);
 
+            //await callConnection.HangUpAsync(true);
             await HandlePlayAsync(callMedia, textToPlay);
         }
-        else if (parsedEvent is RecognizeFailed { OperationContext: RetryContext })
+        else if (parsedEvent is RecognizeFailed { OperationContext: RetryContext } recognizeFailedEvent1)
         {
             logger.LogError("Encountered error during recognize, operationContext={context}", RetryContext);
+            logger.LogError($"Recognize failed with index : {recognizeFailedEvent1.FailedPlaySourceIndex}");
             await HandlePlayAsync(callMedia, NoResponse);
         }
         else if (parsedEvent is RecognizeFailed recognizeFailedEvent)
         {
+            logger.LogError($"Recognize failed with index : {recognizeFailedEvent.FailedPlaySourceIndex}");
+
             var resultInformation = recognizeFailedEvent.ResultInformation;
             logger.LogError("Encountered error during recognize, message={msg}, code={code}, subCode={subCode}",
                 resultInformation?.Message,
@@ -325,6 +387,14 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
             var recognizeOptions = GetMediaRecognizeChoiceOptions(replyText, targetPhonenumber, RetryContext);
             await callMedia.StartRecognizingAsync(recognizeOptions);
+        }
+        else if ((parsedEvent is AddParticipantSucceeded))
+        {
+            logger.LogInformation($"AddParticipantSucceeded event triggered.");
+        }
+        else if ((parsedEvent is AddParticipantFailed))
+        {
+            logger.LogInformation($"AddParticipantFailed event triggered.");
         }
         else if ((parsedEvent is MediaStreamingStarted))
         {
@@ -350,14 +420,34 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         {
             logger.LogInformation($"TranscriptionFailed event triggered.");
         }
-        else if ((parsedEvent is PlayCompleted) || (parsedEvent is PlayFailed))
+        else if (parsedEvent is PlayCompleted)
         {
             logger.LogInformation($"Terminating call.");
             await callConnection.HangUpAsync(true);
         }
+        else if (parsedEvent is PlayFailed playFailed)
+        {
+            logger.LogInformation($"playFailed with the index : {playFailed.FailedPlaySourceIndex}");
+            //await callConnection.HangUpAsync(true);
+        }
         else if (parsedEvent is PlayStarted)
         {
             logger.LogInformation($"PlayStarted event triggered.");
+
+            //if (isPlayInterrupt)
+            //{
+            //    var playTo = new List<CommunicationIdentifier> { target };
+            //    var interrupt = new TextSource("Interrupt prompt message")
+            //    {
+            //        VoiceName = "en-US-NancyNeural"
+            //    };
+            //    PlayOptions interruptPlayOptions = new PlayOptions(interrupt, playTo)
+            //    {
+            //        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+            //        Loop = false,
+            //    };
+            //    await callMedia.PlayAsync(interruptPlayOptions);
+            //}
         }
         else if (parsedEvent is CallTransferAccepted)
         {
@@ -379,11 +469,15 @@ if (app.Environment.IsDevelopment())
 
 CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, string targetParticipant, string context = "")
 {
-    var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+    //var playSource = new TextSource(content) { VoiceName = SpeechToTextVoice };
+    //var playSource = new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"));
+    var ssmlToPlay = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Say confirm</voice></speak>";
+
+    var playSource = new SsmlSource(ssmlToPlay);
     #region Recognize prompt list
     ////Multiple TextSource prompt
     //var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new TextSource("recognize prompt two") { VoiceName = SpeechToTextVoice }, new TextSource(content) { VoiceName = SpeechToTextVoice } };
-    
+
     ////Multiple FileSource Prompts
     //var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/preamble10.wav")) };
 
@@ -391,7 +485,23 @@ CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, s
     //var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
 
     ////Empty play sources
-    var playSources = new List<PlaySource>() { };
+    //var playSources = new List<PlaySource>() { };
+
+    //Invalid Prompt
+    var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://dummy/dummy.wav")) };
+
+    //Multiple
+    //var playSources = new List<PlaySource>() {
+    //    new TextSource("Play Media prompt 1") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 2") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 3") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 4") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 5") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 6") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 7") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 8") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 9") { VoiceName = SpeechToTextVoice },
+    //    new TextSource(content) { VoiceName = SpeechToTextVoice }};
 
     #endregion
     var recognizeOptions =
@@ -400,8 +510,8 @@ CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, s
             InterruptCallMediaOperation = false,
             InterruptPrompt = false,
             InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-            //Prompt = playSource,
-            PlayPrompts = playSources,
+            Prompt = playSource,
+            //PlayPrompts = playSources,
             OperationContext = context
         };
 
@@ -419,13 +529,16 @@ CallMediaRecognizeDtmfOptions GetMediaRecognizeDTMFOptions(string content, strin
     //var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/preamble10.wav")) };
 
     ////Multiple TextSource and file source prompt
-    var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
+    //var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
 
     ////Empty play sources
     //var playSources = new List<PlaySource>() { };
 
+    //Invalid Prompt
+    var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://dummy/dummy.wav")) };
+
     #endregion
-    
+
     var recognizeOptions =
                 new CallMediaRecognizeDtmfOptions(
                     targetParticipant: new PhoneNumberIdentifier(targetParticipant), maxTonesToCollect: 8)
@@ -451,10 +564,13 @@ CallMediaRecognizeSpeechOptions GetMediaRecognizeSpeechOptions(string content, s
     //var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/preamble10.wav")) };
 
     ////Multiple TextSource and file source prompt
-    var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
+    //var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
 
     ////Empty play sources
     //var playSources = new List<PlaySource>() { };
+
+    //Invalid Prompt
+    var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://dummy/dummy.wav")) };
 
     #endregion
 
@@ -482,10 +598,13 @@ CallMediaRecognizeSpeechOrDtmfOptions GetMediaRecognizeSpeechOrDtmfOptions(strin
     //var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/preamble10.wav")) };
 
     ////Multiple TextSource and file source prompt
-    var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
+    //var playSources = new List<PlaySource>() { new TextSource("recognize prompt one") { VoiceName = SpeechToTextVoice }, new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new TextSource(content) { VoiceName = SpeechToTextVoice } };
 
     ////Empty play sources
     //var playSources = new List<PlaySource>() { };
+
+    //Invalid Prompt
+    var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://dummy/dummy.wav")) };
 
     #endregion
 
@@ -524,6 +643,7 @@ List<RecognitionChoice> GetChoices()
 
 async Task HandlePlayAsync(CallMedia callConnectionMedia, string text)
 {
+    isPlayInterrupt = true;
     Console.WriteLine($"Playing text to customer: {text}.");
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
     var playTo = new List<CommunicationIdentifier> { target };
@@ -532,33 +652,77 @@ async Task HandlePlayAsync(CallMedia callConnectionMedia, string text)
     {
         VoiceName = "en-US-NancyNeural"
     };
+    //var playSource = new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"));
+    var ssmlToPlay = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">SSML prompt from play media.</voice></speak>";
 
-    PlayToAllOptions playOptions = new PlayToAllOptions(GoodbyePlaySource)
+    var playSource = new SsmlSource(ssmlToPlay);
+    PlayToAllOptions playOptions = new PlayToAllOptions(playSource)
     {
         InterruptCallMediaOperation = false,
-        OperationCallbackUri = new Uri(callbackUriHost),
+        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
         Loop = false
     };
 
     await callConnectionMedia.PlayToAllAsync(playOptions);
 
-    //PlayOptions playOptions = new PlayOptions(GoodbyePlaySource, playTo)
-    //{
-    //    OperationCallbackUri = new Uri(callbackUriHost),
-    //    Loop = false
-    //};
-    //await callConnectionMedia.PlayAsync(playOptions);
-    //var interrupt = new TextSource("Interrupt prompt message")
-    //{
-    //    VoiceName = "en-US-NancyNeural"
-    //};
+    var playSource2 = new TextSource("Play media promt 2")
+    {
+        VoiceName = "en-US-NancyNeural"
+    };
 
-    //PlayToAllOptions playInterrupt = new PlayToAllOptions(interrupt)
-    //{
-    //    InterruptCallMediaOperation = false,
-    //    OperationCallbackUri = new Uri(callbackUriHost),
-    //    Loop = false
-    //};
+    PlayToAllOptions playOptions2 = new PlayToAllOptions(playSource2)
+    {
+        InterruptCallMediaOperation = false,
+        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+        Loop = false
+    };
+
+    //await callConnectionMedia.PlayToAllAsync(playOptions);
+
+    ////Multiple
+    //var playSources = new List<PlaySource>() {
+    //    new TextSource("Play Media prompt 1") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 2") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 3") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 4") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 5") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 6") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 7") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 8") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 9") { VoiceName = SpeechToTextVoice },
+    //    new TextSource("Play Media prompt 10") { VoiceName = SpeechToTextVoice }};
+
+    //Invalid Prompt
+    var playSources = new List<PlaySource>() { new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav")), new FileSource(new Uri("https://dummy/dummy.wav")) };
+
+    PlayToAllOptions multyPlayOptions = new PlayToAllOptions(playSources)
+    {
+        InterruptCallMediaOperation = false,
+        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+        Loop = false
+    };
+
+    //await callConnectionMedia.PlayToAllAsync(multyPlayOptions);
+
+
+
+    PlayOptions targetPlayOptions = new PlayOptions(GoodbyePlaySource, playTo)
+    {
+        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+        Loop = true
+    };
+    //await callConnectionMedia.PlayAsync(targetPlayOptions);
+    var interrupt = new TextSource("Interrupt prompt message")
+    {
+        VoiceName = "en-US-NancyNeural"
+    };
+
+    PlayToAllOptions playInterrupt = new PlayToAllOptions(interrupt)
+    {
+        InterruptCallMediaOperation = true,
+        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+        Loop = false
+    };
     //await callConnectionMedia.PlayToAllAsync(playInterrupt);
 
     ////file source
@@ -571,12 +735,12 @@ async Task HandlePlayAsync(CallMedia callConnectionMedia, string text)
     //};
     //await callConnectionMedia.PlayToAllAsync(playInterrupt);
 
-    //PlayOptions playOptions = new PlayOptions(interruptFile, playTo)
-    //{
-    //    OperationCallbackUri = new Uri(callbackUriHost),
-    //    Loop = false
-    //};
-    //await callConnectionMedia.PlayAsync(playOptions);
+    PlayOptions interruptPlayOptions = new PlayOptions(interrupt, playTo)
+    {
+        OperationCallbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks"),
+        Loop = false,
+    };
+    //await callConnectionMedia.PlayAsync(interruptPlayOptions);
 }
 
 app.Run();
