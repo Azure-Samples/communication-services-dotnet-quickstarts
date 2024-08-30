@@ -636,7 +636,7 @@ async Task StopMediaStreamingAsync()
 
     if (callConnectionProperties.MediaStreamingSubscription.State.Equals("active"))
     {
-        await callMedia.StopTranscriptionAsync();
+        await callMedia.StopMediaStreamingAsync();
     }
     else
     {
