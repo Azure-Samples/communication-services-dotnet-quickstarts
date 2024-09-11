@@ -27,6 +27,7 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 
 - ./SendEmailPlainText/Program.cs: Entry point for sending plain text email.
 - ./SendEmailWithAttachments/Program.cs: Entry point for sending email with attachments.
+- ./SendEmailWithInlineAttachments/Program.cs: Entry point for sending email with inline attachments.
 - ./SendEmailWithManualPollingForStatus/Program.cs: Entry point for sending emails and manually poll for the email send status.
 - ./SendHighImportanceEmailToMultipleRecipients/Program.cs: Entry point for sending high importance email to multiple recipients.
 - ./SendEmailWithManagedIdentity/SendEmailWithManagedIdentityFunction.cs: Entry point for sending an email using a function app with a managed identity.
