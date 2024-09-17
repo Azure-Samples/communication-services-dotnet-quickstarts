@@ -16,7 +16,8 @@ var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionS
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
 //Call Automation Client
-var client = new CallAutomationClient(connectionString: acsConnectionString);
+Uri pmaEndpoint = new UriBuilder("https://uswc-01.sdf.pma.teams.microsoft.com:6448").Uri;
+var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
 
 //Grab the Cognitive Services endpoint from appsettings.json
 var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
@@ -59,6 +60,8 @@ var ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key))
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
 builder.Services.AddSingleton(ai_client);
+builder.Services.AddSingleton<WebSocketHandlerService>();
+
 var app = builder.Build();
 
 var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
@@ -236,6 +239,33 @@ app.MapPost("/api/callbacks/{contextId}", async (
     var eventProcessor = client.GetEventProcessor();
     eventProcessor.ProcessEvents(cloudEvents);
     return Results.Ok();
+});
+
+app.UseWebSockets();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/ws")
+    {
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            var mediaService = context.RequestServices.GetRequiredService<WebSocketHandlerService>();
+
+            var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            mediaService.SetConnection(webSocket);
+
+            // Set the single WebSocket connection
+            await mediaService.ProcessWebSocketAsync();
+        }
+        else
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }
+    }
+    else
+    {
+        await next(context);
+    }
 });
 
 async Task HandleChatResponse(string chatResponse, CallMedia callConnectionMedia, string callerId, ILogger logger, string context = "OpenAISample")

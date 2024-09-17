@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.5" />
-    <PackageReference Include="Azure.Communication.CallAutomation" Version="1.1.0" />
+    <PackageReference Include="Azure.Communication.CallAutomation" Version="1.3.0-alpha.20240626.3" />
     <PackageReference Include="Azure.Communication.Identity" Version="1.0.0-beta.4" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.13.0" />
     <PackageReference Include="CliWrap" Version="3.6.1" />
