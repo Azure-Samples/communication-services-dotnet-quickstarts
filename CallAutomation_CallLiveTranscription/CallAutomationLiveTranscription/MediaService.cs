@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -50,4 +51,33 @@ public class MediaService
             Console.WriteLine($"Exception -> {ex}");
         }
     }
+
+    public static async Task<string> GetOpenAIResponseAsync(string prompt)
+    {
+        // Replace with your OpenAI API endpoint and access token
+        string openAiEndpoint = "https://api.openai.azure.com/v1/ENDPOINT";
+        string accessToken = "YOUR_ACCESS_TOKEN";
+
+        using (HttpClient httpClient = new HttpClient())
+        {
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+
+            var requestBody = new { prompt = prompt }; // Customize as needed
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = await httpClient.PostAsync(openAiEndpoint, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseText = await response.Content.ReadAsStringAsync();
+                return responseText;
+            }
+            else
+            {
+                Console.WriteLine($"Failed to get response from OpenAI: {response.StatusCode}");
+                return null;
+            }
+        }
+    }
+
 }

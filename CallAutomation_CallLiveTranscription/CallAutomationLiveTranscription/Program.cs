@@ -18,14 +18,14 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 //var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
 //ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
 
-var transportUrl = builder.Configuration.GetValue<string>("TransportUrl");
-ArgumentNullException.ThrowIfNullOrEmpty(transportUrl);
-
 var acsPhoneNumber = builder.Configuration.GetValue<string>("AcsPhoneNumber");
 ArgumentNullException.ThrowIfNullOrEmpty(acsPhoneNumber);
 
 var callbackUriHost = builder.Configuration["VS_TUNNEL_URL"];
 ArgumentNullException.ThrowIfNullOrEmpty(callbackUriHost);
+
+var transportUrl = callbackUriHost.Replace("https", "wss")+"ws";
+ArgumentNullException.ThrowIfNullOrEmpty(transportUrl);
 
 //var agentPhoneNumber = builder.Configuration.GetValue<string>("AgentPhoneNumber");
 /*ArgumentNullException.ThrowIfNullOrEmpty(agentPhoneNumber);*/
