@@ -1,8 +1,8 @@
+using Azure.Communication.CallAutomation;
 using System;
 using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 public class WebSocketHandlerService
 {
@@ -183,7 +183,6 @@ public class WebSocketHandlerService
     // Method to receive messages from WebSocket
     public async Task ProcessWebSocketAsync()
     {
-
         if (_webSocket == null)
         {
             return;
@@ -191,6 +190,7 @@ public class WebSocketHandlerService
 
         try
         {
+            string partialData = "";
 
             while (_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseSent)
             {
@@ -201,26 +201,15 @@ public class WebSocketHandlerService
                 if (receiveResult.MessageType != WebSocketMessageType.Close)
                 {
                     string data = Encoding.UTF8.GetString(receiveBuffer).TrimEnd('\0');
-                    //Console.WriteLine("-----------: " + data);
+                    Console.WriteLine("-----------: " + data);                
                 }
             }
-            // await webSocket.CloseAsync(receiveResult.CloseStatus.Value, receiveResult.CloseStatusDescription, CancellationToken.None);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Exception -> {ex}");
         }
+        
     }
-
-
-    public async Task CloseWebSocketAsync(WebSocketReceiveResult result)
-    {
-        await _webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
-    }
-    public async Task CloseNormalWebSocketAsync()
-    {
-        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stream completed", CancellationToken.None);
-    }
-
 
 }

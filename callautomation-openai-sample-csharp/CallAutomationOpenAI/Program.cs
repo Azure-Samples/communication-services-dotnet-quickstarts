@@ -20,8 +20,8 @@ Uri pmaEndpoint = new UriBuilder("https://uswc-01.sdf.pma.teams.microsoft.com:64
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
 
 //Grab the Cognitive Services endpoint from appsettings.json
-var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
-ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
+//var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
+///ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
 
 string answerPromptSystemTemplate = """ 
     You are an assisant designed to answer the customer query and analyze the sentiment score from the customer tone. 
@@ -50,22 +50,25 @@ string agentPhonenumber = builder.Configuration.GetValue<string>("AgentPhoneNumb
 string chatResponseExtractPattern = @"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)";
 
 var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
-ArgumentNullException.ThrowIfNullOrEmpty(key);
+//ArgumentNullException.ThrowIfNullOrEmpty(key);
 
 var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
-ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
+//ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
-var ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+OpenAIClient ai_client = null;//= new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
-builder.Services.AddSingleton(ai_client);
+//builder.Services.AddSingleton(ai_client);
 builder.Services.AddSingleton<WebSocketHandlerService>();
 
 var app = builder.Build();
 
 var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
 ArgumentNullException.ThrowIfNullOrEmpty(devTunnelUri);
+
+var transportUrl = devTunnelUri.Replace("https", "wss") + "ws";
+
 var maxTimeout = 2;
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
@@ -97,9 +100,14 @@ app.MapPost("/api/incomingCall", async (
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(new Uri(devTunnelUri), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         Console.WriteLine($"Callback Url: {callbackUri}");
+
+        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(transportUrl),
+                MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed, startMediaStreaming: true);
+
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
-            CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
+           // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+            MediaStreamingOptions = mediaStreamingOptions,
         };
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -111,7 +119,7 @@ app.MapPost("/api/incomingCall", async (
         {
             Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
+            //await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
@@ -224,6 +232,26 @@ app.MapPost("/api/incomingCall", async (
                 await HandlePlayAsync(goodbyePrompt, goodbyeContext, callConnectionMedia);
             }
         });
+
+        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingStopped>(
+                answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStopped) =>
+                {
+                    logger.LogInformation("Received media streaming event: {type}", mediaStreamingStopped.GetType());
+                });
+        
+        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingFailed>(
+            answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingFailed) =>
+            {
+                logger.LogInformation($"Received media streaming event: {mediaStreamingFailed.GetType()}, " +
+                    $"SubCode: {mediaStreamingFailed?.ResultInformation?.SubCode}, Message: {mediaStreamingFailed?.ResultInformation?.Message}");
+            });
+        
+        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingStarted>(
+            answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStartedEvent) =>
+        {
+            Console.WriteLine($"MediaStreaming started event received for connection id: {mediaStreamingStartedEvent.CallConnectionId}");
+        });
+
     }
     return Results.Ok();
 });
