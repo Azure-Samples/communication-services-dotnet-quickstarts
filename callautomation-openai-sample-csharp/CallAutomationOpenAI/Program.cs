@@ -120,6 +120,7 @@ app.MapPost("/api/incomingCall", async (
             Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
             //await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
+            await SendChatCompletionsStreamingAsync("Hello");
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
@@ -346,20 +347,20 @@ async Task<string> GetChatGPTResponse(string speech_input)
     return await GetChatCompletionsAsync(answerPromptSystemTemplate, speech_input);
 }
 
-async void SendChatCompletionsStreamingAsync(HttpContext context, string systemPrompt, string userPrompt)
+async Task SendChatCompletionsStreamingAsync(string userPrompt)
 {
     var chatCompletionsOptions = new ChatCompletionsOptions()
     {
         Messages = {
-                    new ChatMessage(ChatRole.System, systemPrompt),
+                   // new ChatMessage(ChatRole.System, systemPrompt),
                     new ChatMessage(ChatRole.User, userPrompt),
                     },
         MaxTokens = 1000
     };
 
-    var mediaService = context.RequestServices.GetRequiredService<WebSocketHandlerService>();
+    var webSocketHandlerService = app.Services.GetRequiredService<WebSocketHandlerService>();
 
-    await mediaService.StreamOpenAiResponseAndSendAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
+    await webSocketHandlerService.StreamOpenAiResponseAndSendAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
 }
 
 async Task<string> GetChatCompletionsAsync(string systemPrompt, string userPrompt)
