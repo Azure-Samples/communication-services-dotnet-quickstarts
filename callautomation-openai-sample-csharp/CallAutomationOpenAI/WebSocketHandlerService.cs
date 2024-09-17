@@ -1,4 +1,6 @@
+using Azure.AI.OpenAI;
 using Azure.Communication.CallAutomation;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Net.WebSockets;
 using System.Text;
@@ -7,6 +9,13 @@ using System.Text.Json;
 public class WebSocketHandlerService
 {
     private WebSocket _webSocket;
+    private readonly OpenAIClient _aiClient;
+
+    // Constructor to inject OpenAIClient
+    public WebSocketHandlerService(OpenAIClient aiClient)
+    {
+        _aiClient = aiClient;
+    }
 
     public void SetConnection(WebSocket webSocket)
     {
@@ -27,6 +36,44 @@ public class WebSocketHandlerService
             var buffer = new ArraySegment<byte>(messageBuffer);
             await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
         }
+    }
+
+    public async Task StreamOpenAiResponseAndSendAsync(string deploymentOrModelName,
+            ChatCompletionsOptions chatCompletionsOptions)
+    {
+        if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+        {
+            throw new InvalidOperationException("WebSocket is not connected.");
+        }
+
+        // Get the streaming response from OpenAI
+        var streamingResponse = await _aiClient.GetChatCompletionsStreamingAsync(
+            deploymentOrModelName: deploymentOrModelName,
+            chatCompletionsOptions);
+
+        // Iterate through the streamed response as it is received
+        await foreach (var message in streamingResponse.Value.GetChoicesStreaming())
+        {
+            await foreach (var chunk in message.GetMessageStreaming())
+            {
+                // Send each chunk of data over WebSocket
+                if (!string.IsNullOrEmpty(chunk.Content))
+                {
+                    // Convert the chunk to bytes
+                    byte[] responseData = Encoding.UTF8.GetBytes(chunk.Content);
+
+                    // Send the chunk over WebSocket
+                    await _webSocket.SendAsync(
+                        new ArraySegment<byte>(responseData),
+                        WebSocketMessageType.Text,
+                        endOfMessage: true,
+                        cancellationToken: CancellationToken.None);
+                }
+            }
+        }
+
+        // Optionally close the WebSocket connection after streaming is complete
+        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Streaming completed", CancellationToken.None);
     }
 
     public async Task StreamAudioDataFromAzureAndSendAsJson(string prompt)

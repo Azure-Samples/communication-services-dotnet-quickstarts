@@ -55,11 +55,11 @@ var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
 var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
 //ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
-OpenAIClient ai_client = null;//= new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+OpenAIClient ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
-//builder.Services.AddSingleton(ai_client);
+builder.Services.AddSingleton(ai_client);
 builder.Services.AddSingleton<WebSocketHandlerService>();
 
 var app = builder.Build();
@@ -344,6 +344,26 @@ async Task<bool> HasIntentAsync(string userQuery, string intentDescription, ILog
 async Task<string> GetChatGPTResponse(string speech_input)
 {
     return await GetChatCompletionsAsync(answerPromptSystemTemplate, speech_input);
+}
+
+async void SendChatCompletionsStreamingAsync(HttpContext context, string systemPrompt, string userPrompt)
+{
+    var chatCompletionsOptions = new ChatCompletionsOptions()
+    {
+        Messages = {
+                    new ChatMessage(ChatRole.System, systemPrompt),
+                    new ChatMessage(ChatRole.User, userPrompt),
+                    },
+        MaxTokens = 1000
+    };
+
+    var mediaService = context.RequestServices.GetRequiredService<WebSocketHandlerService>();
+
+    await mediaService.StreamOpenAiResponseAndSendAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
+
+    var response = await ai_client.GetChatCompletionsStreamingAsync(
+        deploymentOrModelName: builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"),
+        chatCompletionsOptions);
 }
 
 async Task<string> GetChatCompletionsAsync(string systemPrompt, string userPrompt)
