@@ -360,10 +360,6 @@ async void SendChatCompletionsStreamingAsync(HttpContext context, string systemP
     var mediaService = context.RequestServices.GetRequiredService<WebSocketHandlerService>();
 
     await mediaService.StreamOpenAiResponseAndSendAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
-
-    var response = await ai_client.GetChatCompletionsStreamingAsync(
-        deploymentOrModelName: builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"),
-        chatCompletionsOptions);
 }
 
 async Task<string> GetChatCompletionsAsync(string systemPrompt, string userPrompt)
