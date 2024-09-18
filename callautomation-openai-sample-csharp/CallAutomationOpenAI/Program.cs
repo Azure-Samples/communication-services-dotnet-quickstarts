@@ -6,6 +6,7 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CognitiveServices.Speech;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 
@@ -50,16 +51,21 @@ string agentPhonenumber = builder.Configuration.GetValue<string>("AgentPhoneNumb
 string chatResponseExtractPattern = @"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)";
 
 var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
-//ArgumentNullException.ThrowIfNullOrEmpty(key);
+ArgumentNullException.ThrowIfNullOrEmpty(key);
 
 var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
-//ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
+ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
+
+var speechconfig = SpeechConfig.FromSubscription(builder.Configuration.GetValue<string>("YourAzureSubscriptionKey"), builder.Configuration.GetValue<string>("YourRegion"));
+// Set the output format to raw PCM
+speechconfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
 
 OpenAIClient ai_client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
 builder.Services.AddSingleton(ai_client);
+builder.Services.AddSingleton(speechconfig);
 builder.Services.AddSingleton<WebSocketHandlerService>();
 
 var app = builder.Build();
@@ -103,7 +109,7 @@ app.MapPost("/api/incomingCall", async (
 
         MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(transportUrl),
                 MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed, startMediaStreaming: true);
-
+      
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
            // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -117,7 +123,7 @@ app.MapPost("/api/incomingCall", async (
         var answer_result = await answerCallResult.WaitForEventProcessorAsync();
         if (answer_result.IsSuccess)
         {
-            Console.WriteLine($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
+            Console.WriteLine($"Call connected event received for CorrelationId id: {answer_result.SuccessResult.CorrelationId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
             //await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
             await SendChatCompletionsStreamingAsync("Hello");
@@ -360,7 +366,7 @@ async Task SendChatCompletionsStreamingAsync(string userPrompt)
 
     var webSocketHandlerService = app.Services.GetRequiredService<WebSocketHandlerService>();
 
-    await webSocketHandlerService.StreamOpenAiResponseAndSendAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
+    await webSocketHandlerService.GetOpenAiStreamResponseAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
 }
 
 async Task<string> GetChatCompletionsAsync(string systemPrompt, string userPrompt)
