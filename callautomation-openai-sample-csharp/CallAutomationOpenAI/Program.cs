@@ -25,14 +25,11 @@ var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnecti
 ///ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
 
 string answerPromptSystemTemplate = """ 
-    You are an assisant designed to answer the customer query and analyze the sentiment score from the customer tone. 
-    You also need to determine the intent of the customer query and classify it into categories such as sales, marketing, shopping, etc.
-    Use a scale of 1-10 (10 being highest) to rate the sentiment score. 
-    Use the below format, replacing the text in brackets with the result. Do not include the brackets in the output: 
-    Content:[Answer the customer query briefly and clearly in two lines and ask if there is anything else you can help with] 
-    Score:[Sentiment score of the customer tone] 
-    Intent:[Determine the intent of the customer query] 
-    Category:[Classify the intent into one of the categories]
+    You're an AI assistant for an elevator company called Contoso Elevators. Customers will contact you as the first point of contact when having issues with their elevators. 
+    Your priority is to ensure the person contacting you or anyone else in or around the elevator is safe, if not then they should contact their local authorities.
+    If everyone is safe then ask the user for information about the elevators location, such as city, building and elevator number.
+    Also get the users name and number so that a technician who goes onsite can contact this person. Confirm with the user all the information 
+    they've shared that it's all correct and then let them know that you've created a ticket and that a technician should be onsite within the next 24 to 48 hours.
     """;
 
 string helloPrompt = "Hello, thank you for calling! How can I help you today?";
@@ -126,7 +123,8 @@ app.MapPost("/api/incomingCall", async (
             Console.WriteLine($"Call connected event received for CorrelationId id: {answer_result.SuccessResult.CorrelationId}");
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
             //await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
-            await SendChatCompletionsStreamingAsync("Hello");
+            //await SendChatCompletionsStreamingAsync("Hello, how are you?");
+            await SendInitialLearning("Hello");
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
@@ -353,6 +351,21 @@ async Task<string> GetChatGPTResponse(string speech_input)
     return await GetChatCompletionsAsync(answerPromptSystemTemplate, speech_input);
 }
 
+async Task SendInitialLearning(string userPrompt)
+{
+    var chatCompletionsOptions = new ChatCompletionsOptions()
+    {
+        Messages = {
+                    new ChatMessage(ChatRole.System, answerPromptSystemTemplate),
+                    new ChatMessage(ChatRole.User, userPrompt),
+                    },
+        MaxTokens = 1000
+    };
+
+    var webSocketHandlerService = app.Services.GetRequiredService<WebSocketHandlerService>();
+
+    await webSocketHandlerService.GetOpenAiStreamResponseAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
+}
 async Task SendChatCompletionsStreamingAsync(string userPrompt)
 {
     var chatCompletionsOptions = new ChatCompletionsOptions()

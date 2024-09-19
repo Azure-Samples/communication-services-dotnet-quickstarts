@@ -18,7 +18,7 @@ public class PcmAudioStreamWriter : PushAudioOutputStreamCallback
 
     public override void Close()
     {
-        _memoryStream.Close();
+        _memoryStream.Dispose();
         base.Close();
     }
 }
