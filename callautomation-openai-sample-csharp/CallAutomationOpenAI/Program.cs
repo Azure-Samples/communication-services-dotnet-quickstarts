@@ -124,7 +124,6 @@ app.MapPost("/api/incomingCall", async (
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
             //await HandleRecognizeAsync(callConnectionMedia, callerId, helloPrompt);
             //await SendChatCompletionsStreamingAsync("Hello, how are you?");
-            await SendInitialLearning("Hello");
         }
 
         client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
@@ -288,7 +287,8 @@ app.Use(async (context, next) =>
             mediaService.SetConnection(webSocket);
 
             // Set the single WebSocket connection
-            await mediaService.ProcessWebSocketAsync();
+            var openAiModelName = builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
+            await mediaService.ProcessWebSocketAsync(endpoint, key, openAiModelName);
         }
         else
         {
@@ -351,21 +351,6 @@ async Task<string> GetChatGPTResponse(string speech_input)
     return await GetChatCompletionsAsync(answerPromptSystemTemplate, speech_input);
 }
 
-async Task SendInitialLearning(string userPrompt)
-{
-    var chatCompletionsOptions = new ChatCompletionsOptions()
-    {
-        Messages = {
-                    new ChatMessage(ChatRole.System, answerPromptSystemTemplate),
-                    new ChatMessage(ChatRole.User, userPrompt),
-                    },
-        MaxTokens = 1000
-    };
-
-    var webSocketHandlerService = app.Services.GetRequiredService<WebSocketHandlerService>();
-
-    await webSocketHandlerService.GetOpenAiStreamResponseAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
-}
 async Task SendChatCompletionsStreamingAsync(string userPrompt)
 {
     var chatCompletionsOptions = new ChatCompletionsOptions()
@@ -379,7 +364,7 @@ async Task SendChatCompletionsStreamingAsync(string userPrompt)
 
     var webSocketHandlerService = app.Services.GetRequiredService<WebSocketHandlerService>();
 
-    await webSocketHandlerService.GetOpenAiStreamResponseAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
+   // await webSocketHandlerService.GetOpenAiStreamResponseAsync(builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName"), chatCompletionsOptions);
 }
 
 async Task<string> GetChatCompletionsAsync(string systemPrompt, string userPrompt)
