@@ -34,7 +34,15 @@ namespace SendEmailWithManualPollingUsingOperationId
             var operationId = emailSendOperation.Id;
             Console.WriteLine($"Email operation id = {operationId}");
 
-            /// Rehydrate an EmailSendOperation object using the operationId
+            /// Do a bunch of other things here...
+
+            /// Poll for the status of the email send operation using the previous operationId
+            await PollForEmailSendOperationStatus(emailClient, operationId);
+        }
+
+        private static async Task PollForEmailSendOperationStatus(EmailClient emailClient, string operationId)
+        {
+            /// Rehydrate a new EmailSendOperation object using the given operationId
             EmailSendOperation rehydratedEmailSendOperation = new EmailSendOperation(operationId, emailClient);
 
             /// Call UpdateStatus on the rehydrated email send operation to poll for the status manually.
