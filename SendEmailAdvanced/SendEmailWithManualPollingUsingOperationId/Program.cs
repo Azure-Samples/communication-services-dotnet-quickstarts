@@ -37,12 +37,15 @@ namespace SendEmailWithManualPollingUsingOperationId
             /// Do a bunch of other things here...
 
             /// Poll for the status of the email send operation using the previous operationId
-            await PollForEmailSendOperationStatus(emailClient, operationId);
+            await PollForEmailSendOperationStatusWithExistingOperationId(emailClient, operationId);
         }
 
-        private static async Task PollForEmailSendOperationStatus(EmailClient emailClient, string operationId)
+        private static async Task PollForEmailSendOperationStatusWithExistingOperationId(EmailClient emailClient, string operationId)
         {
             /// Rehydrate a new EmailSendOperation object using the given operationId
+            /// Rehydration refers to the process of creating a new EmailSendOperation object using the operation ID from a previous EmailSendOperation.
+            /// This is necessary in case you want to continue monitoring the status of the email manually, when you don't have 
+            /// the original EmailSendOperation object from the initial request.
             EmailSendOperation rehydratedEmailSendOperation = new EmailSendOperation(operationId, emailClient);
 
             /// Call UpdateStatus on the rehydrated email send operation to poll for the status manually.
