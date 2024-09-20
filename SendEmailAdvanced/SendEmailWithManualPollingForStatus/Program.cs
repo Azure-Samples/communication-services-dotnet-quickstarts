@@ -3,7 +3,7 @@ using Azure.Communication.Email;
 using System;
 using System.Threading.Tasks;
 
-namespace SendEmailPlainText
+namespace SendEmailWithManualPollingForStatus
 {
     class Program
     {

@@ -31,6 +31,8 @@ Additional documentation for this sample can be found on [Microsoft Docs](https:
 - ./SendEmailWithManualPollingForStatus/Program.cs: Entry point for sending emails and manually poll for the email send status.
 - ./SendHighImportanceEmailToMultipleRecipients/Program.cs: Entry point for sending high importance email to multiple recipients.
 - ./SendEmailWithManagedIdentity/SendEmailWithManagedIdentityFunction.cs: Entry point for sending an email using a function app with a managed identity.
+- ./SendBulkEmailWithOptionalThrottlingPolicy/Program.cs: Entry point for sending bulk emails with optional throttling policy.
+- ./SendEmailWithManualPollingUsingOperationId/Program.cs: Entry point for sending an email and polling for status using operationID to rehydrated email send operation.
 
 ## Before running the sample for the first time
 
