@@ -3,7 +3,7 @@ using Azure.Communication.Email;
 using System;
 using System.Threading.Tasks;
 
-namespace SendEmailWithManualPollingForStatus
+namespace SendEmailWithManualPollingUsingOperationId
 {
     class Program
     {
@@ -15,7 +15,7 @@ namespace SendEmailWithManualPollingForStatus
 
             var sender = "<SENDER_EMAIL>";
             var recipient = "<RECIPIENT_EMAIL>";
-            var subject = "Send email with manual status polling";
+            var subject = "Send email with manual status polling using operationID";
 
             var emailContent = new EmailContent(subject)
             {
@@ -29,32 +29,36 @@ namespace SendEmailWithManualPollingForStatus
                 wait: WaitUntil.Started,
                 message: emailMessage);
 
-            /// Call UpdateStatus on the email send operation to poll for the status manually.
+            /// Get the OperationId so that it can be used for rehydrating an EmailSendOperation object
+            /// and use that object to poll for the status of the email send operation.
+            var operationId = emailSendOperation.Id;
+            Console.WriteLine($"Email operation id = {operationId}");
+
+            /// Rehydrate an EmailSendOperation object using the operationId
+            EmailSendOperation rehydratedEmailSendOperation = new EmailSendOperation(operationId, emailClient);
+
+            /// Call UpdateStatus on the rehydrated email send operation to poll for the status manually.
             try
             {
                 while (true)
                 {
-                    await emailSendOperation.UpdateStatusAsync();
-                    if (emailSendOperation.HasCompleted)
+                    await rehydratedEmailSendOperation.UpdateStatusAsync();
+                    if (rehydratedEmailSendOperation.HasCompleted)
                     {
                         break;
                     }
                     await Task.Delay(100);
                 }
 
-                if (emailSendOperation.HasValue)
+                if (rehydratedEmailSendOperation.HasValue)
                 {
-                    Console.WriteLine($"Email queued for delivery. Status = {emailSendOperation.Value.Status}");
+                    Console.WriteLine($"Email queued for delivery. Status = {rehydratedEmailSendOperation.Value.Status}");
                 }
             }
             catch (RequestFailedException ex)
             {
                 Console.WriteLine($"Email send failed with Code = {ex.ErrorCode} and Message = {ex.Message}");
             }
-
-            /// Get the OperationId so that it can be used for tracking the message for troubleshooting
-            string operationId = emailSendOperation.Id;
-            Console.WriteLine($"Email operation id = {operationId}");
         }
     }
 }
