@@ -79,7 +79,7 @@ public class WebSocketHandlerService
         InStreamHandler inStreamHandler = new InStreamHandler(_webSocket, speechConfig, outStreamHandler);
         try
         {
-            _ = Task.Run(async() => await outStreamHandler.SendInitialLearning("Hello"));
+            outStreamHandler.SendInitialLearning("Hello");
             await inStreamHandler.ProcessWebSocketAsync();
         }
         catch (Exception ex)

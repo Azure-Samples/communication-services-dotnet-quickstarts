@@ -68,7 +68,6 @@ namespace CallAutomationOpenAI
         private void WriteToSpeechConfigStream(string data)
         {
             var input = StreamingDataParser.Parse(data);
-           // var input2 = JsonConvert.DeserializeObject<ServerStreamingData>(data);
             if (input is AudioData audioData)
             {
                 if (!audioData.IsSilent)

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Dynamic;
 using Azure.Communication.CallAutomation.FHL;
 using System.Text;
+using Microsoft.Extensions.Azure;
 
 
 namespace CallAutomationOpenAI
@@ -24,10 +25,13 @@ namespace CallAutomationOpenAI
         private WebSocket m_webSocket;
         private readonly OpenAIClient m_aiClient;
         private readonly SpeechConfig m_speechConfig;
-        private CancellationTokenSource m_aiClientCts;
+        private CancellationTokenSource? m_aiClientCts;
         private Channel<Func<Task>> m_channel;
         private string m_openAiModelName;
         private CancellationTokenSource m_cts;
+        private Task m_aiTask;
+        private readonly object m_readTaskLock = new object();
+        private AiContext m_aiContext;
         public OutStreamHandler(WebSocket webSocket, string openAiUri, string openAiKey, string openAiModelName, SpeechConfig speechConfig)
         {
             m_webSocket = webSocket;
@@ -40,6 +44,7 @@ namespace CallAutomationOpenAI
             });
             m_aiClientCts = new CancellationTokenSource();
             m_cts = new CancellationTokenSource();
+            m_aiContext = new AiContext();
             // start dequeue task for new audio packets
             _ = Task.Run(async () => await StartForwardingAudioToWebSocket());
         }
@@ -51,26 +56,32 @@ namespace CallAutomationOpenAI
                 Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                 if (e.Result.Text.Length > 1)
                 {
+                    m_aiContext.AddChat(ChatRole.User, e.Result.Text);
                     var chatCompletionsOptions = new ChatCompletionsOptions()
                     {
-                        Messages = {
-                                     //new ChatMessage(ChatRole.System, answerPromptSystemTemplate),
-                                     new ChatMessage(ChatRole.User, e.Result.Text),
-                                    },
                         MaxTokens = 1000
                     };
-
-                    /*if(aiTask != null)
-                    { 
-                        m_aiClientCts.Cancel(); // Cancel the previous
-                        m_aiClientCts.Dispose();
-                        aiTask.GetAwaiter().GetResult(); // Wait for the previous to finish
+                    
+                    foreach(var chat in m_aiContext.GetChatHistory())
+                    {
+                        chatCompletionsOptions.Messages.Add(chat);
                     }
-                    m_aiClientCts = new CancellationTokenSource();*/
-                    //ClearBuffer();
-                    _ = Task.Run(async () => await GetOpenAiStreamResponseAsync(chatCompletionsOptions));
 
-                    // stop speaking once speech is recognized
+                    lock(m_readTaskLock)
+                    {
+                        if (m_aiClientCts != null && !m_aiClientCts.Token.IsCancellationRequested)
+                        { 
+                            m_aiClientCts.Cancel(); // Cancel the previous
+                        }
+                        if(m_aiTask != null)
+                        {
+                            m_aiTask.GetAwaiter().GetResult(); // Wait for the previous to finish
+                        }
+                        ClearBuffer();
+                        m_aiClientCts = new CancellationTokenSource();
+                        m_aiTask = Task.Run(async () => await GetOpenAiStreamResponseAsync(chatCompletionsOptions));
+                    }
+
                 }
             }
             else if (e.Result.Reason == ResultReason.NoMatch)
@@ -82,25 +93,23 @@ namespace CallAutomationOpenAI
         public void onRecognizingSpeech(object sender, SpeechRecognitionEventArgs e)
         {
             Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
-            /*if ( e.Result.Text.Length > 1)
+            if ( e.Result.Text.Length > 1)
             {
-                //if (aiTask != null)
-                //{
-                //    m_aiClientCts.Cancel(); // Cancel the previous
-                //    m_aiClientCts.Dispose();
-                //    aiTask.GetAwaiter().GetResult(); // Wait for the previous to finish
-                //}
-                //m_aiClientCts = new CancellationTokenSource();
-                //ClearBuffer());
-                
-            }*/
+                // stop speaking once speech is recognized
+                lock(m_readTaskLock)
+                    {
+                        if (m_aiClientCts != null && !m_aiClientCts.Token.IsCancellationRequested)
+                        {
+                            m_aiClientCts.Cancel(); // Cancel the previous
+                        }
+                        ClearBuffer();
+                    }
+            }
         }
         public void Close()
         {
             m_cts.Cancel();
-            m_aiClientCts.Cancel();
-            m_cts.Dispose();
-            m_aiClientCts.Dispose();
+            m_aiClientCts?.Cancel();
         }
 
         private async Task StartForwardingAudioToWebSocket()
@@ -114,9 +123,9 @@ namespace CallAutomationOpenAI
                     await processBuffer.Invoke();
                 }
             }
-            catch (TaskCanceledException taskCanceledException)
+            catch (OperationCanceledException opCanceledException)
             {
-                Console.WriteLine($"TaskCanceledException received for StartForwardingAudioToPlayer : {taskCanceledException}");
+                Console.WriteLine($"OperationCanceledException received for StartForwardingAudioToPlayer : {opCanceledException}");
             }
             catch (ObjectDisposedException objDisposedException)
             {
@@ -125,6 +134,10 @@ namespace CallAutomationOpenAI
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception received for StartForwardingAudioToPlayer {ex}");
+            }
+            finally
+            {
+                m_cts.Dispose();
             }
         }
 
@@ -159,24 +172,28 @@ namespace CallAutomationOpenAI
             }
             try
             {
-                var streamingResponse = await m_aiClient.GetChatCompletionsStreamingAsync(m_openAiModelName, chatCompletionsOptions, m_aiClientCts.Token);
+                var streamingResponse = await m_aiClient.GetChatCompletionsStreamingAsync(m_openAiModelName, chatCompletionsOptions);
                 List<char> puntuations = new List<char> { '.', '?', '!' };
                 string sentence = "";
-                await foreach (var message in streamingResponse.Value.GetChoicesStreaming(m_aiClientCts.Token))
+                string fullSentence = "";
+                await foreach (var message in streamingResponse.Value.GetChoicesStreaming())
                 {
                     await foreach (var chunk in message.GetMessageStreaming())
                     {
+                        m_aiClientCts?.Token.ThrowIfCancellationRequested();
+
                         if (!string.IsNullOrEmpty(chunk.Content))
                         {
-                            Console.WriteLine("Received response text from Open AI: " + chunk.Content);
                             sentence += chunk.Content + " ";
                             if (!puntuations.Contains(chunk.Content[chunk.Content.Length - 1]))
                             {
                                 continue;
                             }
 
+                            Console.WriteLine("Received response text from Open AI: " + sentence);
                             // Convert text to PCM audio
                             using var audioStream = await ConvertTextToPcmStreamAsync(sentence);
+                            fullSentence += sentence + " ";
                             sentence = "";
                             // Read audio data from the MemoryStream
                             byte[] audioData = audioStream.ToArray();
@@ -201,20 +218,28 @@ namespace CallAutomationOpenAI
                                 {
                                     ServerAudioData = new ServerAudioData(audioChunk)
                                 };
-
                                 // Serialize the JSON object to a string
-                                //string jsonString = JsonConvert.SerializeObject(audio);
                                 string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(audio);
-                                byte[] test = Encoding.UTF8.GetBytes(jsonString);
                                 ReceiveAudioForOutBound(jsonString);
                             }
                         }
                     }
                 }
+                m_aiContext.AddChat(ChatRole.Assistant, fullSentence);
+            }
+            catch (OperationCanceledException e)
+            {
+                Console.WriteLine($"{nameof(OperationCanceledException)} thrown with message: {e.Message}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception during ai streaming -> {ex}");
+            }
+            finally
+            {
+
+                m_aiClientCts?.Dispose();
+                m_aiClientCts = null;
             }
         }
         private async Task<MemoryStream> ConvertTextToPcmStreamAsync(string text)
@@ -248,22 +273,8 @@ namespace CallAutomationOpenAI
                 };
 
                 // Serialize the JSON object to a string
-                 
                 string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(jsonObject);
-                ;
-                byte[] test = Encoding.UTF8.GetBytes(jsonString);
-                /*var js = new StopAudioPlay()
-                {
-                    kind = ServerMessageType.StopAudio,
-                    stopAudio = new StopAudio()
-                };
-                jsonString = System.Text.Json.JsonSerializer.Serialize<StopAudioPlay>(js);*/
-                /*               byte[] jsonBytes = Encoding.UTF8.GetBytes(jsonString);
-                                var base64String = Encoding.UTF8.GetString(jsonBytes).TrimEnd('\0');
-
-                                ServerStreamingData serverStreamingData = JsonConvert.DeserializeObject<ServerStreamingData>(base64String);
-                */
-                // Convert the JSON string to bytes for WebSocket transmission
+                
                 ReceiveAudioForOutBound(jsonString);
 
             }
@@ -272,23 +283,26 @@ namespace CallAutomationOpenAI
                 Console.WriteLine($"Exception during streaming -> {ex}");
             }
         }
-        public async Task SendInitialLearning(string userPrompt)
+        public void SendInitialLearning(string userPrompt)
         {
+            m_aiContext.AddChat(ChatRole.System, m_answerPromptSystemTemplate);
+            m_aiContext.AddChat(ChatRole.User, userPrompt);
             var chatCompletionsOptions = new ChatCompletionsOptions()
             {
-                Messages = {
-                    new ChatMessage(ChatRole.System, m_answerPromptSystemTemplate),
-                    new ChatMessage(ChatRole.User, userPrompt),
-                    },
                 MaxTokens = 1000
             };
+            
+            foreach( ChatMessage chat in m_aiContext.GetChatHistory(10000))
+            {
+                chatCompletionsOptions.Messages.Add(chat);
+            }
 
-            await GetOpenAiStreamResponseAsync( chatCompletionsOptions);
+            m_aiTask = Task.Run(async () => await GetOpenAiStreamResponseAsync(chatCompletionsOptions));
         }
     }
 }
-public class StopAudioPlay
+public class AudioPlay
 {
-    public ServerMessageType kind { get; set; }
-    public StopAudio stopAudio { get; set; }
+    public ServerMessageType Kind { get; set; }
+    public ServerAudioData AudioData { get; set; }
 }
