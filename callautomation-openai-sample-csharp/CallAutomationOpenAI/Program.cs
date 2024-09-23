@@ -288,7 +288,8 @@ app.Use(async (context, next) =>
 
             // Set the single WebSocket connection
             var openAiModelName = builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
-            await mediaService.ProcessWebSocketAsync(endpoint, key, openAiModelName);
+            var systemPrompt = builder.Configuration.GetValue<string>("SystemPrompt") ?? answerPromptSystemTemplate;
+            await mediaService.ProcessWebSocketAsync(endpoint, key, openAiModelName, systemPrompt);
         }
         else
         {

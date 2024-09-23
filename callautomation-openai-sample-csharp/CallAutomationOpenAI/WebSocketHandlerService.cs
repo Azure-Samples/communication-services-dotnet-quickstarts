@@ -69,7 +69,7 @@ public class WebSocketHandlerService
 
     
     // Method to receive messages from WebSocket
-    public async Task ProcessWebSocketAsync(string openAiUri, string openAiKey, string openAiModelName)
+    public async Task ProcessWebSocketAsync(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
     {    
         if (_webSocket == null)
         {
@@ -79,7 +79,7 @@ public class WebSocketHandlerService
         InStreamHandler inStreamHandler = new InStreamHandler(_webSocket, speechConfig, outStreamHandler);
         try
         {
-            outStreamHandler.SendInitialLearning("Hello");
+            outStreamHandler.SendInitialLearning("Hello", systemPrompt);
             await inStreamHandler.ProcessWebSocketAsync();
         }
         catch (Exception ex)

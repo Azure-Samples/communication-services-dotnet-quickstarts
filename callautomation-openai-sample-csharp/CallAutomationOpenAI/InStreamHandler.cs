@@ -3,12 +3,6 @@ using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.CognitiveServices.Speech;
 using System.Net.WebSockets;
 using System.Text;
-using Azure.AI.OpenAI;
-using Azure;
-using System.Threading.Channels;
-using System.Text.Json.Serialization;
-using Azure.Communication.CallAutomation.FHL;
-using Newtonsoft.Json;
 
 namespace CallAutomationOpenAI
 {
