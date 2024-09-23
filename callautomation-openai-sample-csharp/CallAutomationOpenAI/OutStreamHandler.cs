@@ -43,9 +43,9 @@ namespace CallAutomationOpenAI
         {
             if (e.Result.Reason == ResultReason.RecognizedSpeech)
             {
-                Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                 if (e.Result.Text.Length > 1)
                 {
+                    Console.WriteLine($"RECOGNIZED: Text={e.Result.Text}");
                     m_aiContext.AddChat(ChatRole.User, e.Result.Text);
                     var chatCompletionsOptions = new ChatCompletionsOptions()
                     {
@@ -174,7 +174,7 @@ namespace CallAutomationOpenAI
 
                         if (!string.IsNullOrEmpty(chunk.Content))
                         {
-                            sentence += chunk.Content + " ";
+                            sentence += chunk.Content;
                             if (!puntuations.Contains(chunk.Content[chunk.Content.Length - 1]))
                             {
                                 continue;
