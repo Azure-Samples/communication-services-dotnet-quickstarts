@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-//Azure.Communication.CallAutomation 1.3.0-alpha.20240722.4
+//Azure.Communication.CallAutomation 1.3.0-alpha.20240903.2
 
 var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
@@ -97,16 +97,16 @@ app.MapPost("/api/incomingCall", async (
             eventCallbackUri = callbackUri;
 
             //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),
-            //    locale, startTranscription, TranscriptionTransport.Websocket);
+            //    TranscriptionTransport.Websocket, locale, true);
 
-            //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(transportUrl), MediaStreamingContent.Audio,
-            //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, startMediaStreaming);
+            //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(transportUrl), MediaStreamingTransport.Websocket, MediaStreamingContent.Audio,
+            //    MediaStreamingAudioChannel.Unmixed);
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
             {
                 CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
                 //TranscriptionOptions = transcriptionOptions,
-                //MediaStreamingOptions= mediaStreamingOptions
+                //MediaStreamingOptions = mediaStreamingOptions
             };
 
             AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -123,8 +123,8 @@ app.MapPost("/api/incomingCall", async (
 
                 CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
                 logger.LogInformation($"CORRELATION ID: {callConnectionProperties.CorrelationId}");
-                logger.LogInformation($"Media Streaming state: {callConnectionProperties.MediaStreamingSubscription.State}");
-                logger.LogInformation($"Transcription state: {callConnectionProperties.TranscriptionSubscription.State}");
+                //logger.LogInformation($"Media Streaming state: {callConnectionProperties.MediaStreamingSubscription.State}");
+                //logger.LogInformation($"Transcription state: {callConnectionProperties.TranscriptionSubscription.State}");
 
             }
             client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(
@@ -306,6 +306,14 @@ app.MapPost("/api/incomingCall", async (
                     logger.LogInformation($"Received event: {holdFailed.GetType()}, CorrelationId: {holdFailed.CorrelationId}, " +
                         $"SubCode: {holdFailed?.ResultInformation?.SubCode}, Message: {holdFailed?.ResultInformation?.Message}");
                 });
+
+            client.GetEventProcessor().AttachOngoingEventProcessor<ParticipantsUpdated>(
+                answerCallResult.CallConnection.CallConnectionId, async (ParticipantsUpdated) =>
+                {
+                    callConnectionId = ParticipantsUpdated.CallConnectionId;
+                    logger.LogInformation($"Received event: {ParticipantsUpdated.GetType()}");
+                    callConnectionId = ParticipantsUpdated.CallConnectionId;
+                });
         }
     }
     return Results.Ok();
@@ -331,51 +339,51 @@ app.MapPost("/addParticipant", async (bool isTeamsUser ,ILogger<Program> logger)
     return Results.Ok(response);
 });
 
-app.MapPost("/playMedia", async (bool isPlayToAll, bool isTeamsUser, bool isMediaBeforeInvite, ILogger <Program> logger) =>
+app.MapPost("/playMedia", async (bool isPlayToAll, bool isTeamsUser, bool isPlayMediaToCaller, ILogger <Program> logger) =>
 {
     Console.WriteLine(isPlayToAll);
-    await PlayMediaAsync(isPlayToAll, isTeamsUser, isMediaBeforeInvite);
+    await PlayMediaAsync(isPlayToAll, isTeamsUser, isPlayMediaToCaller);
     return Results.Ok();
 });
 
-app.MapPost("/recognizeMedia", async (bool isDtmf, bool isSpeechOrDtmf, bool isTeamsUser, bool isMediaBeforeInvite, ILogger <Program> logger) =>
+app.MapPost("/recognizeMedia", async (bool isDtmf, bool isSpeechOrDtmf, bool isTeamsUser, bool isPlayMediaToCaller, ILogger <Program> logger) =>
 {
-    await RecognizeMediaAsync(isDtmf, isSpeechOrDtmf, isTeamsUser, isMediaBeforeInvite);
+    await RecognizeMediaAsync(isDtmf, isSpeechOrDtmf, isTeamsUser, isPlayMediaToCaller);
     return Results.Ok();
 });
 
-app.MapPost("/sendDTMFTones", async (bool isTeamsUser, bool isMediaBeforeInvite, ILogger <Program> logger) =>
-{
-    Console.WriteLine(isTeamsUser);
-    await SendDtmfToneAsync(isTeamsUser, isMediaBeforeInvite);
-    return Results.Ok();
-});
-
-app.MapPost("/startContinuousDTMFTones", async (bool isTeamsUser, bool isMediaBeforeInvite, ILogger <Program> logger) =>
+app.MapPost("/sendDTMFTones", async (bool isTeamsUser, bool isPlayMediaToCaller, ILogger <Program> logger) =>
 {
     Console.WriteLine(isTeamsUser);
-    await StartContinuousDtmfAsync(isTeamsUser, isMediaBeforeInvite);
+    await SendDtmfToneAsync(isTeamsUser, isPlayMediaToCaller);
     return Results.Ok();
 });
 
-app.MapPost("/stopContinuousDTMFTones", async (bool isTeamsUser, bool isMediaBeforeInvite, ILogger <Program> logger) =>
+app.MapPost("/startContinuousDTMFTones", async (bool isTeamsUser, bool isPlayMediaToCaller, ILogger <Program> logger) =>
 {
     Console.WriteLine(isTeamsUser);
-    await StopContinuousDtmfAsync(isTeamsUser, isMediaBeforeInvite);
+    await StartContinuousDtmfAsync(isTeamsUser, isPlayMediaToCaller);
     return Results.Ok();
 });
 
-app.MapPost("/holdParticipant", async (bool isTeamsUser,bool isPlaySource, bool isMediaBeforeInvite, ILogger <Program> logger) =>
+app.MapPost("/stopContinuousDTMFTones", async (bool isTeamsUser, bool isPlayMediaToCaller, ILogger <Program> logger) =>
 {
     Console.WriteLine(isTeamsUser);
-    await HoldParticipantAsync(isTeamsUser, isPlaySource, isMediaBeforeInvite);
+    await StopContinuousDtmfAsync(isTeamsUser, isPlayMediaToCaller);
     return Results.Ok();
 });
 
-app.MapPost("/unholdParticipant", async (bool isTeamsUser, bool isMediaBeforeInvite, ILogger <Program> logger) =>
+app.MapPost("/holdParticipant", async (bool isTeamsUser,bool isPlaySource, bool isPlayMediaToCaller, ILogger <Program> logger) =>
 {
     Console.WriteLine(isTeamsUser);
-    await UnholdParticipantAsync(isTeamsUser, isMediaBeforeInvite);
+    await HoldParticipantAsync(isTeamsUser, isPlaySource, isPlayMediaToCaller);
+    return Results.Ok();
+});
+
+app.MapPost("/unholdParticipant", async (bool isTeamsUser, bool isPlayMediaToCaller, ILogger <Program> logger) =>
+{
+    Console.WriteLine(isTeamsUser);
+    await UnholdParticipantAsync(isTeamsUser, isPlayMediaToCaller);
     return Results.Ok();
 });
 
@@ -385,35 +393,41 @@ app.MapPost("/cancelAllMediaOperation", async (ILogger<Program> logger) =>
     return Results.Ok();
 });
 
-app.MapPost("/startMediaStreaming", async (ILogger<Program> logger) =>
+app.MapPost("/getParticipantList", async (ILogger<Program> logger) =>
 {
-    await StartMediaStreamingAsync();
+    await GetParticipantListAsync();
     return Results.Ok();
 });
 
-app.MapPost("/stopMediaStreaming", async (ILogger<Program> logger) =>
-{
-    await StopMediaStreamingAsync();
-    return Results.Ok();
-});
+//app.MapPost("/startMediaStreaming", async (ILogger<Program> logger) =>
+//{
+//    await StartMediaStreamingAsync();
+//    return Results.Ok();
+//});
 
-app.MapPost("/startTranscription", async (ILogger<Program> logger) =>
-{
-    await StartTranscriptionAsync();
-    return Results.Ok();
-});
+//app.MapPost("/stopMediaStreaming", async (ILogger<Program> logger) =>
+//{
+//    await StopMediaStreamingAsync();
+//    return Results.Ok();
+//});
 
-app.MapPost("/updateTranscription", async (ILogger<Program> logger) =>
-{
-    await UpdateTranscriptionAsync();
-    return Results.Ok();
-});
+//app.MapPost("/startTranscription", async (ILogger<Program> logger) =>
+//{
+//    await StartTranscriptionAsync();
+//    return Results.Ok();
+//});
 
-app.MapPost("/stopTranscription", async (ILogger<Program> logger) =>
-{
-    await StopTranscriptionAsync();
-    return Results.Ok();
-});
+//app.MapPost("/updateTranscription", async (ILogger<Program> logger) =>
+//{
+//    await UpdateTranscriptionAsync();
+//    return Results.Ok();
+//});
+
+//app.MapPost("/stopTranscription", async (ILogger<Program> logger) =>
+//{
+//    await StopTranscriptionAsync();
+//    return Results.Ok();
+//});
 
 async Task<AddParticipantResult> AddParticipantAsync(bool isTeamsUser)
 {
@@ -442,7 +456,7 @@ async Task<AddParticipantResult> AddParticipantAsync(bool isTeamsUser)
     return await callConnection.AddParticipantAsync(addParticipantOptions);
 }
 
-async Task PlayMediaAsync(bool isPlayToAll,bool isTeamsUser, bool isMediaBeforeInvite)
+async Task PlayMediaAsync(bool isPlayToAll,bool isTeamsUser, bool isPlayMediaToCaller)
 {
     CallMedia callMedia = GetCallMedia();
 
@@ -469,16 +483,34 @@ async Task PlayMediaAsync(bool isPlayToAll,bool isTeamsUser, bool isMediaBeforeI
     }
     else
     {
-        CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+        CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+        Console.WriteLine("Target User:--> " + target);
 
         var playTo = new List<CommunicationIdentifier> { target };
-        await callMedia.PlayAsync(playSources, playTo);
+
+        PlayOptions playToOptions = new PlayOptions(playSources, playTo)
+        {
+            OperationContext = "playToContext"
+        };
+
+        if (target != null)
+        {
+            await callMedia.PlayAsync(playToOptions);
+        }
+        else
+        {
+            Console.WriteLine("TARGET IS EMPTY...");
+        }
+        
     }
 }
 
-async Task RecognizeMediaAsync(bool isDtmf, bool isSpeechOrDtmf, bool isTeamsUser, bool isMediaBeforeInvite)
+async Task RecognizeMediaAsync(bool isDtmf, bool isSpeechOrDtmf, bool isTeamsUser, bool isPlayMediaToCaller)
 {
-    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+    Console.WriteLine("Target User:--> " + target);
 
     CallMediaRecognizeOptions recognizeOptions = null;
 
@@ -540,9 +572,11 @@ async Task RecognizeMediaAsync(bool isDtmf, bool isSpeechOrDtmf, bool isTeamsUse
     await callMedia.StartRecognizingAsync(recognizeOptions);
 }
 
-async Task SendDtmfToneAsync(bool isTeamsUser, bool isMediaBeforeInvite)
+async Task SendDtmfToneAsync(bool isTeamsUser, bool isPlayMediaToCaller)
 {
-    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+    Console.WriteLine("Target User:--> " + target);
 
     List<DtmfTone> tones = new List<DtmfTone>
         {
@@ -555,27 +589,33 @@ async Task SendDtmfToneAsync(bool isTeamsUser, bool isMediaBeforeInvite)
     await callMedia.SendDtmfTonesAsync(tones, target);
 }
 
-async Task StartContinuousDtmfAsync(bool isTeamsUser, bool isMediaBeforeInvite)
+async Task StartContinuousDtmfAsync(bool isTeamsUser, bool isPlayMediaToCaller)
 {
-    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+    Console.WriteLine("Target User:--> " + target);
 
     CallMedia callMedia = GetCallMedia();
 
     await callMedia.StartContinuousDtmfRecognitionAsync(target);
 }
 
-async Task StopContinuousDtmfAsync(bool isTeamsUser, bool isMediaBeforeInvite)
+async Task StopContinuousDtmfAsync(bool isTeamsUser, bool isPlayMediaToCaller)
 {
-    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+    Console.WriteLine("Target User:--> " + target);
 
     CallMedia callMedia = GetCallMedia();
 
     await callMedia.StopContinuousDtmfRecognitionAsync(target);
 }
 
-async Task HoldParticipantAsync(bool isTeamsUser, bool isPlaySource, bool isMediaBeforeInvite)
+async Task HoldParticipantAsync(bool isTeamsUser, bool isPlaySource, bool isPlayMediaToCaller)
 {
-    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+    Console.WriteLine("Target User:--> " + target);
 
     CallMedia callMedia = GetCallMedia();
 
@@ -585,24 +625,53 @@ async Task HoldParticipantAsync(bool isTeamsUser, bool isPlaySource, bool isMedi
     {
         HoldOptions holdOptions = new HoldOptions(target)
         {
-            PlaySource = fileSource,
+            PlaySourceInfo = fileSource,
             OperationContext = "holdUserContext"
         };
         await callMedia.HoldAsync(holdOptions);
     }
     else
     {
-        await callMedia.HoldAsync(target);
+        HoldOptions holdOptions = new HoldOptions(target)
+        {
+            OperationContext = "holdUserContext"
+        };
+        await callMedia.HoldAsync(holdOptions);
+    }
+
+    await Task.Delay(5000);
+
+    CallParticipant participant = await GetParticipantAsync(target);
+    if (participant != null)
+    {
+        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
+        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
     }
 }
 
-async Task UnholdParticipantAsync(bool isTeamsUser, bool isMediaBeforeInvite)
+async Task UnholdParticipantAsync(bool isTeamsUser, bool isPlayMediaToCaller)
 {
-    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isMediaBeforeInvite);
+    CommunicationIdentifier target = GetCommunicationTargetIdentifier(isTeamsUser, isPlayMediaToCaller);
+
+    Console.WriteLine("Target User:--> " + target);
 
     CallMedia callMedia = GetCallMedia();
 
-    await callMedia.UnholdAsync(target);
+    UnholdOptions unholdOptions = new UnholdOptions(target)
+    {
+        OperationContext = "unholdUserContext"
+    };
+
+    await callMedia.UnholdAsync(unholdOptions);
+
+    await Task.Delay(5000);
+
+    CallParticipant participant = await GetParticipantAsync(target);
+    if (participant != null)
+    {
+        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
+        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
+    }
 }
 
 async Task CancelAllMediaOperaionAsync()
@@ -612,85 +681,106 @@ async Task CancelAllMediaOperaionAsync()
     await callMedia.CancelAllMediaOperationsAsync();
 }
 
-async Task StartMediaStreamingAsync()
+async Task<CallParticipant> GetParticipantAsync(CommunicationIdentifier target)
 {
-    CallMedia callMedia = GetCallMedia();
+    CallConnection callConnection = GetConnection();
+    CallParticipant participant = await callConnection.GetParticipantAsync(target);
+    return participant;
+}
 
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+async Task GetParticipantListAsync()
+{
+    CallConnection callConnection = GetConnection();
 
-    if (callConnectionProperties.MediaStreamingSubscription.State.Equals("inactive"))
-    {
-        await callMedia.StartMediaStreamingAsync();
-    }
-    else
-    {
-        Console.WriteLine("Media streaming is already active");
+    var list = await callConnection.GetParticipantsAsync();
+
+    foreach (var participant in list.Value) {
+        Console.WriteLine("----------------------------------------------------------------------");
+        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
+        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
+        Console.WriteLine("----------------------------------------------------------------------");
     }
 }
 
-async Task StopMediaStreamingAsync()
-{
-    CallMedia callMedia = GetCallMedia();
+//async Task StartMediaStreamingAsync()
+//{
+//    CallMedia callMedia = GetCallMedia();
 
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+//    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
 
-    if (callConnectionProperties.MediaStreamingSubscription.State.Equals("active"))
-    {
-        await callMedia.StopMediaStreamingAsync();
-    }
-    else
-    {
-        Console.WriteLine("Media streaming is not active");
-    }
-}
+//    if (callConnectionProperties.MediaStreamingSubscription.State.Equals("inactive"))
+//    {
+//        await callMedia.StartMediaStreamingAsync();
+//    }
+//    else
+//    {
+//        Console.WriteLine("Media streaming is already active");
+//    }
+//}
 
-async Task StartTranscriptionAsync()
-{
-    CallMedia callMedia = GetCallMedia();
+//async Task StopMediaStreamingAsync()
+//{
+//    CallMedia callMedia = GetCallMedia();
 
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+//    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
 
-    if (callConnectionProperties.TranscriptionSubscription.State.Equals("inactive"))
-    {
-        await callMedia.StartTranscriptionAsync();
-    }
-    else
-    {
-        Console.WriteLine("Transcription is already active");
-    }
-}
+//    if (callConnectionProperties.MediaStreamingSubscription.State.Equals("active"))
+//    {
+//        await callMedia.StopMediaStreamingAsync();
+//    }
+//    else
+//    {
+//        Console.WriteLine("Media streaming is not active");
+//    }
+//}
 
-async Task StopTranscriptionAsync()
-{
-    CallMedia callMedia = GetCallMedia();
+//async Task StartTranscriptionAsync()
+//{
+//    CallMedia callMedia = GetCallMedia();
 
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+//    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
 
-    if (callConnectionProperties.TranscriptionSubscription.State.Equals("active"))
-    {
-        await callMedia.StopTranscriptionAsync();
-    }
-    else
-    {
-        Console.WriteLine("Transcription is not active");
-    }
-}
+//    if (callConnectionProperties.TranscriptionSubscription.State.Equals("inactive"))
+//    {
+//        await callMedia.StartTranscriptionAsync();
+//    }
+//    else
+//    {
+//        Console.WriteLine("Transcription is already active");
+//    }
+//}
 
-async Task UpdateTranscriptionAsync()
-{
-    CallMedia callMedia = GetCallMedia();
+//async Task StopTranscriptionAsync()
+//{
+//    CallMedia callMedia = GetCallMedia();
 
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+//    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
 
-    if (callConnectionProperties.TranscriptionSubscription.State.Equals("active"))
-    {
-        await callMedia.UpdateTranscriptionAsync("en-au");
-    }
-    else
-    {
-        Console.WriteLine("Transcription is not active");
-    }
-}
+//    if (callConnectionProperties.TranscriptionSubscription.State.Equals("active"))
+//    {
+//        await callMedia.StopTranscriptionAsync();
+//    }
+//    else
+//    {
+//        Console.WriteLine("Transcription is not active");
+//    }
+//}
+
+//async Task UpdateTranscriptionAsync()
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+
+//    if (callConnectionProperties.TranscriptionSubscription.State.Equals("active"))
+//    {
+//        await callMedia.UpdateTranscriptionAsync("en-au");
+//    }
+//    else
+//    {
+//        Console.WriteLine("Transcription is not active");
+//    }
+//}
 
 CallMedia GetCallMedia()
 {
@@ -717,11 +807,11 @@ CallConnectionProperties GetCallConnectionProperties()
     return callConnectionProperties;
 }
 
-CommunicationIdentifier GetCommunicationTargetIdentifier(bool isTeamsUser, bool isMediaBeforeInvite)
+CommunicationIdentifier GetCommunicationTargetIdentifier(bool isTeamsUser, bool isPlayMediaToCaller)
 {
-    string teamsIdentifier = isMediaBeforeInvite ? callerTeamsUser : participantTeamsUser;
+    string teamsIdentifier = isPlayMediaToCaller ? callerTeamsUser : participantTeamsUser;
 
-    string pstnIdentifier = isMediaBeforeInvite ? callerPhoneNumber : participantPhoneNumber;
+    string pstnIdentifier = isPlayMediaToCaller ? callerPhoneNumber : participantPhoneNumber;
 
     CommunicationIdentifier target = isTeamsUser ? new MicrosoftTeamsUserIdentifier(teamsIdentifier) :
         new PhoneNumberIdentifier(pstnIdentifier);

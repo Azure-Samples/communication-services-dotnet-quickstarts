@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-	 <PackageReference Include="Azure.Communication.CallAutomation" Version="1.3.0-alpha.20240722.4" />
+	 <PackageReference Include="Azure.Communication.CallAutomation" Version="1.3.0-alpha.20240903.2" />
 	 <PackageReference Include="Azure.Messaging.EventGrid" Version="4.21.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
