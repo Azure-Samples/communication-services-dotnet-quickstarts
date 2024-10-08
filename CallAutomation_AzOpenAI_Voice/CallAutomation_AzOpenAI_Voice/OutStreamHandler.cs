@@ -88,6 +88,8 @@ namespace CallAutomationOpenAI
             }
         }
 
+
+        // Loop and wait for the AI response
         private async Task GetOpenAiStreamResponseAsync()
         {
             if (m_webSocket == null || m_webSocket.State != WebSocketState.Open)
@@ -225,6 +227,7 @@ namespace CallAutomationOpenAI
                 Console.WriteLine($"Exception during streaming -> {ex}");
             }
         }
+
         public void StartAiAudioReceiver()
         {
             _ = Task.Run(async () => await GetOpenAiStreamResponseAsync());
