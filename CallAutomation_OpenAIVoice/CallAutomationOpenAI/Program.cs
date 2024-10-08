@@ -13,9 +13,8 @@ var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionS
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
 //Call Automation Client
-Uri pmaEndpoint = new UriBuilder("https://uswc-01.sdf.pma.teams.microsoft.com:6448").Uri;
+var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
-
 
 var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
 ArgumentNullException.ThrowIfNullOrEmpty(key);
@@ -23,13 +22,8 @@ ArgumentNullException.ThrowIfNullOrEmpty(key);
 var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
 ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
-var speechconfig = SpeechConfig.FromSubscription(builder.Configuration.GetValue<string>("YourAzureSubscriptionKey"), builder.Configuration.GetValue<string>("YourRegion"));
-// Set the output format to raw PCM
-speechconfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
-
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
-builder.Services.AddSingleton(speechconfig);
 builder.Services.AddSingleton<WebSocketHandlerService>();
 
 var app = builder.Build();
@@ -71,8 +65,11 @@ app.MapPost("/api/incomingCall", async (
         var callbackUri = new Uri(new Uri(devTunnelUri), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         Console.WriteLine($"Callback Url: {callbackUri}");
 
-        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(transportUrl),
-                MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed, startMediaStreaming: true);
+        var mediaStreamingOptions = new MediaStreamingOptions(
+                new Uri(transportUrl),
+                MediaStreamingContent.Audio,
+                MediaStreamingAudioChannel.Mixed,
+                startMediaStreaming: true);
       
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
