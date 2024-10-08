@@ -3,7 +3,7 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.CognitiveServices.Speech;
+using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,13 +23,8 @@ ArgumentNullException.ThrowIfNullOrEmpty(key);
 var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
 ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
-var speechconfig = SpeechConfig.FromSubscription(builder.Configuration.GetValue<string>("YourAzureSubscriptionKey"), builder.Configuration.GetValue<string>("YourRegion"));
-// Set the output format to raw PCM
-speechconfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
-
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
-builder.Services.AddSingleton(speechconfig);
 builder.Services.AddSingleton<WebSocketHandlerService>();
 
 var app = builder.Build();
@@ -38,8 +33,6 @@ var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
 ArgumentNullException.ThrowIfNullOrEmpty(devTunnelUri);
 
 var transportUrl = devTunnelUri.Replace("https", "wss") + "ws";
-
-var maxTimeout = 2;
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
 
@@ -88,26 +81,6 @@ app.MapPost("/api/incomingCall", async (
         {
             Console.WriteLine($"Call connected event received for CorrelationId id: {answer_result.SuccessResult.CorrelationId}");
         }
-
-        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingStopped>(
-                answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStopped) =>
-                {
-                    logger.LogInformation("Received media streaming event: {type}", mediaStreamingStopped.GetType());
-                });
-        
-        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingFailed>(
-            answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingFailed) =>
-            {
-                logger.LogInformation($"Received media streaming event: {mediaStreamingFailed.GetType()}, " +
-                    $"SubCode: {mediaStreamingFailed?.ResultInformation?.SubCode}, Message: {mediaStreamingFailed?.ResultInformation?.Message}");
-            });
-        
-        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingStarted>(
-            answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStartedEvent) =>
-        {
-            Console.WriteLine($"MediaStreaming started event received for connection id: {mediaStreamingStartedEvent.CallConnectionId}");
-        });
-
     }
     return Results.Ok();
 });
@@ -120,8 +93,31 @@ app.MapPost("/api/callbacks/{contextId}", async (
     CallAutomationClient callAutomationClient,
     ILogger<Program> logger) =>
 {
-    var eventProcessor = client.GetEventProcessor();
-    eventProcessor.ProcessEvents(cloudEvents);
+
+    foreach (var cloudEvent in cloudEvents)
+    {
+        CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
+        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent)}");
+
+        var callConnection = client.GetCallConnection(@event.CallConnectionId);
+
+        if (@event is MediaStreamingStopped)
+        {
+            logger.LogInformation("Received media streaming event: {type}", @event.GetType());
+        }
+
+        if (@event is MediaStreamingFailed)
+        {
+            logger.LogInformation($"Received media streaming event: {@event.GetType()}, " +
+                    $"SubCode: {@event?.ResultInformation?.SubCode}, Message: {@event?.ResultInformation?.Message}");
+        }
+
+        if (@event is MediaStreamingStarted)
+        {
+            Console.WriteLine($"MediaStreaming started event received for connection id: {@event.CallConnectionId}");
+        }
+
+    }
     return Results.Ok();
 });
 

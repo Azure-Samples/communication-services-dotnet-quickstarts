@@ -1,7 +1,10 @@
-using Microsoft.CognitiveServices.Speech;
 using System.Net.WebSockets;
-using System.Text;
 using CallAutomationOpenAI;
+using Azure.AI.OpenAI;
+using System.ClientModel;
+using OpenAI.RealtimeConversation;
+
+#pragma warning disable OPENAI002
 
 public class WebSocketHandlerService
 {
@@ -23,17 +26,6 @@ public class WebSocketHandlerService
         return _webSocket;
     }
 
-    // Method to send a message via WebSocket
-    public async Task SendMessageAsync(string message)
-    {
-        if (_webSocket?.State == WebSocketState.Open)
-        {
-            var messageBuffer = Encoding.UTF8.GetBytes(message);
-            var buffer = new ArraySegment<byte>(messageBuffer);
-            await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
-        }
-    }
-        
     public async Task CloseWebSocketAsync(WebSocketReceiveResult result)
     {
         await _webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
@@ -41,21 +33,6 @@ public class WebSocketHandlerService
     public async Task CloseNormalWebSocketAsync()
     {
         await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stream completed", CancellationToken.None);
-    }
-
-    public async Task SendAudioFileAsync(byte[] buffer, int bytesRead)
-    {
-        if (_webSocket?.State == WebSocketState.Open)
-        {
-            // Send the chunk over the WebSocket
-            await _webSocket.SendAsync(
-                new ArraySegment<byte>(buffer, 0, bytesRead),
-                WebSocketMessageType.Binary,
-                endOfMessage: true,
-                cancellationToken: CancellationToken.None);
-
-            Console.WriteLine($"Sent {bytesRead} bytes to the client.");
-        }
     }
 
     
@@ -66,11 +43,34 @@ public class WebSocketHandlerService
         {
             return;
         }
-        OutStreamHandler outStreamHandler = new OutStreamHandler(_webSocket, openAiUri, openAiKey, openAiModelName);
-        InStreamHandler inStreamHandler = new InStreamHandler(_webSocket, outStreamHandler);
+        var aiClient = new AzureOpenAIClient(new Uri(openAiUri), new ApiKeyCredential(openAiKey));
+        var RealtimeCovnClient = aiClient.GetRealtimeConversationClient(openAiModelName);
+        using RealtimeConversationSession session = await RealtimeCovnClient.StartConversationSessionAsync();
+
+        // Session options control connection-wide behavior shared across all conversations,
+        // including audio input format and voice activity detection settings.
+        ConversationSessionOptions sessionOptions = new()
+        {
+            Instructions = systemPrompt,
+            Voice = ConversationVoice.Alloy,
+            InputAudioFormat = ConversationAudioFormat.Pcm16,
+            OutputAudioFormat = ConversationAudioFormat.Pcm16,
+            InputTranscriptionOptions = new()
+            {
+                Model = "whisper-1",
+            },
+            TurnDetectionOptions = ConversationTurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(0.5f, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(300)), 
+        };
+
+        await session.ConfigureSessionAsync(sessionOptions);
+        // start forwarder to AI model
+        OutStreamHandler outStreamHandler = new OutStreamHandler(_webSocket, session);
+        
+        // start listener to audio stream from ACS
+        InStreamHandler inStreamHandler = new InStreamHandler(_webSocket, outStreamHandler, session);
         try
         {
-            outStreamHandler.SendInitialLearning("Hello", systemPrompt);
+            outStreamHandler.StartAiAudioReceiver();
             await inStreamHandler.ProcessWebSocketAsync();
         }
         catch (Exception ex)
@@ -79,6 +79,7 @@ public class WebSocketHandlerService
         }
         finally
         {
+            session.Dispose();
             inStreamHandler.Close();
             outStreamHandler.Close();
         }
