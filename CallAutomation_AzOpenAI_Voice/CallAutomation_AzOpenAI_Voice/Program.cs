@@ -76,13 +76,6 @@ app.MapPost("/api/incomingCall", async (
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
         Console.WriteLine($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
-
-        //Use EventProcessor to process CallConnected event
-        var answer_result = await answerCallResult.WaitForEventProcessorAsync();
-        if (answer_result.IsSuccess)
-        {
-            Console.WriteLine($"Call connected event received for CorrelationId id: {answer_result.SuccessResult.CorrelationId}");
-        }
     }
     return Results.Ok();
 });
@@ -99,26 +92,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
-        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent)}");
-
-        var callConnection = client.GetCallConnection(@event.CallConnectionId);
-
-        if (@event is MediaStreamingStopped)
-        {
-            logger.LogInformation("Received media streaming event: {type}", @event.GetType());
-        }
-
-        if (@event is MediaStreamingFailed)
-        {
-            logger.LogInformation($"Received media streaming event: {@event.GetType()}, " +
-                    $"SubCode: {@event?.ResultInformation?.SubCode}, Message: {@event?.ResultInformation?.Message}");
-        }
-
-        if (@event is MediaStreamingStarted)
-        {
-            Console.WriteLine($"MediaStreaming started event received for connection id: {@event.CallConnectionId}");
-        }
-
+        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent, Formatting.Indented)}");
     }
     return Results.Ok();
 });
