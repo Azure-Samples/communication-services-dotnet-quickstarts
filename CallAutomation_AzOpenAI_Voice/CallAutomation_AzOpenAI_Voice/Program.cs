@@ -93,6 +93,34 @@ app.MapPost("/api/callbacks/{contextId}", async (
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent, Formatting.Indented)}");
+
+        var callConnection = client.GetCallConnection(@event.CallConnectionId);
+
+        if (@event is CallConnected)
+        {
+            logger.LogInformation($"Received CallConnected Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
+        }
+
+        else if (@event is MediaStreamingStopped)
+        {
+            logger.LogInformation("Received media streaming event: {type}", @event.GetType());
+        }
+
+        else if (@event is MediaStreamingFailed)
+        {
+            logger.LogInformation($"Received media streaming event: {@event.GetType()}, " +
+                    $"SubCode: {@event?.ResultInformation?.SubCode}, Message: {@event?.ResultInformation?.Message}");
+        }
+
+        else if (@event is MediaStreamingStarted)
+        {
+            Console.WriteLine($"MediaStreaming started event received for connection id: {@event.CallConnectionId}");
+        }
+
+        else if(@event is CallDisconnected)
+        {
+            logger.LogInformation($"Received CallDisconnected Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
+        }
     }
     return Results.Ok();
 });
