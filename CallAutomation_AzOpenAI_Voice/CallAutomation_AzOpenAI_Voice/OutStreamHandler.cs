@@ -1,16 +1,9 @@
-﻿using Azure.AI.OpenAI;
-using Microsoft.CognitiveServices.Speech.Audio;
-using Microsoft.CognitiveServices.Speech;
-using System.Net.WebSockets;
-using Azure;
+﻿using System.Net.WebSockets;
 using System.Threading.Channels;
 using Azure.Communication.CallAutomation.FHL;
 using System.Text;
-using System.ClientModel;
 using OpenAI.RealtimeConversation;
 using NAudio.Wave;
-using System.Reflection.PortableExecutable;
-using Newtonsoft.Json.Linq;
 
 #pragma warning disable OPENAI002
 namespace CallAutomationOpenAI
@@ -18,17 +11,15 @@ namespace CallAutomationOpenAI
     public class OutStreamHandler
     {
         private WebSocket m_webSocket;
-        private readonly AzureOpenAIClient m_aiClient;
         private CancellationTokenSource? m_aiClientCts;
         private Channel<Func<Task>> m_channel;
-        private string m_openAiModelName;
         private CancellationTokenSource m_cts;
-        private readonly object m_readTaskLock = new object();
-        public OutStreamHandler(WebSocket webSocket, string openAiUri, string openAiKey, string openAiModelName)
+        private readonly RealtimeConversationSession m_aiSession;
+
+        public OutStreamHandler(WebSocket webSocket, RealtimeConversationSession aiSession)
         {
             m_webSocket = webSocket;
-            m_aiClient = new AzureOpenAIClient(new Uri(openAiUri), new ApiKeyCredential(openAiKey));
-            m_openAiModelName = openAiModelName;
+            m_aiSession = aiSession;
             m_channel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
             {
                 SingleReader = true
@@ -97,7 +88,9 @@ namespace CallAutomationOpenAI
             }
         }
 
-        private async Task GetOpenAiStreamResponseAsync(string initialInstructions)
+
+        // Loop and wait for the AI response
+        private async Task GetOpenAiStreamResponseAsync()
         {
             if (m_webSocket == null || m_webSocket.State != WebSocketState.Open)
             {
@@ -105,32 +98,7 @@ namespace CallAutomationOpenAI
             }
             try
             {
-                var RealtimeCovnClient = m_aiClient.GetRealtimeConversationClient(m_openAiModelName);
-                using RealtimeConversationSession session = await RealtimeCovnClient.StartConversationSessionAsync();
-
-                // Session options control connection-wide behavior shared across all conversations,
-                // including audio input format and voice activity detection settings.
-                ConversationSessionOptions sessionOptions = new()
-                {
-                    Instructions = initialInstructions,
-                    Voice = ConversationVoice.Alloy,
-                    //Tools = {  },
-                    InputAudioFormat = ConversationAudioFormat.Pcm16,
-                    OutputAudioFormat = ConversationAudioFormat.Pcm16,
-                    InputTranscriptionOptions = new()
-                    {
-                        Model = "whisper-1",
-                    },
-        //            TurnDetectionOptions = CreateServerVoiceActivityTurnDetectionOptions(500, 
-                            //float ? detectionThreshold = null,
-                            //TimeSpan ? prefixPaddingDuration = null,
-                            //TimeSpan ? silenceDuration = null)()
-        //            {
-                        
-        //            }
-                };
-
-                await foreach (ConversationUpdate update in session.ReceiveUpdatesAsync())
+                await foreach (ConversationUpdate update in m_aiSession.ReceiveUpdatesAsync(m_cts.Token))
                 {
                     if (update is ConversationSessionStartedUpdate sessionStartedUpdate)
                     {
@@ -142,6 +110,8 @@ namespace CallAutomationOpenAI
                     {
                         Console.WriteLine(
                             $"  -- Voice activity detection started at {speechStartedUpdate.AudioStartMs} ms");
+                        // Barge-in, received stop audio
+                        StopAudio();
                     }
 
                     if (update is ConversationInputSpeechFinishedUpdate speechFinishedUpdate)
@@ -150,15 +120,10 @@ namespace CallAutomationOpenAI
                             $"  -- Voice activity detection ended at {speechFinishedUpdate.AudioEndMs} ms");
                     }
 
-                    // Item started updates notify that the model generation process will insert a new item into
-                    // the conversation and begin streaming its content via content updates.
                     if (update is ConversationItemStartedUpdate itemStartedUpdate)
                     {
                         Console.WriteLine($"  -- Begin streaming of new item");
-                        if (!string.IsNullOrEmpty(itemStartedUpdate.FunctionName))
-                        {
-                            Console.Write($"    {itemStartedUpdate.FunctionName}: ");
-                        }
+                  
                     }
 
                     // Audio transcript delta updates contain the incremental text matching the generated
@@ -180,31 +145,11 @@ namespace CallAutomationOpenAI
                         Console.Write(argumentsDeltaUpdate.Delta);
                     }
 
-                    // Item finished updates arrive when all streamed data for an item has arrived and the
-                    // accumulated results are available. In the case of function calls, this is the point
-                    // where all arguments are expected to be present.
                     if (update is ConversationItemFinishedUpdate itemFinishedUpdate)
                     {
                         Console.WriteLine();
                         Console.WriteLine($"  -- Item streaming finished, response_id={itemFinishedUpdate.ResponseId}");
 
-                        if (itemFinishedUpdate.FunctionCallId is not null)
-                        {
-                            Console.WriteLine($"    + Responding to tool invoked by item: {itemFinishedUpdate.FunctionName}");
-                            ConversationItem functionOutputItem = ConversationItem.CreateFunctionCallOutput(
-                                callId: itemFinishedUpdate.FunctionCallId,
-                                output: "70 degrees Fahrenheit and sunny");
-                            await session.AddItemAsync(functionOutputItem);
-                        }
-                        else if (itemFinishedUpdate.MessageContentParts?.Count > 0)
-                        {
-                            Console.Write($"    + [{itemFinishedUpdate.MessageRole}]: ");
-                            foreach (ConversationContentPart contentPart in itemFinishedUpdate.MessageContentParts)
-                            {
-                                Console.Write(contentPart.AudioTranscriptValue);
-                            }
-                            Console.WriteLine();
-                        }
                     }
 
                     if (update is ConversationInputTranscriptionFinishedUpdate transcriptionCompletedUpdate)
@@ -217,19 +162,6 @@ namespace CallAutomationOpenAI
                     if (update is ConversationResponseFinishedUpdate turnFinishedUpdate)
                     {
                         Console.WriteLine($"  -- Model turn generation finished. Status: {turnFinishedUpdate.Status}");
-
-                        // Here, if we processed tool calls in the course of the model turn, we finish the
-                        // client turn to resume model generation. The next model turn will reflect the tool
-                        // responses that were already provided.
-                        if (turnFinishedUpdate.CreatedItems.Any(item => item.FunctionName?.Length > 0))
-                        {
-                            Console.WriteLine($"  -- Ending client turn for pending tool responses");
-                            await session.StartResponseTurnAsync();
-                        }
-                        else
-                        {
-                            break;
-                        }
                     }
 
                     if (update is ConversationErrorUpdate errorUpdate)
@@ -248,14 +180,7 @@ namespace CallAutomationOpenAI
             {
                 Console.WriteLine($"Exception during ai streaming -> {ex}");
             }
-            finally
-            {
-
-                m_aiClientCts?.Dispose();
-                m_aiClientCts = null;
-            }
         }
-
 
         private void ConvertToAcsAudioPacketAndForward( byte[] audioData )
         {
@@ -267,18 +192,17 @@ namespace CallAutomationOpenAI
             int chunkSize = 640;
             byte[] buffer = new byte[chunkSize];
             int bytesRead;
-            while((bytesRead = resampler.Read(buffer, 0, chunkSize)) < chunkSize)
+            while((bytesRead = resampler.Read(buffer, 0, chunkSize)) == chunkSize)
             {
-                var audioChunk = new byte[chunkSize];
-                Array.Copy(audioData, 0, audioChunk, 0, chunkSize);
-
                 // Create a ServerAudioData object for this chunk
                 var audio = new ServerStreamingData(ServerMessageType.AudioData)
                 {
-                    ServerAudioData = new ServerAudioData(audioChunk)
+                    ServerAudioData = new ServerAudioData(buffer)
                 };
                 // Serialize the JSON object to a string
                 string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(audio);
+                
+                // queue it to the buffer
                 ReceiveAudioForOutBound(jsonString);
             }
         }
@@ -303,10 +227,10 @@ namespace CallAutomationOpenAI
                 Console.WriteLine($"Exception during streaming -> {ex}");
             }
         }
-        public void SendInitialLearning(string userPrompt, string systemPrompt)
+
+        public void StartAiAudioReceiver()
         {
-           
-            _ = Task.Run(async () => await GetOpenAiStreamResponseAsync(systemPrompt));
+            _ = Task.Run(async () => await GetOpenAiStreamResponseAsync());
         }
     }
 }
