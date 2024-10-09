@@ -101,20 +101,22 @@ app.MapPost("/api/callbacks/{contextId}", async (
             logger.LogInformation($"Received CallConnected Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
         }
 
+        else if (@event is MediaStreamingStarted)
+        {
+            logger.LogInformation($"Received MediaStreamingStarted Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
+        }
+
         else if (@event is MediaStreamingStopped)
         {
-            logger.LogInformation("Received media streaming event: {type}", @event.GetType());
+            logger.LogInformation($"Received MediaStreamingStopped Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
         }
 
         else if (@event is MediaStreamingFailed)
         {
-            logger.LogInformation($"Received media streaming event: {@event.GetType()}, " +
-                    $"SubCode: {@event?.ResultInformation?.SubCode}, Message: {@event?.ResultInformation?.Message}");
-        }
-
-        else if (@event is MediaStreamingStarted)
-        {
-            Console.WriteLine($"MediaStreaming started event received for connection id: {@event.CallConnectionId}");
+            logger.LogInformation(
+                $"Received media streaming event: {@event.GetType()}, " +
+                $"SubCode: {@event?.ResultInformation?.SubCode}, " +
+                $"Message: {@event?.ResultInformation?.Message}");
         }
 
         else if(@event is CallDisconnected)
