@@ -89,7 +89,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
-        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent, Formatting.Indented)}");
+        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event, Formatting.Indented)}");
     }
 
     return Results.Ok();
