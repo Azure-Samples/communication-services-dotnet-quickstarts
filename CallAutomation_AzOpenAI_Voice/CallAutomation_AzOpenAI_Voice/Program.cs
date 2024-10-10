@@ -18,7 +18,6 @@ var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnecti
 
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
-builder.Services.AddSingleton(builder.Configuration);
 
 var app = builder.Build();
 
@@ -59,7 +58,7 @@ app.MapPost("/api/incomingCall", async (
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         Console.WriteLine($"Callback Url: {callbackUri}");
-        var websocketUri = appBaseUrl.Replace("https", "wss") + "ws";
+        var websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
         Console.WriteLine($"WebSocket Url: {callbackUri}");
 
         var mediaStreamingOptions = new MediaStreamingOptions(
