@@ -28,7 +28,13 @@ builder.Services.AddSingleton(builder.Configuration);
 
 var app = builder.Build();
 
-var devTunnelUri = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
+var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
+
+if (string.IsNullOrEmpty(appBaseUrl))
+{
+    var websiteHostName = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
+    appBaseUrl = $"https://{websiteHostName}";
+}
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
 
@@ -57,9 +63,9 @@ app.MapPost("/api/incomingCall", async (
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
         var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
-        var callbackUri = new Uri(new Uri(devTunnelUri), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+        var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         Console.WriteLine($"Callback Url: {callbackUri}");
-        var websocketUri = devTunnelUri.Replace("https", "wss") + "ws";
+        var websocketUri = appBaseUrl.Replace("https", "wss") + "ws";
         Console.WriteLine($"WebSocket Url: {callbackUri}");
 
         var mediaStreamingOptions = new MediaStreamingOptions(
