@@ -16,12 +16,6 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
 
-var key = builder.Configuration.GetValue<string>("AzureOpenAIServiceKey");
-ArgumentNullException.ThrowIfNullOrEmpty(key);
-
-var endpoint = builder.Configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
-ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
-
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
 builder.Services.AddSingleton(builder.Configuration);
@@ -90,7 +84,6 @@ app.MapPost("/api/callbacks/{contextId}", async (
     [FromBody] CloudEvent[] cloudEvents,
     [FromRoute] string contextId,
     [Required] string callerId,
-    CallAutomationClient callAutomationClient,
     ILogger<Program> logger) =>
 {
 
@@ -111,9 +104,8 @@ app.Use(async (context, next) =>
     {
         if (context.WebSockets.IsWebSocketRequest)
         {
-
             var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            var mediaService = new AcsMediaStreamingHandler(webSocket);            
+            var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);            
 
             // Set the single WebSocket connection
             await mediaService.ProcessWebSocketAsync();

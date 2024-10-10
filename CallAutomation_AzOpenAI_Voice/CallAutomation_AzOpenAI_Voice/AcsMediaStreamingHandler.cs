@@ -6,23 +6,25 @@ using System.Text;
 
 #pragma warning disable OPENAI002
 
-public class MediaStreaming
+public class AcsMediaStreamingHandler
 {
     private WebSocket m_webSocket;
     private CancellationTokenSource m_cts;
     private MemoryStream m_buffer;
-    private AzureOpenAIServiceHandler m_aiServiceHandler;
+    private AzureOpenAIService m_aiServiceHandler;
+    private IConfiguration m_configuration;
 
     // Constructor to inject OpenAIClient
-    public MediaStreaming(WebSocket webSocket)
+    public AcsMediaStreamingHandler(WebSocket webSocket, IConfiguration configuration)
     {
         m_webSocket = webSocket;
+        m_configuration = configuration;
         m_buffer = new MemoryStream();
         m_cts = new CancellationTokenSource();
     }
       
     // Method to receive messages from WebSocket
-    public async Task ProcessWebSocketAsync(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
+    public async Task ProcessWebSocketAsync()
     {    
         if (m_webSocket == null)
         {
@@ -30,11 +32,11 @@ public class MediaStreaming
         }
         
         // start forwarder to AI model
-        m_aiServiceHandler = new AzureOpenAIServiceHandler(this);
+        m_aiServiceHandler = new AzureOpenAIService(this, m_configuration);
         
         try
         {
-            await m_aiServiceHandler.StartConversation(openAiUri, openAiKey, openAiModelName, systemPrompt);
+            await m_aiServiceHandler.StartConversation();
             _ = Task.Run(async () => await SendAudioAsync());
             await StartRecevingFromMediaWebSocket();
         }

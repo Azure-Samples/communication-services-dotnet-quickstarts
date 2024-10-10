@@ -27,7 +27,7 @@ namespace CallAutomationOpenAI
     they've shared that it's all correct and then let them know that you've created a ticket and that a technician should be onsite within the next 24 to 48 hours.
     """;
 
-        public AzureOpenAIService(AcsMediaStreamingHandler mediaStreaming)
+        public AzureOpenAIService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
         {            
             m_mediaStreaming = mediaStreaming;
             m_channel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
@@ -36,23 +36,34 @@ namespace CallAutomationOpenAI
             });
             m_aiClientCts = new CancellationTokenSource();
             m_cts = new CancellationTokenSource();
+            m_aiSession =  CreateAISessionAsync(configuration).GetAwaiter().GetResult(); ;
             // start dequeue task for new audio packets
             _ = Task.Run(async () => await StartForwardingAudioToMediaStreaming());
         }
 
 
-        private async Task<RealtimeConversationSession> CreateAISessionAsync(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
+        private async Task<RealtimeConversationSession> CreateAISessionAsync(IConfiguration configuration)
         {
-            string prompt = systemPrompt ?? m_answerPromptSystemTemplate;
+            var openAiKey = configuration.GetValue<string>("AzureOpenAIServiceKey");
+            ArgumentNullException.ThrowIfNullOrEmpty(openAiKey);
+
+            var openAiUri = configuration.GetValue<string>("AzureOpenAIServiceEndpoint");
+            ArgumentNullException.ThrowIfNullOrEmpty(openAiUri);
+
+            var openAiModelName = configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
+            ArgumentNullException.ThrowIfNullOrEmpty(openAiModelName);
+            var systemPrompt = configuration.GetValue<string>("SystemPrompt") ?? m_answerPromptSystemTemplate;
+            ArgumentNullException.ThrowIfNullOrEmpty(openAiUri);
+
             var aiClient = new AzureOpenAIClient(new Uri(openAiUri), new ApiKeyCredential(openAiKey));
             var RealtimeCovnClient = aiClient.GetRealtimeConversationClient(openAiModelName);
-            m_aiSession =  await RealtimeCovnClient.StartConversationSessionAsync();
+            var session =  await RealtimeCovnClient.StartConversationSessionAsync();
 
             // Session options control connection-wide behavior shared across all conversations,
             // including audio input format and voice activity detection settings.
             ConversationSessionOptions sessionOptions = new()
             {
-                Instructions = prompt,
+                Instructions = systemPrompt,
                 Voice = ConversationVoice.Alloy,
                 InputAudioFormat = ConversationAudioFormat.Pcm16,
                 OutputAudioFormat = ConversationAudioFormat.Pcm16,
@@ -63,8 +74,8 @@ namespace CallAutomationOpenAI
                 TurnDetectionOptions = ConversationTurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(0.5f, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500)),
             };
 
-            await m_aiSession.ConfigureSessionAsync(sessionOptions);
-            return m_aiSession;
+            await session.ConfigureSessionAsync(sessionOptions);
+            return session;
         }
 
         private async Task StartForwardingAudioToMediaStreaming()
@@ -242,12 +253,7 @@ namespace CallAutomationOpenAI
             }
         }
 
-        public async Task StartConversation(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
-        {
-            await CreateAISessionAsync(openAiUri, openAiKey, openAiModelName, systemPrompt);
-            StartAiAudioReceiver();
-        }
-        public void StartAiAudioReceiver()
+        public async Task StartConversation()
         {
             _ = Task.Run(async () => await GetOpenAiStreamResponseAsync());
         }
@@ -256,6 +262,7 @@ namespace CallAutomationOpenAI
         {
             await m_aiSession.SendAudioAsync(memoryStream);
         }
+
         public void Close()
         {
             m_cts.Cancel();
