@@ -24,13 +24,11 @@ ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
+builder.Services.AddSingleton(builder.Configuration);
 
 var app = builder.Build();
 
-var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
-ArgumentNullException.ThrowIfNullOrEmpty(devTunnelUri);
-
-var transportUrl = devTunnelUri.Replace("https", "wss") + "ws";
+var devTunnelUri = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
 
@@ -61,9 +59,11 @@ app.MapPost("/api/incomingCall", async (
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(new Uri(devTunnelUri), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         Console.WriteLine($"Callback Url: {callbackUri}");
+        var websocketUri = devTunnelUri.Replace("https", "wss") + "ws";
+        Console.WriteLine($"WebSocket Url: {callbackUri}");
 
         var mediaStreamingOptions = new MediaStreamingOptions(
-                new Uri(transportUrl),
+                new Uri(websocketUri),
                 MediaStreamingContent.Audio,
                 MediaStreamingAudioChannel.Mixed,
                 startMediaStreaming: true);
@@ -92,37 +92,8 @@ app.MapPost("/api/callbacks/{contextId}", async (
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
         logger.LogInformation($"Event received: {JsonConvert.SerializeObject(cloudEvent, Formatting.Indented)}");
-
-        var callConnection = client.GetCallConnection(@event.CallConnectionId);
-
-        if (@event is CallConnected)
-        {
-            logger.LogInformation($"Received CallConnected Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
-        }
-
-        else if (@event is MediaStreamingStarted)
-        {
-            logger.LogInformation($"Received MediaStreamingStarted Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
-        }
-
-        else if (@event is MediaStreamingStopped)
-        {
-            logger.LogInformation($"Received MediaStreamingStopped Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
-        }
-
-        else if (@event is MediaStreamingFailed)
-        {
-            logger.LogInformation(
-                $"Received media streaming event: {@event.GetType()}, " +
-                $"SubCode: {@event?.ResultInformation?.SubCode}, " +
-                $"Message: {@event?.ResultInformation?.Message}");
-        }
-
-        else if(@event is CallDisconnected)
-        {
-            logger.LogInformation($"Received CallDisconnected Event for callConnectionId: {@event.CallConnectionId}, correlationId: {@event.CorrelationId}");
-        }
     }
+
     return Results.Ok();
 });
 
@@ -136,13 +107,10 @@ app.Use(async (context, next) =>
         {
 
             var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            var mediaService = new MediaStreaming(webSocket);
-            
+            var mediaService = new AcsMediaStreamingHandler(webSocket);            
 
             // Set the single WebSocket connection
-            var openAiModelName = builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
-            var systemPrompt = builder.Configuration.GetValue<string>("SystemPrompt");
-            await mediaService.ProcessWebSocketAsync(endpoint, key, openAiModelName, systemPrompt);
+            await mediaService.ProcessWebSocketAsync();
         }
         else
         {
