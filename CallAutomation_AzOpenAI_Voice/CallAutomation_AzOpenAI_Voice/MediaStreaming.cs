@@ -11,7 +11,7 @@ public class MediaStreaming
     private WebSocket m_webSocket;
     private CancellationTokenSource m_cts;
     private MemoryStream m_buffer;
-    private AIServiceHandler m_aiServiceHandler;
+    private OpenAIServiceHandler m_aiServiceHandler;
 
     // Constructor to inject OpenAIClient
     public MediaStreaming(WebSocket webSocket)
@@ -20,17 +20,7 @@ public class MediaStreaming
         m_buffer = new MemoryStream();
         m_cts = new CancellationTokenSource();
     }
-   
-    public async Task CloseWebSocketAsync(WebSocketReceiveResult result)
-    {
-        await m_webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
-    }
-    public async Task CloseNormalWebSocketAsync()
-    {
-        await m_webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stream completed", CancellationToken.None);
-    }
-
-    
+      
     // Method to receive messages from WebSocket
     public async Task ProcessWebSocketAsync(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
     {    
@@ -40,7 +30,7 @@ public class MediaStreaming
         }
         
         // start forwarder to AI model
-        m_aiServiceHandler = new AIServiceHandler(this);
+        m_aiServiceHandler = new OpenAIServiceHandler(this);
         
         try
         {
@@ -58,13 +48,6 @@ public class MediaStreaming
         }
     }
 
-    public void Close()
-    {
-        m_cts.Cancel();
-        m_cts.Dispose();
-
-    }
-
     public async Task SendMessageAsync(string message)
     {
         if (m_webSocket?.State == WebSocketState.Open)
@@ -75,6 +58,23 @@ public class MediaStreaming
             await m_webSocket.SendAsync(new ArraySegment<byte>(jsonBytes), WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
         }
     }
+
+    public async Task CloseWebSocketAsync(WebSocketReceiveResult result)
+    {
+        await m_webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
+    }
+    public async Task CloseNormalWebSocketAsync()
+    {
+        await m_webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stream completed", CancellationToken.None);
+    }
+
+    public void Close()
+    {
+        m_cts.Cancel();
+        m_cts.Dispose();
+
+    }
+
     private async Task WriteToAiInputStream(string data)
     {
         var input = StreamingDataParser.Parse(data);
