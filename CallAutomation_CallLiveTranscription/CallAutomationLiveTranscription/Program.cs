@@ -6,6 +6,7 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation_LiveTranscription;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,8 @@ ArgumentNullException.ThrowIfNullOrEmpty(agentPhoneNumber);
 /* Call Automation Client */
 var client = new CallAutomationClient(connectionString: acsConnectionString);
 
+Uri callbackUri = null;
+
 /* Register and make CallAutomationClient accessible via dependency injection */
 builder.Services.AddSingleton(client);
 var app = builder.Build();
@@ -58,7 +61,7 @@ var maxTimeout = 2;
 string recordingId = string.Empty;
 string recordingLocation = string.Empty;
 
-app.MapPost("/api/incomingCall", async (
+app.MapPost("/api/eventGridEvents", async (
     [FromBody] EventGridEvent[] eventGridEvents,
     ILogger<Program> logger) =>
 {
@@ -82,8 +85,11 @@ app.MapPost("/api/incomingCall", async (
 
         if (eventData is AcsIncomingCallEventData incomingCallEventData)
         {
-            var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
-            var callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+            var rawId = incomingCallEventData.FromCommunicationIdentifier.RawId;
+            var callerId = JsonSerializer.Serialize(rawId);
+
+            callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?identifier={callerId}");
+
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
                 $"Callback url: {callbackUri}, transport Url: {transportUrl}");
 
@@ -97,149 +103,13 @@ app.MapPost("/api/incomingCall", async (
             };
 
             AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-            var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+            logger.LogInformation($"Call answered successfully for caller: {rawId}");
+        }
 
-            /* Use EventProcessor to process CallConnected event */
-            var answer_result = await answerCallResult.WaitForEventProcessorAsync();
-            if (answer_result.IsSuccess)
-            {
-                logger.LogInformation($"Received call event: {answer_result.GetType()}, callConnectionID: {answer_result.SuccessResult.CallConnectionId}, " +
-                    $"serverCallId: {answer_result.SuccessResult.ServerCallId}");
-
-                /* Start the recording */
-                CallLocator callLocator = new ServerCallLocator(answer_result.SuccessResult.ServerCallId);
-                var recordingResult = await client.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
-                recordingId = recordingResult.Value.RecordingId;
-                logger.LogInformation($"Recording started. RecordingId: {recordingId}");
-
-                /* Start the Transcription */
-                await InitiateTranscription(callConnectionMedia);
-                logger.LogInformation("Transcription initiated.");
-
-                await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, false, recordingId);
-
-                /* Play hello prompt to user */
-                await HandleDtmfRecognizeAsync(callConnectionMedia, callerId, helpIVRPrompt, "hellocontext");
-            }
-            client.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(
-                 answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
-             {
-                 logger.LogInformation($"Received call event: {playCompletedEvent.GetType()}, context: {playCompletedEvent.OperationContext}");
-
-                 if (playCompletedEvent.OperationContext == addAgentContext)
-                 {
-                     // Add Agent
-                     var callInvite = new CallInvite(new PhoneNumberIdentifier(agentPhoneNumber),
-                         new PhoneNumberIdentifier(acsPhoneNumber));
-
-                     var addParticipantOptions = new AddParticipantOptions(callInvite)
-                     {
-                         OperationContext = addAgentContext
-                     };
-
-                     var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
-                     logger.LogInformation($"Adding agent to the call: {addParticipantResult.Value?.InvitationId}");
-                 }
-                 else if (playCompletedEvent.OperationContext == goodbyeContext || playCompletedEvent.OperationContext == addParticipantFailureContext)
-                 {
-                     await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, true, recordingId);
-                     await answerCallResult.CallConnection.HangUpAsync(true);
-                 }
-             });
-            client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(
-                answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
-            {
-                logger.LogInformation($"Received call event: {recognizeCompletedEvent.GetType()}, context: {recognizeCompletedEvent.OperationContext}");
-                if (recognizeCompletedEvent.RecognizeResult is DtmfResult)
-                {
-                    var dtmfResult = recognizeCompletedEvent.RecognizeResult as DtmfResult;
-
-                    //Take action for Recognition through DTMF 
-                    var tones = dtmfResult?.ConvertToString();
-                    Regex regex = new(DobRegex);
-                    Match match = regex.Match(tones);
-                    if (match.Success)
-                    {
-                        await ResumeTranscriptionAndRecording(callConnectionMedia, logger, recordingId);
-                        await HandlePlayAsync(callConnectionMedia, addAgentPrompt, addAgentContext);
-                    }
-                    else
-                    {
-                        await HandleDtmfRecognizeAsync(callConnectionMedia, callerId, incorrectDobPrompt, incorrectDobContext);
-                    }
-                }
-            });
-            client.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantSucceeded>(
-               answerCallResult.CallConnection.CallConnectionId, async (addParticipantSucceededEvent) =>
-               {
-                   logger.LogInformation($"Received call event: {addParticipantSucceededEvent.GetType()}, context: {addParticipantSucceededEvent.OperationContext}");
-               });
-            client.GetEventProcessor().AttachOngoingEventProcessor<ParticipantsUpdated>(
-              answerCallResult.CallConnection.CallConnectionId, async (participantsUpdatedEvent) =>
-              {
-                  logger.LogInformation($"Received call event: {participantsUpdatedEvent.GetType()}, participants: {participantsUpdatedEvent.Participants.Count()}, sequenceId: {participantsUpdatedEvent.SequenceNumber}");
-              });
-            client.GetEventProcessor().AttachOngoingEventProcessor<CallDisconnected>(
-              answerCallResult.CallConnection.CallConnectionId, async (callDisconnectedEvent) =>
-              {
-                  logger.LogInformation($"Received call event: {callDisconnectedEvent.GetType()}");
-              });
-            client.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(
-              answerCallResult.CallConnection.CallConnectionId, async (addParticipantFailedEvent) =>
-              {
-                  logger.LogInformation($"Received call event: {addParticipantFailedEvent.GetType()}, CorrelationId: {addParticipantFailedEvent.CorrelationId}, " +
-                      $"subCode: {addParticipantFailedEvent.ResultInformation?.SubCode}, message: {addParticipantFailedEvent.ResultInformation?.Message}, context: {addParticipantFailedEvent.OperationContext}");
-
-                  await HandlePlayAsync(callConnectionMedia, addParticipantFailurePrompt, addParticipantFailureContext);
-              });
-            client.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(
-                answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
-            {
-                logger.LogInformation($"Received call event: {playFailedEvent.GetType()}, CorrelationId: {playFailedEvent.CorrelationId}, " +
-                    $"subCode: {playFailedEvent.ResultInformation?.SubCode}, message: {playFailedEvent.ResultInformation?.Message}, context: {playFailedEvent.OperationContext}");
-
-                await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, true, recordingId);
-                await answerCallResult.CallConnection.HangUpAsync(true);
-            });
-
-            client.GetEventProcessor().AttachOngoingEventProcessor<RecognizeFailed>(
-                answerCallResult.CallConnection.CallConnectionId, async (recognizeFailedEvent) =>
-            {
-                logger.LogInformation($"Received call event: {recognizeFailedEvent.GetType()}, CorrelationId: {recognizeFailedEvent.CorrelationId}, " +
-                    $"subCode: {recognizeFailedEvent.ResultInformation?.SubCode}, message: {recognizeFailedEvent.ResultInformation?.Message}, context: {recognizeFailedEvent.OperationContext}");
-
-                if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailedEvent.ResultInformation?.SubCode.Value.ToString()) && maxTimeout > 0)
-                {
-                    logger.LogInformation("Retrying recognize...");
-                    maxTimeout--;
-                    await HandleDtmfRecognizeAsync(callConnectionMedia, callerId, timeoutSilencePrompt, "retryContext");
-                }
-                else
-                {
-                    logger.LogInformation("Playing goodbye message...");
-                    await HandlePlayAsync(callConnectionMedia, goodbyePrompt, goodbyeContext);
-                }
-            });
-
-            client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionStarted>(
-                answerCallResult.CallConnection.CallConnectionId, async (transcriptionStarted) =>
-                {
-                    logger.LogInformation($"Received transcription event: {transcriptionStarted.GetType()}");
-                });
-
-            client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionStopped>(
-                answerCallResult.CallConnection.CallConnectionId, async (transcriptionStopped) =>
-                {
-                    isTranscriptionActive = false;
-                    logger.LogInformation("Received transcription event: {type}", transcriptionStopped.GetType());
-                });
-
-            client.GetEventProcessor().AttachOngoingEventProcessor<TranscriptionFailed>(
-                answerCallResult.CallConnection.CallConnectionId, async (TranscriptionFailed) =>
-                {
-                    logger.LogInformation($"Received transcription event: {TranscriptionFailed.GetType()}, CorrelationId: {TranscriptionFailed.CorrelationId}, " +
-                        $"SubCode: {TranscriptionFailed?.ResultInformation?.SubCode}, Message: {TranscriptionFailed?.ResultInformation?.Message}");
-                });
+        if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+        {
+            recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+            logger.LogInformation($"The recording location is : {recordingLocation}");
         }
     }
     return Results.Ok();
@@ -249,34 +119,178 @@ app.MapPost("/api/incomingCall", async (
 app.MapPost("/api/callbacks/{contextId}", async (
     [FromBody] CloudEvent[] cloudEvents,
     [FromRoute] string contextId,
-    [Required] string callerId,
-    CallAutomationClient callAutomationClient,
+    [Required] string identifier,
     ILogger<Program> logger) =>
 {
-    var eventProcessor = client.GetEventProcessor();
-    eventProcessor.ProcessEvents(cloudEvents);
-    return Results.Ok();
-});
-
-app.MapPost("/api/recordingFileStatus", (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
-{
-    foreach (var eventGridEvent in eventGridEvents)
+    string? callerId = JsonSerializer.Deserialize<string>(identifier);
+    foreach (var cloudEvent in cloudEvents)
     {
-        if (eventGridEvent.TryGetSystemEventData(out object eventData))
+        CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
+        logger.LogInformation(
+                    "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}",
+                    parsedEvent.GetType(),
+                    parsedEvent.CallConnectionId,
+                    parsedEvent.ServerCallId);
+
+        if (parsedEvent is CallConnected callConnected)
         {
-            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+            logger.LogInformation($"Received call event: {callConnected.GetType()} with callerId - {callerId}");
+            var callConnectionId = callConnected.CallConnectionId;
+
+            CallConnectionProperties callConnectionProperties = GetCallConnectionProperties(callConnectionId);
+
+            logger.LogInformation($"Correlation Id: {callConnectionProperties.CorrelationId}");
+
+            logger.LogInformation($"Transcription state: {callConnectionProperties.TranscriptionSubscription.State}");
+
+            /* Start the recording */
+            CallLocator callLocator = new ServerCallLocator(callConnectionProperties.ServerCallId);
+
+            StartRecordingOptions startRecordingOptions = new StartRecordingOptions(callLocator)
             {
-                var responseData = new SubscriptionValidationResponse
+                RecordingContent=RecordingContent.Audio,
+                RecordingChannel = RecordingChannel.Unmixed,
+                RecordingFormat = RecordingFormat.Wav,
+                RecordingStateCallbackUri = callbackUri
+            };
+            var recordingResult = await client.GetCallRecording().StartAsync(startRecordingOptions);
+            recordingId = recordingResult.Value.RecordingId;
+            logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+
+            CallMedia callMedia = GetCallMedia(callConnectionId);
+
+            /* Start the Transcription */
+            await InitiateTranscription(callMedia);
+            logger.LogInformation("Transcription initiated.");
+
+            await PauseOrStopTranscriptionAndRecording(callMedia, logger, false, recordingId);
+
+            /* Play hello prompt to user */
+            await HandleDtmfRecognizeAsync(callMedia, callerId, helpIVRPrompt, "hellocontext");
+
+        }
+        else if (parsedEvent is RecognizeCompleted recognizeCompleted)
+        {
+            logger.LogInformation($"Received call event: {recognizeCompleted.GetType()}, context: {recognizeCompleted.OperationContext}");
+            CallMedia callMedia = GetCallMedia(recognizeCompleted.CallConnectionId);
+
+            if (recognizeCompleted.RecognizeResult is DtmfResult)
+            {
+                var dtmfResult = recognizeCompleted.RecognizeResult as DtmfResult;
+
+                //Take action for Recognition through DTMF 
+                var tones = dtmfResult?.ConvertToString();
+                Regex regex = new(DobRegex);
+                Match match = regex.Match(tones);
+                if (match.Success)
                 {
-                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                };
-                return Results.Ok(responseData);
+                    await ResumeTranscriptionAndRecording(callMedia, logger, recordingId);
+                    await HandlePlayAsync(callMedia, addAgentPrompt, addAgentContext);
+                }
+                else
+                {
+                    await HandleDtmfRecognizeAsync(callMedia, callerId, incorrectDobPrompt, incorrectDobContext);
+                }
             }
-            if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+        }
+        else if (parsedEvent is RecognizeFailed recognizeFailed)
+        {
+            CallMedia callMedia = GetCallMedia(recognizeFailed.CallConnectionId);
+            CallConnection callConnection = GetConnection(recognizeFailed.CallConnectionId);
+
+            LogEventDetails(recognizeFailed, logger);
+
+            if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailed.ResultInformation?.SubCode.Value.ToString()) && maxTimeout > 0)
             {
-                recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                logger.LogInformation($"The recording location is : {recordingLocation}");
+                logger.LogInformation("Retrying recognize...");
+                maxTimeout--;
+                await HandleDtmfRecognizeAsync(callMedia, callerId, timeoutSilencePrompt, "retryContext");
             }
+            else
+            {
+                logger.LogInformation("Playing goodbye message...");
+                await HandlePlayAsync(callMedia, goodbyePrompt, goodbyeContext);
+            }
+
+        }
+        else if (parsedEvent is PlayStarted playStarted)
+        {
+            logger.LogInformation($"Received call event: {playStarted.GetType()}");
+
+        }
+        else if (parsedEvent is PlayCompleted playCompleted)
+        {
+            logger.LogInformation($"Received call event: {playCompleted.GetType()}");
+
+            CallMedia callMedia = GetCallMedia(playCompleted.CallConnectionId);
+            CallConnection callConnection = GetConnection(playCompleted.CallConnectionId);
+
+            if (playCompleted.OperationContext == addAgentContext)
+            {
+                // Add Agent
+                var callInvite = new CallInvite(new PhoneNumberIdentifier(agentPhoneNumber),
+                    new PhoneNumberIdentifier(acsPhoneNumber));
+
+                var addParticipantOptions = new AddParticipantOptions(callInvite)
+                {
+                    OperationContext = addAgentContext
+                };
+
+                var addParticipantResult = await callConnection.AddParticipantAsync(addParticipantOptions);
+                logger.LogInformation($"Adding agent to the call: {addParticipantResult.Value?.InvitationId}");
+            }
+            else if (playCompleted.OperationContext == goodbyeContext || playCompleted.OperationContext == addParticipantFailureContext)
+            {
+                await PauseOrStopTranscriptionAndRecording(callMedia, logger, true, recordingId);
+                await callConnection.HangUpAsync(true);
+            }
+        }
+        else if (parsedEvent is PlayFailed playFailed)
+        {
+            CallMedia callMedia = GetCallMedia(playFailed.CallConnectionId);
+            CallConnection callConnection = GetConnection(playFailed.CallConnectionId);
+
+            LogEventDetails(playFailed, logger);
+
+            await PauseOrStopTranscriptionAndRecording(callMedia, logger, true, recordingId);
+            await callConnection.HangUpAsync(true);
+        }
+        else if (parsedEvent is AddParticipantSucceeded addParticipantSucceeded)
+        {
+            logger.LogInformation($"Received call event: {addParticipantSucceeded.GetType()}, context: {addParticipantSucceeded.OperationContext}");
+        }
+        else if (parsedEvent is AddParticipantFailed addParticipantFailed)
+        {
+            CallMedia callMedia = GetCallMedia(addParticipantFailed.CallConnectionId);
+
+            LogEventDetails(addParticipantFailed, logger);
+
+            await HandlePlayAsync(callMedia, addParticipantFailurePrompt, addParticipantFailureContext);
+
+        }
+        else if (parsedEvent is TranscriptionStarted transcriptionStarted)
+        {
+            logger.LogInformation($"Received call event: {transcriptionStarted.GetType()}");
+            logger.LogInformation($"Transcription status:-  {transcriptionStarted.TranscriptionUpdate.TranscriptionStatus}");
+        }
+        else if (parsedEvent is TranscriptionStopped transcriptionStopped)
+        {
+            isTranscriptionActive = false;
+            logger.LogInformation("Received transcription event: {type}", transcriptionStopped.GetType());
+            logger.LogInformation($"Transcription status:-  {transcriptionStopped.TranscriptionUpdate.TranscriptionStatus}");
+        }
+        else if (parsedEvent is TranscriptionFailed transcriptionFailed)
+        {
+            LogEventDetails(transcriptionFailed, logger);
+        }
+        else if (parsedEvent is RecordingStateChanged recordingStateChanged)
+        {
+            logger.LogInformation("Received transcription event: {type}", recordingStateChanged.GetType());
+            logger.LogInformation("Recording state:--> {type}", recordingStateChanged.State);
+        }
+        else if (parsedEvent is CallDisconnected callDisconnected)
+        {
+            logger.LogInformation($"Received call event: {callDisconnected.GetType()}");
         }
     }
     return Results.Ok();
@@ -284,7 +298,9 @@ app.MapPost("/api/recordingFileStatus", (EventGridEvent[] eventGridEvents, ILogg
 
 app.MapGet("/download", (ILogger<Program> logger) =>
 {
-    client.GetCallRecording().DownloadTo(new Uri(recordingLocation), "testfile.wav");
+    string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+    string fileName = "test.wav";
+    client.GetCallRecording().DownloadTo(new Uri(recordingLocation), $"{downloadsPath}\\{fileName}");
     return Results.Ok();
 });
 
@@ -349,27 +365,67 @@ async Task HandleDtmfRecognizeAsync(CallMedia callConnectionMedia, string caller
 async Task HandlePlayAsync(CallMedia callConnectionMedia, string textToPlay, string context)
 {
     // Play message
-    var playSource = new TextSource(textToPlay)
+    var textSource = new TextSource(textToPlay)
     {
         VoiceName = "en-US-NancyNeural"
     };
 
-    var playOptions = new PlayToAllOptions(playSource) { OperationContext = context };
+    var playOptions = new PlayToAllOptions(textSource) { OperationContext = context };
     await callConnectionMedia.PlayToAllAsync(playOptions);
 }
 
 async Task InitiateTranscription(CallMedia callConnectionMedia)
 {
-    StartTranscriptionOptions startTrasnscriptionOption = new StartTranscriptionOptions()
+    StartTranscriptionOptions startTranscriptionOptions = new StartTranscriptionOptions()
     {
         Locale = "en-US",
-        OperationContext = "StartTranscript"
+        OperationContext = "StartTranscriptionContext"
     };
 
-    await callConnectionMedia.StartTranscriptionAsync(startTrasnscriptionOption);
+    await callConnectionMedia.StartTranscriptionAsync(startTranscriptionOptions);
     isTranscriptionActive = true;
 }
 
+CallConnection GetConnection(string callConnectionId)
+{
+    CallConnection callConnection = !string.IsNullOrEmpty(callConnectionId) ?
+        client.GetCallConnection(callConnectionId)
+        : throw new ArgumentNullException(nameof(callConnectionId));
+    return callConnection;
+}
+
+CallMedia GetCallMedia(string callConnectionId)
+{
+    CallMedia callMedia = !string.IsNullOrEmpty(callConnectionId) ?
+        client.GetCallConnection(callConnectionId).GetCallMedia()
+        : throw new ArgumentNullException(nameof(callConnectionId));
+    return callMedia;
+}
+
+CallConnectionProperties GetCallConnectionProperties(string callConnectionId)
+{
+    CallConnectionProperties callConnectionProperties = !string.IsNullOrEmpty(callConnectionId) ?
+       client.GetCallConnection(callConnectionId).GetCallConnectionProperties()
+       : throw new ArgumentNullException(nameof(callConnectionId));
+    return callConnectionProperties;
+}
+
+void LogEventDetails(CallAutomationEventBase eventBase, ILogger<Program> logger)
+{
+    if (eventBase != null)
+    {
+        logger.LogInformation($"Received {eventBase.GetType()} event");
+        logger.LogInformation($"CallConnectionId:--> {eventBase.CallConnectionId}");
+        logger.LogInformation($"CorrelationId:--> {eventBase.CorrelationId}");
+        logger.LogInformation($"OperationContext:--> {eventBase?.OperationContext}");
+        if (eventBase != null && eventBase.ResultInformation != null)
+        {
+            logger.LogInformation($"Message:--> {eventBase.ResultInformation.Message}");
+            logger.LogInformation($"Code:--> {eventBase.ResultInformation?.Code}");
+            logger.LogInformation($"Code:--> {eventBase.ResultInformation?.SubCode}");
+        }
+    }
+}
 app.UseWebSockets();
 app.Use(async (context, next) =>
 {
