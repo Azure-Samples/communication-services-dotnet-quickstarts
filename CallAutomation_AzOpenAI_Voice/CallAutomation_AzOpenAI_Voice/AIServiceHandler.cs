@@ -1,25 +1,35 @@
 ﻿using System.Net.WebSockets;
 using System.Threading.Channels;
 using Azure.Communication.CallAutomation.FHL;
-using System.Text;
 using OpenAI.RealtimeConversation;
 using NAudio.Wave;
+using Azure.AI.OpenAI;
+using System.ClientModel;
 
 #pragma warning disable OPENAI002
 namespace CallAutomationOpenAI
 {
-    public class OutStreamHandler
+    public class AIServiceHandler
     {
         private WebSocket m_webSocket;
         private CancellationTokenSource? m_aiClientCts;
         private Channel<Func<Task>> m_channel;
         private CancellationTokenSource m_cts;
-        private readonly RealtimeConversationSession m_aiSession;
+        private RealtimeConversationSession m_aiSession;
+        private MediaStreaming m_mediaStreaming;
 
-        public OutStreamHandler(WebSocket webSocket, RealtimeConversationSession aiSession)
+
+        private string m_answerPromptSystemTemplate = """ 
+    You're an AI assistant for an elevator company called Contoso Elevators. Customers will contact you as the first point of contact when having issues with their elevators. 
+    Your priority is to ensure the person contacting you or anyone else in or around the elevator is safe, if not then they should contact their local authorities.
+    If everyone is safe then ask the user for information about the elevators location, such as city, building and elevator number.
+    Also get the users name and number so that a technician who goes onsite can contact this person. Confirm with the user all the information 
+    they've shared that it's all correct and then let them know that you've created a ticket and that a technician should be onsite within the next 24 to 48 hours.
+    """;
+
+        public AIServiceHandler(MediaStreaming mediaStreaming)
         {
-            m_webSocket = webSocket;
-            m_aiSession = aiSession;
+            m_mediaStreaming = mediaStreaming;
             m_channel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
             {
                 SingleReader = true
@@ -27,16 +37,37 @@ namespace CallAutomationOpenAI
             m_aiClientCts = new CancellationTokenSource();
             m_cts = new CancellationTokenSource();
             // start dequeue task for new audio packets
-            _ = Task.Run(async () => await StartForwardingAudioToWebSocket());
+            _ = Task.Run(async () => await StartForwardingAudioToMediaStreaming());
         }
 
-        public void Close()
+
+        private async Task<RealtimeConversationSession> CreateAISessionAsync(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
         {
-            m_cts.Cancel();
-            m_aiClientCts?.Cancel();
+            string prompt = systemPrompt ?? m_answerPromptSystemTemplate;
+            var aiClient = new AzureOpenAIClient(new Uri(openAiUri), new ApiKeyCredential(openAiKey));
+            var RealtimeCovnClient = aiClient.GetRealtimeConversationClient(openAiModelName);
+            m_aiSession =  await RealtimeCovnClient.StartConversationSessionAsync();
+
+            // Session options control connection-wide behavior shared across all conversations,
+            // including audio input format and voice activity detection settings.
+            ConversationSessionOptions sessionOptions = new()
+            {
+                Instructions = prompt,
+                Voice = ConversationVoice.Alloy,
+                InputAudioFormat = ConversationAudioFormat.Pcm16,
+                OutputAudioFormat = ConversationAudioFormat.Pcm16,
+                InputTranscriptionOptions = new()
+                {
+                    Model = "whisper-1",
+                },
+                TurnDetectionOptions = ConversationTurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(0.5f, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500)),
+            };
+
+            await m_aiSession.ConfigureSessionAsync(sessionOptions);
+            return m_aiSession;
         }
 
-        private async Task StartForwardingAudioToWebSocket()
+        private async Task StartForwardingAudioToMediaStreaming()
         {
             try
             {
@@ -69,7 +100,7 @@ namespace CallAutomationOpenAI
         {
             try
             {
-                m_channel.Writer.TryWrite(async () => await SendMessageAsync(data));
+                m_channel.Writer.TryWrite(async () => await m_mediaStreaming.SendMessageAsync(data));
             }
             catch (Exception ex)
             {
@@ -77,25 +108,10 @@ namespace CallAutomationOpenAI
             }
         }
 
-        private async Task SendMessageAsync(string message)
-        {
-            if (m_webSocket?.State == WebSocketState.Open)
-            {
-                byte[] jsonBytes = Encoding.UTF8.GetBytes(message);
-
-                // Send the PCM audio chunk over WebSocket
-                await m_webSocket.SendAsync(new ArraySegment<byte>(jsonBytes), WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
-            }
-        }
-
 
         // Loop and wait for the AI response
         private async Task GetOpenAiStreamResponseAsync()
         {
-            if (m_webSocket == null || m_webSocket.State != WebSocketState.Open)
-            {
-                throw new InvalidOperationException("WebSocket is not connected.");
-            }
             try
             {
                 await foreach (ConversationUpdate update in m_aiSession.ReceiveUpdatesAsync(m_cts.Token))
@@ -218,9 +234,7 @@ namespace CallAutomationOpenAI
 
                 // Serialize the JSON object to a string
                 string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(jsonObject);
-                
                 ReceiveAudioForOutBound(jsonString);
-
             }
             catch (Exception ex)
             {
@@ -228,9 +242,24 @@ namespace CallAutomationOpenAI
             }
         }
 
+        public async Task StartConversation(string openAiUri, string openAiKey, string openAiModelName, string systemPrompt)
+        {
+            await CreateAISessionAsync(openAiUri, openAiKey, openAiModelName, systemPrompt);
+            StartAiAudioReceiver();
+        }
         public void StartAiAudioReceiver()
         {
             _ = Task.Run(async () => await GetOpenAiStreamResponseAsync());
+        }
+
+        public async Task SendAudioToExternalAI(MemoryStream memoryStream)
+        {
+            await m_aiSession.SendAudioAsync(memoryStream);
+        }
+        public void Close()
+        {
+            m_cts.Cancel();
+            m_aiClientCts?.Cancel();
         }
     }
 }

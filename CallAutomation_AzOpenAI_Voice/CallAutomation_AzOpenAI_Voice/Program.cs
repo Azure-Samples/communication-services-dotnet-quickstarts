@@ -24,7 +24,6 @@ ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
 
 //Register and make CallAutomationClient accessible via dependency injection
 builder.Services.AddSingleton(client);
-builder.Services.AddSingleton<WebSocketHandlerService>();
 
 var app = builder.Build();
 
@@ -135,10 +134,10 @@ app.Use(async (context, next) =>
     {
         if (context.WebSockets.IsWebSocketRequest)
         {
-            var mediaService = context.RequestServices.GetRequiredService<WebSocketHandlerService>();
 
             var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            mediaService.SetConnection(webSocket);
+            var mediaService = new MediaStreaming(webSocket);
+            
 
             // Set the single WebSocket connection
             var openAiModelName = builder.Configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
