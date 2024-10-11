@@ -148,9 +148,9 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
             StartRecordingOptions startRecordingOptions = new StartRecordingOptions(callLocator)
             {
-                RecordingContent=RecordingContent.Audio,
-                RecordingChannel = RecordingChannel.Unmixed,
-                RecordingFormat = RecordingFormat.Wav,
+                RecordingContent=RecordingContent.AudioVideo,
+                RecordingChannel = RecordingChannel.Mixed,
+                RecordingFormat = RecordingFormat.Mp4,
                 RecordingStateCallbackUri = callbackUri
             };
             var recordingResult = await client.GetCallRecording().StartAsync(startRecordingOptions);
@@ -298,9 +298,18 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
 app.MapGet("/download", (ILogger<Program> logger) =>
 {
-    string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-    string fileName = "test.wav";
-    client.GetCallRecording().DownloadTo(new Uri(recordingLocation), $"{downloadsPath}\\{fileName}");
+    if (!string.IsNullOrEmpty(recordingLocation))
+    {
+        string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        var date = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string fileName = $"Recording_{date}.mp4";
+        client.GetCallRecording().DownloadTo(new Uri(recordingLocation), $"{downloadsPath}\\{fileName}");
+    }
+    else
+    {
+        logger.LogError("Recording is not available");
+    }
+    
     return Results.Ok();
 });
 
