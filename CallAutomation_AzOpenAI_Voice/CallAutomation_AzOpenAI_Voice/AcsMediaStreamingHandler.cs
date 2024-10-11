@@ -40,7 +40,7 @@ public class AcsMediaStreamingHandler
         try
         {
             await m_aiServiceHandler.StartConversation();
-            await StartRecevingFromMediaWebSocket();
+            await StartReceivingFromAcsMediaWebSocket();
         }
         catch (Exception ex)
         {
@@ -79,7 +79,7 @@ public class AcsMediaStreamingHandler
         m_buffer.Dispose();
     }
 
-    private async Task WriteToAiInputStream(string data)
+    private async Task WriteToAzOpenAIServiceInputStream(string data)
     {
         var input = StreamingDataParser.Parse(data);
         if (input is AudioData audioData)
@@ -104,7 +104,7 @@ public class AcsMediaStreamingHandler
     }
 
     // Method to receive messages from WebSocket
-    private async Task StartRecevingFromMediaWebSocket()
+    private async Task StartReceivingFromAcsMediaWebSocket()
     {
         if (m_webSocket == null)
         {
@@ -120,7 +120,7 @@ public class AcsMediaStreamingHandler
                 if (receiveResult.MessageType != WebSocketMessageType.Close)
                 {
                     string data = Encoding.UTF8.GetString(receiveBuffer).TrimEnd('\0');
-                    await WriteToAiInputStream(data);
+                    await WriteToAzOpenAIServiceInputStream(data);
                     //Console.WriteLine("-----------: " + data);                
                 }
             }

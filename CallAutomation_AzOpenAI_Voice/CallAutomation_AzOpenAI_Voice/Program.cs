@@ -3,6 +3,7 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 
@@ -23,7 +24,9 @@ var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/
 if (string.IsNullOrEmpty(appBaseUrl))
 {
     var websiteHostName = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
+    Console.WriteLine($"websiteHostName :{websiteHostName}");
     appBaseUrl = $"https://{websiteHostName}";
+    Console.WriteLine($"appBaseUrl :{appBaseUrl}");
 }
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
@@ -34,7 +37,7 @@ app.MapPost("/api/incomingCall", async (
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
-        logger.LogInformation($"Incoming Call event received.");
+        Console.WriteLine($"Incoming Call event received.");
 
         // Handle system events
         if (eventGridEvent.TryGetSystemEventData(out object eventData))
@@ -54,9 +57,9 @@ app.MapPost("/api/incomingCall", async (
         var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
-        Console.WriteLine($"Callback Url: {callbackUri}");
+        logger.LogInformation($"Callback Url: {callbackUri}");
         var websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
-        Console.WriteLine($"WebSocket Url: {callbackUri}");
+        logger.LogInformation($"WebSocket Url: {callbackUri}");
 
         var mediaStreamingOptions = new MediaStreamingOptions(
                 new Uri(websocketUri),
@@ -70,7 +73,7 @@ app.MapPost("/api/incomingCall", async (
         };
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-        Console.WriteLine($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
+        logger.LogInformation($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
     }
     return Results.Ok();
 });
