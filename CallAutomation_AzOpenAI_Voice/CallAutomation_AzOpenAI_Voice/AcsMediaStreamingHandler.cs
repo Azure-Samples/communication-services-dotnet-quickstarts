@@ -49,6 +49,7 @@ public class AcsMediaStreamingHandler
         finally
         {
             m_aiServiceHandler.Close();
+            this.Close();
         }
     }
 
@@ -74,6 +75,7 @@ public class AcsMediaStreamingHandler
 
     public void Close()
     {
+        m_incommingAcsBuffer.Clear();
         m_cts.Cancel();
         m_cts.Dispose();
         m_buffer.Dispose();
@@ -99,7 +101,6 @@ public class AcsMediaStreamingHandler
                 await m_aiServiceHandler.SendAudioToExternalAI(m_buffer);
                 m_incommingAcsBuffer.Clear();
             }
-
         }
     }
 
