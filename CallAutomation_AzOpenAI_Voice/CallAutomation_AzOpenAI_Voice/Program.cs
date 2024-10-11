@@ -16,9 +16,6 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
 
-//Register and make CallAutomationClient accessible via dependency injection
-builder.Services.AddSingleton(client);
-
 var app = builder.Build();
 
 var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');

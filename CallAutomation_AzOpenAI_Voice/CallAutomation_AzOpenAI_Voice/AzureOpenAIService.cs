@@ -17,6 +17,7 @@ namespace CallAutomationOpenAI
         private CancellationTokenSource m_cts;
         private RealtimeConversationSession m_aiSession;
         private AcsMediaStreamingHandler m_mediaStreaming;
+        private MemoryStream m_memoryStream;
 
 
         private string m_answerPromptSystemTemplate = """ 
@@ -36,7 +37,8 @@ namespace CallAutomationOpenAI
             });
             m_aiClientCts = new CancellationTokenSource();
             m_cts = new CancellationTokenSource();
-            m_aiSession =  CreateAISessionAsync(configuration).GetAwaiter().GetResult(); ;
+            m_aiSession =  CreateAISessionAsync(configuration).GetAwaiter().GetResult();
+            m_memoryStream = new MemoryStream();
             // start dequeue task for new audio packets
             _ = Task.Run(async () => await StartForwardingAudioToMediaStreaming());
         }
@@ -75,6 +77,7 @@ namespace CallAutomationOpenAI
             };
 
             await session.ConfigureSessionAsync(sessionOptions);
+            
             return session;
         }
 
@@ -125,6 +128,7 @@ namespace CallAutomationOpenAI
         {
             try
             {
+                await m_aiSession.StartResponseTurnAsync();
                 await foreach (ConversationUpdate update in m_aiSession.ReceiveUpdatesAsync(m_cts.Token))
                 {
                     if (update is ConversationSessionStartedUpdate sessionStartedUpdate)
@@ -211,26 +215,29 @@ namespace CallAutomationOpenAI
 
         private void ConvertToAcsAudioPacketAndForward( byte[] audioData )
         {
-            var inFormat = new WaveFormat(24000, 16, 1);
-            var outFormat = new WaveFormat(16000, 16, 1);
-            var ms = new MemoryStream(audioData);
-            var rs = new RawSourceWaveStream(ms, inFormat);
-            var resampler = new MediaFoundationResampler(rs, outFormat);
             int chunkSize = 640;
             byte[] buffer = new byte[chunkSize];
             int bytesRead;
-            while((bytesRead = resampler.Read(buffer, 0, chunkSize)) == chunkSize)
+            var outFormat = new WaveFormat(16000, 16, 1);
+            var inFormat = new WaveFormat(24000, 16, 1);
+            using (var ms = new MemoryStream(audioData))
+            using (var rs = new RawSourceWaveStream(ms, inFormat))
+            using (var resampler = new MediaFoundationResampler(rs, outFormat))
             {
-                // Create a ServerAudioData object for this chunk
-                var audio = new ServerStreamingData(ServerMessageType.AudioData)
+              
+                while ((bytesRead = resampler.Read(buffer, 0, chunkSize)) == 640)
                 {
-                    ServerAudioData = new ServerAudioData(buffer)
-                };
-                // Serialize the JSON object to a string
-                string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(audio);
-                
-                // queue it to the buffer
-                ReceiveAudioForOutBound(jsonString);
+                    // Create a ServerAudioData object for this chunk
+                    var audio = new ServerStreamingData(ServerMessageType.AudioData)
+                    {
+                        ServerAudioData = new ServerAudioData(buffer)
+                    };
+                    // Serialize the JSON object to a string
+                    string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(audio);
+
+                    // queue it to the buffer
+                    ReceiveAudioForOutBound(jsonString);
+                }
             }
         }
 

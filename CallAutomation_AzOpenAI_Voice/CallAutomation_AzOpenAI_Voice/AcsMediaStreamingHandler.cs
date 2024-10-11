@@ -13,6 +13,7 @@ public class AcsMediaStreamingHandler
     private MemoryStream m_buffer;
     private AzureOpenAIService m_aiServiceHandler;
     private IConfiguration m_configuration;
+    private List<byte> m_incommingAcsBuffer;
 
     // Constructor to inject OpenAIClient
     public AcsMediaStreamingHandler(WebSocket webSocket, IConfiguration configuration)
@@ -21,6 +22,8 @@ public class AcsMediaStreamingHandler
         m_configuration = configuration;
         m_buffer = new MemoryStream();
         m_cts = new CancellationTokenSource();
+        m_incommingAcsBuffer = new List<byte>();
+
     }
       
     // Method to receive messages from WebSocket
@@ -37,7 +40,6 @@ public class AcsMediaStreamingHandler
         try
         {
             await m_aiServiceHandler.StartConversation();
-            _ = Task.Run(async () => await SendAudioAsync());
             await StartRecevingFromMediaWebSocket();
         }
         catch (Exception ex)
@@ -74,7 +76,7 @@ public class AcsMediaStreamingHandler
     {
         m_cts.Cancel();
         m_cts.Dispose();
-
+        m_buffer.Dispose();
     }
 
     private async Task WriteToAiInputStream(string data)
@@ -82,19 +84,22 @@ public class AcsMediaStreamingHandler
         var input = StreamingDataParser.Parse(data);
         if (input is AudioData audioData)
         {
-            var inFormat = new WaveFormat(16000, 16, 1);
-            var outFormat = new WaveFormat(24000, 16, 1);
-            var ms = new MemoryStream(audioData.Data);
-            var rs = new RawSourceWaveStream(ms, inFormat);
-            var resampler = new MediaFoundationResampler(rs, outFormat);
-            int chunkSize = 640;
-            byte[] buffer = new byte[chunkSize];
-            int bytesRead;
-            while ((bytesRead = resampler.Read(buffer, 0, chunkSize)) > 0)
+            m_incommingAcsBuffer.AddRange(audioData.Data);
+            if(m_incommingAcsBuffer.Count >= 640 * 10)
             {
-                // write to the memory stream and let the other thread forward it to AI model
-                await m_buffer.WriteAsync(buffer, 0, bytesRead);
+                var inFormat = new WaveFormat(16000, 16, 1);
+                var outFormat = new WaveFormat(24000, 16, 1);
+                using (var ms = new MemoryStream(m_incommingAcsBuffer.ToArray()))
+                using (var rs = new RawSourceWaveStream(ms, inFormat))
+                using (var resampler = new MediaFoundationResampler(rs, outFormat))
+                {
+                    resampler.ResamplerQuality = 60;
+                    WaveFileWriter.WriteWavFileToStream(m_buffer, resampler);
+                }
+                await m_aiServiceHandler.SendAudioToExternalAI(m_buffer);
+                m_incommingAcsBuffer.Clear();
             }
+
         }
     }
 
@@ -123,30 +128,6 @@ public class AcsMediaStreamingHandler
         catch (Exception ex)
         {
             Console.WriteLine($"Exception -> {ex}");
-        }
-    }
-
-    private async Task SendAudioAsync()
-    {
-        try
-        {
-            // Consume messages from channel and forward buffers to player
-            while (true)
-            {
-                await m_aiServiceHandler.SendAudioToExternalAI(m_buffer);
-            }
-        }
-        catch (OperationCanceledException opCanceledException)
-        {
-            Console.WriteLine($"OperationCanceledException received for SendAudioAsync : {opCanceledException}");
-        }
-        catch (ObjectDisposedException objDisposedException)
-        {
-            Console.WriteLine($"ObjectDisposedException received for SendAudioAsync :{objDisposedException}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Exception received for SendAudioAsync {ex}");
         }
     }
 }
