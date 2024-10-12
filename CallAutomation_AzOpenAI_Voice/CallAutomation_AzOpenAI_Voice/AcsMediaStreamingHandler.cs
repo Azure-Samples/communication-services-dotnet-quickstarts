@@ -39,7 +39,7 @@ public class AcsMediaStreamingHandler
         
         try
         {
-            await m_aiServiceHandler.StartConversation();
+            m_aiServiceHandler.StartConversation();
             await StartReceivingFromAcsMediaWebSocket();
         }
         catch (Exception ex)

@@ -103,11 +103,19 @@ app.Use(async (context, next) =>
     {
         if (context.WebSockets.IsWebSocketRequest)
         {
-            var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);            
+            try
+            {
+                var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);
 
-            // Set the single WebSocket connection
-            await mediaService.ProcessWebSocketAsync();
+                // Set the single WebSocket connection
+                await mediaService.ProcessWebSocketAsync();
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception received {ex}");
+            }
         }
         else
         {

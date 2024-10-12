@@ -12,7 +12,6 @@ namespace CallAutomationOpenAI
     public class AzureOpenAIService
     {
         private WebSocket m_webSocket;
-        private CancellationTokenSource? m_aiClientCts;
         private Channel<Func<Task>> m_channel;
         private CancellationTokenSource m_cts;
         private RealtimeConversationSession m_aiSession;
@@ -35,7 +34,6 @@ namespace CallAutomationOpenAI
             {
                 SingleReader = true
             });
-            m_aiClientCts = new CancellationTokenSource();
             m_cts = new CancellationTokenSource();
             m_aiSession =  CreateAISessionAsync(configuration).GetAwaiter().GetResult();
             m_memoryStream = new MemoryStream();
@@ -103,10 +101,6 @@ namespace CallAutomationOpenAI
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception received for StartForwardingAudioToPlayer {ex}");
-            }
-            finally
-            {
-                m_cts.Dispose();
             }
         }
 
@@ -260,7 +254,7 @@ namespace CallAutomationOpenAI
             }
         }
 
-        public async Task StartConversation()
+        public void StartConversation()
         {
             _ = Task.Run(async () => await GetOpenAiStreamResponseAsync());
         }
@@ -273,7 +267,8 @@ namespace CallAutomationOpenAI
         public void Close()
         {
             m_cts.Cancel();
-            m_aiClientCts?.Cancel();
+            m_cts.Dispose();
+            m_aiSession.Dispose();
         }
     }
 }
