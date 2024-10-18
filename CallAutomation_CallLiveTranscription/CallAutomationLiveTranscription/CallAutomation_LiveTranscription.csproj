@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.9" />
-    <PackageReference Include="Azure.Communication.CallAutomation" Version="1.3.0-beta.1" />
+    <PackageReference Include="Azure.Communication.CallAutomation" Version="1.3.0-alpha.20240709.1" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.21.0" />
 	<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>

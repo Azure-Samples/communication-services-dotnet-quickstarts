@@ -87,8 +87,10 @@ app.MapPost("/api/incomingCall", async (
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
                 $"Callback url: {callbackUri}, transport Url: {transportUrl}");
 
-            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),
-                locale, false, TranscriptionTransport.Websocket);
+            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),TranscriptionTransport.Websocket,locale,false);
+
+            MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(transportUrl), MediaStreamingTransport.Websocket, MediaStreamingContent.Audio, MediaStreamingAudioChannel.Mixed);
+
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
             {
@@ -96,8 +98,16 @@ app.MapPost("/api/incomingCall", async (
                 TranscriptionOptions = transcriptionOptions
             };
 
+
+            var options1 = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
+            {
+                CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+                MediaStreamingOptions = mediaStreamingOptions
+            };
+
             AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
             var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+            
 
             /* Use EventProcessor to process CallConnected event */
             var answer_result = await answerCallResult.WaitForEventProcessorAsync();
@@ -112,11 +122,8 @@ app.MapPost("/api/incomingCall", async (
                 recordingId = recordingResult.Value.RecordingId;
                 logger.LogInformation($"Recording started. RecordingId: {recordingId}");
 
-                /* Start the Transcription */
-                await InitiateTranscription(callConnectionMedia);
-                logger.LogInformation("Transcription initiated.");
 
-                await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, false, recordingId);
+                // await PauseOrStopTranscriptionAndRecording(callConnectionMedia, logger, false, recordingId);
 
                 /* Play hello prompt to user */
                 await HandleDtmfRecognizeAsync(callConnectionMedia, callerId, helpIVRPrompt, "hellocontext");
@@ -128,16 +135,24 @@ app.MapPost("/api/incomingCall", async (
 
                  if (playCompletedEvent.OperationContext == addAgentContext)
                  {
+
                      // Add Agent
-                     var callInvite = new CallInvite(new PhoneNumberIdentifier(agentPhoneNumber),
-                         new PhoneNumberIdentifier(acsPhoneNumber));
+                     var callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier("d4397adf-fa9d-4797-8f68-1e5d43ab58b8")) { };
 
-                     var addParticipantOptions = new AddParticipantOptions(callInvite)
-                     {
-                         OperationContext = addAgentContext
-                     };
+                     var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(callInvite);
+                     logger.LogInformation($"Adding agent to the call: {addParticipantResult.Value?.InvitationId}");
 
-                     var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
+
+                     //// Add Agent
+                     //var callInvite = new CallInvite(new PhoneNumberIdentifier(agentPhoneNumber),
+                     //    new PhoneNumberIdentifier(acsPhoneNumber));
+
+                     //var addParticipantOptions = new AddParticipantOptions(callInvite)
+                     //{
+                     //    OperationContext = addAgentContext
+                     //};
+
+                     //var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
                      logger.LogInformation($"Adding agent to the call: {addParticipantResult.Value?.InvitationId}");
                  }
                  else if (playCompletedEvent.OperationContext == goodbyeContext || playCompletedEvent.OperationContext == addParticipantFailureContext)
@@ -160,7 +175,7 @@ app.MapPost("/api/incomingCall", async (
                     Match match = regex.Match(tones);
                     if (match.Success)
                     {
-                        await ResumeTranscriptionAndRecording(callConnectionMedia, logger, recordingId);
+                        // await ResumeTranscriptionAndRecording(callConnectionMedia, logger, recordingId);
                         await HandlePlayAsync(callConnectionMedia, addAgentPrompt, addAgentContext);
                     }
                     else
@@ -173,6 +188,11 @@ app.MapPost("/api/incomingCall", async (
                answerCallResult.CallConnection.CallConnectionId, async (addParticipantSucceededEvent) =>
                {
                    logger.LogInformation($"Received call event: {addParticipantSucceededEvent.GetType()}, context: {addParticipantSucceededEvent.OperationContext}");
+                   
+                   /* Start the Transcription */
+                   await InitiateTranscription(callConnectionMedia);
+                   logger.LogInformation("Transcription initiated.");
+
                });
             client.GetEventProcessor().AttachOngoingEventProcessor<ParticipantsUpdated>(
               answerCallResult.CallConnection.CallConnectionId, async (participantsUpdatedEvent) =>
@@ -240,6 +260,16 @@ app.MapPost("/api/incomingCall", async (
                     logger.LogInformation($"Received transcription event: {TranscriptionFailed.GetType()}, CorrelationId: {TranscriptionFailed.CorrelationId}, " +
                         $"SubCode: {TranscriptionFailed?.ResultInformation?.SubCode}, Message: {TranscriptionFailed?.ResultInformation?.Message}");
                 });
+
+            client.GetEventProcessor().AttachOngoingEventProcessor<CallDisconnected>(
+                answerCallResult.CallConnection.CallConnectionId, async (CallDisconnected) =>
+                {
+                    logger.LogInformation($"Received transcription event: {CallDisconnected.GetType()}, CorrelationId: {CallDisconnected.CorrelationId}, " +
+                        $"SubCode: {CallDisconnected?.ResultInformation?.SubCode}, Message: {CallDisconnected?.ResultInformation?.Message}");
+                    await client.GetCallRecording().StopAsync(recordingId);
+                    logger.LogInformation("Transcription stopped.");
+
+                });
         }
     }
     return Results.Ok();
@@ -285,6 +315,13 @@ app.MapPost("/api/recordingFileStatus", (EventGridEvent[] eventGridEvents, ILogg
 app.MapGet("/download", (ILogger<Program> logger) =>
 {
     client.GetCallRecording().DownloadTo(new Uri(recordingLocation), "testfile.wav");
+    return Results.Ok();
+});
+
+
+app.MapGet("/stopRecording", (ILogger<Program> logger) =>
+{
+    client.GetCallRecording().Stop(recordingId);
     return Results.Ok();
 });
 
@@ -379,6 +416,7 @@ app.Use(async (context, next) =>
         {
             using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
             await Helper.ProcessRequest(webSocket);
+            //await Helper.Echo(webSocket);
         }
         else
         {
