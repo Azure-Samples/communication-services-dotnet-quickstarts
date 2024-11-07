@@ -1,13 +1,4 @@
-using System.Text;
-
 using System.Text.Json.Nodes;
-using Azure.Communication.CallAutomation;
-using Azure.Communication.Identity;
-using CliWrap;
-using CliWrap.Buffered;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using NAudio.Wave;
 
 public static class Helper
 {
