@@ -14,7 +14,7 @@ var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionS
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
 //Call Automation Client
-var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
+var pmaEndpoint = new Uri("https://uswe3-01.sdf.pma.teams.microsoft.com:6448");
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
 
 var app = builder.Build();
@@ -65,7 +65,12 @@ app.MapPost("/api/incomingCall", async (
                 new Uri(websocketUri),
                 MediaStreamingContent.Audio,
                 MediaStreamingAudioChannel.Mixed,
-                startMediaStreaming: true);
+                startMediaStreaming: true
+                )
+        {
+            EnableBidirectional = true,
+            AudioFormat = AudioFormat.Pcm24KMono
+        };
       
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {

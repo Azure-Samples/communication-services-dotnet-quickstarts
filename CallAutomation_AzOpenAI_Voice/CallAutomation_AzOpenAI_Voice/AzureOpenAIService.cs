@@ -1,10 +1,9 @@
 ﻿using System.Net.WebSockets;
 using System.Threading.Channels;
-using Azure.Communication.CallAutomation.FHL;
 using OpenAI.RealtimeConversation;
-using NAudio.Wave;
 using Azure.AI.OpenAI;
 using System.ClientModel;
+using Azure.Communication.CallAutomation;
 
 #pragma warning disable OPENAI002
 namespace CallAutomationOpenAI
@@ -209,43 +208,28 @@ namespace CallAutomationOpenAI
 
         private void ConvertToAcsAudioPacketAndForward( byte[] audioData )
         {
-            int chunkSize = 640;
-            byte[] buffer = new byte[chunkSize];
-            int bytesRead;
-            var outFormat = new WaveFormat(16000, 16, 1);
-            var inFormat = new WaveFormat(24000, 16, 1);
-            using (var ms = new MemoryStream(audioData))
-            using (var rs = new RawSourceWaveStream(ms, inFormat))
-            using (var resampler = new MediaFoundationResampler(rs, outFormat))
+            var audio = new OutStreamingData(MediaKind.AudioData)
             {
-              
-                while ((bytesRead = resampler.Read(buffer, 0, chunkSize)) == 640)
-                {
-                    // Create a ServerAudioData object for this chunk
-                    var audio = new ServerStreamingData(ServerMessageType.AudioData)
-                    {
-                        ServerAudioData = new ServerAudioData(buffer)
-                    };
-                    // Serialize the JSON object to a string
-                    string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(audio);
+                AudioData = new AudioData(audioData)
+            };
+            // Serialize the JSON object to a string
+            string jsonString = System.Text.Json.JsonSerializer.Serialize<OutStreamingData>(audio);
 
-                    // queue it to the buffer
-                    ReceiveAudioForOutBound(jsonString);
-                }
-            }
+            // queue it to the buffer
+            ReceiveAudioForOutBound(jsonString);
         }
 
         private void StopAudio()
         {
             try
             {
-                var jsonObject = new ServerStreamingData(ServerMessageType.StopAudio)
+                var jsonObject = new OutStreamingData(MediaKind.StopAudio)
                 {
                     StopAudio = new StopAudio()
                 };
 
                 // Serialize the JSON object to a string
-                string jsonString = System.Text.Json.JsonSerializer.Serialize<ServerStreamingData>(jsonObject);
+                string jsonString = System.Text.Json.JsonSerializer.Serialize<OutStreamingData>(jsonObject);
                 ReceiveAudioForOutBound(jsonString);
             }
             catch (Exception ex)

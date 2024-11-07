@@ -1,7 +1,6 @@
 using System.Net.WebSockets;
 using CallAutomationOpenAI;
 using Azure.Communication.CallAutomation;
-using NAudio.Wave;
 using System.Text;
 
 #pragma warning disable OPENAI002
@@ -13,7 +12,6 @@ public class AcsMediaStreamingHandler
     private MemoryStream m_buffer;
     private AzureOpenAIService m_aiServiceHandler;
     private IConfiguration m_configuration;
-    private List<byte> m_incommingAcsBuffer;
 
     // Constructor to inject OpenAIClient
     public AcsMediaStreamingHandler(WebSocket webSocket, IConfiguration configuration)
@@ -22,7 +20,6 @@ public class AcsMediaStreamingHandler
         m_configuration = configuration;
         m_buffer = new MemoryStream();
         m_cts = new CancellationTokenSource();
-        m_incommingAcsBuffer = new List<byte>();
 
     }
       
@@ -57,6 +54,7 @@ public class AcsMediaStreamingHandler
     {
         if (m_webSocket?.State == WebSocketState.Open)
         {
+           // Console.WriteLine($"{message}");
             byte[] jsonBytes = Encoding.UTF8.GetBytes(message);
 
             // Send the PCM audio chunk over WebSocket
@@ -75,7 +73,6 @@ public class AcsMediaStreamingHandler
 
     public void Close()
     {
-        m_incommingAcsBuffer.Clear();
         m_cts.Cancel();
         m_cts.Dispose();
         m_buffer.Dispose();
@@ -86,20 +83,9 @@ public class AcsMediaStreamingHandler
         var input = StreamingDataParser.Parse(data);
         if (input is AudioData audioData)
         {
-            m_incommingAcsBuffer.AddRange(audioData.Data);
-            if(m_incommingAcsBuffer.Count >= 640 * 10)
+            using (var ms = new MemoryStream(audioData.Data))
             {
-                var inFormat = new WaveFormat(16000, 16, 1);
-                var outFormat = new WaveFormat(24000, 16, 1);
-                using (var ms = new MemoryStream(m_incommingAcsBuffer.ToArray()))
-                using (var rs = new RawSourceWaveStream(ms, inFormat))
-                using (var resampler = new MediaFoundationResampler(rs, outFormat))
-                {
-                    resampler.ResamplerQuality = 60;
-                    WaveFileWriter.WriteWavFileToStream(m_buffer, resampler);
-                }
-                await m_aiServiceHandler.SendAudioToExternalAI(m_buffer);
-                m_incommingAcsBuffer.Clear();
+                await m_aiServiceHandler.SendAudioToExternalAI(ms);
             }
         }
     }
