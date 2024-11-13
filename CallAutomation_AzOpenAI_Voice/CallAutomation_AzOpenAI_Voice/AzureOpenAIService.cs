@@ -126,8 +126,8 @@ namespace CallAutomationOpenAI
                 {
                     if (update is ConversationSessionStartedUpdate sessionStartedUpdate)
                     {
-                        Console.WriteLine($"<<< Session started. ID: {sessionStartedUpdate.SessionId}");
-                        Console.WriteLine();
+                        //Console.WriteLine($"<<< Session started. ID: {sessionStartedUpdate.SessionId}");
+                        //Console.WriteLine();
                     }
 
                     if (update is ConversationInputSpeechStartedUpdate speechStartedUpdate)
@@ -169,7 +169,7 @@ namespace CallAutomationOpenAI
                         Console.Write(argumentsDeltaUpdate.Delta);
                     }
 
-                    if (update is ConversationItemFinishedUpdate itemFinishedUpdate)
+                    /*if (update is ConversationItemFinishedUpdate itemFinishedUpdate)
                     {
                         Console.WriteLine();
                         Console.WriteLine($"  -- Item streaming finished, response_id={itemFinishedUpdate.ResponseId}");
@@ -193,7 +193,7 @@ namespace CallAutomationOpenAI
                         Console.WriteLine();
                         Console.WriteLine($"ERROR: {errorUpdate.ErrorMessage}");
                         break;
-                    }
+                    }*/
                 }
             }
             catch (OperationCanceledException e)
