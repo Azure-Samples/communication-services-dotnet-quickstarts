@@ -4,6 +4,7 @@ using OpenAI.RealtimeConversation;
 using Azure.AI.OpenAI;
 using System.ClientModel;
 using Azure.Communication.CallAutomation;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 #pragma warning disable OPENAI002
 namespace CallAutomationOpenAI
@@ -206,7 +207,7 @@ namespace CallAutomationOpenAI
             }
         }
 
-        private void ConvertToAcsAudioPacketAndForward( byte[] audioData )
+        private void ConvertToAcsAudioPacketAndForward(byte[] audioData)
         {
             var audio = new OutStreamingData(MediaKind.AudioData)
             {
@@ -218,6 +219,7 @@ namespace CallAutomationOpenAI
             // queue it to the buffer
             ReceiveAudioForOutBound(jsonString);
         }
+
 
         private void StopAudio()
         {

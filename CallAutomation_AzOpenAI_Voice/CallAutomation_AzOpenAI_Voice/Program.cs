@@ -29,7 +29,8 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 //Call Automation Client
 //var pmaEndpoint = new Uri("https://uswe3-02.sdf.pma.teams.microsoft.com:6448");
 //var pmaEndpoint = new Uri("https://usea-01.msit.pma.teams.microsoft.com:6448");
-var pmaEndpoint = new Uri("https://nextpma.plat.skype.com:6448");
+var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
+//var pmaEndpoint = new Uri("https://nextpma.plat.skype.com:6448");
 //var pmaEndpoint = new Uri("https://msit.pma.teams.microsoft.com:6448"); 
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
 
@@ -110,21 +111,29 @@ async (
 
         defaultMediaStreaming.EnableBidirectional = true;
         defaultMediaStreaming.AudioFormat = "Pcm24kMono";
-        // Apply optional properties based on parsed values
-       /* if (enableBidirectional.HasValue)
-        {
-            defaultMediaStreaming.EnableBidirectional = true;
-            defaultMediaStreaming.AudioFormat = "Pcm24kMono";
-        }*/
 
-       /* if (parsedAudioFormat.HasValue)
-        {
-            defaultMediaStreaming.AudioFormat = parsedAudioFormat.Value;
-        }*/
+
+        var defaultTrans = new TranscriptionOptions(
+            new Uri(websocketUri),
+            "en-US",
+            false
+        );
+        // Apply optional properties based on parsed values
+        /* if (enableBidirectional.HasValue)
+         {
+             defaultMediaStreaming.EnableBidirectional = true;
+             defaultMediaStreaming.AudioFormat = "Pcm24kMono";
+         }*/
+
+        /* if (parsedAudioFormat.HasValue)
+         {
+             defaultMediaStreaming.AudioFormat = parsedAudioFormat.Value;
+         }*/
 
         var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
         {
             MediaStreamingOptions = defaultMediaStreaming,
+           // TranscriptionOptions = defaultTrans,
             CallIntelligenceOptions = new CallIntelligenceOptions
             {
                 CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
@@ -194,21 +203,19 @@ app.MapPost("/api/incomingCall", async (
         websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
         logger.LogInformation($"WebSocket Url: {callbackUri}");
         logger.LogInformation($"------ callerId: {callerId}");
-
-        var mediaStreamingOptions = new MediaStreamingOptions(
-                new Uri(websocketUri),
-                MediaStreamingContent.Audio,
-                MediaStreamingAudioChannel.Unmixed,
-                startMediaStreaming: true
-                )
-        {
-            EnableBidirectional = true,
-            AudioFormat = AudioFormat.Pcm24KMono
-        };
-      
+ 
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
-            //MediaStreamingOptions = mediaStreamingOptions,
+            MediaStreamingOptions = new MediaStreamingOptions(
+                new Uri(websocketUri),
+                MediaStreamingContent.Audio,
+                MediaStreamingAudioChannel.Mixed,
+                startMediaStreaming: true)
+            {
+                EnableBidirectional = true,
+                AudioFormat = AudioFormat.Pcm24KMono
+            },
+
         };
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -239,11 +246,12 @@ app.MapPost("/connectApiWithServerCallLocator", async ([FromQuery] string id, IL
     //CallLocator callLocator = new RoomCallLocator("99484006759534582");
     //CallLocator callLocator = new GroupCallLocator("29228d3e-040e-4656-a70e-890ab4e173e5");
     CallLocator callLocator = new ServerCallLocator(id);
+    //websocketUri = "wss://6e41-20-185-152-66.ngrok-free.app" + "/ws";
     websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
     var mediaStreamingOptions = new MediaStreamingOptions(
                 new Uri(websocketUri),
                 MediaStreamingContent.Audio,
-                MediaStreamingAudioChannel.Unmixed,
+                MediaStreamingAudioChannel.Mixed,
                 startMediaStreaming: true
                 )
     {
@@ -445,17 +453,20 @@ app.MapPost("/startMediaStreaming", async (
     [FromQuery] string id,
     ILogger<Program> logger) =>
 {
-    logger.LogInformation("play");
-
-    // Play message
-    var playSource = new TextSource(helpIVRPrompt)
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var playOptions = new PlayToAllOptions(playSource) { OperationContext = "hellocontext" };
+    
     var con = id ?? callConnectionId;
     await client.GetCallConnection(con).GetCallMedia().StartMediaStreamingAsync();
+
+    return Results.Ok();
+});
+
+app.MapPost("/startTranscription", async (
+    [FromQuery] string id,
+    ILogger<Program> logger) =>
+{
+
+    var con = id ?? callConnectionId;
+    await client.GetCallConnection(con).GetCallMedia().StartTranscriptionAsync();
 
     return Results.Ok();
 });
@@ -865,7 +876,8 @@ CallMediaRecognizeChoiceOptions GetMediaRecognizeChoiceOptions(string content, s
             InitialSilenceTimeout = TimeSpan.FromSeconds(10),
             Prompt = playSource,
             //PlayPrompts = playSources,
-            OperationContext = context
+            OperationContext = context,
+            OperationCallbackUri = new Uri("https://9276-20-185-152-66.ngrok-free.app")
         };
 
     return recognizeOptions;

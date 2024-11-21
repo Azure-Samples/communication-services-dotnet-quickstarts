@@ -97,12 +97,16 @@ public class AcsMediaStreamingHandler
         {
             return;
         }
+
         try
         {
             while (m_webSocket.State == WebSocketState.Open || m_webSocket.State == WebSocketState.Closed)
             {
                 byte[] receiveBuffer = new byte[2048];
-                WebSocketReceiveResult receiveResult = await m_webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), m_cts.Token);
+                WebSocketReceiveResult receiveResult = await m_webSocket.ReceiveAsync(
+                    new ArraySegment<byte>(receiveBuffer),
+                    m_cts.Token
+                );
 
                 if (receiveResult.MessageType != WebSocketMessageType.Close)
                 {
@@ -117,4 +121,5 @@ public class AcsMediaStreamingHandler
             Console.WriteLine($"Exception -> {ex}");
         }
     }
+
 }
