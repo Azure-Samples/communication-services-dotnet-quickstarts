@@ -1,0 +1,49 @@
+{
+  "name": "email-quickstart",
+  "version": "1.0.0",
+  "description": "",
+  "main": "send-email.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/communication-email": "^1.0.0-beta.1",
+    "dotenv": "^16.0.1"
+  }
+}
+const { EmailClient } = require("@azure/communication-email");
+  require("dotenv").config();
+  
+  // This code demonstrates how to fetch your connection string
+  // from an environment variable.
+  const connectionString = process.env['COMMUNICATION_SERVICES_CONNECTION_STRING'];
+
+  async function main() {
+    try {
+      var client = new EmailClient(connectionString);
+      //send mail
+      const emailMessage = {
+        sender: "DoNotReply@402eaf99-ad29-431c-94fb-389dd5ab257a.azurecomm.net",
+        content: {
+          subject: "Welcome to Azure Communication Service Email.",
+          plainText: "This email message is sent from Azure Communication Service Email using JS SDK."
+        },
+        recipients: {
+          to: [
+            {
+              email: "anthony.robinson@lookinnovative.com",
+            },
+          ],
+        },
+      };
+      var response = await client.send(emailMessage);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+  main();
+
+  
