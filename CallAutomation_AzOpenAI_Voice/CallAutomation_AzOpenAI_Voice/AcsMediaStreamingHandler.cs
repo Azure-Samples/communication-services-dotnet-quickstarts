@@ -80,7 +80,7 @@ public class AcsMediaStreamingHandler
 
     private async Task WriteToAzOpenAIServiceInputStream(string data)
     {
-        var input = StreamingDataParser.Parse(data);
+        var input = StreamingData.Parse(data);
         if (input is AudioData audioData)
         {
             using (var ms = new MemoryStream(audioData.Data))

@@ -206,14 +206,9 @@ namespace CallAutomationOpenAI
             }
         }
 
-        private void ConvertToAcsAudioPacketAndForward( byte[] audioData )
+        private void ConvertToAcsAudioPacketAndForward(byte[] audioData)
         {
-            var audio = new OutStreamingData(MediaKind.AudioData)
-            {
-                AudioData = new AudioData(audioData)
-            };
-            // Serialize the JSON object to a string
-            string jsonString = System.Text.Json.JsonSerializer.Serialize<OutStreamingData>(audio);
+            var jsonString = OutStreamingData.GetAudioDataForOutbound(audioData);
 
             // queue it to the buffer
             ReceiveAudioForOutBound(jsonString);
@@ -223,13 +218,7 @@ namespace CallAutomationOpenAI
         {
             try
             {
-                var jsonObject = new OutStreamingData(MediaKind.StopAudio)
-                {
-                    StopAudio = new StopAudio()
-                };
-
-                // Serialize the JSON object to a string
-                string jsonString = System.Text.Json.JsonSerializer.Serialize<OutStreamingData>(jsonObject);
+                var jsonString = OutStreamingData.GetStopAudioForOutbound();
                 ReceiveAudioForOutBound(jsonString);
             }
             catch (Exception ex)

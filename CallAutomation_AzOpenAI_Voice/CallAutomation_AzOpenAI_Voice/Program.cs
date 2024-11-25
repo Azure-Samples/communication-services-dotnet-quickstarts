@@ -14,8 +14,7 @@ var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionS
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
 //Call Automation Client
-var pmaEndpoint = new Uri("https://uswe3-01.sdf.pma.teams.microsoft.com:6448");
-var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
+var client = new CallAutomationClient(acsConnectionString);
 
 var app = builder.Build();
 
