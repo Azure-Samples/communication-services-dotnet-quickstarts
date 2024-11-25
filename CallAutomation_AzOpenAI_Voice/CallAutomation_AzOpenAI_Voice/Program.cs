@@ -1,21 +1,61 @@
+using Azure;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using CliWrap;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
 using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel.DataAnnotations;
+using System.Dynamic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.WebSockets;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Nodes;
+using static System.Net.WebRequestMethods;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+//var openIdConfigUrl = "https://acscallautomation.communication.azure.com/calling/.well-known/acsopenidconfiguration";
+
+//var allowedAudience = "a46cfa6a-73ce-4b07-9cfd-c3c28496ca08";//"6aeaee8c-8285-46d0-b018-493a75a1faca";
+ string _contentLocation = "";
+
+// Add Azure Communication Services CallAutomation OpenID configuration
+// 1. Load OpenID Connect metadata
+var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+    builder.Configuration["OpenIdConfigUrl"],
+    new OpenIdConnectConfigurationRetriever());
+
+var openIdConfig = await configurationManager.GetConfigurationAsync();
+
+// 2. Register JWT authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Configuration = openIdConfig;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidAudience = builder.Configuration["AllowedAudience"]
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 //Get ACS Connection String from appsettings.json
 var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
@@ -27,12 +67,15 @@ var targetPstnNumber = builder.Configuration.GetValue<string>("MyPSTNNumber");
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
 //Call Automation Client
-//var pmaEndpoint = new Uri("https://uswe3-02.sdf.pma.teams.microsoft.com:6448");
-//var pmaEndpoint = new Uri("https://usea-01.msit.pma.teams.microsoft.com:6448");
-var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
+///var pmaEndpoint = new Uri("https://usea-01.msit.pma.teams.microsoft.com:6448");
+//var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
+//var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
 //var pmaEndpoint = new Uri("https://nextpma.plat.skype.com:6448");
-//var pmaEndpoint = new Uri("https://msit.pma.teams.microsoft.com:6448"); 
+//var pmaEndpoint = new Uri("https://euno-02.sdf.pma.teams.microsoft.com:6448");
+//var pmaEndpoint = new Uri("https://msit.pma.teams.microsoft.com:6448");
+var pmaEndpoint = new Uri("https://pma.plat.skype.com:6448");
 var client = new CallAutomationClient(pmaEndpoint, connectionString: acsConnectionString);
+//var client = new CallAutomationClient(connectionString: acsConnectionString);
 
 string helpIVRPrompt = "Welcome to the Contoso Utilities. To access your account, we need to verify your identity. Please enter your date of birth in the format DDMMYYYY using the keypad on your phone. Once we’ve validated your identity we will connect you to the next available agent. Please note this call will be recorded!";
 var audioBaseUrl = builder.Configuration["VS_TUNNEL_URL"];
@@ -80,75 +123,142 @@ async (
         [FromQuery, SwaggerParameter("Specifies the audio format. Default is 'null'.", Required = false)] string? audioFormat = null,
         [FromQuery, SwaggerParameter("Starts media streaming if true. Default is 'true'.", Required = false)] bool? startMediaStreaming = true) =>
     {
-        // Parse MediaStreamingAudioChannel enum, default to Mixed if parsing fails or is not provided
-        /* var audioType = Enum.TryParse(audioChannel, ignoreCase: true, out MediaStreamingAudioChannel parsedAudioChannel)
-             ? parsedAudioChannel
-             : MediaStreamingAudioChannel.Mixed;
-
-         // Parse AudioFormat enum, if provided
-         AudioFormat? parsedAudioFormat = Enum.TryParse(audioFormat, ignoreCase: true, out AudioFormat tempAudioFormat)
-             ? tempAudioFormat
-             : (AudioFormat?)null;*/
-
-        var audioType = MediaStreamingAudioChannel.Mixed;
-
-        // Set startMediaStreaming default value
-        var startMedia = startMediaStreaming ?? true;
 
         PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPstnNumber);
         PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
         var callbackUri = new Uri(new Uri(appBaseUrl), "/api/callbacks");
         CallInvite callInvite = new CallInvite(target, caller);
-        websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
 
-        var defaultMediaStreaming = new MediaStreamingOptions(
+        websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
+        var transcriptionWebsocket = "wss://0d1d-20-185-152-70.ngrok-free.app";
+
+        /************** MediaStreamingOptions **********************/
+        /* var mediaStreamingOptions = new MediaStreamingOptions(
+                  new Uri("wss://1856-40-117-66-148.ngrok-free.app"),
+                  MediaStreamingAudioChannel.Unmixed
+                  )
+         {
+             EnableBidirectional = true,
+             AudioFormat = AudioFormat.Pcm16KMono,
+             StartMediaStreaming = true,
+             MediaStreamingContent = MediaStreamingContent.Audio,
+             EnableDtmfTones = true,
+         };
+
+         var defaultTrans = new TranscriptionOptions(
+                     new Uri(websocketUri),
+                    "en-US"
+                     )
+         {
+             StartTranscription = true
+
+         };*/
+
+        var mediaStreamingOptions = new MediaStreamingOptions(
             new Uri(websocketUri),
             MediaStreamingContent.Audio,
-            audioType,
+            MediaStreamingAudioChannel.Unmixed,
             MediaStreamingTransport.Websocket,
-            startMedia
-        );
+            true)
+        { EnableBidirectional = true};
 
-        defaultMediaStreaming.EnableBidirectional = true;
-        defaultMediaStreaming.AudioFormat = "Pcm24kMono";
-
-
-        var defaultTrans = new TranscriptionOptions(
-            new Uri(websocketUri),
-            "en-US",
-            false
-        );
-        // Apply optional properties based on parsed values
-        /* if (enableBidirectional.HasValue)
-         {
-             defaultMediaStreaming.EnableBidirectional = true;
-             defaultMediaStreaming.AudioFormat = "Pcm24kMono";
-         }*/
-
-        /* if (parsedAudioFormat.HasValue)
-         {
-             defaultMediaStreaming.AudioFormat = parsedAudioFormat.Value;
-         }*/
+        /************** CallIntelligenceOptions **********************/
+        var callIntelligent = new CallIntelligenceOptions
+        {
+            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+        };
 
         var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
         {
-            MediaStreamingOptions = defaultMediaStreaming,
-           // TranscriptionOptions = defaultTrans,
-            CallIntelligenceOptions = new CallIntelligenceOptions
-            {
-                CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
-            }
+          // MediaStreamingOptions = mediaStreamingOptions,
+          // TranscriptionOptions = defaultTrans,
+           CallIntelligenceOptions = callIntelligent,
+           //EnableLoopbackAudio = true,
+
         };
 
         CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
         callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
 
-        logger.LogInformation($"------- Created call with correlation id: {createCallResult.CallConnectionProperties.CorrelationId}");
+        logger.LogInformation($"============ Correlation id: {createCallResult.CallConnectionProperties.CorrelationId}");
 
-        logger.LogInformation($"-------- Created call with CallConnection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+        logger.LogInformation($"************ CallConnection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
     })
 .WithName("CreatePSTNCall")
+.WithMetadata(new SwaggerOperationAttribute { Summary = "Creates a PSTN call with media streaming settings." });
+
+app.MapPost("/createVOIPCall",
+    [SwaggerOperation(Summary = "Creates a PSTN call with optional media streaming settings.")]
+async (
+        ILogger<Program> logger,
+        [FromQuery, SwaggerParameter("Specifies the audio channel type. Default is 'Mixed'.", Required = false)] string? audioChannel = "Mixed",
+        [FromQuery, SwaggerParameter("Enables bidirectional media streaming. Default is 'null'.", Required = false)] bool? enableBidirectional = null,
+        [FromQuery, SwaggerParameter("Specifies the audio format. Default is 'null'.", Required = false)] string? audioFormat = null,
+        [FromQuery, SwaggerParameter("Starts media streaming if true. Default is 'true'.", Required = false)] bool? startMediaStreaming = true) =>
+    {
+
+        
+        var callbackUri = new Uri(new Uri(appBaseUrl), "/api/callbacks");
+        CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier("8:acs:9c7fd23d-fedd-4ba9-8093-3fef2b6cb41d_00000028-d921-d48f-78f0-b03a0d00330b"));
+
+        websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
+        var transcriptionWebsocket = "wss://0d1d-20-185-152-70.ngrok-free.app";
+
+        /************** MediaStreamingOptions **********************/
+        /* var mediaStreamingOptions = new MediaStreamingOptions(
+                  new Uri("wss://1856-40-117-66-148.ngrok-free.app"),
+                  MediaStreamingAudioChannel.Unmixed
+                  )
+         {
+             EnableBidirectional = true,
+             AudioFormat = AudioFormat.Pcm16KMono,
+             StartMediaStreaming = true,
+             MediaStreamingContent = MediaStreamingContent.Audio,
+             EnableDtmfTones = true,
+         };
+
+         var defaultTrans = new TranscriptionOptions(
+                     new Uri(websocketUri),
+                    "en-US"
+                     )
+         {
+             StartTranscription = true
+
+         };*/
+
+        var mediaStreamingOptions = new MediaStreamingOptions(
+            new Uri(websocketUri),
+            MediaStreamingContent.Audio,
+            MediaStreamingAudioChannel.Unmixed,
+            MediaStreamingTransport.Websocket,
+            true)
+        { EnableBidirectional = true };
+
+        /************** CallIntelligenceOptions **********************/
+        var callIntelligent = new CallIntelligenceOptions
+        {
+            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+        };
+
+        var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+        {
+            // MediaStreamingOptions = mediaStreamingOptions,
+            // TranscriptionOptions = defaultTrans,
+           // CallIntelligenceOptions = callIntelligent,
+            //EnableLoopbackAudio = true,
+
+        };
+
+        CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+
+        callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
+
+        logger.LogInformation($"============ Correlation id: {createCallResult.CallConnectionProperties.CorrelationId}");
+
+        logger.LogInformation($"************ CallConnection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+    })
+.WithName("CreateVOIPCall")
 .WithMetadata(new SwaggerOperationAttribute { Summary = "Creates a PSTN call with media streaming settings." });
 
 app.MapPost("/createGroupCall", async (ILogger<Program> logger) =>
@@ -157,16 +267,17 @@ app.MapPost("/createGroupCall", async (ILogger<Program> logger) =>
     var pstnEndpoint = new PhoneNumberIdentifier(targetPstnNumber);
     var voipEndpoint = new CommunicationUserIdentifier(voipId);
 
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+    
+    /*MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
       new Uri("wss://0rv989s0-8081.inc1.devtunnels.ms/ws"),
       MediaStreamingContent.Audio,
       MediaStreamingAudioChannel.Mixed,
-      MediaStreamingTransport.Websocket,
-      false);
+      StreamingTransport.Websocket,
+      false);*/
 
     var groupCallOptions = new CreateGroupCallOptions(new List<CommunicationIdentifier> { pstnEndpoint, voipEndpoint }, callbackUri)
     {
-        MediaStreamingOptions = mediaStreamingOptions,
+       // MediaStreamingOptions = mediaStreamingOptions,
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
         SourceCallerIdNumber = new PhoneNumberIdentifier(acsPhoneNumber), // This is the Azure Communication Services provisioned phone number for the caller
     };
@@ -199,68 +310,132 @@ app.MapPost("/api/incomingCall", async (
         callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
         var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
-        logger.LogInformation($"Callback Url: {callbackUri}");
+        
+
         websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
-        logger.LogInformation($"WebSocket Url: {callbackUri}");
+
+        logger.LogInformation($"WebSocket Url: {websocketUri}");
         logger.LogInformation($"------ callerId: {callerId}");
- 
-        var options = new AnswerCallOptions(incomingCallContext, callbackUri)
+        var transcriptionWebsocket = "wss://0d1d-20-185-152-70.ngrok-free.app";
+
+        /* var mediaStreamingOptions = new MediaStreamingOptions(
+                 new Uri(websocketUri),
+                 MediaStreamingAudioChannel.Unmixed
+                 )
+         {
+             EnableBidirectional = true,
+             AudioFormat = AudioFormat.Pcm24KMono,
+             StartMediaStreaming = true,
+             MediaStreamingContent = MediaStreamingContent.Audio,
+             EnableDtmfTones = true,
+         };
+
+         var transcriptionOptions = new TranscriptionOptions(
+                     new Uri(transcriptionWebsocket),
+                    "en-US"
+                     )
+         {
+             StartTranscription = true
+
+         };*/
+
+        var mediaStreamingOptions = new MediaStreamingOptions(
+            new Uri("wss://d9aa515a0cc1.ngrok-free.app"),
+            MediaStreamingContent.Audio,
+            MediaStreamingAudioChannel.Unmixed,
+            MediaStreamingTransport.Websocket,
+            true);
+
+        /************** CallIntelligenceOptions **********************/
+        var callIntelligent = new CallIntelligenceOptions
         {
-            MediaStreamingOptions = new MediaStreamingOptions(
-                new Uri(websocketUri),
-                MediaStreamingContent.Audio,
-                MediaStreamingAudioChannel.Mixed,
-                startMediaStreaming: true)
-            {
-                EnableBidirectional = true,
-                AudioFormat = AudioFormat.Pcm24KMono
-            },
+            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+        };
+
+        var options = new AnswerCallOptions(incomingCallContext, callbackUri)
+         {
+              //MediaStreamingOptions = mediaStreamingOptions,
+
+             //TranscriptionOptions = transcriptionOptions,
+             /*/CallIntelligenceOptions = new CallIntelligenceOptions
+             {
+                 CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+             },*/
+             OperationContext = "answerCallContext",
+             //EnableLoopbackAudio = true,
 
         };
 
-        AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-        callConnectionId = answerCallResult.CallConnectionProperties.CallConnectionId;
-        callLocatorid = answerCallResult.CallConnectionProperties.ServerCallId;
-        logger.LogInformation($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
-        logger.LogInformation($"------Answered call for CorrelationId: {answerCallResult.CallConnectionProperties.CorrelationId}");
-        logger.LogInformation($"------Answered call for serverCallId: {callLocatorid}");
-        client.GetEventProcessor().AttachOngoingEventProcessor<CallConnected>(answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStopped) =>
-        {
-            logger.LogInformation($"------- Call mediaStreamingStopped accepted event received for connection id: {mediaStreamingStopped.CallConnectionId}.");
-        });
-        client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingStarted>(answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStarted) =>
-        {
-            logger.LogInformation($"\"------- Call mediaStreamingStarted accepted event: {mediaStreamingStarted.CallConnectionId}.");
-            var resultInformation = mediaStreamingStarted.ResultInformation;
-            //logger.LogError("Encountered error during call transfer, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
-           // answerCallResult.CallConnection.GetCallMedia().StopMediaStreaming();
+         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
+         callConnectionId = answerCallResult.CallConnectionProperties.CallConnectionId;
+         callLocatorid = answerCallResult.CallConnectionProperties.ServerCallId;
+         logger.LogInformation($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
+         logger.LogInformation($"------Answered call for CorrelationId: {answerCallResult.CallConnectionProperties.CorrelationId}");
+         logger.LogInformation($"------Answered call for serverCallId: {callLocatorid}");
+        /* client.GetEventProcessor().AttachOngoingEventProcessor<CallConnected>(answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStopped) =>
+         {
+             logger.LogInformation($"------- Call mediaStreamingStopped accepted event received for connection id: {mediaStreamingStopped.CallConnectionId}.");
+         });
+         client.GetEventProcessor().AttachOngoingEventProcessor<MediaStreamingStarted>(answerCallResult.CallConnection.CallConnectionId, async (mediaStreamingStarted) =>
+         {
+             logger.LogInformation($"\"------- Call mediaStreamingStarted accepted event: {mediaStreamingStarted.CallConnectionId}.");
+             var resultInformation = mediaStreamingStarted.ResultInformation;
+             //logger.LogError("Encountered error during call transfer, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
+            // answerCallResult.CallConnection.GetCallMedia().StopMediaStreaming();
 
-        });
+         });*/
     }
     return Results.Ok();
 });
 
 app.MapPost("/connectApiWithServerCallLocator", async ([FromQuery] string id, ILogger<Program> logger) =>
 {
-    var callbackUri = new Uri(new Uri(appBaseUrl), "/api/callbacks");
-    //CallLocator callLocator = new RoomCallLocator("99484006759534582");
-    //CallLocator callLocator = new GroupCallLocator("29228d3e-040e-4656-a70e-890ab4e173e5");
-    CallLocator callLocator = new ServerCallLocator(id);
-    //websocketUri = "wss://6e41-20-185-152-66.ngrok-free.app" + "/ws";
-    websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
-    var mediaStreamingOptions = new MediaStreamingOptions(
-                new Uri(websocketUri),
-                MediaStreamingContent.Audio,
-                MediaStreamingAudioChannel.Mixed,
-                startMediaStreaming: true
+var callbackUri = new Uri(new Uri(appBaseUrl), "/api/callbacks");
+//CallLocator callLocator = new RoomCallLocator("99484006759534582");
+//CallLocator callLocator = new GroupCallLocator("29228d3e-040e-4656-a70e-890ab4e173e5");
+CallLocator callLocator = new ServerCallLocator(id);
+//websocketUri = "wss://6e41-20-185-152-66.ngrok-free.app" + "/ws";
+websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
+var transcriptionWebsocket = "wss://0d1d-20-185-152-70.ngrok-free.app";
+    /*var mediaStreamingOptions = new MediaStreamingOptions(
+                new Uri("wss://13fd-40-117-66-147.ngrok-free.app"),
+                MediaStreamingAudioChannel.Unmixed
                 )
     {
         EnableBidirectional = true,
-        AudioFormat = AudioFormat.Pcm24KMono
+        AudioFormat = AudioFormat.Pcm24KMono,
+        StartMediaStreaming = true,
+        MediaStreamingContent = MediaStreamingContent.Audio,
+        EnableDtmfTones = true,
     };
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri)
+
+    var transcriptionOptions = new TranscriptionOptions(
+                new Uri(websocketUri),
+               "en-US"
+                )
+    {
+        StartTranscription = true
+    
+    };*/
+
+    var mediaStreamingOptions = new MediaStreamingOptions(
+           new Uri(websocketUri),
+           MediaStreamingContent.Audio,
+           MediaStreamingAudioChannel.Unmixed,
+           MediaStreamingTransport.Websocket,
+           true)
+    {  };
+
+    var callbackuri2 = new Uri("https://c2c9-20-185-152-75.ngrok-free.app");
+
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackuri2)
     {
         MediaStreamingOptions = mediaStreamingOptions,
+        /*TranscriptionOptions = transcriptionOptions,
+        CallIntelligenceOptions = new CallIntelligenceOptions
+        {
+            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+        }*/
     };
 
 
@@ -314,15 +489,37 @@ app.MapPost("/playTo", async (
     return Results.Ok();
 });
 
+app.MapPost("/playToText", async (
+    [FromQuery] string id,
+    ILogger<Program> logger) =>
+{
+    logger.LogInformation("playTo");
+
+    PlaySource salesAudio = new TextSource("Update on this, the wrong instance might've been hit when testing. Isura is double checking if my change did cause any issue?") { 
+        SourceLocale = "en-Us"
+    };
+    var playOptions = new PlayOptions(salesAudio, new List<CommunicationIdentifier> { CommunicationIdentifier.FromRawId(callerId) }) { OperationContext = "hellocontext" };
+    var con = id ?? callConnectionId;
+    await client.GetCallConnection(con).GetCallMedia().PlayAsync(playOptions);
+
+    return Results.Ok();
+});
+
 app.MapPost("/sendDtmfTones", async (
     [FromQuery] string id,
+    [FromQuery] string part,
     ILogger<Program> logger) =>
 {
     logger.LogInformation("sendDtmfTones");
 
-    var tones = new List<DtmfTone> { DtmfTone.Five, DtmfTone.One, DtmfTone.One, DtmfTone.One };
+    var tones = new List<DtmfTone> { DtmfTone.Five};
 
-    var sendDtmfTonesOptions = new SendDtmfTonesOptions(tones, CommunicationIdentifier.FromRawId(callerId))
+    /*var sendDtmfTonesOptions = new SendDtmfTonesOptions(tones, CommunicationIdentifier.FromRawId("8:acs:6aeaee8c-8285-46d0-b018-493a75a1faca_00000026-2ffa-482f-80f5-8b3a0d009c07"))
+    {
+        OperationContext = "dtmftones",
+    };*/
+
+    var sendDtmfTonesOptions = new SendDtmfTonesOptions(tones, CommunicationIdentifier.FromRawId(part))
     {
         OperationContext = "dtmftones",
     };
@@ -364,6 +561,19 @@ app.MapPost("/recognizeSpeech", async (
 
     var recognizeOptions = GetMediaRecognizeSpeechOptions(dtmfPrompt, targetPstnNumber);
     await client.GetCallConnection(callConnectionId).GetCallMedia().StartRecognizingAsync(recognizeOptions);
+
+    return Results.Ok();
+});
+
+app.MapPost("/addparticipant", async (
+    [FromQuery] string id,
+    [FromQuery] string target,
+    ILogger<Program> logger) =>
+{
+    logger.LogInformation("recognizee");
+
+    //var recognizeOptions = GetMediaRecognizeSpeechOptions(dtmfPrompt, targetPstnNumber);
+    client.GetCallConnection(callConnectionId).AddParticipant(new CallInvite(new CommunicationUserIdentifier(target)));
 
     return Results.Ok();
 });
@@ -422,6 +632,7 @@ app.MapPost("/unhold", async (
     var unholdOptions = new UnholdOptions(CommunicationIdentifier.FromRawId(callerId))
     {
         OperationContext = "unholdPstnParticipant",
+        
     };
 
     var con = id ?? callConnectionId;
@@ -432,10 +643,15 @@ app.MapPost("/unhold", async (
 
 app.MapPost("/stopMediaStreaming", async (
     [FromQuery] string id,
+    [FromQuery] string operationcontext,
     ILogger<Program> logger) =>
 {
     logger.LogInformation("play");
 
+    StopMediaStreamingOptions startMediaStreamingOptions = new StopMediaStreamingOptions()
+    {
+        OperationContext = operationcontext,
+    };
     // Play message
     var playSource = new TextSource(helpIVRPrompt)
     {
@@ -444,18 +660,23 @@ app.MapPost("/stopMediaStreaming", async (
 
     var playOptions = new PlayToAllOptions(playSource) { OperationContext = "hellocontext" };
     var con = id ?? callConnectionId;
-    await client.GetCallConnection(con).GetCallMedia().StopMediaStreamingAsync();
+    await client.GetCallConnection(con).GetCallMedia().StopMediaStreamingAsync(startMediaStreamingOptions);
 
     return Results.Ok();
 });
 
 app.MapPost("/startMediaStreaming", async (
     [FromQuery] string id,
+    [FromQuery] string operationcontext,
     ILogger<Program> logger) =>
 {
-    
+    StartMediaStreamingOptions startMediaStreamingOptions = new StartMediaStreamingOptions( )
+    {
+        OperationContext = operationcontext,
+    };
+
     var con = id ?? callConnectionId;
-    await client.GetCallConnection(con).GetCallMedia().StartMediaStreamingAsync();
+    await client.GetCallConnection(con).GetCallMedia().StartMediaStreamingAsync(startMediaStreamingOptions);
 
     return Results.Ok();
 });
@@ -471,6 +692,107 @@ app.MapPost("/startTranscription", async (
     return Results.Ok();
 });
 
+app.MapPost("/stopTranscription", async (
+    [FromQuery] string id,
+    ILogger<Program> logger) =>
+{
+
+    var con = id ?? callConnectionId;
+    await client.GetCallConnection(con).GetCallMedia().StopTranscriptionAsync();
+
+    return Results.Ok();
+});
+
+app.MapPost("/updateTranscription", async (
+    [FromQuery] string id,
+    ILogger<Program> logger) =>
+{
+    var update = "";// new UpdateTranscriptionOptions("fr-CA");
+    var con = id ?? callConnectionId;
+    await client.GetCallConnection(con).GetCallMedia().UpdateTranscriptionAsync(update);
+
+    return Results.Ok();
+});
+
+app.MapPost("/startRecording", async (
+    [FromQuery] string id,
+    ILogger<Program> logger) =>
+{
+        var con = id ?? callConnectionId;
+        var _serverCallId =  client.GetCallConnection(con).GetCallConnectionProperties().Value.ServerCallId;
+        StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(_serverCallId));
+        var callRecording = client.GetCallRecording();
+        var response = await callRecording.StartAsync(recordingOptions).ConfigureAwait(false);
+        var _recordingId = response.Value.RecordingId;
+
+    logger.LogInformation($"********************* CALL RecordingId : {_recordingId}");
+    return Results.Ok($"RecordingId: {_recordingId}");    
+});
+
+
+app.MapDelete("/stopRecording", async (
+     [FromQuery] string recordingId,
+    ILogger<Program> logger) =>
+{
+        var response = await client.GetCallRecording().StopAsync(recordingId).ConfigureAwait(false);
+    logger.LogInformation($"StopRecordingAsync response -- > {response}");
+
+        return Results.Ok();
+    
+});
+
+app.MapGet("/getRecordingState", async (
+     [FromQuery] string recordingId,
+    ILogger<Program> logger) =>
+{
+
+    var response = await client.GetCallRecording().GetStateAsync(recordingId).ConfigureAwait(false);
+    logger.LogInformation($"GetRecordingStateAsync response -- > {response}");
+
+    return Results.Ok($"{response.Value.RecordingState}");
+
+});
+
+app.MapGet("/getDownloadRecording", async (
+     [FromQuery] string recordingId,
+    ILogger<Program> logger) =>
+{
+    var callRecording = client.GetCallRecording();
+    callRecording.DownloadTo(new Uri(_contentLocation), "Recording_File.wav");
+    return Results.Ok();
+
+}); 
+
+app.MapPost("/recordingFileStatus", async ([FromBody] EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
+{
+    foreach (var eventGridEvent in eventGridEvents)
+    {
+        if (eventGridEvent.TryGetSystemEventData(out object eventData))
+        {
+            // Handle the webhook subscription validation event.
+            if (eventData is Azure.Messaging.EventGrid.SystemEvents.SubscriptionValidationEventData subscriptionValidationEventData)
+            {
+                var responseData = new Azure.Messaging.EventGrid.SystemEvents.SubscriptionValidationResponse
+                {
+                    ValidationResponse = subscriptionValidationEventData.ValidationCode
+                };
+                return Results.Ok(responseData);
+            }
+
+            if (eventData is Azure.Messaging.EventGrid.SystemEvents.AcsRecordingFileStatusUpdatedEventData statusUpdated)
+            {
+                _contentLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+               // _deleteLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].DeleteLocation;
+            }
+        }
+    }
+
+    logger.LogInformation($"Recording Download Location : {_contentLocation}, Recording Delete Location: ");
+
+
+    return Results.Ok($"Recording Download Location : {_contentLocation}, Recording Delete Location: ");
+}).Produces(StatusCodes.Status200OK);
+
 app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
 {
     foreach (var cloudEvent in cloudEvents)
@@ -478,16 +800,17 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
        // PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
         CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
         logger.LogInformation(
-                    "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}",
+                    "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}, operationContext: {operationContext}",
                     parsedEvent.GetType(),
                     parsedEvent.CallConnectionId,
-                    parsedEvent.ServerCallId);
+                    parsedEvent.ServerCallId,
+                    parsedEvent?.OperationContext);
 
         var callConnection = client.GetCallConnection(parsedEvent.CallConnectionId);
         var callMedia = callConnection.GetCallMedia();
         logger.LogInformation($"CALL CONNECTION ID ----> {parsedEvent.CallConnectionId}");
         logger.LogInformation($"CORRELATION ID ----> {parsedEvent.CorrelationId}");
-        var connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
+       /// var connectionProperties = await callConnection.GetCallConnectionPropertiesAsync();
         //logger.LogInformation($"ANSWERED FOR ----> {connectionProperties.Value.AnsweredFor}");
 
 
@@ -565,6 +888,9 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             var choiceResult = recognizeCompleted.RecognizeResult as ChoiceResult;
             var labelDetected = choiceResult?.Label;
             var phraseDetected = choiceResult?.RecognizedPhrase;
+
+            var speech = recognizeCompleted.RecognizeResult as SpeechResult;
+            
             // If choice is detected by phrase, choiceResult.RecognizedPhrase will have the phrase detected, 
             // If choice is detected using dtmf tone, phrase will be null 
             logger.LogInformation("Recognize completed succesfully, labelDetected={labelDetected}, phraseDetected={phraseDetected}", labelDetected, phraseDetected);
@@ -662,12 +988,12 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         else if (parsedEvent is RecognizeFailed { OperationContext: RetryContext } recognizeFailedEvent1)
         {
             logger.LogError("Encountered error during recognize, operationContext={context}", RetryContext);
-            logger.LogError($"Recognize failed with index : {recognizeFailedEvent1.FailedPlaySourceIndex}");
+            //logger.LogError($"Recognize failed with index : {recognizeFailedEvent1.FailedPlaySourceIndex}");
             
         }
         else if (parsedEvent is RecognizeFailed recognizeFailedEvent)
         {
-            logger.LogError($"Recognize failed with index : {recognizeFailedEvent.FailedPlaySourceIndex}");
+            //logger.LogError($"Recognize failed with index : {recognizeFailedEvent.FailedPlaySourceIndex}");
 
             var resultInformation = recognizeFailedEvent.ResultInformation;
             logger.LogError("Encountered error during recognize, message={msg}, code={code}, subCode={subCode}",
@@ -708,6 +1034,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         }
         else if ((parsedEvent is TranscriptionStarted))
         {
+
             logger.LogInformation($"TranscriptionStarted event triggered.");
         }
         else if ((parsedEvent is TranscriptionStopped))
@@ -725,7 +1052,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         }
         else if (parsedEvent is PlayFailed playFailed)
         {
-            logger.LogInformation($"playFailed with the index : {playFailed.FailedPlaySourceIndex}");
+            //logger.LogInformation($"playFailed with the index : {playFailed.FailedPlaySourceIndex}");
             //await callConnection.HangUpAsync(true);
         }
         else if (parsedEvent is PlayStarted)
@@ -758,6 +1085,8 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
+
+
 // api to handle call back events
 app.MapPost("/api/callbacks/{contextId}", async (
     [FromBody] CloudEvent[] cloudEvents,
@@ -780,7 +1109,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
             logger.LogInformation($"MediaStreamingStatus: {((MediaStreamingStarted)parsedEvent).MediaStreamingUpdate.MediaStreamingStatus}");
             logger.LogInformation($"MediaStreamingStatusDetails: {((MediaStreamingStarted)parsedEvent).MediaStreamingUpdate.MediaStreamingStatusDetails}");
         }*/
-        if ((parsedEvent is MediaStreamingStarted))
+       /* if ((parsedEvent is MediaStreamingStarted))
         {
             logger.LogInformation($"{parsedEvent.GetType()} Event received: {JsonConvert.SerializeObject(parsedEvent, Formatting.Indented)}");
             logger.LogInformation($"MediaStreamingStatus: {((MediaStreamingStarted)parsedEvent).MediaStreamingUpdate.MediaStreamingStatus}");
@@ -791,7 +1120,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
             logger.LogInformation($"{parsedEvent.GetType()} Event received: {JsonConvert.SerializeObject(parsedEvent, Formatting.Indented)}");
             logger.LogInformation($"MediaStreamingStatus: {((MediaStreamingStopped)parsedEvent).MediaStreamingUpdate.MediaStreamingStatus}");
             logger.LogInformation($"MediaStreamingStatusDetails: {((MediaStreamingStopped)parsedEvent).MediaStreamingUpdate.MediaStreamingStatusDetails}");
-        }
+        }*/
     }
 
     return Results.Ok();
@@ -826,7 +1155,7 @@ CallMediaRecognizeDtmfOptions GetMediaRecognizeDTMFOptions(string content, strin
                     InterToneTimeout = TimeSpan.FromSeconds(5),
                     OperationContext = context,
                     InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                    PlayPrompts = playSources,
+                    //PlayPrompts = playSources,
                 };
     return recognizeOptions;
 }
@@ -911,7 +1240,7 @@ CallMediaRecognizeSpeechOptions GetMediaRecognizeSpeechOptions(string content, s
                     InterruptPrompt = false,
                     OperationContext = context,
                     InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                    PlayPrompts = playSources,
+                    //PlayPrompts = playSources,
                     EndSilenceTimeout = TimeSpan.FromSeconds(15)
                 };
     return recognizeOptions;
@@ -945,7 +1274,7 @@ CallMediaRecognizeSpeechOrDtmfOptions GetMediaRecognizeSpeechOrDtmfOptions(strin
                     InterruptPrompt = false,
                     OperationContext = context,
                     InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                    PlayPrompts = playSources,
+                   // PlayPrompts = playSources,
                     EndSilenceTimeout = TimeSpan.FromSeconds(5)
                 };
     return recognizeOptions;
@@ -989,7 +1318,148 @@ PlayToAllOptions PlayToAllOptions()
     return new PlayToAllOptions(new List<PlaySource> { ssmlSource, fileSource, textSource }) { OperationContext = "hellocontext" };
 }
 
+// First, ensure app.UseAuthentication() comes BEFORE app.UseWebSockets() and the WebSocket middleware
+// Move these lines before the WebSocket middleware:
+//app.UseAuthentication();
+//app.UseAuthorization();
+
+
+
+
+// 3. Use authentication & authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseWebSockets();
+
+// 4. WebSocket token validation manually in middleware
+/*app.Use(async (context, next) =>
+{
+    if (context.Request.Path != "/ws")
+    {
+        await next(context);
+        return;
+    }
+
+    if (!context.WebSockets.IsWebSocketRequest)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsync("WebSocket connection expected.");
+        return;
+    }
+
+    var result = await context.AuthenticateAsync();
+    if (!result.Succeeded)
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await context.Response.WriteAsync("Unauthorized WebSocket connection.");
+        return;
+    }
+
+    context.User = result.Principal;
+
+    // Optional: Log headers
+    var correlationId = context.Request.Headers["x-ms-call-correlation-id"].FirstOrDefault();
+    var callConnectionId = context.Request.Headers["x-ms-call-connection-id"].FirstOrDefault();
+
+    Console.WriteLine($"Authenticated WebSocket - Correlation ID: {correlationId ?? "not provided"}");
+    Console.WriteLine($"Authenticated WebSocket - CallConnection ID: {callConnectionId ?? "not provided"}");
+
+    // Now you can safely accept the WebSocket and process the connection
+    // var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+    // var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);
+    // await mediaService.ProcessWebSocketAsync();
+});*/
+
+// Improved WebSocket middleware with cleaner authorization
+/*app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/ws")
+    {
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            try
+            {
+                // Look for token in multiple places: Authorization header or query string
+                string token = null;
+
+                // 1. Check Authorization header
+                string authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    token = authHeader.Substring("Bearer ".Length).Trim();
+                }
+
+                if (string.IsNullOrEmpty(token))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await context.Response.WriteAsync("Authorization token is required. Provide it via 'Authorization: Bearer TOKEN' header or '?access_token=TOKEN' query parameter");
+                    return;
+                }
+
+                try
+                {
+                    // Validate the token
+                    var handler = new JwtSecurityTokenHandler();
+                    var validationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                       // ValidIssuer = configuration.Issuer,
+                        //ValidAudience = AllowedAudience,
+                        //IssuerSigningKeys = configuration.SigningKeys
+                    };
+
+                    // Set the authenticated principal on the context
+                    context.User = handler.ValidateToken(token, validationParameters, out var validatedToken);
+
+                    // Extract important headers for ACS Call Automation
+                    var correlationId = context.Request.Headers["x-ms-call-correlation-id"].FirstOrDefault();
+                    var callConnectionId = context.Request.Headers["x-ms-call-connection-id"].FirstOrDefault();
+
+                    // Log the extracted values
+                    Console.WriteLine($"WebSocket connection authenticated - Correlation ID: {correlationId ?? "not provided"}");
+                    Console.WriteLine($"WebSocket connection authenticated - CallConnection ID: {callConnectionId ?? "not provided"}");
+
+                    // Accept the WebSocket connection
+                    //var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+
+                    // Create the media service handler
+                    //var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);
+
+                    // Process the WebSocket asynchronously - this keeps the connection open
+                    //await mediaService.ProcessWebSocketAsync();
+                }
+                catch (SecurityTokenException ex)
+                {
+                    Console.WriteLine($"Token validation failed: {ex.Message}");
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await context.Response.WriteAsync($"Invalid token: {ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WebSocket error: {ex.Message}");
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                await context.Response.WriteAsync("An error occurred while processing the WebSocket request");
+            }
+        }
+        else
+        {
+            // Not a WebSocket request
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsync("WebSocket connection expected");
+        }
+    }
+    else
+    {
+        // Not a WebSocket endpoint, continue down the pipeline
+        await next(context);
+    }
+});
+
 
 app.Use(async (context, next) =>
 {
@@ -999,6 +1469,14 @@ app.Use(async (context, next) =>
         {
             try
             {
+                // Extract correlation ID and call connection ID
+                var correlationId = context.Request.Headers["x-ms-call-correlation-id"].FirstOrDefault();
+                var callConnectionId = context.Request.Headers["x-ms-call-connection-id"].FirstOrDefault();
+
+                // Log the extracted values
+                Console.WriteLine($"****************************** Correlation ID: {correlationId}");
+                Console.WriteLine($"****************************** Call Connection ID: {callConnectionId}");
+
                 var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                 var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);
 
@@ -1016,10 +1494,52 @@ app.Use(async (context, next) =>
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
         }
     }
+
     else
     {
         await next(context);
     }
+    
+});*/
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/ws")
+    {
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            try
+            {
+                // Print current time and URL
+                var currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                var requestUrl = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
+                
+                Console.WriteLine($"[{currentTime}] Request URL: {requestUrl}");
+                
+                //Task.Delay(5000).Wait(); // Simulate some delay for debugging   
+                var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                
+                var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);
+
+                // Set the single WebSocket connection
+                await mediaService.ProcessWebSocketAsync();
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception received {ex}");
+            }
+        }
+        else
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }
+    }
+
+    else
+    {
+        await next(context);
+    }
+
 });
 
 app.MapPost("/api/calls/log", (
@@ -1039,9 +1559,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-
-app.UseAuthorization();
 
 app.MapControllers();
 
