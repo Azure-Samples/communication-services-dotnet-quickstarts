@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0-beta.1" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0-beta.2" />
     <PackageReference Include="Azure.Communication.CallAutomation" Version="1.4.0-beta.1" />
     <PackageReference Include="Azure.Communication.Common" Version="1.3.0" />
     <PackageReference Include="Azure.Communication.Identity" Version="1.0.0-beta.4" />
@@ -17,7 +17,6 @@
     <PackageReference Include="Microsoft.DevTunnels.Connections" Version="1.0.7393" />
     <PackageReference Include="Microsoft.DevTunnels.Contracts" Version="1.0.7393" />
     <PackageReference Include="Microsoft.DevTunnels.Management" Version="1.0.7393" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>

@@ -121,7 +121,7 @@ namespace CallAutomationOpenAI
         {
             try
             {
-                await m_aiSession.StartResponseTurnAsync();
+                await m_aiSession.StartResponseAsync();
                 await foreach (ConversationUpdate update in m_aiSession.ReceiveUpdatesAsync(m_cts.Token))
                 {
                     if (update is ConversationSessionStartedUpdate sessionStartedUpdate)
@@ -133,7 +133,7 @@ namespace CallAutomationOpenAI
                     if (update is ConversationInputSpeechStartedUpdate speechStartedUpdate)
                     {
                         Console.WriteLine(
-                            $"  -- Voice activity detection started at {speechStartedUpdate.AudioStartMs} ms");
+                            $"  -- Voice activity detection started at {speechStartedUpdate.AudioStartTime} ms");
                         // Barge-in, received stop audio
                         StopAudio();
                     }
@@ -141,10 +141,10 @@ namespace CallAutomationOpenAI
                     if (update is ConversationInputSpeechFinishedUpdate speechFinishedUpdate)
                     {
                         Console.WriteLine(
-                            $"  -- Voice activity detection ended at {speechFinishedUpdate.AudioEndMs} ms");
+                            $"  -- Voice activity detection ended at {speechFinishedUpdate.AudioEndTime} ms");
                     }
 
-                    if (update is ConversationItemStartedUpdate itemStartedUpdate)
+                    if (update is ConversationItemStreamingStartedUpdate itemStartedUpdate)
                     {
                         Console.WriteLine($"  -- Begin streaming of new item");
                   
@@ -152,24 +152,24 @@ namespace CallAutomationOpenAI
 
                     // Audio transcript delta updates contain the incremental text matching the generated
                     // output audio.
-                    if (update is ConversationOutputTranscriptionDeltaUpdate outputTranscriptDeltaUpdate)
+                    if (update is ConversationItemStreamingAudioTranscriptionFinishedUpdate outputTranscriptDeltaUpdate)
                     {
-                        Console.Write(outputTranscriptDeltaUpdate.Delta);
+                        Console.Write(outputTranscriptDeltaUpdate.Transcript);
                     }
 
                     // Audio delta updates contain the incremental binary audio data of the generated output
                     // audio, matching the output audio format configured for the session.
-                    if (update is ConversationAudioDeltaUpdate audioDeltaUpdate)
+                    if (update is ConversationItemStreamingPartDeltaUpdate deltaUpdate)
                     {
-                        ConvertToAcsAudioPacketAndForward(audioDeltaUpdate.Delta.ToArray());
+                        if( deltaUpdate.AudioBytes != null)
+                        {
+                            ConvertToAcsAudioPacketAndForward(deltaUpdate.AudioBytes.ToArray());
+
+                        }
+
                     }
 
-                    if (update is ConversationFunctionCallArgumentsDeltaUpdate argumentsDeltaUpdate)
-                    {
-                        Console.Write(argumentsDeltaUpdate.Delta);
-                    }
-
-                    if (update is ConversationItemFinishedUpdate itemFinishedUpdate)
+                    if (update is ConversationItemStreamingTextFinishedUpdate itemFinishedUpdate)
                     {
                         Console.WriteLine();
                         Console.WriteLine($"  -- Item streaming finished, response_id={itemFinishedUpdate.ResponseId}");
@@ -191,7 +191,7 @@ namespace CallAutomationOpenAI
                     if (update is ConversationErrorUpdate errorUpdate)
                     {
                         Console.WriteLine();
-                        Console.WriteLine($"ERROR: {errorUpdate.ErrorMessage}");
+                        Console.WriteLine($"ERROR: {errorUpdate.Message}");
                         break;
                     }
                 }
@@ -234,7 +234,7 @@ namespace CallAutomationOpenAI
 
         public async Task SendAudioToExternalAI(MemoryStream memoryStream)
         {
-            await m_aiSession.SendAudioAsync(memoryStream);
+            await m_aiSession.SendInputAudioAsync(memoryStream);
         }
 
         public void Close()
