@@ -4,13 +4,12 @@ languages:
 - csharp
 products:
 - open ai
-- cognitive service
 - azure-communication-services
 ---
 
 # ACS Call Automation and Azure OpenAI Service
 
-This is a sample application demonstrated during Microsoft Build 2023. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
+This is a sample application demonstrated during Microsoft Ignite 2024. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
 ## Prerequisites
 
@@ -18,7 +17,6 @@ This is a sample application demonstrated during Microsoft Build 2023. It highli
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
 - Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://docs.tunnels.api.visualstudio.com/cli)
-- Create an Azure Cognitive Services resource. For details, see [Create an Azure Cognitive Services Resource](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account)
 - An Azure OpenAI Resource and Deployed Model. See [instructions](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal).
 
 
@@ -36,20 +34,14 @@ devtunnel port create -p 5165
 devtunnel host
 ```
 
-##### 2. Add a Managed Identity to the ACS Resource that connects to the Cognitive Services resource
-Follow the instructions in this [documentation](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/azure-communication-services-azure-cognitive-services-integration).
-
-##### 3. Add the required API Keys and endpoints
+##### 2. Add the required API Keys and endpoints
 Open the appsettings.json file to configure the following settings:
 
     - `DevTunnelUri`: your dev tunnel endpoint
-    - `CognitiveServiceEndpoint`: The Cognitive Services endpoint
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
     - `AzureOpenAIServiceKey`: Open AI's Service Key
     - `AzureOpenAIServiceEndpoint`: Open AI's Service Endpoint
     - `AzureOpenAIDeploymentModelName`: Open AI's Model name
-	- `AgentPhoneNumber`: Agent phone number to transfer the call to resolve queries
-
 
 ## Running the application
 

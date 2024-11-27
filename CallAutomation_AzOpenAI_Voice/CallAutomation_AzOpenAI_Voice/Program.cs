@@ -3,7 +3,6 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 
@@ -15,9 +14,7 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
 //Call Automation Client
 var client = new CallAutomationClient(acsConnectionString);
-
 var app = builder.Build();
-
 var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 
 if (string.IsNullOrEmpty(appBaseUrl))
@@ -89,7 +86,6 @@ app.MapPost("/api/callbacks/{contextId}", async (
     [Required] string callerId,
     ILogger<Program> logger) =>
 {
-
     foreach (var cloudEvent in cloudEvents)
     {
         CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
@@ -114,7 +110,6 @@ app.Use(async (context, next) =>
 
                 // Set the single WebSocket connection
                 await mediaService.ProcessWebSocketAsync();
-
             }
             catch (Exception ex)
             {

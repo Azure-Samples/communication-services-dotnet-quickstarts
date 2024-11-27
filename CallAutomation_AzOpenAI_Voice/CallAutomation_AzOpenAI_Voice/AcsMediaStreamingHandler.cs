@@ -2,7 +2,6 @@ using System.Net.WebSockets;
 using CallAutomationOpenAI;
 using Azure.Communication.CallAutomation;
 using System.Text;
-
 #pragma warning disable OPENAI002
 
 public class AcsMediaStreamingHandler
@@ -20,7 +19,6 @@ public class AcsMediaStreamingHandler
         m_configuration = configuration;
         m_buffer = new MemoryStream();
         m_cts = new CancellationTokenSource();
-
     }
       
     // Method to receive messages from WebSocket
@@ -54,7 +52,6 @@ public class AcsMediaStreamingHandler
     {
         if (m_webSocket?.State == WebSocketState.Open)
         {
-           // Console.WriteLine($"{message}");
             byte[] jsonBytes = Encoding.UTF8.GetBytes(message);
 
             // Send the PCM audio chunk over WebSocket
@@ -66,6 +63,7 @@ public class AcsMediaStreamingHandler
     {
         await m_webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
     }
+
     public async Task CloseNormalWebSocketAsync()
     {
         await m_webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stream completed", CancellationToken.None);
@@ -90,7 +88,7 @@ public class AcsMediaStreamingHandler
         }
     }
 
-    // Method to receive messages from WebSocket
+    // receive messages from WebSocket
     private async Task StartReceivingFromAcsMediaWebSocket()
     {
         if (m_webSocket == null)
@@ -107,8 +105,7 @@ public class AcsMediaStreamingHandler
                 if (receiveResult.MessageType != WebSocketMessageType.Close)
                 {
                     string data = Encoding.UTF8.GetString(receiveBuffer).TrimEnd('\0');
-                    await WriteToAzOpenAIServiceInputStream(data);
-                    //Console.WriteLine("-----------: " + data);                
+                    await WriteToAzOpenAIServiceInputStream(data);               
                 }
             }
         }
