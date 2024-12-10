@@ -11,6 +11,8 @@ products:
 
 This is a sample application demonstrated during Microsoft Ignite 2024. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
+This sample is extended implementing tools for the the Contoso Recruting Scenario. 
+
 ## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
@@ -30,7 +32,7 @@ Before running this sample, you'll need to setup the resources above with the fo
 
 ```bash
 devtunnel create --allow-anonymous
-devtunnel port create -p 5165
+devtunnel port create -p 5166
 devtunnel host
 ```
 

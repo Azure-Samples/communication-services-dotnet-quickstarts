@@ -8,15 +8,19 @@ using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//Get ACS Connection String from appsettings.json
+var env = builder.Environment;
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
+// Get ACS Connection String from configuration
 var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 
-//Call Automation Client
+// Call Automation Client
 var client = new CallAutomationClient(acsConnectionString);
 var app = builder.Build();
-var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
-
+var appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri")?.TrimEnd('/');
 if (string.IsNullOrEmpty(appBaseUrl))
 {
     var websiteHostName = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
