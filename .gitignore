@@ -350,4 +350,4 @@ MigrationBackup/
 .ionide/
 
 # Azure OpenAI Voice Call Automation developer settings
-CallAutomation_AzOpenAI_Voice/CallAutomation_AzOpenAI_Voice/appsettings.Development.json
+**/appsettings.Development.json
