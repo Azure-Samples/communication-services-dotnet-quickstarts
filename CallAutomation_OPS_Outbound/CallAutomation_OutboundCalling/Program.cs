@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-
+//beta3 test sample.
 
 // Your ACS resource connection string
 var acsConnectionString = "";
