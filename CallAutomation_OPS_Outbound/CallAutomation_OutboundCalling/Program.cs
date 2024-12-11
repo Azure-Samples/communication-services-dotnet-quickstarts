@@ -24,7 +24,7 @@ var participantPhoneNumber = "";
 var callbackUriHost = "https://5btc4dst-8080.inc1.devtunnels.ms";
 
 // Your cognitive service endpoint
-var cognitiveServiceEndpoint = "https://cognitive-service-waferwire.cognitiveservices.azure.com/";
+var cognitiveServiceEndpoint = "";
 
 // User Id of the target teams user you want to receive the call.
 var targetTeamsUserId = "";
