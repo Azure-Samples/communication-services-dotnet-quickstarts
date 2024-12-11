@@ -15,7 +15,8 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 //Call Automation Client
 var client = new CallAutomationClient(acsConnectionString);
 var app = builder.Build();
-var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
+//var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
+var appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri")?.TrimEnd('/');
 
 if (string.IsNullOrEmpty(appBaseUrl))
 {
