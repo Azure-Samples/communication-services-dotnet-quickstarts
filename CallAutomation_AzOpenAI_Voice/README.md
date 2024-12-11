@@ -39,7 +39,7 @@ devtunnel host
 ##### 2. Add the required API Keys and endpoints
 Open the appsettings.json file to configure the following settings:
 
-    - `DevTunnelUri`: your dev tunnel endpoint
+    - `DevTunnelUri`: your dev tunnel endpoint. Please add '/api/incomingCall' to the end of your DevTunnelUri when you register your EventGrid webhook. 
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
     - `AzureOpenAIServiceKey`: Open AI's Service Key
     - `AzureOpenAIServiceEndpoint`: Open AI's Service Endpoint
