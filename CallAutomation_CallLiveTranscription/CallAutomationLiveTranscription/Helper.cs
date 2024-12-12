@@ -14,8 +14,6 @@ namespace CallAutomation_LiveTranscription
         {
             try
             {
-               // while (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseSent)
-                //{
                     var buffer = new byte[1024 * 4];
                     var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token;
                     WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
@@ -69,7 +67,6 @@ namespace CallAutomation_LiveTranscription
                 }
 
                     await webSocket.CloseAsync(receiveResult.CloseStatus.Value, receiveResult.CloseStatusDescription, CancellationToken.None);
-               // }
             }
             catch (Exception ex)
             {
