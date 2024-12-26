@@ -1,4 +1,4 @@
-﻿|page_type|languages|products
+|page_type|languages|products
 |---|---|---|
 |sample|<table><tr><td>csharp</tr></td></table>|<table><tr><td>azure</td><td>azure-communication-services</td></tr></table>|
 
@@ -27,7 +27,7 @@ It accepts an incoming call from a phone number, performs DTMF recognition, and 
 
 ```bash
 devtunnel create --allow-anonymous
-devtunnel port create -p 5165
+devtunnel port create -p 8080
 devtunnel host
 ```
 
