@@ -19,9 +19,6 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
 ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
 
-var transportUrl = builder.Configuration.GetValue<string>("TransportUrl");
-ArgumentNullException.ThrowIfNullOrEmpty(transportUrl);
-
 var acsPhoneNumber = builder.Configuration.GetValue<string>("AcsPhoneNumber");
 ArgumentNullException.ThrowIfNullOrEmpty(acsPhoneNumber);
 
@@ -84,10 +81,11 @@ app.MapPost("/api/incomingCall", async (
         {
             var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
             var callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+            var websocketUri = callbackUriHost.Replace("https", "wss") + "ws";
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
-                $"Callback url: {callbackUri}, transport Url: {transportUrl}");
+                $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
 
-            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),
+            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
                 locale, false, TranscriptionTransport.Websocket);
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
