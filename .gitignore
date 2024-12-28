@@ -348,3 +348,6 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# Azure OpenAI Voice Call Automation developer settings
+**/appsettings.Development.json

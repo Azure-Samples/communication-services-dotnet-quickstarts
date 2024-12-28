@@ -11,6 +11,8 @@ products:
 
 This is a sample application demonstrated during Microsoft Ignite 2024. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
+This sample is extended implementing tools for the the Contoso Recruting Scenario. 
+
 ## Prerequisites
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
@@ -30,14 +32,14 @@ Before running this sample, you'll need to setup the resources above with the fo
 
 ```bash
 devtunnel create --allow-anonymous
-devtunnel port create -p 5165
+devtunnel port create -p 5166
 devtunnel host
 ```
 
 ##### 2. Add the required API Keys and endpoints
 Open the appsettings.json file to configure the following settings:
 
-    - `DevTunnelUri`: your dev tunnel endpoint
+    - `DevTunnelUri`: your dev tunnel endpoint. Please add '/api/incomingCall' to the end of your DevTunnelUri when you register your EventGrid webhook. 
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
     - `AzureOpenAIServiceKey`: Open AI's Service Key
     - `AzureOpenAIServiceEndpoint`: Open AI's Service Endpoint
