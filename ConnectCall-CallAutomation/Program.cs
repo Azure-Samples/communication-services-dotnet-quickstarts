@@ -1,10 +1,12 @@
+using Azure;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
+using Azure.Communication.Identity;
 using Azure.Communication.Rooms;
+using Azure.Core;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using ConnectCall_CallAutomation;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 var builder = WebApplication.CreateBuilder(args);
@@ -47,22 +49,38 @@ else
 }
 var app = builder.Build();
 
-app.MapPost("/createRoom", async (List<Participant> participants, bool pstnDialOutEnabled, ILogger<Program> logger) =>
+app.MapPost("/createRoom", async (ILogger<Program> logger) =>
 {
     // create RoomsClient
     var roomsClient = new RoomsClient(acsConnectionString);
     var roomParticipants = new List<RoomParticipant>();
-    foreach (var participant in participants)
+
+    //create CommunicationIdentityClient
+    var IdentityClient = new CommunicationIdentityClient(acsConnectionString);
+    var scopes = new List<string> { "chat", "voip" };
+    var user1 = IdentityClient.CreateUser();
+    Response<AccessToken> user1Token = await IdentityClient.GetTokenAsync(user1.Value, scopes: scopes.Select(x => new CommunicationTokenScope(x)));
+
+    var user2 = IdentityClient.CreateUser();
+    Response<AccessToken> user2Token = await IdentityClient.GetTokenAsync(user2.Value, scopes: scopes.Select(x => new CommunicationTokenScope(x)));
+
+    string presenter = user1.Value.RawId;
+    string attendee = user2.Value.RawId;
+
+    var participant1 = new RoomParticipant(new CommunicationUserIdentifier(presenter))
     {
-        roomParticipants.Add(new RoomParticipant(new CommunicationUserIdentifier(participant.CommunicationUserId))
-        {
-            Role = participant.Role
-        });
-    }
+        Role = ParticipantRole.Presenter
+    };
+    var participant2 = new RoomParticipant(new CommunicationUserIdentifier(attendee))
+    {
+        Role = ParticipantRole.Attendee
+    };
+    roomParticipants.Add(participant1);
+    roomParticipants.Add(participant2);
 
     var options = new CreateRoomOptions()
     {
-        PstnDialOutEnabled = pstnDialOutEnabled,
+        PstnDialOutEnabled = true,
         Participants = roomParticipants,
         ValidFrom = DateTime.UtcNow,
         ValidUntil = DateTime.UtcNow.AddMinutes(30)
@@ -70,28 +88,18 @@ app.MapPost("/createRoom", async (List<Participant> participants, bool pstnDialO
 
     var response = await roomsClient.CreateRoomAsync(options);
     logger.LogInformation($"ROOM ID: {response.Value.Id}");
-    return response;
+    return new
+    {
+        User1Token = user1Token.Value.Token,
+        User2Token = user2Token.Value.Token,
+        RoomId = response.Value.Id
+    };
 });
 
-app.MapPost("/connectApi", async (string? roomCallId, string? groupCallId, string? serverCallId, ILogger<Program> logger) =>
+app.MapPost("/connectApi", async (string roomCallId, ILogger<Program> logger) =>
 {
-    CallLocator callLocator;
-    if (roomCallId != null)
-    {
-        callLocator = new RoomCallLocator(roomCallId);
-    }
-    else if (groupCallId != null)
-    {
-        callLocator = new GroupCallLocator(groupCallId);
-    }
-    else if (serverCallId != null)
-    {
-        callLocator = new ServerCallLocator(serverCallId);
-    }
-    else
-    {
-        throw new ArgumentNullException(nameof(callLocator));
-    }
+    CallLocator callLocator = new RoomCallLocator(roomCallId);
+
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions()
