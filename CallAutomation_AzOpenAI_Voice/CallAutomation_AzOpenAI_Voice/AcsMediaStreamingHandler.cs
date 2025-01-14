@@ -81,9 +81,12 @@ public class AcsMediaStreamingHandler
         var input = StreamingData.Parse(data);
         if (input is AudioData audioData)
         {
-            using (var ms = new MemoryStream(audioData.Data))
+            if (!audioData.IsSilent)
             {
-                await m_aiServiceHandler.SendAudioToExternalAI(ms);
+                using (var ms = new MemoryStream(audioData.Data))
+                {
+                    await m_aiServiceHandler.SendAudioToExternalAI(ms);
+                }
             }
         }
     }
