@@ -81,7 +81,7 @@ app.MapPost("/api/incomingCall", async (
         {
             var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
             var callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
-            var websocketUri = callbackUriHost.Replace("https", "wss") + "ws";
+            var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
                 $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
 
