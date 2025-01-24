@@ -20,9 +20,6 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
 ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
 
-var transportUrl = builder.Configuration.GetValue<string>("TransportUrl");
-ArgumentNullException.ThrowIfNullOrEmpty(transportUrl);
-
 var acsPhoneNumber = builder.Configuration.GetValue<string>("AcsPhoneNumber");
 ArgumentNullException.ThrowIfNullOrEmpty(acsPhoneNumber);
 
@@ -61,7 +58,7 @@ var maxTimeout = 2;
 string recordingId = string.Empty;
 string recordingLocation = string.Empty;
 
-app.MapPost("/api/eventGridEvents", async (
+app.MapPost("/api/incomingCall", async (
     [FromBody] EventGridEvent[] eventGridEvents,
     ILogger<Program> logger) =>
 {
@@ -87,13 +84,12 @@ app.MapPost("/api/eventGridEvents", async (
         {
             var rawId = incomingCallEventData.FromCommunicationIdentifier.RawId;
             var callerId = JsonSerializer.Serialize(rawId);
-
             callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks/{Guid.NewGuid()}?identifier={callerId}");
-
+            var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
-                $"Callback url: {callbackUri}, transport Url: {transportUrl}");
+                $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
 
-            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(transportUrl),
+            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
                 locale, false, TranscriptionTransport.Websocket);
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
