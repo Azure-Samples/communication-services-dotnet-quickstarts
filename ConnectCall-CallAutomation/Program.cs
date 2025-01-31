@@ -5,13 +5,11 @@ using Azure.Communication.Identity;
 using Azure.Communication.Rooms;
 using Azure.Core;
 using Azure.Messaging;
-using Azure.Messaging.EventGrid;
-using Azure.Messaging.EventGrid.SystemEvents;
-using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
+
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+var app = builder.Build();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 //Get ACS Connection String from appsettings.json
 var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
@@ -21,33 +19,23 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 var acsPhoneNumber = builder.Configuration.GetValue<string>("AcsPhoneNumber");
 ArgumentNullException.ThrowIfNullOrEmpty(acsPhoneNumber);
 
+//Get participant phone number from appsettings.json
+var participantPhoneNumber = builder.Configuration.GetValue<string>("ParticipantPhoneNumber");
+ArgumentNullException.ThrowIfNullOrEmpty(participantPhoneNumber);
+
 //Get Dev Tunnel Uri from appsettings.json
-var devTunnelUri = builder.Configuration.GetValue<string>("DevTunnelUri");
-ArgumentNullException.ThrowIfNullOrEmpty(devTunnelUri);
+var callbackUriHost = builder.Configuration.GetValue<string>("CallbackUriHost");
+ArgumentNullException.ThrowIfNullOrEmpty(callbackUriHost);
 
 //Call back URL
-var callbackUri = new Uri(new Uri(devTunnelUri), "/api/callbacks");
-
-//Get cognitive service endpoint from appsettings.json
-var cognitiveServiceEndpoint = builder.Configuration.GetValue<string>("CognitiveServiceEndpoint");
-ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServiceEndpoint);
-
-//Get pma from appsettings.json
-var pmaEndpoint = builder.Configuration.GetValue<string>("PmaEndpoint");
-ArgumentNullException.ThrowIfNullOrEmpty(pmaEndpoint);
+var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
 
 string callConnectionId = string.Empty;
 
+string roomId = string.Empty;
+
 CallAutomationClient callAutomationClient;
-if (pmaEndpoint != null)
-{
-    callAutomationClient = new CallAutomationClient(new Uri(pmaEndpoint), acsConnectionString);
-}
-else
-{
-    callAutomationClient = new CallAutomationClient(acsConnectionString);
-}
-var app = builder.Build();
+callAutomationClient = new CallAutomationClient(acsConnectionString);
 
 app.MapPost("/createRoom", async (ILogger<Program> logger) =>
 {
@@ -87,31 +75,34 @@ app.MapPost("/createRoom", async (ILogger<Program> logger) =>
     };
 
     var response = await roomsClient.CreateRoomAsync(options);
+    roomId = response.Value.Id;
     logger.LogInformation($"ROOM ID: {response.Value.Id}");
     return new
     {
+        user1Id = user1.Value.RawId,
         User1Token = user1Token.Value.Token,
+        user2Id = user2.Value.RawId,
         User2Token = user2Token.Value.Token,
         RoomId = response.Value.Id
     };
 });
 
-app.MapPost("/connectApi", async (string roomCallId, ILogger<Program> logger) =>
+app.MapPost("/connectCall", async (ILogger<Program> logger) =>
 {
-    CallLocator callLocator = new RoomCallLocator(roomCallId);
-
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri)
+    if (!string.IsNullOrEmpty(roomId))
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions()
-        {
-            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
-        }
-    };
+        CallLocator callLocator = new RoomCallLocator(roomId);
 
-    ConnectCallResult result = await callAutomationClient.ConnectCallAsync(connectCallOptions);
-    logger.LogInformation($"CALL CONNECTION ID : {result.CallConnectionProperties.CallConnectionId}");
-    callConnectionId = result.CallConnectionProperties.CallConnectionId;
+        ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri);
 
+        ConnectCallResult result = await callAutomationClient.ConnectCallAsync(connectCallOptions);
+        logger.LogInformation($"CALL CONNECTION ID : {result.CallConnectionProperties.CallConnectionId}");
+        callConnectionId = result.CallConnectionProperties.CallConnectionId;
+    }
+    else
+    {
+        throw new ArgumentNullException(nameof(roomId));
+    }
 });
 
 app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
@@ -135,6 +126,12 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
             logger.LogInformation($"CORRELATION ID: {callConnectionProperties.CorrelationId}");
         }
+        else if (parsedEvent is ConnectFailed connectFailed)
+        {
+            callConnectionId = connectFailed.CallConnectionId;
+            logger.LogInformation($"Received call event: {connectFailed.GetType()}, CorrelationId: {connectFailed.CorrelationId}, " +
+                      $"subCode: {connectFailed.ResultInformation?.SubCode}, message: {connectFailed.ResultInformation?.Message}, context: {connectFailed.OperationContext}");
+        }
         else if (parsedEvent is AddParticipantSucceeded addParticipantSucceeded)
         {
             logger.LogInformation($"Received call event: {addParticipantSucceeded.GetType()}");
@@ -146,17 +143,6 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {addParticipantFailed.GetType()}, CorrelationId: {addParticipantFailed.CorrelationId}, " +
                       $"subCode: {addParticipantFailed.ResultInformation?.SubCode}, message: {addParticipantFailed.ResultInformation?.Message}, context: {addParticipantFailed.OperationContext}");
         }
-        else if (parsedEvent is RemoveParticipantSucceeded removeParticipantSucceeded)
-        {
-            logger.LogInformation($"Received call event: {removeParticipantSucceeded.GetType()}");
-            callConnectionId = removeParticipantSucceeded.CallConnectionId;
-        }
-        else if (parsedEvent is RemoveParticipantFailed removeParticipantFailed)
-        {
-            callConnectionId = removeParticipantFailed.CallConnectionId;
-            logger.LogInformation($"Received call event: {removeParticipantFailed.GetType()}, CorrelationId: {removeParticipantFailed.CorrelationId}, " +
-                      $"subCode: {removeParticipantFailed.ResultInformation?.SubCode}, message: {removeParticipantFailed.ResultInformation?.Message}, context: {removeParticipantFailed.OperationContext}");
-        }
         else if (parsedEvent is CallDisconnected callDisconnected)
         {
             logger.LogInformation($"Received call event: {callDisconnected.GetType()}");
@@ -165,88 +151,14 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-/* Route for Azure Communication Service eventgrid webhooks*/
-app.MapPost("/api/events", async ([FromBody] EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
-{
-    foreach (var eventGridEvent in eventGridEvents)
-    {
-        logger.LogInformation($"Incoming Call event received : {JsonSerializer.Serialize(eventGridEvent)}");
-
-        // Handle system events
-        if (eventGridEvent.TryGetSystemEventData(out object eventData))
-        {
-            // Handle the subscription validation event.
-            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
-            {
-                var responseData = new SubscriptionValidationResponse
-                {
-                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                };
-                return Results.Ok(responseData);
-            }
-        }
-        if (eventData is AcsIncomingCallEventData incomingCallEventData)
-        {
-            var incomingCallContext = incomingCallEventData?.IncomingCallContext;
-            var options = new AnswerCallOptions(incomingCallContext, callbackUri)
-            {
-                CallIntelligenceOptions = new CallIntelligenceOptions
-                {
-                    CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
-                }
-            };
-
-            AnswerCallResult answerCallResult = await callAutomationClient.AnswerCallAsync(options);
-            var callConnectionId = answerCallResult.CallConnection.CallConnectionId;
-            logger.LogInformation($"Answer call result: {callConnectionId}");
-
-            var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-            //Use EventProcessor to process CallConnected event
-            var answer_result = await answerCallResult.WaitForEventProcessorAsync();
-
-            if (answer_result.IsSuccess)
-            {
-                logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
-                logger.LogInformation($"CORRELATION ID: {answer_result.SuccessResult.CorrelationId}");
-            }
-        }
-    }
-    return Results.Ok();
-});
-
-app.MapPost("/addParticipant", async (string targetPhoneNumber, ILogger<Program> logger) =>
-{
-    var response = await AddParticipantAsync(targetPhoneNumber);
-    return Results.Ok(response);
-});
-
-app.MapPost("/removeParticipant", async (string targetPhoneNumber, ILogger<Program> logger) =>
-{
-    var response = await RemoveParticipantAsync(targetPhoneNumber);
-    return Results.Ok(response);
-});
-
-app.MapPost("/disConnectCall", async (ILogger<Program> logger) =>
-{
-    var callConnection = callAutomationClient.GetCallConnection(callConnectionId);
-    await callConnection.HangUpAsync(true);
-    return Results.Ok();
-});
-
-async Task<AddParticipantResult> AddParticipantAsync(string targetPhoneNumber)
+app.MapPost("/addParticipant", async (ILogger<Program> logger) =>
 {
     CallInvite callInvite;
 
     CallConnection callConnection = GetConnection();
 
     string operationContext = "addPSTNUserContext";
-    callInvite = new CallInvite(new PhoneNumberIdentifier(targetPhoneNumber),
+    callInvite = new CallInvite(new PhoneNumberIdentifier(participantPhoneNumber),
               new PhoneNumberIdentifier(acsPhoneNumber));
 
     var addParticipantOptions = new AddParticipantOptions(callInvite)
@@ -256,25 +168,16 @@ async Task<AddParticipantResult> AddParticipantAsync(string targetPhoneNumber)
         OperationCallbackUri = callbackUri
     };
 
-    return await callConnection.AddParticipantAsync(addParticipantOptions);
-}
+    await callConnection.AddParticipantAsync(addParticipantOptions);
+    return Results.Ok();
+});
 
-
-async Task<RemoveParticipantResult> RemoveParticipantAsync(string targetPhoneNumber)
+app.MapPost("/hangUp", async (ILogger<Program> logger) =>
 {
-    RemoveParticipantOptions removeParticipantOptions;
-
     CallConnection callConnection = GetConnection();
-
-    string operationContext = "removePSTNUserContext";
-    removeParticipantOptions = new RemoveParticipantOptions(new PhoneNumberIdentifier(targetPhoneNumber))
-    {
-        OperationContext = operationContext,
-        OperationCallbackUri = callbackUri
-    };
-
-    return await callConnection.RemoveParticipantAsync(removeParticipantOptions);
-}
+    await callConnection.HangUpAsync(true);
+    return Results.Ok();
+});
 
 CallConnection GetConnection()
 {
