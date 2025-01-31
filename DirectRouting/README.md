@@ -10,7 +10,7 @@ products:
 
 # Direct Routing Configuration
 
-For full instructions on how to build this code sample from scratch, look at [Quickstart: Direct Routing](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/voice-routing-sdk-config?pivots=programming-language-csharp)
+For full instructions on how to build this code sample from scratch, look at [Quickstart: Direct Routing](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony/voice-routing-sdk-config?pivots=programming-language-csharp)
 
 ## Prerequisites
 
