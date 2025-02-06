@@ -30,7 +30,7 @@ Before running this sample, you'll need to setup the resources above with the fo
 
 ```bash
 devtunnel create --allow-anonymous
-devtunnel port create -p 5165
+devtunnel port create -p 49412
 devtunnel host
 ```
 

@@ -19,9 +19,7 @@ var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/
 
 if (string.IsNullOrEmpty(appBaseUrl))
 {
-    var websiteHostName = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
-    Console.WriteLine($"websiteHostName :{websiteHostName}");
-    appBaseUrl = $"https://{websiteHostName}";
+    appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri")?.TrimEnd('/');;
     Console.WriteLine($"appBaseUrl :{appBaseUrl}");
 }
 
