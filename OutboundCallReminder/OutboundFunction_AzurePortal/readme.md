@@ -39,7 +39,7 @@ This azure function sample send SMS, make an outbound call and play audio using 
 
 - Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
-- Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony-sms/get-phone-number?pivots=platform-azp)
+- Get a phone number for your new Azure Communication Services resource. For details, see [Get a phone number](https://docs.microsoft.com/azure/communication-services/quickstarts/telephony/get-phone-number?pivots=platform-azp)
 
 ## Code structure
 
