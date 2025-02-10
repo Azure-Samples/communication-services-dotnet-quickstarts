@@ -53,7 +53,7 @@ app.MapPost("/api/incomingCall", async (
         var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         logger.LogInformation($"Callback Url: {callbackUri}");
         var websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
-        logger.LogInformation($"WebSocket Url: {callbackUri}");
+        logger.LogInformation($"WebSocket Url: {websocketUri}");
 
         var mediaStreamingOptions = new MediaStreamingOptions(
                 new Uri(websocketUri),
