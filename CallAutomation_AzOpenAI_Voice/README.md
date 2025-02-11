@@ -40,7 +40,7 @@ Open the appsettings.json file to configure the following settings:
     - `DevTunnelUri`: your dev tunnel endpoint
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
     - `AzureOpenAIServiceKey`: Open AI's Service Key. Refer to prerequisites section.
-    - `AzureOpenAIServiceEndpoint`: Open AI's Service Endpoint. Refer to prerequisites section.
+    - `AzureOpenAIServiceEndpoint`: OpenAI's service endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
     - `AzureOpenAIDeploymentModelName`: Open AI's Model name. Refer to prerequisites section.
 
 ## Running the application
