@@ -6,6 +6,7 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation_LiveTranscription;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -35,7 +36,9 @@ ArgumentNullException.ThrowIfNullOrEmpty(agentPhoneNumber);
 /* Call Automation Client */
 var client = new CallAutomationClient(connectionString: acsConnectionString);
 
-Uri callbackUri = null;
+Uri callbackUri = null!;
+
+Stopwatch stopwatch = new Stopwatch();
 
 /* Register and make CallAutomationClient accessible via dependency injection */
 builder.Services.AddSingleton(client);
@@ -52,7 +55,6 @@ string addAgentContext = "AddAgent";
 string incorrectDobContext = "IncorrectDob";
 string addParticipantFailureContext = "FailedToAddParticipant";
 string DobRegex = "^(0[1-9]|[12][0-9]|3[01])(0[1-9]|1[012])[12][0-9]{3}$";
-bool isTranscriptionActive = false;
 var maxTimeout = 2;
 
 string recordingId = string.Empty;
@@ -90,7 +92,7 @@ app.MapPost("/api/incomingCall", async (
                 $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
 
             TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-                locale, false, TranscriptionTransport.Websocket);
+                locale, true, TranscriptionTransport.Websocket);
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
             {
@@ -101,11 +103,30 @@ app.MapPost("/api/incomingCall", async (
             AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
             logger.LogInformation($"Call answered successfully for caller: {rawId}");
         }
+    }
+    return Results.Ok();
+});
 
-        if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+app.MapPost("/api/recordingFileStatus", (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
+{
+    foreach (var eventGridEvent in eventGridEvents)
+    {
+        if (eventGridEvent.TryGetSystemEventData(out object eventData))
         {
-            recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-            logger.LogInformation($"The recording location is : {recordingLocation}");
+            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+            {
+                var responseData = new SubscriptionValidationResponse
+                {
+                    ValidationResponse = subscriptionValidationEventData.ValidationCode
+                };
+                return Results.Ok(responseData);
+            }
+            if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+            {
+                logger.LogInformation("Call recording file status updated");
+                recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+                logger.LogInformation($"The recording location is : {recordingLocation}");
+            }
         }
     }
     return Results.Ok();
@@ -147,23 +168,12 @@ app.MapPost("/api/callbacks/{contextId}", async (
                 RecordingContent=RecordingContent.AudioVideo,
                 RecordingChannel = RecordingChannel.Mixed,
                 RecordingFormat = RecordingFormat.Mp4,
-                RecordingStateCallbackUri = callbackUri
+                RecordingStateCallbackUri = callbackUri,
+                PauseOnStart = true
             };
             var recordingResult = await client.GetCallRecording().StartAsync(startRecordingOptions);
             recordingId = recordingResult.Value.RecordingId;
             logger.LogInformation($"Recording started. RecordingId: {recordingId}");
-
-            CallMedia callMedia = GetCallMedia(callConnectionId);
-
-            /* Start the Transcription */
-            await InitiateTranscription(callMedia);
-            logger.LogInformation("Transcription initiated.");
-
-            await PauseOrStopTranscriptionAndRecording(callMedia, logger, false, recordingId);
-
-            /* Play hello prompt to user */
-            await HandleDtmfRecognizeAsync(callMedia, callerId, helpIVRPrompt, "hellocontext");
-
         }
         else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
@@ -177,15 +187,14 @@ app.MapPost("/api/callbacks/{contextId}", async (
                 //Take action for Recognition through DTMF 
                 var tones = dtmfResult?.ConvertToString();
                 Regex regex = new(DobRegex);
-                Match match = regex.Match(tones);
+                Match match = regex.Match(tones!);
                 if (match.Success)
                 {
                     await ResumeTranscriptionAndRecording(callMedia, logger, recordingId);
-                    await HandlePlayAsync(callMedia, addAgentPrompt, addAgentContext);
                 }
                 else
                 {
-                    await HandleDtmfRecognizeAsync(callMedia, callerId, incorrectDobPrompt, incorrectDobContext);
+                    await HandleDtmfRecognizeAsync(callMedia, callerId!, incorrectDobPrompt, incorrectDobContext);
                 }
             }
         }
@@ -196,11 +205,11 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
             LogEventDetails(recognizeFailed, logger);
 
-            if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailed.ResultInformation?.SubCode.Value.ToString()) && maxTimeout > 0)
+            if (MediaEventReasonCode.RecognizeInitialSilenceTimedOut.Equals(recognizeFailed.ResultInformation?.SubCode!.Value.ToString()) && maxTimeout > 0)
             {
                 logger.LogInformation("Retrying recognize...");
                 maxTimeout--;
-                await HandleDtmfRecognizeAsync(callMedia, callerId, timeoutSilencePrompt, "retryContext");
+                await HandleDtmfRecognizeAsync(callMedia, callerId!, timeoutSilencePrompt, "retryContext");
             }
             else
             {
@@ -237,7 +246,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
             }
             else if (playCompleted.OperationContext == goodbyeContext || playCompleted.OperationContext == addParticipantFailureContext)
             {
-                await PauseOrStopTranscriptionAndRecording(callMedia, logger, true, recordingId);
+                await StopTranscriptionAndRecording(callMedia, logger, playCompleted.CallConnectionId, recordingId);
                 await callConnection.HangUpAsync(true);
             }
         }
@@ -248,7 +257,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
             LogEventDetails(playFailed, logger);
 
-            await PauseOrStopTranscriptionAndRecording(callMedia, logger, true, recordingId);
+            await StopTranscriptionAndRecording(callMedia, logger, playFailed.CallConnectionId, recordingId);
             await callConnection.HangUpAsync(true);
         }
         else if (parsedEvent is AddParticipantSucceeded addParticipantSucceeded)
@@ -268,12 +277,35 @@ app.MapPost("/api/callbacks/{contextId}", async (
         {
             logger.LogInformation($"Received call event: {transcriptionStarted.GetType()}");
             logger.LogInformation($"Transcription status:-  {transcriptionStarted.TranscriptionUpdate.TranscriptionStatus}");
+
+            CallMedia callMedia = GetCallMedia(transcriptionStarted.CallConnectionId);
+
+            // stop transcription for the first time before receiving user input.
+            if (string.IsNullOrEmpty(transcriptionStarted.OperationContext))
+            {
+                StopTranscriptionOptions options = new StopTranscriptionOptions()
+                {
+                    OperationContext = "nextRecognizeContext"
+                };
+                await callMedia.StopTranscriptionAsync(options);
+            }
+            else if (!string.IsNullOrEmpty(transcriptionStarted.OperationContext) && transcriptionStarted.OperationContext.Equals("StartTranscriptionContext"))
+            {
+                await HandlePlayAsync(callMedia, addAgentPrompt, addAgentContext);
+            }
         }
         else if (parsedEvent is TranscriptionStopped transcriptionStopped)
         {
-            isTranscriptionActive = false;
             logger.LogInformation("Received transcription event: {type}", transcriptionStopped.GetType());
             logger.LogInformation($"Transcription status:-  {transcriptionStopped.TranscriptionUpdate.TranscriptionStatus}");
+
+            CallMedia callMedia = GetCallMedia(transcriptionStopped.CallConnectionId);
+
+            if(!string.IsNullOrEmpty(transcriptionStopped.OperationContext) && transcriptionStopped.OperationContext.Equals("nextRecognizeContext"))
+            {
+                // get user input with inactive recording and transcription.
+                await HandleDtmfRecognizeAsync(callMedia, callerId!, helpIVRPrompt, "hellocontext");
+            }
         }
         else if (parsedEvent is TranscriptionFailed transcriptionFailed)
         {
@@ -283,6 +315,12 @@ app.MapPost("/api/callbacks/{contextId}", async (
         {
             logger.LogInformation("Received transcription event: {type}", recordingStateChanged.GetType());
             logger.LogInformation("Recording state:--> {type}", recordingStateChanged.State);
+            //if(recordingStateChanged.State == RecordingState.Active)
+            //{
+            //    stopwatch.Stop();
+            //    TimeSpan elapsedTime = stopwatch.Elapsed;
+            //    Console.WriteLine($"Recording execution time: {elapsedTime.TotalSeconds} sec");
+            //}
         }
         else if (parsedEvent is CallDisconnected callDisconnected)
         {
@@ -322,26 +360,24 @@ async Task ResumeTranscriptionAndRecording(CallMedia callMedia, ILogger logger, 
 
     await client.GetCallRecording().ResumeAsync(recordingId);
     logger.LogInformation($"Recording resumed. RecordingId: {recordingId}");
+    //stopwatch.Start();
 }
 
-async Task PauseOrStopTranscriptionAndRecording(CallMedia callMedia, ILogger logger, bool stopRecording, string recordingId)
+async Task StopTranscriptionAndRecording(CallMedia callMedia, ILogger logger, string callConnectionId, string recordingId)
 {
-    if (isTranscriptionActive)
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties(callConnectionId);
+    RecordingStateResult recordingStateResult = await client.GetCallRecording().GetStateAsync(recordingId);
+
+    if (callConnectionProperties.TranscriptionSubscription.State == TranscriptionSubscriptionState.Active)
     {
         await callMedia.StopTranscriptionAsync();
-        isTranscriptionActive = false;
-        logger.LogInformation("Transcription stopped.");
+        logger.LogInformation("Stopping transcription");
     }
 
-    if (stopRecording)
+    if(recordingStateResult.RecordingState == RecordingState.Active)
     {
         await client.GetCallRecording().StopAsync(recordingId);
-        logger.LogInformation($"Recording stopped. RecordingId: {recordingId}");
-    }
-    else
-    {
-        await client.GetCallRecording().PauseAsync(recordingId);
-        logger.LogInformation($"Recording paused. RecordingId: {recordingId}");
+        logger.LogInformation("Stopping recording");
     }
 }
 
@@ -388,7 +424,6 @@ async Task InitiateTranscription(CallMedia callConnectionMedia)
     };
 
     await callConnectionMedia.StartTranscriptionAsync(startTranscriptionOptions);
-    isTranscriptionActive = true;
 }
 
 CallConnection GetConnection(string callConnectionId)

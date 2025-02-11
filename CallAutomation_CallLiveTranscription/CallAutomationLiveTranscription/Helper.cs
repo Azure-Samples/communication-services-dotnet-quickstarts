@@ -14,9 +14,9 @@ namespace CallAutomation_LiveTranscription
         {
             try
             {
-                    var buffer = new byte[1024 * 4];
-                    var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token;
-                    WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                var buffer = new byte[1024 * 4];
+                var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token;
+                WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
 
                 while (!receiveResult.CloseStatus.HasValue)
                 {
@@ -53,20 +53,19 @@ namespace CallAutomation_LiveTranscription
                             }
                             Console.WriteLine("***************************************************************************************");
                         }
-
                     }
 
-                        await webSocket.SendAsync(
-                            new ArraySegment<byte>(buffer, 0, receiveResult.Count),
-                            receiveResult.MessageType,
-                            receiveResult.EndOfMessage,
-                            CancellationToken.None);
+                    await webSocket.SendAsync(
+                        new ArraySegment<byte>(buffer, 0, receiveResult.Count),
+                        receiveResult.MessageType,
+                        receiveResult.EndOfMessage,
+                        CancellationToken.None);
 
-                        receiveResult = await webSocket.ReceiveAsync(
-                         new ArraySegment<byte>(buffer), CancellationToken.None);
+                    receiveResult = await webSocket.ReceiveAsync(
+                     new ArraySegment<byte>(buffer), CancellationToken.None);
                 }
 
-                    await webSocket.CloseAsync(receiveResult.CloseStatus.Value, receiveResult.CloseStatusDescription, CancellationToken.None);
+                await webSocket.CloseAsync(receiveResult.CloseStatus.Value, receiveResult.CloseStatusDescription, CancellationToken.None);
             }
             catch (Exception ex)
             {
