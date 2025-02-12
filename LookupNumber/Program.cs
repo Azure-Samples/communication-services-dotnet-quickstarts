@@ -19,7 +19,7 @@ internal class Program
         // This code retrieves your connection string from an environment variable.
         string? connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
 
-        PhoneNumbersClient client = new PhoneNumbersClient(connectionString, new PhoneNumbersClientOptions(PhoneNumbersClientOptions.ServiceVersion.V2024_03_01_Preview));
+        PhoneNumbersClient client = new PhoneNumbersClient(connectionString, new PhoneNumbersClientOptions(PhoneNumbersClientOptions.ServiceVersion.V2025_02_11));
 
         // Use the free number lookup functionality to get number formatting information
         OperatorInformationResult formattingResult = await client.SearchOperatorInformationAsync(new[] { phoneNumber });
