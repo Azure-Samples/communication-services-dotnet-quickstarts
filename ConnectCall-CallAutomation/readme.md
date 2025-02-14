@@ -7,10 +7,10 @@ A brief description of what this project does and who it's for
 |---|---|---|
 |sample|<table><tr><td>csharp</tr></td></table>|<table><tr><td>azure</td><td>azure-communication-services</td></tr></table>|
 
-# Connect Call - Quick Start Sample
+# Connect to a room call using Call Automation SDK
 
-In this quickstart, we cover how you can use Call Automation SDK to connect to active room call with connect endpoint. Creating room with users and enabling pstn dialout to add pstn participant.
-Creating room call with room id.
+In this quickstart sample, we cover how you can use Call Automation SDK to connect to an active Azure Communication Services (ACS) Rooms call with a connect endpoint.
+This involves creating a room call with room id and users and enabling PSTN dial out to add PSTN participant(s).
 
 ## Prerequisites
 
@@ -60,7 +60,7 @@ Open the appsettings.json file to configure the following settings
 
 ### Creating and connecting to room call.
 
-1. ![create room with user](./data/createRoom.png)
+1. Navigate to `http://localhost:8080/` or devtunnel url to create users and room id ![create room with user](./data/createRoom.png)
 2. Open two tabs for Presenter and attendee  ![calling room quickstart](./data/callingRoomQuickstart.png) 
 3. Copy tokens for presenter and attendee from ![tokens](./data/tokens.png)
 4. Initialize call agent with tokens for both presenter and attendee.
