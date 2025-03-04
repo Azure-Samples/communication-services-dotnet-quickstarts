@@ -38,8 +38,6 @@ var client = new CallAutomationClient(connectionString: acsConnectionString);
 
 Uri callbackUri = null!;
 
-Stopwatch stopwatch = new Stopwatch();
-
 /* Register and make CallAutomationClient accessible via dependency injection */
 builder.Services.AddSingleton(client);
 var app = builder.Build();
@@ -315,12 +313,6 @@ app.MapPost("/api/callbacks/{contextId}", async (
         {
             logger.LogInformation("Received transcription event: {type}", recordingStateChanged.GetType());
             logger.LogInformation("Recording state:--> {type}", recordingStateChanged.State);
-            //if(recordingStateChanged.State == RecordingState.Active)
-            //{
-            //    stopwatch.Stop();
-            //    TimeSpan elapsedTime = stopwatch.Elapsed;
-            //    Console.WriteLine($"Recording execution time: {elapsedTime.TotalSeconds} sec");
-            //}
         }
         else if (parsedEvent is CallDisconnected callDisconnected)
         {
@@ -360,7 +352,6 @@ async Task ResumeTranscriptionAndRecording(CallMedia callMedia, ILogger logger, 
 
     await client.GetCallRecording().ResumeAsync(recordingId);
     logger.LogInformation($"Recording resumed. RecordingId: {recordingId}");
-    //stopwatch.Start();
 }
 
 async Task StopTranscriptionAndRecording(CallMedia callMedia, ILogger logger, string callConnectionId, string recordingId)
