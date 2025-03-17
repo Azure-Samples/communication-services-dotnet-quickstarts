@@ -4,70 +4,59 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Call_Automation_GCCH;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-
 var app = builder.Build();
-
-var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
-ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
-
-var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServicesEndpoint");
-ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
-
-
-var acsPhoneNumber = builder.Configuration.GetValue<string>("AcsPhoneNumber");
-ArgumentNullException.ThrowIfNullOrEmpty(acsPhoneNumber);
-
-var callbackUriHost = builder.Configuration.GetValue<string>("CallbackUriHost");
-ArgumentNullException.ThrowIfNullOrEmpty(callbackUriHost);
-
-
-
-//string acsConnectionString = string.Empty;
-//string cognitiveServicesEndpoint = string.Empty;
-//string acsPhoneNumber = string.Empty;
-//string callbackUriHost = string.Empty;
-
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
+string acsConnectionString = string.Empty;
+string cognitiveServicesEndpoint = string.Empty;
+string acsPhoneNumber = string.Empty;
+string callbackUriHost = string.Empty;
+string fileSourceUri = string.Empty;
+
 string callConnectionId = string.Empty;
 string recordingId = string.Empty;
 string recordingLocation = string.Empty;
+string recordingFileFormat = string.Empty;
 Uri eventCallbackUri = null!;
 string callerId = string.Empty;
-string fileSourceUri = "";
 ConfigurationRequest configuration = new();
-
-
 CallAutomationClient client = null!;
-client = new CallAutomationClient(connectionString: acsConnectionString);
 
-//app.MapPost("/setConfigurations", async (ConfigurationRequest configurationRequest) =>
-//{
-//    if (configurationRequest != null)
-//    {
-//        configuration.AcsConnectionString = !string.IsNullOrEmpty(configurationRequest.AcsConnectionString) ? configurationRequest.AcsConnectionString : throw new ArgumentNullException(nameof(configurationRequest.AcsConnectionString));
-//        configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
-//        configuration.AcsPhoneNumber = !string.IsNullOrEmpty(configurationRequest.AcsPhoneNumber) ? configurationRequest.AcsPhoneNumber : throw new ArgumentNullException(nameof(configurationRequest.AcsPhoneNumber));
-//        configuration.CallbackUriHost = !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) ? configurationRequest.CallbackUriHost : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
-//    }
+app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, ILogger<Program> logger) =>
+{
+     acsConnectionString = string.Empty;
+     cognitiveServicesEndpoint = string.Empty;
+     acsPhoneNumber = string.Empty;
+     callbackUriHost = string.Empty;
+     fileSourceUri = string.Empty;
 
-//    acsConnectionString = configuration.AcsConnectionString;
-//    cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
-//    acsPhoneNumber = configuration.AcsPhoneNumber;
-//    callbackUriHost = configuration.CallbackUriHost;
+    if (configurationRequest != null)
+    {
+        configuration.AcsConnectionString = !string.IsNullOrEmpty(configurationRequest.AcsConnectionString) ? configurationRequest.AcsConnectionString : throw new ArgumentNullException(nameof(configurationRequest.AcsConnectionString));
+        configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
+        configuration.AcsPhoneNumber = !string.IsNullOrEmpty(configurationRequest.AcsPhoneNumber) ? configurationRequest.AcsPhoneNumber : throw new ArgumentNullException(nameof(configurationRequest.AcsPhoneNumber));
+        configuration.CallbackUriHost = !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) ? configurationRequest.CallbackUriHost : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
+    }
 
-//    client = new CallAutomationClient(connectionString: acsConnectionString);
-//    return Results.Ok();
-//});
+    acsConnectionString = configuration.AcsConnectionString;
+    cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
+    acsPhoneNumber = configuration.AcsPhoneNumber;
+    callbackUriHost = configuration.CallbackUriHost;
+    fileSourceUri = callbackUriHost + "/audio/MainMenu.wav";
+
+    client = new CallAutomationClient(connectionString: acsConnectionString);
+    logger.LogInformation("Initialized call automation client.");
+    return Results.Ok("Configurtion set successfully. Initialized call automation client.");
+}).WithTags("1. Add Connection string and configuration settings.");
 
 app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
 {
@@ -87,7 +76,7 @@ app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Prog
             if (eventData is AcsIncomingCallEventData incomingCallEventData)
             {
                 callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
-                Console.WriteLine("Caller ID-->" + callerId);
+                Console.WriteLine("Caller Id--> " + callerId);
                 var callbackUri = new Uri(new Uri(callbackUriHost), $"/api/callbacks");
                 logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
                     $"Callback url: {callbackUri}");
@@ -133,6 +122,12 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"CORRELATION ID: {callConnectionProperties.CorrelationId}");
             logger.LogInformation("************************************************************");
         }
+        else if (parsedEvent is ConnectFailed connectFailed)
+        {
+            callConnectionId = connectFailed.CallConnectionId;
+            logger.LogInformation($"Received call event: {connectFailed.GetType()}, CorrelationId: {connectFailed.CorrelationId}, " +
+                      $"subCode: {connectFailed.ResultInformation?.SubCode}, message: {connectFailed.ResultInformation?.Message}, context: {connectFailed.OperationContext}");
+        }
         else if (parsedEvent is RecognizeCompleted recognizeCompleted)
         {
             logger.LogInformation($"Received call event: {recognizeCompleted.GetType()}");
@@ -175,7 +170,6 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {playFailed.GetType()}, CorrelationId: {playFailed.CorrelationId}, " +
                       $"subCode: {playFailed.ResultInformation?.SubCode}, message: {playFailed.ResultInformation?.Message}, context: {playFailed.OperationContext}");
         }
-
         else if (parsedEvent is PlayCanceled playCanceled)
         {
             logger.LogInformation($"Received call event: {playCanceled.GetType()}");
@@ -208,6 +202,17 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {removeParticipantFailed.GetType()}, CorrelationId: {removeParticipantFailed.CorrelationId}, " +
                       $"subCode: {removeParticipantFailed.ResultInformation?.SubCode}, message: {removeParticipantFailed.ResultInformation?.Message}, context: {removeParticipantFailed.OperationContext}");
         }
+        else if (parsedEvent is CancelAddParticipantSucceeded cancelAddParticipantSucceeded)
+        {
+            logger.LogInformation($"Received call event: {cancelAddParticipantSucceeded.GetType()}");
+            callConnectionId = cancelAddParticipantSucceeded.CallConnectionId;
+        }
+        else if (parsedEvent is CancelAddParticipantFailed cancelAddParticipantFailed)
+        {
+            callConnectionId = cancelAddParticipantFailed.CallConnectionId;
+            logger.LogInformation($"Received call event: {cancelAddParticipantFailed.GetType()}, CorrelationId: {cancelAddParticipantFailed.CorrelationId}, " +
+                      $"subCode: {cancelAddParticipantFailed.ResultInformation?.SubCode}, message: {cancelAddParticipantFailed.ResultInformation?.Message}, context: {cancelAddParticipantFailed.OperationContext}");
+        }
         else if (parsedEvent is SendDtmfTonesCompleted sendDtmfTonesCompleted)
         {
             logger.LogInformation($"Received call event: {sendDtmfTonesCompleted.GetType()}");
@@ -223,11 +228,9 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
         {
             logger.LogInformation($"Received call event: {continuousDtmfRecognitionToneReceived.GetType()}");
             callConnectionId = continuousDtmfRecognitionToneReceived.CallConnectionId;
-
             logger.LogInformation("Tone?detected:?sequenceId={sequenceId},?tone={tone}",
             continuousDtmfRecognitionToneReceived.SequenceId,
             continuousDtmfRecognitionToneReceived.Tone);
-
         }
         else if (parsedEvent is ContinuousDtmfRecognitionStopped continuousDtmfRecognitionStopped)
         {
@@ -328,6 +331,11 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             callConnectionId = callTransferFailed.CallConnectionId;
             logger.LogInformation($"Received call event: {callTransferFailed.GetType()}, CorrelationId: {callTransferFailed.CorrelationId}, " +
                       $"subCode: {callTransferFailed.ResultInformation?.SubCode}, message: {callTransferFailed.ResultInformation?.Message}, context: {callTransferFailed.OperationContext}");
+        }
+        else if (parsedEvent is RecordingStateChanged recordingStateChanged)
+        {
+            logger.LogInformation($"Received call event: {recordingStateChanged.GetType()}");
+            logger.LogInformation($"Recording State: {recordingStateChanged.State}");
         }
     }
     return Results.Ok();
@@ -444,6 +452,202 @@ app.MapPost("/outboundCallToTeams", (string teamsObjectId, ILogger<Program> logg
 
     logger.LogInformation($"Created teams call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
 }).WithTags("Create Outbound Call APIs");
+
+#endregion
+
+#region Group Call
+
+app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, ILogger<Program> logger) =>
+{
+    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+    PhoneNumberIdentifier sourceCallerId = new PhoneNumberIdentifier(acsPhoneNumber);
+
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    eventCallbackUri = callbackUri;
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+
+    IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
+    {
+        target
+    };
+
+    var createGroupCallOptions = new CreateGroupCallOptions(targets, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        SourceCallerIdNumber = sourceCallerId,
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+
+    CreateCallResult createCallResult = await client.CreateGroupCallAsync(createGroupCallOptions);
+
+    logger.LogInformation($"Created async group call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+}).WithTags("Create Group Call APIs");
+
+app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logger) =>
+{
+    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+    PhoneNumberIdentifier sourceCallerId = new PhoneNumberIdentifier(acsPhoneNumber);
+
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    eventCallbackUri = callbackUri;
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+
+    IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
+    {
+        target
+    };
+
+    var createGroupCallOptions = new CreateGroupCallOptions(targets, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        SourceCallerIdNumber = sourceCallerId,
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+
+    CreateCallResult createCallResult = client.CreateGroupCall(createGroupCallOptions);
+
+    logger.LogInformation($"Created group call with id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+}).WithTags("Create Group Call APIs");
+
+#endregion
+
+#region Connect Api
+
+app.MapPost("/ConnectRoomCallAsync", async (string roomId, ILogger<Program> logger) =>
+{
+    RoomCallLocator roomCallLocator = !string.IsNullOrEmpty(roomId) ? new RoomCallLocator(roomId) : throw new ArgumentNullException(nameof(roomId));
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        OperationContext = "ConnectRoomCallContext",
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
+    logger.LogInformation($"Connected room async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+    return Results.Ok();
+}).WithTags("Connect Call APIs");
+
+app.MapPost("/ConnectRoomCall", (string roomId, ILogger<Program> logger) =>
+{
+    RoomCallLocator roomCallLocator = !string.IsNullOrEmpty(roomId) ? new RoomCallLocator(roomId) : throw new ArgumentNullException(nameof(roomId));
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        OperationContext = "ConnectRoomCallContext",
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
+    logger.LogInformation($"Connected room call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+    return Results.Ok();
+}).WithTags("Connect Call APIs");
+
+app.MapPost("/ConnectGroupCallAsync", async (string groupId, ILogger<Program> logger) =>
+{
+    GroupCallLocator groupCallLocator = !string.IsNullOrEmpty(groupId) ? new GroupCallLocator(groupId) : throw new ArgumentNullException(nameof(groupId));
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        OperationContext = "ConnectRoomCallContext",
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
+    logger.LogInformation($"Connected group async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+    return Results.Ok();
+}).WithTags("Connect Call APIs");
+
+app.MapPost("/ConnectGroupCall", (string groupId, ILogger<Program> logger) =>
+{
+    GroupCallLocator groupCallLocator = !string.IsNullOrEmpty(groupId) ? new GroupCallLocator(groupId) : throw new ArgumentNullException(nameof(groupId));
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        OperationContext = "ConnectGroupCallContext",
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
+    logger.LogInformation($"Connected group call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+    return Results.Ok();
+}).WithTags("Connect Call APIs");
+
+app.MapPost("/ConnectOneToNCallAsync", async (string serverCallId, ILogger<Program> logger) =>
+{
+    ServerCallLocator serverCallLocator = !string.IsNullOrEmpty(serverCallId) ? new ServerCallLocator(serverCallId) : throw new ArgumentNullException(nameof(serverCallId));
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        OperationContext = "ConnectOneToNCallContext",
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
+    logger.LogInformation($"Connected 1 to N async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+    return Results.Ok();
+}).WithTags("Connect Call APIs");
+
+app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger) =>
+{
+    ServerCallLocator serverCallLocator = !string.IsNullOrEmpty(serverCallId) ? new ServerCallLocator(serverCallId) : throw new ArgumentNullException(nameof(serverCallId));
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
+        "en-us", false);
+    ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        OperationContext = "ConnectOneToNCallContext",
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
+    logger.LogInformation($"Connected 1 to N call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+    return Results.Ok();
+}).WithTags("Connect Call APIs");
 
 #endregion
 
@@ -605,6 +809,30 @@ app.MapPost("/removeTeamsParticipant", (string teamsObjectId, ILogger<Program> l
 
     callConnection.RemoveParticipantAsync(removeParticipantOptions);
     return Results.Ok();
+}).WithTags("Add/Remove Participant APIs");
+
+app.MapPost("/cancelAddParticipantAsync", async (string invitationId, ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+
+    CancelAddParticipantOperationOptions cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(invitationId)
+    {
+        OperationContext = "CancelAddingParticipantContext"
+    };
+    var result = await callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+
+    return Results.Ok(result);
+}).WithTags("Add/Remove Participant APIs");
+
+app.MapPost("/cancelAddParticipant", (string invitationId, ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+    CancelAddParticipantOperationOptions cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(invitationId)
+    {
+        OperationContext = "CancelAddingParticipantContext"
+    };
+    var result = callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+    return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 #endregion
@@ -2134,6 +2362,233 @@ app.MapPost("/getParticipantList", (ILogger<Program> logger) =>
 
 #endregion
 
+#region Recording
+
+app.MapPost("/startRecordingWithVideoMp4MixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.AudioVideo;
+    recordingOptions.RecordingFormat = RecordingFormat.Mp4;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "mp4";
+    var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithVideoMp4Mixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.AudioVideo;
+    recordingOptions.RecordingFormat = RecordingFormat.Mp4;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "mp4";
+
+    var recordingResult = client.GetCallRecording().Start(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioMp3MixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "mp3";
+
+    var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioMp3Mixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "mp3";
+
+    var recordingResult = client.GetCallRecording().Start(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioMp3UnMixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
+    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "mp3";
+
+    var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioMp3Unmixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
+    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "mp3";
+
+    var recordingResult = client.GetCallRecording().Start(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioWavUnMixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Wav;
+    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "wav";
+
+    var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioWavUnmixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Wav;
+    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingFileFormat = "wav";
+
+    var recordingResult = client.GetCallRecording().Start(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+
+
+app.MapPost("/pauseRecordingAsync", async () =>
+{
+    await client.GetCallRecording().PauseAsync(recordingId);
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/pauseRecording", () =>
+{
+    client.GetCallRecording().Pause(recordingId);
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/resumeRecordingAsync", async () =>
+{
+    await client.GetCallRecording().ResumeAsync(recordingId);
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/resumeRecording", () =>
+{
+    client.GetCallRecording().Resume(recordingId);
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/stopRecordingAsync", async () =>
+{
+    await client.GetCallRecording().StopAsync(recordingId);
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/stopRecording", () =>
+{
+    client.GetCallRecording().Stop(recordingId);
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapGet("/downloadRecording", (ILogger<Program> logger) =>
+{
+    if (!string.IsNullOrEmpty(recordingLocation))
+    {
+        string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        var date = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string fileName = $"Recording_{date}.{recordingFileFormat}";
+        client.GetCallRecording().DownloadTo(new Uri(recordingLocation), $"{downloadsPath}\\{fileName}");
+    }
+    else
+    {
+        logger.LogError("Recording is not available");
+    }
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+#endregion
+
+#region Cancel All Media Operations
+
+app.MapPost("/cancelAllMediaOperationAsync", async (ILogger<Program> logger) =>
+{
+    CallMedia callMedia = GetCallMedia();
+    await callMedia.CancelAllMediaOperationsAsync();
+    return Results.Ok();
+}).WithTags("Cancel All Media Opertation APIs");
+
+app.MapPost("/cancelAllMediaOperation", (ILogger<Program> logger) =>
+{
+    CallMedia callMedia = GetCallMedia();
+    callMedia.CancelAllMediaOperations();
+    return Results.Ok();
+}).WithTags("Cancel All Media Opertation APIs");
+
+#endregion
+
 CallMedia GetCallMedia()
 {
     CallMedia callMedia = !string.IsNullOrEmpty(callConnectionId) ?
@@ -2198,6 +2653,12 @@ app.Use(async (context, next) =>
     {
         await next(context);
     }
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "audio")),
+    RequestPath = "/audio"
 });
 
 app.Run();
