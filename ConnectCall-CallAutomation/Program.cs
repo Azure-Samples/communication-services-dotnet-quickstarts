@@ -98,6 +98,7 @@ app.MapPost("/connectCall", async (ILogger<Program> logger) =>
         ConnectCallResult result = await callAutomationClient.ConnectCallAsync(connectCallOptions);
         logger.LogInformation($"CALL CONNECTION ID : {result.CallConnectionProperties.CallConnectionId}");
         callConnectionId = result.CallConnectionProperties.CallConnectionId;
+        logger.LogInformation($"CONNECT REQUEST CORRELATION ID: {result.CallConnectionProperties.CorrelationId}");
     }
     else
     {
