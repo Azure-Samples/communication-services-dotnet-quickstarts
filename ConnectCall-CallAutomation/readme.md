@@ -51,6 +51,7 @@ Open the appsettings.json file to configure the following settings
 2. `AcsConnectionString`: Azure Communication Service resource's connection string.
 3. `AcsPhoneNumber`: Phone number associated with the Azure Communication Service resource. For e.g. "+1425XXXAAAA"
 4. `ParticipantPhoneNumber`: Participant phone number. For e.g. "+1425XXXAAAA"
+5. `CognitiveServicesEndpoint`: Cognitive service endpoint.
 
 ### Run app locally
 

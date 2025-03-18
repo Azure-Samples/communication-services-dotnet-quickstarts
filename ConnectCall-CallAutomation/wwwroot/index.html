@@ -11,6 +11,7 @@
     <div>
         <button onclick="connectCall()">Connect call!</button>
         <button onclick="addParticipant()">Add participant!</button>
+        <button onclick="playMedia()">Play media!</button>
         <button onclick="hangupCall()">Hangup call!</button>
     </div>
 
@@ -55,6 +56,12 @@
 
         function addParticipant() {
             fetch('/addParticipant', {
+                method: 'POST',
+            })
+        }
+
+        function playMedia() {
+            fetch('/playMedia', {
                 method: 'POST',
             })
         }

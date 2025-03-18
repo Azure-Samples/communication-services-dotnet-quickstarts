@@ -27,6 +27,9 @@ ArgumentNullException.ThrowIfNullOrEmpty(participantPhoneNumber);
 var callbackUriHost = builder.Configuration.GetValue<string>("CallbackUriHost");
 ArgumentNullException.ThrowIfNullOrEmpty(callbackUriHost);
 
+var cognitiveServicesEndpoint = builder.Configuration.GetValue<string>("CognitiveServicesEndpoint");
+ArgumentNullException.ThrowIfNullOrEmpty(cognitiveServicesEndpoint);
+
 //Call back URL
 var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
 
@@ -93,7 +96,10 @@ app.MapPost("/connectCall", async (ILogger<Program> logger) =>
     {
         CallLocator callLocator = new RoomCallLocator(roomId);
 
-        ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri);
+        ConnectCallOptions connectCallOptions = new ConnectCallOptions(callLocator, callbackUri)
+        {
+            CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        };
 
         ConnectCallResult result = await callAutomationClient.ConnectCallAsync(connectCallOptions);
         logger.LogInformation($"CALL CONNECTION ID : {result.CallConnectionProperties.CallConnectionId}");
@@ -144,6 +150,17 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {addParticipantFailed.GetType()}, CorrelationId: {addParticipantFailed.CorrelationId}, " +
                       $"subCode: {addParticipantFailed.ResultInformation?.SubCode}, message: {addParticipantFailed.ResultInformation?.Message}, context: {addParticipantFailed.OperationContext}");
         }
+        else if (parsedEvent is PlayCompleted playCompleted)
+        {
+            logger.LogInformation($"Received call event: {playCompleted.GetType()}");
+            callConnectionId = playCompleted.CallConnectionId;
+        }
+        else if (parsedEvent is PlayFailed playFailed)
+        {
+            callConnectionId = playFailed.CallConnectionId;
+            logger.LogInformation($"Received call event: {playFailed.GetType()}, CorrelationId: {playFailed.CorrelationId}, " +
+                      $"subCode: {playFailed.ResultInformation?.SubCode}, message: {playFailed.ResultInformation?.Message}, context: {playFailed.OperationContext}");
+        }
         else if (parsedEvent is CallDisconnected callDisconnected)
         {
             logger.LogInformation($"Received call event: {callDisconnected.GetType()}");
@@ -178,6 +195,17 @@ app.MapPost("/hangUp", async (ILogger<Program> logger) =>
     CallConnection callConnection = GetConnection();
     await callConnection.HangUpAsync(true);
     return Results.Ok();
+});
+
+app.MapPost("/playMedia", async (ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+    var playSource = new TextSource("Hello, welcome to connect room contoso app.")
+    {
+        VoiceName = "en-US-NancyNeural"
+    };
+
+    await callConnection.GetCallMedia().PlayToAllAsync(playSource);
 });
 
 CallConnection GetConnection()
