@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Azure Communication Services Quickstart</title>
+</head>
+
+<body>
+    <h4>Azure Communication Services</h4>
+    <h2>Connect Rooms Call Quickstart</h2>
+    <div>
+        <button onclick="connectCall()">Connect call!</button>
+        <button onclick="addParticipant()">Add participant!</button>
+        <button onclick="playMedia()">Play media!</button>
+        <button onclick="hangupCall()">Hangup call!</button>
+    </div>
+
+    <h3>Room Details</h3>
+
+    <div id="roomId-info">
+        <h4>Room</h4>
+        <p>Room Id: <span id="roomId-text">Loading roomId...</span></p>
+    </div>
+
+    <div id="presenter-info">
+        <h4>Presenter</h4>
+        <p>User Id: <span id="presenter-id">Loading presenter userId...</span></p>
+        <p>Token: <span id="presenter-token">Loading presenter token...</span></p>
+    </div>
+
+    <div id="attendee-info">
+        <h4>Attendee</h4>
+        <p>User Id: <span id="attendee-id">Loading attendee userId...</span></p>
+        <p>Token: <span id="attendee-token">Loading attendee token...</span></p>
+    </div>
+
+    <script>
+        fetch('/createRoom', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('roomId-text').innerText = `${data.roomId}`;
+                document.getElementById('presenter-id').innerText = `${data.user1Id}`;
+                document.getElementById('presenter-token').innerText = `${data.user1Token}`;
+                document.getElementById('attendee-id').innerText = `${data.user2Id}`;
+                document.getElementById('attendee-token').innerText = `${data.user2Token}`;
+            })
+            .catch(error => {
+                console.error('Error fetching user data:', error);
+            });
+
+        function connectCall() {
+            fetch('/connectCall', {
+                method: 'POST',
+            })
+        }
+
+        function addParticipant() {
+            fetch('/addParticipant', {
+                method: 'POST',
+            })
+        }
+
+        function playMedia() {
+            fetch('/playMedia', {
+                method: 'POST',
+            })
+        }
+
+        function hangupCall() {
+            fetch('/hangUp', {
+                method: 'POST',
+            })
+        }
+    </script>
+</body>
+
+</html>
