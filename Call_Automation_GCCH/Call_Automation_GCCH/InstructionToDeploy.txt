@@ -12,3 +12,5 @@ chmod +x gcchDeploy.sh
 Execute following command to deploy
 ./gcchDeploy.sh
 
+https://<app-name>.scm.azurewebsites.net/swagger/index.html
+
