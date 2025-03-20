@@ -51,7 +51,7 @@ app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, IL
     cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
     acsPhoneNumber = configuration.AcsPhoneNumber;
     callbackUriHost = configuration.CallbackUriHost;
-    fileSourceUri = callbackUriHost + "/audio/MainMenu.wav";
+    fileSourceUri = "https://sample-videos.com/audio/mp3/crowd-cheering.mp3";
 
     client = new CallAutomationClient(connectionString: acsConnectionString);
     logger.LogInformation("Initialized call automation client.");
@@ -2655,10 +2655,11 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "audio")),
-    RequestPath = "/audio"
-});
+//app.UseStaticFiles(new StaticFileOptions
+//{
+//    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "audio")),
+//    RequestPath = "/audio"
+//});
+
 
 app.Run();
