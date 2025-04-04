@@ -22,7 +22,7 @@ namespace CallAutomation_LiveTranscription
                 {
                     string msg = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
 
-                    var response = StreamingDataParser.Parse(msg);
+                    var response = StreamingData.Parse(msg);
 
                     if (response != null)
                     {

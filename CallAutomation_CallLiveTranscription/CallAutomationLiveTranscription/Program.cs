@@ -6,7 +6,6 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation_LiveTranscription;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -163,7 +162,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
             StartRecordingOptions startRecordingOptions = new StartRecordingOptions(callLocator)
             {
-                RecordingContent=RecordingContent.AudioVideo,
+                RecordingContent = RecordingContent.AudioVideo,
                 RecordingChannel = RecordingChannel.Mixed,
                 RecordingFormat = RecordingFormat.Mp4,
                 RecordingStateCallbackUri = callbackUri,
@@ -299,7 +298,7 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
             CallMedia callMedia = GetCallMedia(transcriptionStopped.CallConnectionId);
 
-            if(!string.IsNullOrEmpty(transcriptionStopped.OperationContext) && transcriptionStopped.OperationContext.Equals("nextRecognizeContext"))
+            if (!string.IsNullOrEmpty(transcriptionStopped.OperationContext) && transcriptionStopped.OperationContext.Equals("nextRecognizeContext"))
             {
                 // get user input with inactive recording and transcription.
                 await HandleDtmfRecognizeAsync(callMedia, callerId!, helpIVRPrompt, "hellocontext");
@@ -335,7 +334,7 @@ app.MapGet("/download", (ILogger<Program> logger) =>
     {
         logger.LogError("Recording is not available");
     }
-    
+
     return Results.Ok();
 });
 
@@ -365,7 +364,7 @@ async Task StopTranscriptionAndRecording(CallMedia callMedia, ILogger logger, st
         logger.LogInformation("Stopping transcription");
     }
 
-    if(recordingStateResult.RecordingState == RecordingState.Active)
+    if (recordingStateResult.RecordingState == RecordingState.Active)
     {
         await client.GetCallRecording().StopAsync(recordingId);
         logger.LogInformation("Stopping recording");
