@@ -67,7 +67,7 @@ MicrosoftTeamsAppIdentifier teamsAppIdentifier = new MicrosoftTeamsAppIdentifier
 
 //// Initialize the options with the MicrosoftTeamsAppIdentifier
 // Initialize the options with the MicrosoftTeamsAppIdentifier
-CallAutomationClientOptions callautomationclientoptions = new CallAutomationClientOptions(CallAutomationClientOptions.ServiceVersion.V2023_10_03_Preview)
+CallAutomationClientOptions callautomationclientoptions = new CallAutomationClientOptions(CallAutomationClientOptions.ServiceVersion.V2024_09_01_Preview)
 {
     //OPSSource = teamsAppIdentifier
 
@@ -147,9 +147,29 @@ app.MapPost("/api/incomingCall", async (
                 logger.LogInformation($"CA Received call event: {answer_result.GetType()}, callConnectionID: {answer_result.SuccessResult.CallConnectionId}, " +
                     $"serverCallId: {answer_result.SuccessResult.ServerCallId}");
                 callConnectionId = answer_result.SuccessResult.CallConnectionId;
+              
+                await Task.Delay(20000);
+
+               // await AddDualPersonaUserCCaaSAgentAsync();
+
+                 await AddTeamsUserAsCCaaSAgentAsync();
+                // await MuteParticipantAsync(callConnectionId, callerId);
+                await Task.Delay(20000);
+
+                await AddTeamsUserByOrgIdAsync();
 
                 await Task.Delay(20000);
-                //await AddTeamsUserAsCCaaSAgentAsync();
+
+                CommunicationIdentifier target = new PhoneNumberIdentifier("+18332638155");
+                await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target).ConfigureAwait(false);
+                await answerCallResult.CallConnection.MuteParticipantAsync(target).ConfigureAwait(false);
+
+                CommunicationIdentifier target1 = new MicrosoftTeamsUserIdentifier(teamsUserId);
+                await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target1).ConfigureAwait(false);
+
+                await Task.Delay(20000);
+
+                await client.GetCallConnection(callConnectionId).UnmuteParticipantAsync(target1).ConfigureAwait(false);
 
                 //   await Task.Delay(50000);
                 //  await PlayMediaAsync(true, false, false);
@@ -157,13 +177,13 @@ app.MapPost("/api/incomingCall", async (
                 //await Task.Delay(20000);
 
                 ///* Start the recording */
-                CallLocator callLocator = new ServerCallLocator(answer_result.SuccessResult.ServerCallId);
-                var recordingResult = await client.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
-                recordingId = recordingResult.Value.RecordingId;
-                logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+                //CallLocator callLocator = new ServerCallLocator(answer_result.SuccessResult.ServerCallId);
+                //var recordingResult = await client.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
+                //recordingId = recordingResult.Value.RecordingId;
+                //logger.LogInformation($"Recording started. RecordingId: {recordingId}");
 
-                await Task.Delay(20000);
-                await PlayMediaAsync(false, false, false);
+                //await Task.Delay(20000);
+                //await PlayMediaAsync(false, false, false);
 
                 //await Task.Delay(20000);
                 /* Start the recording */
@@ -184,7 +204,7 @@ app.MapPost("/api/incomingCall", async (
                 //await PauseOrStopRecording(callConnectionMedia, logger, false, recordingId);
 
                 // // Add CCaaS Agent(dual persona user)
-                //  await AddDualPersonaUserCCaaSAgentAsync();
+                //await AddDualPersonaUserCCaaSAgentAsync();
                 // //await Task.Delay(20000);
                 // //Add Teams User as CCaaS Agent
                 // await AddTeamsUserAsCCaaSAgentAsync();
@@ -659,7 +679,25 @@ async Task ResumeTranscription(CallMedia callMedia, ILogger logger)
 
     
 }
+async Task MuteParticipantAsync(string callConnectionId, string userid)
+{
+    try
+    {
+        var target = new PhoneNumberIdentifier(userid);
+        var callConnection = client.GetCallConnection(callConnectionId);
 
+        Console.WriteLine($"Attempting to mute participant ID: {userid} in call: {callConnectionId}.");
+
+        await callConnection.MuteParticipantAsync(target).ConfigureAwait(false);
+
+        Console.WriteLine($"Successfully muted participant with  ID: {userid} in call: {callConnectionId}.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Failed to mute participant with ACS ID: {userid}. Error: {ex.Message}");
+        throw; // Re-throw the exception to allow upstream handling if needed.
+    }
+}
 async Task PauseOrStopTranscription(CallMedia callMedia, ILogger logger)
 {
     if (isTranscriptionActive)
@@ -670,24 +708,5 @@ async Task PauseOrStopTranscription(CallMedia callMedia, ILogger logger)
     }
 
      
-}
-async Task MuteParticipantAsync(string callConnectionId, string userid)
-{
-    try
-    {
-        var target = new PhoneNumberIdentifier(userid);
-        var callConnection = client.GetCallConnection(callConnectionId);
-
-        Console.WriteLine($"Attempting to mute participant with ACS ID: {userid} in call: {callConnectionId}.");
-
-        await callConnection.MuteParticipantAsync(target).ConfigureAwait(false);
-
-        Console.WriteLine($"Successfully muted participant with ACS ID: {userid} in call: {callConnectionId}.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Failed to mute participant with ACS ID: {userid}. Error: {ex.Message}");
-        throw; // Re-throw the exception to allow upstream handling if needed.
-    }
 }
 
