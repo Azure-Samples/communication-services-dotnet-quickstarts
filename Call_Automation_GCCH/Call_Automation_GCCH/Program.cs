@@ -17,9 +17,11 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 string acsConnectionString = string.Empty;
-string cognitiveServicesEndpoint = string.Empty;
+// ACS GCCH Phase 2
+// string cognitiveServicesEndpoint = string.Empty;
 string acsPhoneNumber = string.Empty;
 string callbackUriHost = string.Empty;
+string pmaEndpoint = "https://govaz-01.pma.gov.teams.microsoft.us";
 string fileSourceUri = string.Empty;
 
 string callConnectionId = string.Empty;
@@ -33,27 +35,28 @@ CallAutomationClient client = null!;
 
 app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, ILogger<Program> logger) =>
 {
-     acsConnectionString = string.Empty;
-     cognitiveServicesEndpoint = string.Empty;
-     acsPhoneNumber = string.Empty;
-     callbackUriHost = string.Empty;
-     fileSourceUri = string.Empty;
+    acsConnectionString = string.Empty;
+    // cognitiveServicesEndpoint = string.Empty;
+    acsPhoneNumber = string.Empty;
+    callbackUriHost = string.Empty;
+    fileSourceUri = string.Empty;
 
     if (configurationRequest != null)
     {
         configuration.AcsConnectionString = !string.IsNullOrEmpty(configurationRequest.AcsConnectionString) ? configurationRequest.AcsConnectionString : throw new ArgumentNullException(nameof(configurationRequest.AcsConnectionString));
-        configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
+        configuration.pmaEndpoint = !string.IsNullOrEmpty(configurationRequest.pmaEndpoint) ? configurationRequest.pmaEndpoint : throw new ArgumentNullException(nameof(configurationRequest.pmaEndpoint));
+        //configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
         configuration.AcsPhoneNumber = !string.IsNullOrEmpty(configurationRequest.AcsPhoneNumber) ? configurationRequest.AcsPhoneNumber : throw new ArgumentNullException(nameof(configurationRequest.AcsPhoneNumber));
         configuration.CallbackUriHost = !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) ? configurationRequest.CallbackUriHost : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
     }
 
     acsConnectionString = configuration.AcsConnectionString;
-    cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
+    // cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
     acsPhoneNumber = configuration.AcsPhoneNumber;
     callbackUriHost = configuration.CallbackUriHost;
     fileSourceUri = "https://sample-videos.com/audio/mp3/crowd-cheering.mp3";
 
-    client = new CallAutomationClient(connectionString: acsConnectionString);
+    client = new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: acsConnectionString);
     logger.LogInformation("Initialized call automation client.");
     return Results.Ok("Configurtion set successfully. Initialized call automation client.");
 }).WithTags("1. Add Connection string and configuration settings.");
@@ -85,7 +88,8 @@ app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Prog
 
                 var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
                 {
-                    CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
+                    // ACS GCCH Phase 2
+                    // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
                 };
 
                 AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -355,7 +359,8 @@ app.MapPost("/outboundCallToPstnAsync", async (string targetPhoneNumber, ILogger
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
     };
 
@@ -376,7 +381,8 @@ app.MapPost("/outboundCallToPstn", (string targetPhoneNumber, ILogger<Program> l
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
     };
 
@@ -393,7 +399,8 @@ app.MapPost("/outboundCallToAcsAsync", async (string acsTarget, ILogger<Program>
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
     };
 
@@ -410,7 +417,8 @@ app.MapPost("/outboundCallToAcs", (string acsTarget, ILogger<Program> logger) =>
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
     };
 
@@ -427,7 +435,8 @@ app.MapPost("/outboundCallToTeamsAsync", async (string teamsObjectId, ILogger<Pr
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
     };
 
@@ -444,7 +453,8 @@ app.MapPost("/outboundCallToTeams", (string teamsObjectId, ILogger<Program> logg
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
     };
 
@@ -477,7 +487,8 @@ app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, ILogger<Pr
 
     var createGroupCallOptions = new CreateGroupCallOptions(targets, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         SourceCallerIdNumber = sourceCallerId,
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -508,7 +519,8 @@ app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logg
 
     var createGroupCallOptions = new CreateGroupCallOptions(targets, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         SourceCallerIdNumber = sourceCallerId,
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -534,7 +546,8 @@ app.MapPost("/ConnectRoomCallAsync", async (string roomId, ILogger<Program> logg
         "en-us", false);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         OperationContext = "ConnectRoomCallContext",
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -555,7 +568,8 @@ app.MapPost("/ConnectRoomCall", (string roomId, ILogger<Program> logger) =>
         "en-us", false);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         OperationContext = "ConnectRoomCallContext",
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -576,7 +590,8 @@ app.MapPost("/ConnectGroupCallAsync", async (string groupId, ILogger<Program> lo
         "en-us", false);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         OperationContext = "ConnectRoomCallContext",
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -597,7 +612,8 @@ app.MapPost("/ConnectGroupCall", (string groupId, ILogger<Program> logger) =>
         "en-us", false);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         OperationContext = "ConnectGroupCallContext",
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -618,7 +634,8 @@ app.MapPost("/ConnectOneToNCallAsync", async (string serverCallId, ILogger<Progr
         "en-us", false);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         OperationContext = "ConnectOneToNCallContext",
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -639,7 +656,8 @@ app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger)
         "en-us", false);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         OperationContext = "ConnectOneToNCallContext",
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
@@ -1797,7 +1815,8 @@ app.MapPost("/createCallToPstnWithMediaStreamingAsync", async (string targetPhon
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         MediaStreamingOptions = mediaStreamingOptions
     };
 
@@ -1823,7 +1842,8 @@ app.MapPost("/createCallToPstnWithMediaStreaming", (string targetPhoneNumber, bo
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         MediaStreamingOptions = mediaStreamingOptions
     };
 
@@ -1845,7 +1865,8 @@ app.MapPost("/createCallToAcsWithMediaStreamingAsync", async (string acsTarget, 
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         MediaStreamingOptions = mediaStreamingOptions
     };
 
@@ -1867,7 +1888,8 @@ app.MapPost("/createCallToAcsWithMediaStreaming", (string acsTarget, bool isEnab
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         MediaStreamingOptions = mediaStreamingOptions
     };
 
@@ -1889,7 +1911,8 @@ app.MapPost("/createCallToTeamsWithMediaStreamingAsync", async (string teamsObje
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         MediaStreamingOptions = mediaStreamingOptions
     };
 
@@ -1911,7 +1934,8 @@ app.MapPost("/createCallToTeamsWithMediaStreaming", (string teamsObjectId, bool 
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        // ACS GCCH Phase 2
+        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         MediaStreamingOptions = mediaStreamingOptions
     };
 
@@ -2000,7 +2024,7 @@ app.MapPost("/stopMediaStreamingWithOptions", (ILogger<Program> logger) =>
 #endregion
 
 #region Transcription
-
+/*
 app.MapPost("/createCallToPstnWithTranscriptionAsync", async (string targetPhoneNumber, ILogger<Program> logger) =>
 {
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
@@ -2208,6 +2232,7 @@ app.MapPost("/stopTranscriptionWithOptions", (ILogger<Program> logger) =>
     return Results.Ok();
 }).WithTags("Transcription APIs");
 
+*/
 #endregion
 
 #region Transfer Call
