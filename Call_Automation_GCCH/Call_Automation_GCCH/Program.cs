@@ -28,6 +28,9 @@ string recordingLocation = string.Empty;
 string recordingFileFormat = string.Empty;
 Uri eventCallbackUri = null!;
 string callerId = string.Empty;
+string calleeId = string.Empty;
+Dictionary<string, string> botRouting = new();
+string defaultBotId = string.Empty;
 ConfigurationRequest configuration = new();
 CallAutomationClient client = null!;
 
@@ -45,12 +48,19 @@ app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, IL
         configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
         configuration.AcsPhoneNumber = !string.IsNullOrEmpty(configurationRequest.AcsPhoneNumber) ? configurationRequest.AcsPhoneNumber : throw new ArgumentNullException(nameof(configurationRequest.AcsPhoneNumber));
         configuration.CallbackUriHost = !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) ? configurationRequest.CallbackUriHost : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
+        configuration.BotRouting = configurationRequest.BotRouting ?? new Dictionary<string, string>();
+        configuration.DefaultBotId = !string.IsNullOrEmpty(configurationRequest.DefaultBotId)
+            ? configurationRequest.DefaultBotId
+            : throw new ArgumentNullException(nameof(configurationRequest.DefaultBotId));
+
     }
 
     acsConnectionString = configuration.AcsConnectionString;
     cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
     acsPhoneNumber = configuration.AcsPhoneNumber;
     callbackUriHost = configuration.CallbackUriHost;
+    botRouting = configuration.BotRouting;
+    defaultBotId = configuration.DefaultBotId;
     fileSourceUri = "https://sample-videos.com/audio/mp3/crowd-cheering.mp3";
 
     client = new CallAutomationClient(connectionString: acsConnectionString);
@@ -153,38 +163,38 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
                     break;
             }
         }
-        else if (parsedEvent is RecognizeFailed recognizeFailed)
-        {
-            callConnectionId = recognizeFailed.CallConnectionId;
-            logger.LogInformation($"Received call event: {recognizeFailed.GetType()}, CorrelationId: {recognizeFailed.CorrelationId}, " +
-                       $"subCode: {recognizeFailed.ResultInformation?.SubCode}, message: {recognizeFailed.ResultInformation?.Message}, context: {recognizeFailed.OperationContext}");
-        }
-        else if (parsedEvent is PlayCompleted playCompleted)
-        {
-            logger.LogInformation($"Received call event: {playCompleted.GetType()}");
-            callConnectionId = playCompleted.CallConnectionId;
-        }
-        else if (parsedEvent is PlayFailed playFailed)
-        {
-            callConnectionId = playFailed.CallConnectionId;
-            logger.LogInformation($"Received call event: {playFailed.GetType()}, CorrelationId: {playFailed.CorrelationId}, " +
-                      $"subCode: {playFailed.ResultInformation?.SubCode}, message: {playFailed.ResultInformation?.Message}, context: {playFailed.OperationContext}");
-        }
-        else if (parsedEvent is PlayCanceled playCanceled)
-        {
-            logger.LogInformation($"Received call event: {playCanceled.GetType()}");
-            callConnectionId = playCanceled.CallConnectionId;
-        }
-        else if (parsedEvent is RecognizeCanceled recognizeCanceled)
-        {
-            logger.LogInformation($"Received call event: {recognizeCanceled.GetType()}");
-            callConnectionId = recognizeCanceled.CallConnectionId;
-        }
-        else if (parsedEvent is AddParticipantSucceeded addParticipantSucceeded)
-        {
-            logger.LogInformation($"Received call event: {addParticipantSucceeded.GetType()}");
-            callConnectionId = addParticipantSucceeded.CallConnectionId;
-        }
+            else if (parsedEvent is RecognizeFailed recognizeFailed)
+            {
+                callConnectionId = recognizeFailed.CallConnectionId;
+                logger.LogInformation($"Received call event: {recognizeFailed.GetType()}, CorrelationId: {recognizeFailed.CorrelationId}, " +
+                           $"subCode: {recognizeFailed.ResultInformation?.SubCode}, message: {recognizeFailed.ResultInformation?.Message}, context: {recognizeFailed.OperationContext}");
+            }
+            else if (parsedEvent is PlayCompleted playCompleted)
+            {
+                logger.LogInformation($"Received call event: {playCompleted.GetType()}");
+                callConnectionId = playCompleted.CallConnectionId;
+            }
+            else if (parsedEvent is PlayFailed playFailed)
+            {
+                callConnectionId = playFailed.CallConnectionId;
+                logger.LogInformation($"Received call event: {playFailed.GetType()}, CorrelationId: {playFailed.CorrelationId}, " +
+                          $"subCode: {playFailed.ResultInformation?.SubCode}, message: {playFailed.ResultInformation?.Message}, context: {playFailed.OperationContext}");
+            }
+            else if (parsedEvent is PlayCanceled playCanceled)
+            {
+                logger.LogInformation($"Received call event: {playCanceled.GetType()}");
+                callConnectionId = playCanceled.CallConnectionId;
+            }
+            else if (parsedEvent is RecognizeCanceled recognizeCanceled)
+            {
+                logger.LogInformation($"Received call event: {recognizeCanceled.GetType()}");
+                callConnectionId = recognizeCanceled.CallConnectionId;
+            }
+            else if (parsedEvent is AddParticipantSucceeded addParticipantSucceeded)
+            {
+                logger.LogInformation($"Received call event: {addParticipantSucceeded.GetType()}");
+                callConnectionId = addParticipantSucceeded.CallConnectionId;
+            }
         else if (parsedEvent is AddParticipantFailed addParticipantFailed)
         {
             callConnectionId = addParticipantFailed.CallConnectionId;
@@ -337,6 +347,38 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {recordingStateChanged.GetType()}");
             logger.LogInformation($"Recording State: {recordingStateChanged.State}");
         }
+        if (parsedEvent is DialogStarted { OperationContext: "DialogStart" } dialogStarted)
+        {
+            logger.LogInformation($"Dialog started. DialogId: {dialogStarted.DialogId}, CallConnectionId: {dialogStarted.CallConnectionId}, CorrelationId: {dialogStarted.CorrelationId}");
+            // Verify the start of dialog here
+        }
+        else if (parsedEvent is DialogFailed { OperationContext: "DialogStart" } dialogFailed)
+        {
+            logger.LogWarning($"Dialog failed to start. DialogId: {dialogFailed.DialogId}, Error: {dialogFailed.ResultInformation?.Message}, CorrelationId: {dialogFailed.CorrelationId}");
+        }
+        else if (parsedEvent is DialogTransfer dialogTransfer)
+        {
+            logger.LogInformation($"Dialog transfer requested. DialogId: {dialogTransfer.DialogId}, TransferTarget: {dialogTransfer.TransferDestination}");
+            var callDialog = GetConnection().GetCallDialog();
+             callDialog.StopDialogAsync(dialogTransfer.DialogId);
+            GetConnection().TransferCallToParticipantAsync(new PhoneNumberIdentifier(dialogTransfer.TransferDestination));
+        }
+        else if (parsedEvent is DialogHangup dialogHangup)
+        {
+            logger.LogInformation($"Dialog hangup requested. DialogId: {dialogHangup.DialogId}");
+            var callDialog = GetConnection().GetCallDialog();
+             callDialog.StopDialogAsync(dialogHangup.DialogId);
+            GetConnection().HangUpAsync(true); // Hang up the call for everyone
+        }
+        else if (parsedEvent is DialogConsent { OperationContext: "DialogStart" } dialogConsent)
+        {
+            logger.LogInformation($"Dialog consent event received. DialogId: {dialogConsent.DialogId}, ConsentType: {dialogConsent}");
+        }
+        else if (parsedEvent is DialogCompleted { OperationContext: "DialogStop" } dialogCompleted)
+        {
+            logger.LogInformation($"Dialog completed. DialogId: {dialogCompleted.DialogId}, Result: {dialogCompleted.ResultInformation?.Message}");
+        }
+
     }
     return Results.Ok();
 }).Produces(StatusCodes.Status200OK);
@@ -467,8 +509,8 @@ app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, ILogger<Pr
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
 
     IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
     {
@@ -498,8 +540,8 @@ app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logg
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
 
     IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
     {
@@ -530,8 +572,8 @@ app.MapPost("/ConnectRoomCallAsync", async (string roomId, ILogger<Program> logg
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -551,8 +593,9 @@ app.MapPost("/ConnectRoomCall", (string roomId, ILogger<Program> logger) =>
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
+
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -572,8 +615,9 @@ app.MapPost("/ConnectGroupCallAsync", async (string groupId, ILogger<Program> lo
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
+
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -593,8 +637,9 @@ app.MapPost("/ConnectGroupCall", (string groupId, ILogger<Program> logger) =>
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
+
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -614,8 +659,9 @@ app.MapPost("/ConnectOneToNCallAsync", async (string serverCallId, ILogger<Progr
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
+
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -635,8 +681,8 @@ app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger)
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-        "en-us", false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -2011,8 +2057,8 @@ app.MapPost("/createCallToPstnWithTranscriptionAsync", async (string targetPhone
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(target, caller);
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-         "en-us", true);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", false, TranscriptionTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2035,8 +2081,8 @@ app.MapPost("/createCallToPstnWithTranscription", (string targetPhoneNumber, ILo
     CallInvite callInvite = new CallInvite(target, caller);
 
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-         "en-us", true);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", true, TranscriptionTransport.Websocket);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -2054,8 +2100,8 @@ app.MapPost("/createCallToAcsWithTranscriptionAsync", async (string acsTarget, I
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-         "en-us", true);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", true, TranscriptionTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2074,8 +2120,8 @@ app.MapPost("/createCallToAcsWithTranscription", (string acsTarget, ILogger<Prog
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-          "en-us", true);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+        "en-us", true, TranscriptionTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2094,8 +2140,8 @@ app.MapPost("/createCallToTeamsWithTranscriptionAsync", async (string teamsObjec
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-           "en-us", true);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+           "en-us", true, TranscriptionTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2114,8 +2160,8 @@ app.MapPost("/createCallToTeamsWithTranscription", (string teamsObjectId, ILogge
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
-           "en-us", true);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+           "en-us", true, TranscriptionTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2588,7 +2634,71 @@ app.MapPost("/cancelAllMediaOperation", (ILogger<Program> logger) =>
 }).WithTags("Cancel All Media Opertation APIs");
 
 #endregion
+#region Dialog Call APIs
+app.MapPost("/startDialogAsync", async (ILogger<Program> logger) =>
+{
+    Dictionary<string, object> dialogContext = new Dictionary<string, object>();
 
+    PhoneNumberIdentifier target = new PhoneNumberIdentifier(calleeId);
+    PhoneNumberIdentifier sourceCallerId = new PhoneNumberIdentifier(callerId);
+
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    CallInvite callInvite = new CallInvite(target, sourceCallerId);
+    var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
+
+    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+    CallConnection callConnection = GetConnection();
+    var callDialog = callConnection.GetCallDialog();
+
+    logger.LogInformation($"Async call created with ID: {createCallResult.CallConnectionProperties.CallConnectionId}");
+
+    string botAppId = botRouting.ContainsKey(calleeId) ? botRouting[calleeId] : defaultBotId;
+
+    var dialogOptions = new StartDialogOptions(Guid.NewGuid().ToString(), new PowerVirtualAgentsDialog(botAppId, dialogContext))
+    {
+        OperationContext = "DialogStart"
+    };
+
+    var response = await callDialog.StartDialogAsync(dialogOptions);
+
+    logger.LogInformation($"Dialog started asynchronously: {response.GetRawResponse().Content.ToString()}");
+
+    return Results.Ok();
+}).WithTags("2. Dialogs APIs");
+
+app.MapPost("/startDialog", (ILogger<Program> logger) =>
+{
+    Dictionary<string, object> dialogContext = new Dictionary<string, object>();
+
+    PhoneNumberIdentifier target = new PhoneNumberIdentifier(calleeId);
+    PhoneNumberIdentifier sourceCallerId = new PhoneNumberIdentifier(callerId);
+
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    CallInvite callInvite = new CallInvite(target, sourceCallerId);
+    var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
+
+    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+    CallConnection callConnection = GetConnection();
+    var callDialog = callConnection.GetCallDialog();
+
+    logger.LogInformation($"Call created with ID: {createCallResult.CallConnectionProperties.CallConnectionId}");
+
+    string botAppId = botRouting.ContainsKey(calleeId) ? botRouting[calleeId] : defaultBotId;
+
+    var dialogOptions = new StartDialogOptions(Guid.NewGuid().ToString(), new PowerVirtualAgentsDialog(botAppId, dialogContext))
+    {
+        OperationContext = "DialogStart"
+    };
+
+    var response = callDialog.StartDialog(dialogOptions);
+
+    logger.LogInformation($"Dialog started synchronously: {response.GetRawResponse().Content.ToString()}");
+
+    return Results.Ok();
+}).WithTags("2. Dialogs APIs");
+
+
+#endregion
 CallMedia GetCallMedia()
 {
     CallMedia callMedia = !string.IsNullOrEmpty(callConnectionId) ?

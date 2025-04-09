@@ -65,7 +65,7 @@ namespace Call_Automation_GCCH
                             Console.WriteLine("DURATION-->" + transcriptionData.Duration);
                             Console.WriteLine("PARTICIPANT-->" + transcriptionData.Participant.RawId);
                             Console.WriteLine("CONFIDENCE-->" + transcriptionData.Confidence);
-                            Console.WriteLine("RESULT STATUS-->" + transcriptionData.ResultStatus);
+                            //Console.WriteLine("RESULT STATUS-->" + transcriptionData.ResultStatus);
                             foreach (var word in transcriptionData.Words)
                             {
                                 Console.WriteLine("WORDS TEXT-->" + word.Text);
