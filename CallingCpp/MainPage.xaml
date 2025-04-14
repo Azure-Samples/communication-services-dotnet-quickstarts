@@ -18,18 +18,18 @@
                 <TextBlock Text="User Access Token:" VerticalAlignment="Center"/>
                 <TextBox x:Name="AccessTokenTextBox" Width="300" PlaceholderText="Enter User Access Token"/>
             </StackPanel>
-            <Button x:Name="InitAuthenticationButton" Content="Initialize Client Agent" Click="InitAuthenticationButton_Click"/>
+            <Button x:Name="InitAuthenticationButton" Content="Initialize Client Agent"/>
 
             <!-- Call Setup -->
             <TextBox x:Name="CalleeTextBox" PlaceholderText="Enter ACS User ID, Teams Meeting Link, Group Call ID, or Phone Number" Width="400" HorizontalAlignment="Stretch"/>
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                <Button x:Name="CallButton" Content="Start/Join Call" Click="CallButton_Click" IsEnabled="False"/>
-                <Button x:Name="HangupButton" Content="Hang Up" Click="HangupButton_Click" IsEnabled="False"/>
+                <Button x:Name="CallButton" Content="Start/Join Call" IsEnabled="False"/>
+                <Button x:Name="HangupButton" Content="Hang Up" IsEnabled="False"/>
             </StackPanel>
 
             <!-- Media Controls -->
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                <AppBarButton x:Name="MicButton" Icon="Microphone" Label="Mute" Click="MicButton_Click" IsEnabled="False"/>
+                <AppBarButton x:Name="MicButton" Icon="Microphone" Label="Mute" IsEnabled="False"/>
             </StackPanel>
 
             <!-- Call Status -->
