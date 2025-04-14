@@ -1,0 +1,28 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.0.0
+MinimumVisualStudioVersion = 10.0.0.0
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CallingCpp", "CallingCpp.vcxproj", "{PLACEHOLDER-GUID-1111-1111-1111-111111111111}" # Replace with actual GUID from vcxproj
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Debug|x64 = Debug|x64
+		Debug|ARM64 = Debug|ARM64
+		Release|x86 = Release|x86
+		Release|x64 = Release|x64
+		Release|ARM64 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{PLACEHOLDER-GUID-1111-1111-1111-111111111111}.Debug|x86.ActiveCfg = Debug|x86 # Replace GUID
+		{PLACEHOLDER-GUID-1111-1111-1111-111111111111}.Debug|x86.Build.0 = Debug|x86 # Replace GUID
+		# ... other configurations ...
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {PLACEHOLDER-GUID-2222-2222-2222-222222222222} # Replace with new Solution GUID
+	EndGlobalSection
+EndGlobal

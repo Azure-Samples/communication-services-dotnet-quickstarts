@@ -1,0 +1,71 @@
+<Page
+    x:Class="CallingCpp.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CallingCpp"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <ScrollViewer>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Padding="20">
+
+            <TextBlock Text="Calling C++/WinRT Quickstart" Style="{StaticResource HeaderTextBlockStyle}" HorizontalAlignment="Center"/>
+
+            <!-- Credentials -->
+            <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="User Access Token:" VerticalAlignment="Center"/>
+                <TextBox x:Name="AccessTokenTextBox" Width="300" PlaceholderText="Enter User Access Token"/>
+            </StackPanel>
+            <Button x:Name="InitAuthenticationButton" Content="Initialize Client & Agent" Click="InitAuthenticationButton_Click"/>
+
+            <!-- Call Setup -->
+            <TextBox x:Name="CalleeTextBox" PlaceholderText="Enter ACS User ID, Teams Meeting Link, Group Call ID, or Phone Number" Width="400" HorizontalAlignment="Stretch"/>
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                <Button x:Name="CallButton" Content="Start/Join Call" Click="CallButton_Click" IsEnabled="False"/>
+                <Button x:Name="HangupButton" Content="Hang Up" Click="HangupButton_Click" IsEnabled="False"/>
+            </StackPanel>
+
+             <!-- Device Selection -->
+            <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="Select Camera:" VerticalAlignment="Center"/>
+                <ComboBox x:Name="CameraComboBox" Width="250" PlaceholderText="No cameras found" IsEnabled="False" SelectionChanged="CameraComboBox_SelectionChanged"/>
+            </StackPanel>
+
+            <!-- Media Controls -->
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                <AppBarButton x:Name="VideoButton" Icon="Video" Label="Turn Video On" Click="VideoButton_Click" IsEnabled="False"/>
+                <AppBarButton x:Name="MicButton" Icon="Microphone" Label="Mute" Click="MicButton_Click" IsEnabled="False"/>
+                <AppBarButton x:Name="ScreenShareButton" Icon="ScreenCast" Label="Share Screen" Click="ScreenShareButton_Click" IsEnabled="False"/>
+                <AppBarButton x:Name="BlurButton" Icon="Effects" Label="Blur Background" Click="BlurButton_Click" IsEnabled="False"/>
+            </StackPanel>
+
+            <!-- Video Rendering -->
+            <Grid HorizontalAlignment="Stretch" Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Spacing="5" HorizontalAlignment="Center">
+                    <TextBlock Text="Local Video" HorizontalAlignment="Center"/>
+                    <Border BorderBrush="Gray" BorderThickness="1" Width="320" Height="240">
+                        <MediaPlayerElement x:Name="LocalVideo" AutoPlay="True"/>
+                        <!-- In C++/WinRT, we might use SwapChainPanel or MediaPlayerElement depending on SDK -->
+                    </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="5" HorizontalAlignment="Center">
+                     <TextBlock Text="Remote Video" HorizontalAlignment="Center"/>
+                     <Border BorderBrush="Gray" BorderThickness="1" Width="320" Height="240">
+                        <MediaPlayerElement x:Name="RemoteVideo" AutoPlay="True"/>
+                         <!-- Placeholder for remote video -->
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- Call Status -->
+            <TextBlock x:Name="StatusTextBlock" Text="Status: Idle" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
