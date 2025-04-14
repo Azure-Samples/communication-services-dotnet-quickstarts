@@ -141,23 +141,6 @@ namespace winrt::CallingCpp::implementation
         }
     }
 
-    fire_and_forget MainPage::CameraComboBox_SelectionChanged(IInspectable const&, SelectionChangedEventArgs const&)
-    {
-         auto strong_this{get_strong()};
-         int selectedIndex = CameraComboBox().SelectedIndex();
-         if (selectedIndex >= 0 && selectedIndex < m_stub_cameras.size())
-         {
-             // --- STUB ---
-             // 1. Get the selected stub_VideoDeviceInfo
-             // 2. Create a new stub_LocalVideoStream with this device info
-             // 3. If video is already on, potentially stop the old stream and start the new one
-             UpdateStatus(L"Status: Camera selected (Stub).");
-             // For now, just store it if needed, actual stream creation happens on video start
-             // m_selectedCamera = m_stub_cameras[selectedIndex];
-             VideoButton().IsEnabled(m_stub_call != nullptr); // Enable video button if in a call
-         }
-    }
-
     fire_and_forget MainPage::VideoButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
         auto strong_this{get_strong()};
