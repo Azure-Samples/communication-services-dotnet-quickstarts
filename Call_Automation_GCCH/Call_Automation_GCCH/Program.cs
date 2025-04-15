@@ -347,7 +347,7 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {recordingStateChanged.GetType()}");
             logger.LogInformation($"Recording State: {recordingStateChanged.State}");
         }
-        if (parsedEvent is DialogStarted { OperationContext: "DialogStart" } dialogStarted)
+        else if (parsedEvent is DialogStarted { OperationContext: "DialogStart" } dialogStarted)
         {
             logger.LogInformation($"Dialog started. DialogId: {dialogStarted.DialogId}, CallConnectionId: {dialogStarted.CallConnectionId}, CorrelationId: {dialogStarted.CorrelationId}");
             // Verify the start of dialog here
@@ -360,14 +360,14 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
         {
             logger.LogInformation($"Dialog transfer requested. DialogId: {dialogTransfer.DialogId}, TransferTarget: {dialogTransfer.TransferDestination}");
             var callDialog = GetConnection().GetCallDialog();
-             callDialog.StopDialogAsync(dialogTransfer.DialogId);
+            callDialog.StopDialogAsync(dialogTransfer.DialogId);
             GetConnection().TransferCallToParticipantAsync(new PhoneNumberIdentifier(dialogTransfer.TransferDestination));
         }
         else if (parsedEvent is DialogHangup dialogHangup)
         {
             logger.LogInformation($"Dialog hangup requested. DialogId: {dialogHangup.DialogId}");
             var callDialog = GetConnection().GetCallDialog();
-             callDialog.StopDialogAsync(dialogHangup.DialogId);
+            callDialog.StopDialogAsync(dialogHangup.DialogId);
             GetConnection().HangUpAsync(true); // Hang up the call for everyone
         }
         else if (parsedEvent is DialogConsent { OperationContext: "DialogStart" } dialogConsent)
