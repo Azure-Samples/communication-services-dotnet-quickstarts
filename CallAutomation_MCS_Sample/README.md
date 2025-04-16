@@ -3,22 +3,22 @@ page_type: sample
 languages:
 - csharp
 products:
-- open ai
+- azure-cognitive-services
 - azure-communication-services
 ---
 
-# ACS Call Automation and Azure OpenAI Service
+# ACS Call Automation and Azure Cognitive Services with Bot Integration
 
-This is a sample application demonstrated during Microsoft Ignite 2024. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
+This is a sample application that demonstrates the integration of **Azure Communication Services (ACS)** with **Azure Cognitive Services** and a bot using the **Direct Line API**. It enables real-time transcription of calls and interaction with a bot, with responses played back to the caller using SSML (Speech Synthesis Markup Language).
 
 ## Prerequisites
 
-- Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
-- Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
-- An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
-- Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
-- Azure OpenAI Resource: Set up an Azure OpenAI resource by following the instructions in [Create and deploy an Azure OpenAI Service resource.](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
-- Azure OpenAI Service Model: To use this sample, you must have the GPT-4o-Realtime-Preview model deployed. Follow the instructions at [GPT-4o Realtime API for speech and audio (Preview)](https://learn.microsoft.com/en-us/azure/ai-services/openai/realtime-audio-quickstart?tabs=keyless%2Cwindows&pivots=ai-foundry-portal) to set it up. 
+- **Azure Account**: Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/).
+- **Azure Communication Services Resource**: Create an ACS resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). Record your resource **connection string** for this sample.
+- **Calling-Enabled Phone Number**: Obtain a phone number. For details, see [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
+- **Azure Cognitive Services Resource**: Set up a Cognitive Services resource. For details, see [Create a Cognitive Services resource](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account).
+- **Bot Framework**: Create a bot and enable the **Direct Line channel**. Obtain the **Direct Line secret**.
+- **Azure Dev Tunnels CLI**: Install and configure Azure Dev Tunnels. For details, see [Enable dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows).
 
 ## Setup Instructions
 
@@ -35,13 +35,13 @@ devtunnel host
 ```
 
 ##### 2. Add the required API Keys and endpoints
-Open the appsettings.json file to configure the following settings:
+Update the following values in the `appsettings.json` file or `Program.cs`:
 
-    - `DevTunnelUri`: your dev tunnel endpoint
-    - `AcsConnectionString`: Azure Communication Service resource's connection string.
-    - `AzureOpenAIServiceKey`: Open AI's Service Key. Refer to prerequisites section.
-    - `AzureOpenAIServiceEndpoint`: OpenAI's service endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
-    - `AzureOpenAIDeploymentModelName`: Open AI's Model name. Refer to prerequisites section.
+- `AcsConnectionString`: The connection string for your Azure Communication Services resource.
+- `CognitiveServiceEndpoint`: The endpoint for your Azure Cognitive Services resource.
+- `AgentPhoneNumber`: The phone number associated with your ACS resource.
+- `DirectLineSecret`: The Direct Line secret for your bot.
+- `BaseUri`: The DevTunnel URI (e.g., `https://{DevTunnelUri}`).
 
 ## Running the application
 
