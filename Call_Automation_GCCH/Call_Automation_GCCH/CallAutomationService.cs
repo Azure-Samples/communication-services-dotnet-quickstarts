@@ -103,27 +103,38 @@ namespace Call_Automation_GCCH.Services
                 throw;
             }
         }
+
+        //Need Azure Cognitive services for this so in phase 2
+        //public List<RecognitionChoice> GetChoices()
+        //{
+        //    return new List<RecognitionChoice> {
+        //    new RecognitionChoice("Confirm", new List<string> {
+        //        "Confirm",
+        //        "First",
+        //        "One"
+        //    }) {
+        //        Tone = DtmfTone.One
+        //    },
+        //    new RecognitionChoice("Cancel", new List<string> {
+        //        "Cancel",
+        //        "Second",
+        //        "Two"
+        //    }) {
+        //        Tone = DtmfTone.Two
+        //    }
+        //};
+        //public List<RecognitionChoice> GetChoices() => new List<RecognitionChoice>
+        //        {
+        //            // Only DTMF tones, no speech phrases
+        //            new RecognitionChoice("Confirm", new List<string>()) { Tone = DtmfTone.One },
+        //            new RecognitionChoice("Cancel",  new List<string>()) { Tone = DtmfTone.Two }
+        //        };
+
     }
 }
 
 
 
-//List<RecognitionChoice> GetChoices()
-//{
-//    return new List<RecognitionChoice> {
-//            new RecognitionChoice("Confirm", new List<string> {
-//                "Confirm",
-//                "First",
-//                "One"
-//            }) {
-//                Tone = DtmfTone.One
-//            },
-//            new RecognitionChoice("Cancel", new List<string> {
-//                "Cancel",
-//                "Second",
-//                "Two"
-//            }) {
-//                Tone = DtmfTone.Two
-//            }
-//        };
-//}
+
+
+

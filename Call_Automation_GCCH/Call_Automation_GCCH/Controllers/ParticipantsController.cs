@@ -37,9 +37,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsParticipant">ACS participant ID</param>
         /// <returns>Operation result</returns>
         [HttpPost("addAcsParticipantAsync")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Add/Remove Participant APIs")]
         public async Task<IActionResult> AddAcsParticipantAsync(string callConnectionId, string acsParticipant)
         {
@@ -62,15 +59,16 @@ namespace Call_Automation_GCCH.Controllers
 
                 var result = await callConnection.AddParticipantAsync(addParticipantOptions);
                 var operationStatus = result.GetRawResponse().ToString();
+                var invitationId = result.Value.InvitationId;
 
-                string successMessage = $"Added ACS participant async. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                string successMessage = $"Added ACS participant async. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}, InvitationId: {invitationId}";
                 _logger.LogInformation(successMessage);
 
                 return Ok(new CallConnectionResponse
                 {
                     CallConnectionId = callConnectionId,
                     CorrelationId = correlationId,
-                    Status = operationStatus
+                    Status = $"{operationStatus}, InvitationId: {invitationId}"
                 });
             }
             catch (ArgumentNullException ex)
@@ -92,9 +90,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsParticipant">ACS participant ID</param>
         /// <returns>Operation result</returns>
         [HttpPost("addAcsParticipant")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Add/Remove Participant APIs")]
         public IActionResult AddAcsParticipant(string callConnectionId, string acsParticipant)
         {
@@ -117,15 +112,16 @@ namespace Call_Automation_GCCH.Controllers
 
                 var result = callConnection.AddParticipant(addParticipantOptions);
                 var operationStatus = result.GetRawResponse().ToString();
-
-                string successMessage = $"Added ACS participant. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                var invitationId = result.Value.InvitationId;
+                
+                string successMessage = $"Added ACS participant. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}, InvitationId: {invitationId}";
                 _logger.LogInformation(successMessage);
 
                 return Ok(new CallConnectionResponse
                 {
                     CallConnectionId = callConnectionId,
                     CorrelationId = correlationId,
-                    Status = operationStatus
+                    Status = $"{operationStatus}, InvitationId: {invitationId}"
                 });
             }
             catch (ArgumentNullException ex)
@@ -147,9 +143,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsTarget">ACS target ID to remove</param>
         /// <returns>Operation status</returns>
         [HttpPost("removeAcsParticipantAsync")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Add/Remove Participant APIs")]
         public async Task<IActionResult> RemoveAcsParticipantAsync(string callConnectionId, string acsTarget)
         {
@@ -200,9 +193,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsTarget">ACS target ID to remove</param>
         /// <returns>Operation status</returns>
         [HttpPost("removeAcsParticipant")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Add/Remove Participant APIs")]
         public IActionResult RemoveAcsParticipant(string callConnectionId, string acsTarget)
         {
@@ -253,9 +243,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="invitationId">Invitation ID to cancel</param>
         /// <returns>Operation result</returns>
         [HttpPost("cancelAddParticipantAsync")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Add/Remove Participant APIs")]
         public async Task<IActionResult> CancelAddParticipantAsync(string callConnectionId, string invitationId)
         {
@@ -307,9 +294,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="invitationId">Invitation ID to cancel</param>
         /// <returns>Operation result</returns>
         [HttpPost("cancelAddParticipant")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Add/Remove Participant APIs")]
         public IActionResult CancelAddParticipant(string callConnectionId, string invitationId)
         {
@@ -359,8 +343,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsTarget">ACS participant ID to retrieve</param>
         /// <returns>Participant information</returns>
         [HttpGet("getAcsParticipantAsync/{callConnectionId}/{acsTarget}")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Get Participant APIs")]
         public async Task<IActionResult> GetAcsParticipantAsync(string callConnectionId, string acsTarget)
         {
@@ -418,8 +400,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsTarget">ACS participant ID to retrieve</param>
         /// <returns>Participant information</returns>
         [HttpGet("getAcsParticipant/{callConnectionId}/{acsTarget}")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Get Participant APIs")]
         public IActionResult GetAcsParticipant(string callConnectionId, string acsTarget)
         {
@@ -476,8 +456,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">Call connection ID</param>
         /// <returns>List of participants</returns>
         [HttpGet("getParticipantListAsync/{callConnectionId}")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Get Participant APIs")]
         public async Task<IActionResult> GetParticipantListAsync(string callConnectionId)
         {
@@ -531,8 +509,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">Call connection ID</param>
         /// <returns>List of participants</returns>
         [HttpGet("getParticipantList/{callConnectionId}")]
-        [ProducesResponseType(typeof(object), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Get Participant APIs")]
         public IActionResult GetParticipantList(string callConnectionId)
         {
@@ -581,13 +557,10 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         [HttpPost("muteAcsParticipantAsync")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Mute Participant APIs")]
         public async Task<IActionResult> MuteAcsParticipantAsync(string callConnectionId, string acsTarget)
         {
-            string correlationId = Guid.NewGuid().ToString();
+            var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
             _logger.LogInformation($"Starting to mute ACS participant async: {acsTarget} for call {callConnectionId}, CorrelationId: {correlationId}");
             
             try
@@ -616,13 +589,10 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         [HttpPost("muteAcsParticipant")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Mute Participant APIs")]
         public IActionResult MuteAcsParticipant(string callConnectionId, string acsTarget)
         {
-            string correlationId = Guid.NewGuid().ToString();
+            var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
             _logger.LogInformation($"Starting to mute ACS participant: {acsTarget} for call {callConnectionId}, CorrelationId: {correlationId}");
             
             try
@@ -1038,8 +1008,6 @@ app.MapPost("/getPstnParticipant", (string callConnectionId, string pstnTarget, 
 ///// <param name="teamsObjectId">Teams user ID to retrieve</param>
 ///// <returns>Participant information</returns>
 //[HttpGet("getTeamsParticipantAsync/{callConnectionId}/{teamsObjectId}")]
-//[ProducesResponseType(typeof(object), 200)]
-//[ProducesResponseType(typeof(ProblemDetails), 500)]
 //[Tags("Get Participant APIs")]
 //public async Task<IActionResult> GetTeamsParticipantAsync(string callConnectionId, string teamsObjectId)
 //{
@@ -1097,8 +1065,6 @@ app.MapPost("/getPstnParticipant", (string callConnectionId, string pstnTarget, 
 ///// <param name="teamsObjectId">Teams user ID to retrieve</param>
 ///// <returns>Participant information</returns>
 //[HttpGet("getTeamsParticipant/{callConnectionId}/{teamsObjectId}")]
-//[ProducesResponseType(typeof(object), 200)]
-//[ProducesResponseType(typeof(ProblemDetails), 500)]
 //[Tags("Get Participant APIs")]
 //public IActionResult GetTeamsParticipant(string callConnectionId, string teamsObjectId)
 //{

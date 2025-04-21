@@ -144,13 +144,14 @@ namespace Call_Automation_GCCH.Controllers
             try
             {
                 CallConnection callConnection = _service.GetCallConnection(callConnectionId);
-                var disconnectStatus = await callConnection.HangUpAsync(isForEveryOne);
                 var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+                var disconnectStatus = await callConnection.HangUpAsync(isForEveryOne);
                 string successMessage = $"Call hung up successfully. CallConnectionId: {callConnectionId}, correlation id: {correlationId}, status: {disconnectStatus.Status.ToString()}";
                 _logger.LogInformation(successMessage);
                 return Ok(new CallConnectionResponse 
                 { 
                     CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
                     Status = disconnectStatus.Status.ToString()
                 });
             }
@@ -175,13 +176,14 @@ namespace Call_Automation_GCCH.Controllers
             try
             {
                 CallConnection callConnection = _service.GetCallConnection(callConnectionId);
-                var disconnectStatus = callConnection.HangUp(isForEveryOne);
                 var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+                var disconnectStatus = callConnection.HangUp(isForEveryOne);
                 string successMessage = $"Call hung up successfully. CallConnectionId: {callConnectionId}, correlation id: {correlationId}, status: {disconnectStatus.Status.ToString()}";
                 _logger.LogInformation(successMessage);
                 return Ok(new CallConnectionResponse 
                 { 
                     CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
                     Status = disconnectStatus.Status.ToString()
                 });
             }

@@ -41,9 +41,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsTarget">The ACS user identifier to play to</param>
         /// <returns>Play operation result</returns>
         [HttpPost("/playFileSourceAcsTargetAsync")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Play FileSource Media APIs")]
         public async Task<IActionResult> PlayFileSourceAcsTargetAsync(string callConnectionId, string acsTarget)
         {
@@ -106,9 +103,6 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="acsTarget">The ACS user identifier to play to</param>
         /// <returns>Play operation result</returns>
         [HttpPost("/playFileSourceToAcsTarget")]
-        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        [ProducesResponseType(typeof(ProblemDetails), 400)]
-        [ProducesResponseType(typeof(ProblemDetails), 500)]
         [Tags("Play FileSource Media APIs")]
         public IActionResult PlayFileSourceToAcsTarget(string callConnectionId, string acsTarget)
         {
@@ -771,9 +765,363 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         #endregion
-}
-}
+        #region DTMF
+        //SendDTMF is not supported for non-PSTN participants
+        //[HttpPost("/sendDTMFTonesAsync")]
+        //[Tags("Send or Start DTMF APIs")]
+        //public async Task<IActionResult> SendDTMFTonesAsync(string callConnectionId, string acsTarget)
+        //{
+        //    try
+        //    {
+        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
+        //        List<DtmfTone> tones = new List<DtmfTone>
+        //        {
+        //            DtmfTone.Zero,
+        //            DtmfTone.One
+        //        };
+
+        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+        //        // Get the correlationId from the call properties
+        //        var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+        //        var correlationId = callProperties.CorrelationId;
+        //        _logger.LogInformation($"Sending DTMF tones. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}, Tones: 0,1");
+        //        var response = await callMedia.SendDtmfTonesAsync(tones, target);
+        //        var status = response.GetRawResponse().Status;
+        //        string successMessage = $"DTMF tones sent successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}, Status: {status}";
+        //        LogCollector.Log(successMessage);
+        //        _logger.LogInformation(successMessage);
+
+        //        return Ok(new { CallConnectionId = callConnectionId,CorrelationId = correlationId, Status = status });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        string errorMessage = $"Error sending DTMF tones. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        //        LogCollector.Log(errorMessage);
+        //        _logger.LogInformation(errorMessage);
+
+        //        return Problem($"Failed to send DTMF tones: {ex.Message}");
+        //    }
+        //}
+
+        //[HttpPost("/sendDTMFTones")]
+        //[Tags("Send or Start DTMF APIs")]
+        //public IActionResult SendDTMFTones(string callConnectionId, string acsTarget)
+        //{
+        //    try
+        //    {
+        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+        //        List<DtmfTone> tones = new List<DtmfTone>
+        //        {
+        //            DtmfTone.Zero,
+        //            DtmfTone.One
+        //        };
+
+        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+        //        var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+        //        var correlationId = callProperties.CorrelationId;
+        //        _logger.LogInformation($"Sending DTMF tones. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}, Tones: 0,1");
+        //        var response = callMedia.SendDtmfTones(tones, target);
+        //        var status = response.GetRawResponse().Status.ToString();
+
+
+        //        string successMessage = $"DTMF tones sent successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {status}";
+        //        _logger.LogInformation(successMessage);
+
+        //        return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = status });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        string errorMessage = $"Error sending DTMF tones. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        //        _logger.LogInformation(errorMessage);
+
+        //        return Problem($"Failed to send DTMF tones: {ex.Message}");
+        //    }
+        //}
+
+        [HttpPost("/startContinuousDTMFTonesAsync")]
+        [Tags("Send or Start DTMF APIs")]
+        public async Task<IActionResult> StartContinuousDTMFTonesAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
+
+                _logger.LogInformation($"Starting continuous DTMF recognition. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                var response = await callMedia.StartContinuousDtmfRecognitionAsync(target);
+                var status = response.Status.ToString();
+
+                string successMessage = $"Continuous DTMF recognition started successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}, Status: {status}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = status });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting continuous DTMF recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogInformation(errorMessage);
+
+                return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
+            }
+        }
+
+        [HttpPost("/startContinuousDTMFTones")]
+        [Tags("Send or Start DTMF APIs")]
+        public IActionResult StartContinuousDTMFTones(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
+                _logger.LogInformation($"Starting continuous DTMF recognition. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                var response = callMedia.StartContinuousDtmfRecognition(target);
+                var status = response.Status.ToString();
+
+                string successMessage = $"Continuous DTMF recognition started successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {status}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = status });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting continuous DTMF recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogInformation(errorMessage);
+
+                return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
+            }
+        }
+
+        [HttpPost("/stopContinuousDTMFTonesAsync")]
+        [Tags("Send or Start DTMF APIs")]
+        public async Task<IActionResult> StopContinuousDTMFTonesAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
+                _logger.LogInformation($"Stopping continuous DTMF recognition. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                var response = await callMedia.StopContinuousDtmfRecognitionAsync(target);
+                var status = response.Status.ToString();
+
+                string successMessage = $"Continuous DTMF recognition stopped successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {status}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = status });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error stopping continuous DTMF recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogInformation(errorMessage);
+
+                return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
+            }
+        }
+
+        [HttpPost("/stopContinuousDTMFTones")]
+        [Tags("Send or Start DTMF APIs")]
+        public IActionResult StopContinuousDTMFTones(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
+                _logger.LogInformation($"Stopping continuous DTMF recognition. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                var response = callMedia.StopContinuousDtmfRecognition(target);
+                var status = response.Status.ToString();
+
+                string successMessage = $"Continuous DTMF recognition stopped successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {status}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = status });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error stopping continuous DTMF recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogInformation(errorMessage);
+
+                return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
+            }
+        }
+        #endregion
+        #region Recognize DTMF
+        [HttpPost("/recognizeDTMFAsync")]
+        [Tags("Start Recognization APIs")]
+        public async Task<IActionResult> RecognizeDTMFAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                // Build the file-based prompt
+                var fileUri = new Uri(_config.CallbackUriHost + "/audio/prompt.wav");
+                FileSource filePrompt = new FileSource(fileUri);
+
+                var target = new CommunicationUserIdentifier(acsTarget);
+
+                // Use FileSource as the prompt
+                var recognizeOptions = new CallMediaRecognizeDtmfOptions(targetParticipant: target, maxTonesToCollect: 4)
+                {
+                    Prompt = filePrompt,
+                    InterruptPrompt = false,
+                    InterToneTimeout = TimeSpan.FromSeconds(5),
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    StopTones = new[] { DtmfTone.Pound },
+                    OperationContext = "DtmfContext"
+                };
+
+                _logger.LogInformation($"Starting DTMF recognition. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Target: {acsTarget}");
+                var response = await callMedia.StartRecognizingAsync(recognizeOptions);
+                var status = response.GetRawResponse().Status.ToString();
+
+                _logger.LogInformation($"DTMF recognition started successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {status}");
+                return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = status });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error starting DTMF recognition. CallConnectionId: {callConnectionId}");
+                return Problem($"Failed to start DTMF recognition: {ex.Message}");
+            }
+        }
+
+
+        [HttpPost("/recognizeDTMF")]
+        [Tags("Start Recognization APIs")]
+        public IActionResult RecognizeDTMF(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+                var correlation = props.CorrelationId;
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var target = new CommunicationUserIdentifier(acsTarget);
+
+                var recognizeOptions = new CallMediaRecognizeDtmfOptions(
+                        targetParticipant: target,
+                        maxTonesToCollect: 4)
+                {
+                    Prompt = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav")),
+                    InterruptPrompt = false,
+                    InterToneTimeout = TimeSpan.FromSeconds(5),
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    StopTones = new[] { DtmfTone.Pound },
+                    OperationContext = "DtmfContext"
+                };
+
+                _logger.LogInformation($"Starting DTMF recognition. CallConnectionId={callConnectionId}, CorrelationId={correlation}, Target={acsTarget}");
+                var response = callMedia.StartRecognizing(recognizeOptions);
+                var status = response.GetRawResponse().Status.ToString();
+
+                _logger.LogInformation($"DTMF recognition started successfully. Status={status}");
+                return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlation, Status = status });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error starting DTMF recognition. CallConnectionId={callConnectionId}");
+                return Problem($"Failed to start DTMF recognition: {ex.Message}");
+            }
+        }
+
+        //Need Azure Cognitive services for this so in phase 2
+        //[HttpPost("/recognizeChoiceAsync")]
+        //[Tags("Start Recognization APIs")]
+        //public async Task<IActionResult> RecognizeChoiceAsync(string callConnectionId, string acsTarget)
+        //{
+        //    try
+        //    {
+        //        var props = _service.GetCallConnectionProperties(callConnectionId);
+        //        var correlation = props.CorrelationId;
+        //        var callMedia = _service.GetCallMedia(callConnectionId);
+        //        var target = new CommunicationUserIdentifier(acsTarget);
+
+        //        var recognizeOptions = new CallMediaRecognizeChoiceOptions(
+        //                targetParticipant: target,
+        //                _service.GetChoices())
+        //        {
+        //            Prompt = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav")),
+        //            InterruptPrompt = false,
+        //            InterruptCallMediaOperation = false,
+        //            InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+        //            OperationContext = "ChoiceContext"
+        //        };
+
+        //        _logger.LogInformation($"Starting choice recognition. CallConnectionId={callConnectionId}, CorrelationId={correlation}, Target={acsTarget}");
+        //        var response = await callMedia.StartRecognizingAsync(recognizeOptions);
+        //        var status = response.GetRawResponse().Status.ToString();
+
+        //        _logger.LogInformation($"Choice recognition started successfully. Status={status}");
+        //        return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlation, Status = status });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, $"Error starting choice recognition. CallConnectionId={callConnectionId}");
+        //        return Problem($"Failed to start choice recognition: {ex.Message}");
+        //    }
+        //}
+
+        //[HttpPost("/recognizeChoice")]
+        //[Tags("Start Recognization APIs")]
+        //public IActionResult RecognizeChoice(string callConnectionId, string acsTarget)
+        //{
+        //    try
+        //    {
+        //        var props = _service.GetCallConnectionProperties(callConnectionId);
+        //        var correlation = props.CorrelationId;
+        //        var callMedia = _service.GetCallMedia(callConnectionId);
+        //        var target = new CommunicationUserIdentifier(acsTarget);
+
+        //        var recognizeOptions = new CallMediaRecognizeChoiceOptions(
+        //                targetParticipant: target,
+        //                _service.GetChoices())
+        //        {
+        //            Prompt = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav")),
+        //            InterruptPrompt = false,
+        //            InterruptCallMediaOperation = false,
+        //            InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+        //            OperationContext = "ChoiceContext"
+        //        };
+
+        //        _logger.LogInformation($"Starting choice recognition. CallConnectionId={callConnectionId}, CorrelationId={correlation}, Target={acsTarget}");
+        //        var response = callMedia.StartRecognizing(recognizeOptions);
+        //        var status = response.GetRawResponse().Status.ToString();
+
+        //        _logger.LogInformation($"Choice recognition started successfully. Status={status}");
+        //        return Ok(new { CallConnectionId = callConnectionId, CorrelationId = correlation, Status = status });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, $"Error starting choice recognition. CallConnectionId={callConnectionId}");
+        //        return Problem($"Failed to start choice recognition: {ex.Message}");
+        //    }
+        //}
+        #endregion
+    }
+}
 
 #region Play Media with File Source
 
@@ -990,6 +1338,90 @@ app.MapPost("/recognizeDTMF", (string callConnectionId, string pstnTarget, ILogg
 }).WithTags("Start Recognization APIs");
 
 
+app.MapPost("/recognizeChoiceAsync", async (string callConnectionId, string pstnTarget, ILogger<Program> logger) =>
+{
+    try
+    {
+        CallMedia callMedia = GetCallMedia(callConnectionId);
+        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+        {
+            VoiceName = "en-US-NancyNeural"
+        };
+
+        var target = new PhoneNumberIdentifier(pstnTarget);
+
+
+        var recognizeOptions =
+            new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
+            {
+                InterruptCallMediaOperation = false,
+                InterruptPrompt = false,
+                InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+                Prompt = textSource,
+                OperationContext = "ChoiceContext"
+            };
+
+        logger.LogInformation($"Starting choice recognition. CallConnectionId: {callConnectionId}, Target: {pstnTarget}");
+        await callMedia.StartRecognizingAsync(recognizeOptions);
+        
+        string successMessage = $"Choice recognition started successfully. CallConnectionId: {callConnectionId}";
+        LogCollector.Log(successMessage);
+        logger.LogInformation(successMessage);
+        
+        return Results.Ok(new { CallConnectionId = callConnectionId, Status = "Succeeded" });
+    }
+    catch (Exception ex)
+    {
+        string errorMessage = $"Error starting choice recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        LogCollector.Log(errorMessage);
+        logger.LogInformation(errorMessage);
+        
+        return Results.Problem($"Failed to start choice recognition: {ex.Message}");
+    }
+}).WithTags("Start Recognization APIs");
+
+app.MapPost("/recognizeChoice", (string callConnectionId, string pstnTarget, ILogger<Program> logger) =>
+{
+    try
+    {
+        CallMedia callMedia = GetCallMedia(callConnectionId);
+        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+        {
+            VoiceName = "en-US-NancyNeural"
+        };
+
+        var target = new PhoneNumberIdentifier(pstnTarget);
+
+
+        var recognizeOptions =
+            new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
+            {
+                InterruptCallMediaOperation = false,
+                InterruptPrompt = false,
+                InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+                Prompt = textSource,
+                OperationContext = "ChoiceContext"
+            };
+
+        logger.LogInformation($"Starting choice recognition. CallConnectionId: {callConnectionId}, Target: {pstnTarget}");
+        callMedia.StartRecognizingAsync(recognizeOptions);
+        
+        string successMessage = $"Choice recognition started successfully. CallConnectionId: {callConnectionId}";
+        LogCollector.Log(successMessage);
+        logger.LogInformation(successMessage);
+        
+        return Results.Ok(new { CallConnectionId = callConnectionId, Status = "Succeeded" });
+    }
+    catch (Exception ex)
+    {
+        string errorMessage = $"Error starting choice recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        LogCollector.Log(errorMessage);
+        logger.LogInformation(errorMessage);
+        
+        return Results.Problem($"Failed to start choice recognition: {ex.Message}");
+    }
+}).WithTags("Start Recognization APIs");
+
 app.MapPost("/recognizeSpeechAsync", async (string callConnectionId, string pstnTarget, ILogger<Program> logger) =>
 {
     try
@@ -1154,89 +1586,6 @@ app.MapPost("/recognizeSpeechOrDtmf", (string callConnectionId, string pstnTarge
     }
 }).WithTags("Start Recognization APIs");
 
-app.MapPost("/recognizeChoiceAsync", async (string callConnectionId, string pstnTarget, ILogger<Program> logger) =>
-{
-    try
-    {
-        CallMedia callMedia = GetCallMedia(callConnectionId);
-        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        {
-            VoiceName = "en-US-NancyNeural"
-        };
-
-        var target = new PhoneNumberIdentifier(pstnTarget);
-
-
-        var recognizeOptions =
-            new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
-            {
-                InterruptCallMediaOperation = false,
-                InterruptPrompt = false,
-                InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-                Prompt = textSource,
-                OperationContext = "ChoiceContext"
-            };
-
-        logger.LogInformation($"Starting choice recognition. CallConnectionId: {callConnectionId}, Target: {pstnTarget}");
-        await callMedia.StartRecognizingAsync(recognizeOptions);
-        
-        string successMessage = $"Choice recognition started successfully. CallConnectionId: {callConnectionId}";
-        LogCollector.Log(successMessage);
-        logger.LogInformation(successMessage);
-        
-        return Results.Ok(new { CallConnectionId = callConnectionId, Status = "Succeeded" });
-    }
-    catch (Exception ex)
-    {
-        string errorMessage = $"Error starting choice recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        LogCollector.Log(errorMessage);
-        logger.LogInformation(errorMessage);
-        
-        return Results.Problem($"Failed to start choice recognition: {ex.Message}");
-    }
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeChoice", (string callConnectionId, string pstnTarget, ILogger<Program> logger) =>
-{
-    try
-    {
-        CallMedia callMedia = GetCallMedia(callConnectionId);
-        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        {
-            VoiceName = "en-US-NancyNeural"
-        };
-
-        var target = new PhoneNumberIdentifier(pstnTarget);
-
-
-        var recognizeOptions =
-            new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
-            {
-                InterruptCallMediaOperation = false,
-                InterruptPrompt = false,
-                InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-                Prompt = textSource,
-                OperationContext = "ChoiceContext"
-            };
-
-        logger.LogInformation($"Starting choice recognition. CallConnectionId: {callConnectionId}, Target: {pstnTarget}");
-        callMedia.StartRecognizingAsync(recognizeOptions);
-        
-        string successMessage = $"Choice recognition started successfully. CallConnectionId: {callConnectionId}";
-        LogCollector.Log(successMessage);
-        logger.LogInformation(successMessage);
-        
-        return Results.Ok(new { CallConnectionId = callConnectionId, Status = "Succeeded" });
-    }
-    catch (Exception ex)
-    {
-        string errorMessage = $"Error starting choice recognition. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        LogCollector.Log(errorMessage);
-        logger.LogInformation(errorMessage);
-        
-        return Results.Problem($"Failed to start choice recognition: {ex.Message}");
-    }
-}).WithTags("Start Recognization APIs");
 */
 #endregion
 #region DTMF
@@ -2207,7 +2556,7 @@ app.MapPost("/stopTranscriptionWithOptions", (ILogger<Program> logger) =>
 //}).WithTags("Play SsmlSource Media APIs");
 
 #endregion
-# region Media streaming
+#region Media streaming
 /*
 app.MapPost("/createCallToPstnWithMediaStreamingAsync", async (string targetPhoneNumber, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
 {
@@ -2367,4 +2716,3 @@ app.MapPost("/createCallToTeamsWithMediaStreaming", (string teamsObjectId, bool 
 }).WithTags("Media streaming APIs");
 */
 #endregion
-

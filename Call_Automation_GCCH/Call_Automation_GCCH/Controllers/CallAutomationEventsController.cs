@@ -207,19 +207,29 @@ namespace Call_Automation_GCCH.Controllers
                 {
                     case DtmfResult dtmfResult:
                         var tones = dtmfResult.Tones;
-                        _logger.LogInformation($"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, tones={tones}");
+                        // Join all the DTMF tones into a single string
+                        var toneList = string.Join(", ", tones.Select(t => t.ToString()));
+                        _logger.LogInformation(
+                            $"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, tones=[{toneList}]"
+                        );
                         break;
                     case ChoiceResult choiceResult:
                         var labelDetected = choiceResult.Label;
                         var phraseDetected = choiceResult.RecognizedPhrase;
-                        _logger.LogInformation($"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, labelDetected={labelDetected}, phraseDetected={phraseDetected}");
+                        _logger.LogInformation(
+                            $"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, labelDetected={labelDetected}, phraseDetected={phraseDetected}"
+                        );
                         break;
                     case SpeechResult speechResult:
                         var text = speechResult.Speech;
-                        _logger.LogInformation($"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, text={text}");
+                        _logger.LogInformation(
+                            $"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, text={text}"
+                        );
                         break;
                     default:
-                        _logger.LogInformation($"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, recognizeResult={recognizeCompleted.RecognizeResult}");
+                        _logger.LogInformation(
+                            $"Recognize completed successfully, CallConnectionId: {recognizeCompleted.CallConnectionId}, recognizeResult={recognizeCompleted.RecognizeResult}"
+                        );
                         break;
                 }
             }
