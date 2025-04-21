@@ -131,7 +131,8 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to create outbound ACS call: {ex.Message}");
             }
         }
-     /// <summary>
+        
+        /// <summary>
         /// Hangs up a call asynchronously
         /// </summary>
         /// <param name="callConnectionId">The call connection ID</param>
@@ -143,9 +144,9 @@ namespace Call_Automation_GCCH.Controllers
         {
             try
             {
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
                 CallConnection callConnection = _service.GetCallConnection(callConnectionId);
                 var disconnectStatus = await callConnection.HangUpAsync(isForEveryOne);
-                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
                 string successMessage = $"Call hung up successfully. CallConnectionId: {callConnectionId}, correlation id: {correlationId}, status: {disconnectStatus.Status.ToString()}";
                 _logger.LogInformation(successMessage);
                 return Ok(new CallConnectionResponse 
@@ -174,9 +175,9 @@ namespace Call_Automation_GCCH.Controllers
         {
             try
             {
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
                 CallConnection callConnection = _service.GetCallConnection(callConnectionId);
                 var disconnectStatus = callConnection.HangUp(isForEveryOne);
-                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
                 string successMessage = $"Call hung up successfully. CallConnectionId: {callConnectionId}, correlation id: {correlationId}, status: {disconnectStatus.Status.ToString()}";
                 _logger.LogInformation(successMessage);
                 return Ok(new CallConnectionResponse 
