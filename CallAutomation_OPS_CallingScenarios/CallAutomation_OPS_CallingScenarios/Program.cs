@@ -61,13 +61,13 @@ var transfereePhoneNumber = builder.Configuration.GetValue<string>("TransfereePh
 
 
 
-var PMAEndpoint = new Uri("https://uswe-04.sdf.pma.teams.microsoft.com:6448");
+var PMAEndpoint = new Uri("https://uswc-02.sdf.pma.teams.microsoft.com");
 
 MicrosoftTeamsAppIdentifier teamsAppIdentifier = new MicrosoftTeamsAppIdentifier(teamsAppId);
 
 //// Initialize the options with the MicrosoftTeamsAppIdentifier
 // Initialize the options with the MicrosoftTeamsAppIdentifier
-CallAutomationClientOptions callautomationclientoptions = new CallAutomationClientOptions(CallAutomationClientOptions.ServiceVersion.V2024_09_01_Preview)
+CallAutomationClientOptions callautomationclientoptions = new CallAutomationClientOptions(CallAutomationClientOptions.ServiceVersion.V2024_01_22_Preview)
 {
     //OPSSource = teamsAppIdentifier
 
@@ -117,12 +117,12 @@ app.MapPost("/api/incomingCall", async (
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
                 $"Callback url: {callbackUri}");
 
-            var websocketUri = callbackUriHost.Replace("https", "wss") + "ws";
-            logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
-                $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
+            //var websocketUri = callbackUriHost.Replace("https", "wss") + "ws";
+            //logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
+            //    $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
 
-            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-                "en-US", false, TranscriptionTransport.Websocket);
+            //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+            //    "en-US", false, TranscriptionTransport.Websocket);
            // var callerPhonenumber = incomingCallEventData.FromCommunicationIdentifier.PhoneNumber.Value;
 
             var answerCallOptions = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
@@ -132,8 +132,8 @@ app.MapPost("/api/incomingCall", async (
             };
 
             // Adding Custom SIP Headers (User-to-User and X-Headers)
-            answerCallOptions.CustomCallingContext.AddSipUui("OBOuuivalue"); // User-to-User header
-            answerCallOptions.CustomCallingContext.AddSipX("X-CustomHeader1", "HeaderValue1"); // X-header
+            //answerCallOptions.CustomCallingContext.AddSipUui("OBOuuivalue"); // User-to-User header
+            //answerCallOptions.CustomCallingContext.AddSipX("X-CustomHeader1", "HeaderValue1"); // X-header
 
 
             answerCallResult = await client.AnswerCallAsync(answerCallOptions);
@@ -148,118 +148,120 @@ app.MapPost("/api/incomingCall", async (
                     $"serverCallId: {answer_result.SuccessResult.ServerCallId}");
                 callConnectionId = answer_result.SuccessResult.CallConnectionId;
               
-                await Task.Delay(20000);
+              //  await Task.Delay(20000);
 
-               // await AddDualPersonaUserCCaaSAgentAsync();
+               await AddDualPersonaUserCCaaSAgentAsync();
 
-                 await AddTeamsUserAsCCaaSAgentAsync();
+               // await AddTeamsUserAsCCaaSAgentAsync();
                 // await MuteParticipantAsync(callConnectionId, callerId);
                 await Task.Delay(20000);
+                await TransferCallToTeamsUserOrgIdAsync();
+                //await AddTeamsUserByOrgIdAsync();
 
-                await AddTeamsUserByOrgIdAsync();
+                 await Task.Delay(20000);
 
-                await Task.Delay(20000);
+               //await RemoveTeamsUserByOrgIdAsync();
 
-                CommunicationIdentifier target = new PhoneNumberIdentifier("+18332638155");
-                await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target).ConfigureAwait(false);
-                await answerCallResult.CallConnection.MuteParticipantAsync(target).ConfigureAwait(false);
+                    //CommunicationIdentifier target = new PhoneNumberIdentifier("+18332638155");
+                    //await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target).ConfigureAwait(false);
+                    //await answerCallResult.CallConnection.MuteParticipantAsync(target).ConfigureAwait(false);
 
-                CommunicationIdentifier target1 = new MicrosoftTeamsUserIdentifier(teamsUserId);
-                await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target1).ConfigureAwait(false);
+                    //CommunicationIdentifier target1 = new MicrosoftTeamsUserIdentifier(teamsUserId);
+                    //await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target1).ConfigureAwait(false);
 
-                await Task.Delay(20000);
+                    //await Task.Delay(20000);
 
-                await client.GetCallConnection(callConnectionId).UnmuteParticipantAsync(target1).ConfigureAwait(false);
+                    //await client.GetCallConnection(callConnectionId).MuteParticipantAsync(target1).ConfigureAwait(false);
 
-                //   await Task.Delay(50000);
-                //  await PlayMediaAsync(true, false, false);
-                // await Task.Delay(50000);
-                //await Task.Delay(20000);
+                    //   await Task.Delay(50000);
+                    //  await PlayMediaAsync(true, false, false);
+                    // await Task.Delay(50000);
+                    //await Task.Delay(20000);
 
-                ///* Start the recording */
-                //CallLocator callLocator = new ServerCallLocator(answer_result.SuccessResult.ServerCallId);
-                //var recordingResult = await client.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
-                //recordingId = recordingResult.Value.RecordingId;
-                //logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+                    ///* Start the recording */
+                    //CallLocator callLocator = new ServerCallLocator(answer_result.SuccessResult.ServerCallId);
+                    //var recordingResult = await client.GetCallRecording().StartAsync(new StartRecordingOptions(callLocator));
+                    //recordingId = recordingResult.Value.RecordingId;
+                    //logger.LogInformation($"Recording started. RecordingId: {recordingId}");
 
-                //await Task.Delay(20000);
-                //await PlayMediaAsync(false, false, false);
+                    //await Task.Delay(20000);
+                    //await PlayMediaAsync(false, false, false);
 
-                //await Task.Delay(20000);
-                /* Start the recording */
+                    //await Task.Delay(20000);
+                    /* Start the recording */
 
-                //var recordingResult = await StartCallRecordingAsync(callConnectionId, callbackUri);
+                    //var recordingResult = await StartCallRecordingAsync(callConnectionId, callbackUri);
 
-                //recordingId = recordingResult.Value.RecordingId;
-                //logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+                    //recordingId = recordingResult.Value.RecordingId;
+                    //logger.LogInformation($"Recording started. RecordingId: {recordingId}");
 
-                // /* Start the Transcription */
-                // await InitiateTranscription(callConnectionMedia);
-                // logger.LogInformation("Transcription initiated.");
+                    // /* Start the Transcription */
+                    // await InitiateTranscription(callConnectionMedia);
+                    // logger.LogInformation("Transcription initiated.");
 
-                // await PauseOrStopTranscription(callConnectionMedia, logger);
+                    // await PauseOrStopTranscription(callConnectionMedia, logger);
 
-                // await Task.Delay(20000);
+                    // await Task.Delay(20000);
 
-                //await PauseOrStopRecording(callConnectionMedia, logger, false, recordingId);
+                    //await PauseOrStopRecording(callConnectionMedia, logger, false, recordingId);
 
-                // // Add CCaaS Agent(dual persona user)
-                //await AddDualPersonaUserCCaaSAgentAsync();
-                // //await Task.Delay(20000);
-                // //Add Teams User as CCaaS Agent
-                // await AddTeamsUserAsCCaaSAgentAsync();
-                // //await Task.Delay(20000);
-                // //Add Teams User (8:orgid)
-                // await AddTeamsUserByOrgIdAsync();
-                // //await Task.Delay(20000);
-                // // Add PSTN User(Teams User with Phone Number)
-                // await AddTeamsUserByOrgIdAsync();
-                // //await Task.Delay(20000);
-                // // Add PSTN User to call
-                // await AddPSTNUserToCallAsync();
-                // //await Task.Delay(20000);
-                // // Transfer call to Teams User(8:orgid)
-                // await TransferCallToTeamsUserOrgIdAsync();
-                // //await Task.Delay(20000);
-                // // Transfer call to PSTN User
-                // await TransferCallToPSTNUserAsync();
-                // //await Task.Delay(20000);
-                // // Add PSTN Participant
-                // await AddPSTNParticipantAsync();
-                // //await Task.Delay(20000);
-                // // Play media to Teams User
-                // await PlayMediaAsync(false, true, false);
-                // //await Task.Delay(20000);
-                // // Play media to PSTN User
-                // await PlayMediaAsync(false, false, false);
-                // //await Task.Delay(20000);
-                // // Play media to all
-                // await PlayMediaAsync(true, false, false);
-                // //await Task.Delay(20000);
-                // // Play media to all
-                // await PlayMediaAsync(true, true, false);
-                // //await Task.Delay(20000);
-                // // Pause Recording
-                // await PauseOrStopRecording(callConnectionMedia, logger, false, recordingId);
-                // //await Task.Delay(20000);
-                // // Resume Recording
-                // await ResumeRecording(callConnectionMedia, logger, recordingId);
-                //await Task.Delay(20000);
-                ///* Start the Transcription */
-                //await InitiateTranscription(callConnectionMedia);
-                //logger.LogInformation("Transcription initiated.");
+                    // // Add CCaaS Agent(dual persona user)
+                    //await AddDualPersonaUserCCaaSAgentAsync();
+                    // //await Task.Delay(20000);
+                    // //Add Teams User as CCaaS Agent
+                    // await AddTeamsUserAsCCaaSAgentAsync();
+                    // //await Task.Delay(20000);
+                    // //Add Teams User (8:orgid)
+                    // await AddTeamsUserByOrgIdAsync();
+                    // //await Task.Delay(20000);
+                    // // Add PSTN User(Teams User with Phone Number)
+                    // await AddTeamsUserByOrgIdAsync();
+                    // //await Task.Delay(20000);
+                    // // Add PSTN User to call
+                    // await AddPSTNUserToCallAsync();
+                    // //await Task.Delay(20000);
+                    // // Transfer call to Teams User(8:orgid)
+                    // await TransferCallToTeamsUserOrgIdAsync();
+                    // //await Task.Delay(20000);
+                    // // Transfer call to PSTN User
+                    // await TransferCallToPSTNUserAsync();
+                    // //await Task.Delay(20000);
+                    // // Add PSTN Participant
+                    // await AddPSTNParticipantAsync();
+                    // //await Task.Delay(20000);
+                    // // Play media to Teams User
+                    // await PlayMediaAsync(false, true, false);
+                    // //await Task.Delay(20000);
+                    // // Play media to PSTN User
+                    // await PlayMediaAsync(false, false, false);
+                    // //await Task.Delay(20000);
+                    // // Play media to all
+                    // await PlayMediaAsync(true, false, false);
+                    // //await Task.Delay(20000);
+                    // // Play media to all
+                    // await PlayMediaAsync(true, true, false);
+                    // //await Task.Delay(20000);
+                    // // Pause Recording
+                    // await PauseOrStopRecording(callConnectionMedia, logger, false, recordingId);
+                    // //await Task.Delay(20000);
+                    // // Resume Recording
+                    // await ResumeRecording(callConnectionMedia, logger, recordingId);
+                    //await Task.Delay(20000);
+                    ///* Start the Transcription */
+                    //await InitiateTranscription(callConnectionMedia);
+                    //logger.LogInformation("Transcription initiated.");
 
 
-                //await Task.Delay(20000);
-                //await PauseOrStopTranscription(callConnectionMedia, logger);
+                    //await Task.Delay(20000);
+                    //await PauseOrStopTranscription(callConnectionMedia, logger);
 
-                //await Task.Delay(20000);
-                //await ResumeTranscription(callConnectionMedia, logger);
+                    //await Task.Delay(20000);
+                    //await ResumeTranscription(callConnectionMedia, logger);
 
-                //await Task.Delay(20000);
-                //await PauseOrStopTranscription(callConnectionMedia, logger);
+                    //await Task.Delay(20000);
+                    //await PauseOrStopTranscription(callConnectionMedia, logger);
 
-            }
+                }
             client.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(
                answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
                {
@@ -290,7 +292,12 @@ app.MapPost("/api/incomingCall", async (
                {
                    logger.LogInformation($"Received call event: {addParticipantSucceededEvent.GetType()}, context: {addParticipantSucceededEvent.OperationContext}");
                });
-            client.GetEventProcessor().AttachOngoingEventProcessor<ParticipantsUpdated>(
+               client.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantSucceeded>(
+             answerCallResult.CallConnection.CallConnectionId, async (removeParticipantSucceededEvent) =>
+             {
+                 logger.LogInformation($"Received remove participant succeeded  event: {removeParticipantSucceededEvent.GetType()}, context: {removeParticipantSucceededEvent.OperationContext}");
+             });
+                client.GetEventProcessor().AttachOngoingEventProcessor<ParticipantsUpdated>(
               answerCallResult.CallConnection.CallConnectionId, async (participantsUpdatedEvent) =>
               {
                   logger.LogInformation($"Received call event: {participantsUpdatedEvent.GetType()}, participants: {participantsUpdatedEvent.Participants.Count()}, sequenceId: {participantsUpdatedEvent.SequenceNumber}");
@@ -307,8 +314,12 @@ app.MapPost("/api/incomingCall", async (
                   logger.LogInformation($"Received call event: {addParticipantFailedEvent.GetType()}, CorrelationId: {addParticipantFailedEvent.CorrelationId}, " +
                       $"subCode: {addParticipantFailedEvent.ResultInformation?.SubCode}, message: {addParticipantFailedEvent.ResultInformation?.Message}, context: {addParticipantFailedEvent.OperationContext}");
               });
-
-            client.GetEventProcessor().AttachOngoingEventProcessor<HoldFailed>(
+                client.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantFailed>(
+            answerCallResult.CallConnection.CallConnectionId, async (removeParticipantFailed) =>
+            {
+                logger.LogInformation($"Received remove participant failed  event: {removeParticipantFailed.GetType()}, context: {removeParticipantFailed.OperationContext}");
+            });
+                client.GetEventProcessor().AttachOngoingEventProcessor<HoldFailed>(
                answerCallResult.CallConnection.CallConnectionId, async (holdFailed) =>
                {
                    callConnectionId = holdFailed.CallConnectionId;
@@ -434,8 +445,15 @@ async Task AddTeamsUserAsCCaaSAgentAsync()
     var addParticipantResultTeams = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptionsTeams).ConfigureAwait(false);
     _logger.LogInformation($"Adding Teams user to the call: {addParticipantResultTeams.Value?.InvitationId}");
 }
-
-  async Task AddPSTNUserToCallAsync()
+async Task RemoveTeamsUserByOrgIdAsync()
+{
+    //// Remove  Teams user (8:orgid)
+    var teamsUser = new MicrosoftTeamsUserIdentifier(teamsUserId);
+    var re = new RemoveParticipantOptions(teamsUser);
+   var result= await answerCallResult.CallConnection.RemoveParticipantAsync(re).ConfigureAwait(false);
+    _logger.LogInformation($"Removing Teams user from the call: {result.Value}");
+}
+async Task AddPSTNUserToCallAsync()
 {
     // add Teams user (PSTN user number)
     var targetteamsUserPSTN = new PhoneNumberIdentifier(teamsUserPSTNNumber);

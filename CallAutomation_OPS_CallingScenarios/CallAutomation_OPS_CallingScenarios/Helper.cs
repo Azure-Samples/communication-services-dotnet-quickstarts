@@ -37,20 +37,20 @@ namespace CallAutomation_OPS_CallingScenarios
                         }
                         if (response is TranscriptionData transcriptionData)
                         {
-                            Console.WriteLine("***************************************************************************************");
-                            Console.WriteLine("TEXT-->" + transcriptionData.Text);
-                            Console.WriteLine("FORMAT-->" + transcriptionData.Format);
-                            Console.WriteLine("OFFSET-->" + transcriptionData.Offset.Ticks);
-                            Console.WriteLine("DURATION-->" + transcriptionData.Duration.Ticks);
-                            Console.WriteLine("PARTICIPANT-->" + transcriptionData.Participant.RawId);
-                            Console.WriteLine("CONFIDENCE-->" + transcriptionData.Confidence);
-                            Console.WriteLine("RESULT STATUS-->" + transcriptionData.ResultState);
-                            foreach (var word in transcriptionData.Words)
-                            {
-                                Console.WriteLine("WORDS TEXT-->" + word.Text);
-                                Console.WriteLine("WORDS OFFSET-->" + word.Offset.Ticks);
-                                Console.WriteLine("WORDS DURATION-->" + word.Duration.Ticks);
-                            }
+                            //Console.WriteLine("***************************************************************************************");
+                            //Console.WriteLine("TEXT-->" + transcriptionData.Text);
+                            //Console.WriteLine("FORMAT-->" + transcriptionData.Format);
+                            //Console.WriteLine("OFFSET-->" + transcriptionData.Offset.Ticks);
+                            //Console.WriteLine("DURATION-->" + transcriptionData.Duration.Ticks);
+                            //Console.WriteLine("PARTICIPANT-->" + transcriptionData.Participant.RawId);
+                            //Console.WriteLine("CONFIDENCE-->" + transcriptionData.Confidence);
+                            //Console.WriteLine("RESULT STATUS-->" + transcriptionData.ResultState);
+                            //foreach (var word in transcriptionData.Words)
+                            //{
+                            //    Console.WriteLine("WORDS TEXT-->" + word.Text);
+                            //    Console.WriteLine("WORDS OFFSET-->" + word.Offset.Ticks);
+                            //    Console.WriteLine("WORDS DURATION-->" + word.Duration.Ticks);
+                            //}
                             Console.WriteLine("***************************************************************************************");
                         }
 
