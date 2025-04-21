@@ -13,7 +13,7 @@ namespace Call_Automation_GCCH.Services
 
         public CallAutomationService(string connectionString, string pmaEndpoint, ILogger<CallAutomationService> logger)
         {
-            _client = new CallAutomationClient(/*new Uri(pmaEndpoint),*/ connectionString);
+            _client = new CallAutomationClient(new Uri(pmaEndpoint), connectionString);
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
