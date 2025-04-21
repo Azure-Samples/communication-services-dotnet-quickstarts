@@ -774,336 +774,335 @@ namespace Call_Automation_GCCH.Controllers
 
         #region DTMF
 
-        // Requires Cognitive services
-        ///// <summary>
-        ///// Send DTMF Tones to a specific ACS target asynchronously.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/sendDTMFTonesAsync")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("DTMF APIs")]
-        //public async Task<IActionResult> SendDTMFTonesAcsTargetAsync(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Send DTMF Tones to a specific ACS target asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/sendDTMFTonesAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Send or Start DTMF APIs")]
+        public async Task<IActionResult> SendDTMFTonesAcsTargetAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Send DTMF Tones to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Send DTMF Tones to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        List<DtmfTone> tones = new List<DtmfTone>
-        //        {
-        //            DtmfTone.Zero,
-        //            DtmfTone.One
-        //        };
+                List<DtmfTone> tones = new List<DtmfTone>
+                {
+                    DtmfTone.Zero,
+                    DtmfTone.One
+                };
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        //        await callMedia.SendDtmfTonesAsync(tones, target);
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                await callMedia.SendDtmfTonesAsync(tones, target);
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"DTMF tones sent successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"DTMF tones sent successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error sending DTMF Tones to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error sending DTMF Tones to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to send DTMF Tones: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to send DTMF Tones: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Send DTMF Tones to a specific ACS target.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/sendDTMFTones")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("DTMF APIs")]
-        //public IActionResult SendDTMFTonesAcsTarget(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Send DTMF Tones to a specific ACS target.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/sendDTMFTones")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Send or Start DTMF APIs")]
+        public IActionResult SendDTMFTonesAcsTarget(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Send DTMF Tones to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Send DTMF Tones to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        List<DtmfTone> tones = new List<DtmfTone>
-        //        {
-        //            DtmfTone.Zero,
-        //            DtmfTone.One
-        //        };
+                List<DtmfTone> tones = new List<DtmfTone>
+                {
+                    DtmfTone.Zero,
+                    DtmfTone.One
+                };
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        //        callMedia.SendDtmfTones(tones, target);
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                callMedia.SendDtmfTones(tones, target);
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"DTMF tones sent successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"DTMF tones sent successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error sending DTMF Tones to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error sending DTMF Tones to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to send DTMF Tones: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to send DTMF Tones: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Start continuous DTMF recognition to a specific ACS target asynchronously.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/startContinuousDTMFTonesAsync")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("DTMF APIs")]
-        //public async Task<IActionResult> StartContinuousDTMFTonesAcsTargetAsync(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Start continuous DTMF recognition to a specific ACS target asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/startContinuousDTMFTonesAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Send or Start DTMF APIs")]
+        public async Task<IActionResult> StartContinuousDTMFTonesAcsTargetAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Start continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Start continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        //        await callMedia.StartContinuousDtmfRecognitionAsync(target);
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                await callMedia.StartContinuousDtmfRecognitionAsync(target);
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Continuous DTMF recognition started successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Continuous DTMF recognition started successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error starting continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Start continuous DTMF recognition to a specific ACS target.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/startContinuousDTMFTones")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("DTMF APIs")]
-        //public IActionResult StartContinuousDTMFTonesAcsTarget(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Start continuous DTMF recognition to a specific ACS target.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/startContinuousDTMFTones")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Send or Start DTMF APIs")]
+        public IActionResult StartContinuousDTMFTonesAcsTarget(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Start continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Start continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        //        callMedia.StartContinuousDtmfRecognition(target);
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                callMedia.StartContinuousDtmfRecognition(target);
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Continuous DTMF recognition started successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Continuous DTMF recognition started successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error starting continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Stop continuous DTMF recognition to a specific ACS target asynchronously.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/stopContinuousDTMFTonesAsync")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("DTMF APIs")]
-        //public async Task<IActionResult> StopContinuousDTMFTonesAcsTargetAsync(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Stop continuous DTMF recognition to a specific ACS target asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/stopContinuousDTMFTonesAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Send or Start DTMF APIs")]
+        public async Task<IActionResult> StopContinuousDTMFTonesAcsTargetAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Stop continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Stop continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        //        await callMedia.StopContinuousDtmfRecognitionAsync(target);
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                await callMedia.StopContinuousDtmfRecognitionAsync(target);
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Continuous DTMF recognition stopped successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Continuous DTMF recognition stopped successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error stopping continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error stopping continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Stop continuous DTMF recognition to a specific ACS target.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/stopContinuousDTMFTones")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("DTMF APIs")]
-        //public IActionResult StopContinuousDTMFTonesAcsTarget(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Stop continuous DTMF recognition to a specific ACS target.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/stopContinuousDTMFTones")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Send or Start DTMF APIs")]
+        public IActionResult StopContinuousDTMFTonesAcsTarget(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Stop continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Stop continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        //        callMedia.StopContinuousDtmfRecognition(target);
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                callMedia.StopContinuousDtmfRecognition(target);
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Continuous DTMF recognition stopped successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Continuous DTMF recognition stopped successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error stopping continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error stopping continuous DTMF recognition to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
+            }
+        }
 
         #endregion
         #region Hold/Unhold
@@ -1119,7 +1118,7 @@ namespace Call_Automation_GCCH.Controllers
         [ProducesResponseType(typeof(CallConnectionResponse), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 400)]
         [ProducesResponseType(typeof(ProblemDetails), 500)]
-        [Tags("Hold UnHold APIs")]
+        [Tags("Hold Participant APIs")]
         public async Task<IActionResult> HoldAcsTargetAsync(string callConnectionId, string acsTarget, bool isPlaySource)
         {
             try
@@ -1140,13 +1139,13 @@ namespace Call_Automation_GCCH.Controllers
 
                 CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-                TextSource textSource = new TextSource("You are on hold please wait..")
-                {
-                    VoiceName = "en-US-NancyNeural"
-                };
-
                 if (isPlaySource)
                 {
+                    TextSource textSource = new TextSource("You are on hold please wait..")
+                    {
+                        VoiceName = "en-US-NancyNeural"
+                    };
+
                     HoldOptions holdOptions = new HoldOptions(target)
                     {
                         PlaySource = textSource,
@@ -1196,7 +1195,7 @@ namespace Call_Automation_GCCH.Controllers
         [ProducesResponseType(typeof(CallConnectionResponse), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 400)]
         [ProducesResponseType(typeof(ProblemDetails), 500)]
-        [Tags("Hold UnHold APIs")]
+        [Tags("Hold Participant APIs")]
         public IActionResult HoldAcsTarget(string callConnectionId, string acsTarget, bool isPlaySource)
         {
             try
@@ -1217,13 +1216,13 @@ namespace Call_Automation_GCCH.Controllers
 
                 CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-                TextSource textSource = new TextSource("You are on hold please wait..")
-                {
-                    VoiceName = "en-US-NancyNeural"
-                };
-
                 if (isPlaySource)
                 {
+                    TextSource textSource = new TextSource("You are on hold please wait..")
+                    {
+                        VoiceName = "en-US-NancyNeural"
+                    };
+
                     HoldOptions holdOptions = new HoldOptions(target)
                     {
                         PlaySource = textSource,
@@ -1263,7 +1262,7 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         /// <summary>
-        /// UnHold ACS target asynchronously.
+        /// Unhold ACS target asynchronously.
         /// </summary>
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="acsTarget">The ACS user identifier</param>
@@ -1273,7 +1272,7 @@ namespace Call_Automation_GCCH.Controllers
         [ProducesResponseType(typeof(CallConnectionResponse), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 400)]
         [ProducesResponseType(typeof(ProblemDetails), 500)]
-        [Tags("Hold UnHold APIs")]
+        [Tags("Hold Participant APIs")]
         public async Task<IActionResult> UnholdAcsTargetAsync(string callConnectionId, string acsTarget)
         {
             try
@@ -1333,7 +1332,7 @@ namespace Call_Automation_GCCH.Controllers
         [ProducesResponseType(typeof(CallConnectionResponse), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 400)]
         [ProducesResponseType(typeof(ProblemDetails), 500)]
-        [Tags("Hold UnHold APIs")]
+        [Tags("Hold Participant APIs")]
         public IActionResult UnholdAcsTarget(string callConnectionId, string acsTarget)
         {
             try
@@ -1393,7 +1392,7 @@ namespace Call_Automation_GCCH.Controllers
         //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
         //[ProducesResponseType(typeof(ProblemDetails), 400)]
         //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Hold UnHold APIs")]
+        //[Tags("Hold Participant APIs")]
         //public async Task<IActionResult> InterruptAudioAndAnnounceAsync(string callConnectionId, string acsTarget)
         //{
         //    try
@@ -1458,7 +1457,7 @@ namespace Call_Automation_GCCH.Controllers
         //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
         //[ProducesResponseType(typeof(ProblemDetails), 400)]
         //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Hold UnHold APIs")]
+        //[Tags("Hold Participant APIs")]
         //public IActionResult InterruptAudioAndAnnounce(string callConnectionId, string acsTarget)
         //{
         //    try
@@ -1523,7 +1522,7 @@ namespace Call_Automation_GCCH.Controllers
         //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
         //[ProducesResponseType(typeof(ProblemDetails), 400)]
         //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Hold UnHold APIs")]
+        //[Tags("Hold Participant APIs")]
         //public IActionResult InterruptHoldWithPlay(string callConnectionId, string acsTarget)
         //{
         //    try
@@ -1581,148 +1580,147 @@ namespace Call_Automation_GCCH.Controllers
         #endregion
         #region Recognization
 
-        // Requires Cognitive services
-        ///// <summary>
-        ///// Recognize DTMF asynchronously.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/recognizeDTMFAcsTargetAsync")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Recognization APIs")]
-        //public async Task<IActionResult> RecognizeDTMFAcsTargetAsync(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Recognize DTMF asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/recognizeDTMFAcsTargetAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Start Recognization APIs")]
+        public async Task<IActionResult> RecognizeDTMFAcsTargetAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        //        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        //        {
-        //            VoiceName = "en-US-NancyNeural"
-        //        };
+                TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
 
-        //        var recognizeOptions =
-        //                new CallMediaRecognizeDtmfOptions(
-        //                    targetParticipant: target, maxTonesToCollect: 4)
-        //                {
-        //                    InterruptPrompt = false,
-        //                    InterToneTimeout = TimeSpan.FromSeconds(5),
-        //                    OperationContext = "DtmfContext",
-        //                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-        //                    Prompt = textSource
-        //                };
+                var recognizeOptions =
+                    new CallMediaRecognizeDtmfOptions(
+                        targetParticipant: target, maxTonesToCollect: 4)
+                    {
+                        InterruptPrompt = false,
+                        InterToneTimeout = TimeSpan.FromSeconds(5),
+                        OperationContext = "DtmfContext",
+                        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                        Prompt = textSource
+                    };
 
-        //        await callMedia.StartRecognizingAsync(recognizeOptions);
+                await callMedia.StartRecognizingAsync(recognizeOptions);
 
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to start DTMF recognition: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to start DTMF recognition: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Recognize DTMF.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/recognizeDTMFAcsTarget")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Recognization APIs")]
-        //public IActionResult RecognizeDTMFAcsTarget(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Recognize DTMF.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/recognizeDTMFAcsTarget")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Start Recognization APIs")]
+        public IActionResult RecognizeDTMFAcsTarget(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        //        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        //        {
-        //            VoiceName = "en-US-NancyNeural"
-        //        };
+                TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
 
-        //        var recognizeOptions =
-        //                new CallMediaRecognizeDtmfOptions(
-        //                    targetParticipant: target, maxTonesToCollect: 4)
-        //                {
-        //                    InterruptPrompt = false,
-        //                    InterToneTimeout = TimeSpan.FromSeconds(5),
-        //                    OperationContext = "DtmfContext",
-        //                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-        //                    Prompt = textSource
-        //                };
+                var recognizeOptions =
+                    new CallMediaRecognizeDtmfOptions(
+                        targetParticipant: target, maxTonesToCollect: 4)
+                    {
+                        InterruptPrompt = false,
+                        InterToneTimeout = TimeSpan.FromSeconds(5),
+                        OperationContext = "DtmfContext",
+                        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                        Prompt = textSource
+                    };
 
-        //        callMedia.StartRecognizing(recognizeOptions);
+                callMedia.StartRecognizing(recognizeOptions);
 
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to start DTMF recognition: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to start DTMF recognition: {ex.Message}");
+            }
+        }
 
         #endregion
     }
