@@ -224,24 +224,7 @@ namespace Call_Automation_GCCH.Controllers
             }
         }
 
-        // This API is not valid
-        ///// <summary>
-        ///// Starts a recording with audio in MP3 format and unmixed channel asynchronously
-        ///// </summary>
-        //[HttpPost("startRecordingWithAudioMp3UnmixedAsync")]
-        //[Tags("Recording APIs")]
-        //public async Task<IActionResult> StartRecordingWithAudioMp3UnmixedAsync(
-        //    string callConnectionId, 
-        //    bool isRecordingWithCallConnectionId, 
-        //    bool isPauseOnStart)
-        //{
-        //    try
-        //    {
-        //        CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
-        //        var serverCallId = callConnectionProperties.ServerCallId;
-        //        var correlationId = callConnectionProperties.CorrelationId;
-        //        CallLocator callLocator = new ServerCallLocator(serverCallId);
-
+// No replacement lines; the commented-out code block is removed entirely.
         //        var recordingOptions = isRecordingWithCallConnectionId 
         //            ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) 
         //            : new StartRecordingOptions(callLocator);
