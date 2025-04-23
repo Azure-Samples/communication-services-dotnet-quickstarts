@@ -1,14 +1,13 @@
 ﻿using Azure.Communication.CallAutomation;
-using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
-namespace Call_Automation_GCCH.Middleware
+namespace Call_Automation_GCCH
 {
     public static class Helper
     {
-        public static async Task ProcessRequest(WebSocket webSocket, ILogger logger = null)
+        public static async Task ProcessRequest(WebSocket webSocket)
         {
             try
             {
@@ -26,54 +25,54 @@ namespace Call_Automation_GCCH.Middleware
                     {
                         if (response is AudioMetadata audioMetadata)
                         {
-                            logger?.LogInformation("***************************************************************************************");
-                            logger?.LogInformation("MEDIA SUBSCRIPTION ID-->" + audioMetadata.MediaSubscriptionId);
-                            logger?.LogInformation("ENCODING-->" + audioMetadata.Encoding);
-                            logger?.LogInformation("SAMPLE RATE-->" + audioMetadata.SampleRate);
-                            logger?.LogInformation("CHANNELS-->" + audioMetadata.Channels);
-                            logger?.LogInformation("LENGTH-->" + audioMetadata.Length);
-                            logger?.LogInformation("***************************************************************************************");
+                            LogCollector.Log("***************************************************************************************");
+                            LogCollector.Log("MEDIA SUBSCRIPTION ID-->" + audioMetadata.MediaSubscriptionId);
+                            LogCollector.Log("ENCODING-->" + audioMetadata.Encoding);
+                            LogCollector.Log("SAMPLE RATE-->" + audioMetadata.SampleRate);
+                            LogCollector.Log("CHANNELS-->" + audioMetadata.Channels);
+                            LogCollector.Log("LENGTH-->" + audioMetadata.Length);
+                            LogCollector.Log("***************************************************************************************");
                         }
                         if (response is AudioData audioData)
                         {
-                            logger?.LogInformation("***************************************************************************************");
-                            logger?.LogInformation("DATA-->" + JsonSerializer.Serialize(audioData.Data));
-                            logger?.LogInformation("TIMESTAMP-->" + audioData.Timestamp);
-                            logger?.LogInformation("IS SILENT-->" + audioData.IsSilent);
+                            LogCollector.Log("***************************************************************************************");
+                            LogCollector.Log("DATA-->" + JsonSerializer.Serialize(audioData.Data));
+                            LogCollector.Log("TIMESTAMP-->" + audioData.Timestamp);
+                            LogCollector.Log("IS SILENT-->" + audioData.IsSilent);
                             if (audioData.Participant != null && audioData.Participant.RawId != null)
                             {
-                                logger?.LogInformation("Participant Id-->" + audioData.Participant.RawId);
+                                LogCollector.Log("Participant Id-->" + audioData.Participant.RawId);
                             }
 
-                            logger?.LogInformation("***************************************************************************************");
+                            LogCollector.Log("***************************************************************************************");
                         }
 
                         if (response is TranscriptionMetadata transcriptionMetadata)
                         {
-                            logger?.LogInformation("***************************************************************************************");
-                            logger?.LogInformation("TRANSCRIPTION SUBSCRIPTION ID-->" + transcriptionMetadata.TranscriptionSubscriptionId);
-                            logger?.LogInformation("LOCALE-->" + transcriptionMetadata.Locale);
-                            logger?.LogInformation("CALL CONNECTION ID--?" + transcriptionMetadata.CallConnectionId);
-                            logger?.LogInformation("CORRELATION ID-->" + transcriptionMetadata.CorrelationId);
-                            logger?.LogInformation("***************************************************************************************");
+                            LogCollector.Log("***************************************************************************************");
+                            LogCollector.Log("TRANSCRIPTION SUBSCRIPTION ID-->" + transcriptionMetadata.TranscriptionSubscriptionId);
+                            LogCollector.Log("LOCALE-->" + transcriptionMetadata.Locale);
+                            LogCollector.Log("CALL CONNECTION ID--?" + transcriptionMetadata.CallConnectionId);
+                            LogCollector.Log("CORRELATION ID-->" + transcriptionMetadata.CorrelationId);
+                            LogCollector.Log("***************************************************************************************");
                         }
                         if (response is TranscriptionData transcriptionData)
                         {
-                            logger?.LogInformation("***************************************************************************************");
-                            logger?.LogInformation("TEXT-->" + transcriptionData.Text);
-                            logger?.LogInformation("FORMAT-->" + transcriptionData.Format);
-                            logger?.LogInformation("OFFSET-->" + transcriptionData.Offset);
-                            logger?.LogInformation("DURATION-->" + transcriptionData.Duration);
-                            logger?.LogInformation("PARTICIPANT-->" + transcriptionData.Participant.RawId);
-                            logger?.LogInformation("CONFIDENCE-->" + transcriptionData.Confidence);
-                            logger?.LogInformation("RESULT STATUS-->" + transcriptionData.ResultStatus);
+                            LogCollector.Log("***************************************************************************************");
+                            LogCollector.Log("TEXT-->" + transcriptionData.Text);
+                            LogCollector.Log("FORMAT-->" + transcriptionData.Format);
+                            LogCollector.Log("OFFSET-->" + transcriptionData.Offset);
+                            LogCollector.Log("DURATION-->" + transcriptionData.Duration);
+                            LogCollector.Log("PARTICIPANT-->" + transcriptionData.Participant.RawId);
+                            LogCollector.Log("CONFIDENCE-->" + transcriptionData.Confidence);
+                            LogCollector.Log("RESULT STATUS-->" + transcriptionData.ResultStatus);
                             foreach (var word in transcriptionData.Words)
                             {
-                                logger?.LogInformation("WORDS TEXT-->" + word.Text);
-                                logger?.LogInformation("WORDS OFFSET-->" + word.Offset);
-                                logger?.LogInformation("WORDS DURATION-->" + word.Duration);
+                                LogCollector.Log("WORDS TEXT-->" + word.Text);
+                                LogCollector.Log("WORDS OFFSET-->" + word.Offset);
+                                LogCollector.Log("WORDS DURATION-->" + word.Duration);
                             }
-                            logger?.LogInformation("***************************************************************************************");
+                            LogCollector.Log("***************************************************************************************");
                         }
                     }
 
@@ -91,7 +90,7 @@ namespace Call_Automation_GCCH.Middleware
             }
             catch (Exception ex)
             {
-                logger?.LogError($"Exception -> {ex}");
+                LogCollector.Log($"Exception -> {ex}");
             }
             finally
             {

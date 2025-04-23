@@ -1,63 +1,34 @@
-﻿using System;
-using System.Net.WebSockets;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Net.WebSockets;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace Call_Automation_GCCH.Middleware
 {
     public class WebSocketMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILogger<WebSocketMiddleware> _logger;
 
-        public WebSocketMiddleware(RequestDelegate next, ILogger<WebSocketMiddleware> logger)
+        public WebSocketMiddleware(RequestDelegate next)
         {
             _next = next;
-            _logger = logger;
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            try
+            if (context.Request.Path == "/ws" && context.WebSockets.IsWebSocketRequest)
             {
-                if (context.Request.Path == "/ws")
-                {
-                    if (context.WebSockets.IsWebSocketRequest)
-                    {
-                        try
-                        {
-                            using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                            await Helper.ProcessRequest(webSocket, _logger);
-                        }
-                        catch (Exception wsEx)
-                        {
-                            _logger.LogError(wsEx, "Error during WebSocket processing");
-                            if (!context.Response.HasStarted)
-                            {
-                                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    }
-                }
-                else
-                {
-                    await _next(context);
-                }
+                using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                await ProcessWebSocketRequest(webSocket);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError($"Error in WebSocketMiddleware: {ex.Message}");
-                if (!context.Response.HasStarted)
-                {
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                }
+                await _next(context);
             }
+        }
+
+        private async Task ProcessWebSocketRequest(WebSocket webSocket)
+        {
+            // Handle WebSocket communication
+            await Task.CompletedTask;
         }
     }
 }

@@ -152,6 +152,7 @@ namespace Call_Automation_GCCH.Controllers
                 return Ok(new CallConnectionResponse 
                 { 
                     CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
                     Status = disconnectStatus.Status.ToString()
                 });
             }
@@ -183,6 +184,7 @@ namespace Call_Automation_GCCH.Controllers
                 return Ok(new CallConnectionResponse 
                 { 
                     CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
                     Status = disconnectStatus.Status.ToString()
                 });
             }
