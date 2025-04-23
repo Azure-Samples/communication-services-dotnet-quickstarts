@@ -1186,201 +1186,200 @@ namespace Call_Automation_GCCH.Controllers
             }
         }
 
-        // Requires Cognitive services
-        ///// <summary>
-        ///// Interrupt audio and announce asynchronously.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/interruptAudioAndAnnounceAsync")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Hold Participant APIs")]
-        //public async Task<IActionResult> InterruptAudioAndAnnounceAsync(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Interrupt audio and announce asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/interruptAudioAndAnnounceAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public async Task<IActionResult> InterruptAudioAndAnnounceAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        //        TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
-        //        {
-        //            VoiceName = "en-US-NancyNeural"
-        //        };
+                TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
 
-        //        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(textSource, target)
-        //        {
-        //            OperationContext = "innterruptContext"
-        //        };
+                InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(textSource, target)
+                {
+                    OperationContext = "innterruptContext"
+                };
 
-        //        await callMedia.InterruptAudioAndAnnounceAsync(interruptAudio);
+                await callMedia.InterruptAudioAndAnnounceAsync(interruptAudio);
 
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to interrupt audio and announce: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to interrupt audio and announce: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Interrupt audio and announce.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/interruptAudioAndAnnounce")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Hold Participant APIs")]
-        //public IActionResult InterruptAudioAndAnnounce(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Interrupt audio and announce.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/interruptAudioAndAnnounce")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public IActionResult InterruptAudioAndAnnounce(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        //        TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
-        //        {
-        //            VoiceName = "en-US-NancyNeural"
-        //        };
+                TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
 
-        //        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(textSource, target)
-        //        {
-        //            OperationContext = "innterruptContext"
-        //        };
+                InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(textSource, target)
+                {
+                    OperationContext = "innterruptContext"
+                };
 
-        //        callMedia.InterruptAudioAndAnnounce(interruptAudio);
+                callMedia.InterruptAudioAndAnnounce(interruptAudio);
 
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to interrupt audio and announce: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to interrupt audio and announce: {ex.Message}");
+            }
+        }
 
-        ///// <summary>
-        ///// Interrupt hold with play.
-        ///// </summary>
-        ///// <param name="callConnectionId">The call connection ID</param>
-        ///// <param name="acsTarget">The ACS user identifier</param>
-        ///// <returns>status result</returns>
-        //[HttpPost("/interruptHoldWithPlay")]
-        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
-        //[ProducesResponseType(typeof(ProblemDetails), 400)]
-        //[ProducesResponseType(typeof(ProblemDetails), 500)]
-        //[Tags("Hold Participant APIs")]
-        //public IActionResult InterruptHoldWithPlay(string callConnectionId, string acsTarget)
-        //{
-        //    try
-        //    {
-        //        if (string.IsNullOrEmpty(callConnectionId))
-        //        {
-        //            return BadRequest("Call Connection ID is required");
-        //        }
+        /// <summary>
+        /// Interrupt hold with play.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/interruptHoldWithPlay")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public IActionResult InterruptHoldWithPlay(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        //        if (string.IsNullOrEmpty(acsTarget))
-        //        {
-        //            return BadRequest("ACS Target ID is required");
-        //        }
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        //        _logger.LogInformation($"Interrupt hold with play to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                _logger.LogInformation($"Interrupt hold with play to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        //        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        //        TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
-        //        {
-        //            VoiceName = "en-US-NancyNeural"
-        //        };
+                TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
 
-        //        List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-        //        PlayOptions playToOptions = new PlayOptions(textSource, playTo)
-        //        {
-        //            OperationContext = "playToContext",
-        //            InterruptHoldAudio = true
-        //        };
+                List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+                PlayOptions playToOptions = new PlayOptions(textSource, playTo)
+                {
+                    OperationContext = "playToContext",
+                    InterruptHoldAudio = true
+                };
 
-        //        callMedia.Play(playToOptions);
+                callMedia.Play(playToOptions);
 
-        //        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        //        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
 
-        //        string successMessage = $"Interrupt hold with play successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        //        _logger.LogInformation(successMessage);
+                string successMessage = $"Interrupt hold with play successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
 
-        //        return Ok(new CallConnectionResponse
-        //        {
-        //            CallConnectionId = callConnectionId,
-        //            CorrelationId = correlationId,
-        //            Status = callStatus
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string errorMessage = $"Error interrupting hold and play on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        //        _logger.LogError(errorMessage);
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error interrupting hold and play on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        //        return Problem($"Failed to interrupt hold and play: {ex.Message}");
-        //    }
-        //}
+                return Problem($"Failed to interrupt hold and play: {ex.Message}");
+            }
+        }
 
         #endregion
     }
