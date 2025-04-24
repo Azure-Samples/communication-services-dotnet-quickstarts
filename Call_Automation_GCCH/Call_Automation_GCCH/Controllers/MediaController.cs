@@ -803,10 +803,13 @@ namespace Call_Automation_GCCH.Controllers
 
         CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        {
-          VoiceName = "en-US-NancyNeural"
-        };
+        //TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+        //{
+        //  VoiceName = "en-US-NancyNeural"
+        //};
+
+        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
 
         var recognizeOptions =
             new CallMediaRecognizeDtmfOptions(
@@ -816,7 +819,7 @@ namespace Call_Automation_GCCH.Controllers
               InterToneTimeout = TimeSpan.FromSeconds(5),
               OperationContext = "DtmfContext",
               InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-              Prompt = textSource
+              Prompt = fileSource
             };
 
         await callMedia.StartRecognizingAsync(recognizeOptions);
@@ -874,10 +877,13 @@ namespace Call_Automation_GCCH.Controllers
 
         CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        {
-          VoiceName = "en-US-NancyNeural"
-        };
+        //TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+        //{
+        //  VoiceName = "en-US-NancyNeural"
+        //};
+
+        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
 
         var recognizeOptions =
             new CallMediaRecognizeDtmfOptions(
@@ -887,7 +893,7 @@ namespace Call_Automation_GCCH.Controllers
               InterToneTimeout = TimeSpan.FromSeconds(5),
               OperationContext = "DtmfContext",
               InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-              Prompt = textSource
+              Prompt = fileSource
             };
 
         callMedia.StartRecognizing(recognizeOptions);
@@ -951,14 +957,17 @@ namespace Call_Automation_GCCH.Controllers
 
         if (isPlaySource)
         {
-          TextSource textSource = new TextSource("You are on hold please wait..")
-          {
-            VoiceName = "en-US-NancyNeural"
-          };
+          //TextSource textSource = new TextSource("You are on hold please wait..")
+          //{
+          //  VoiceName = "en-US-NancyNeural"
+          //};
+
+          var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+          FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
 
           HoldOptions holdOptions = new HoldOptions(target)
           {
-            PlaySource = textSource,
+            PlaySource = fileSource,
             OperationContext = "holdUserContext"
           };
           await callMedia.HoldAsync(holdOptions);
@@ -1028,14 +1037,15 @@ namespace Call_Automation_GCCH.Controllers
 
         if (isPlaySource)
         {
-          TextSource textSource = new TextSource("You are on hold please wait..")
-          {
-            VoiceName = "en-US-NancyNeural"
-          };
-
+          //TextSource textSource = new TextSource("You are on hold please wait..")
+          //{
+          //  VoiceName = "en-US-NancyNeural"
+          //};
+          var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+          FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
           HoldOptions holdOptions = new HoldOptions(target)
           {
-            PlaySource = textSource,
+            PlaySource = fileSource,
             OperationContext = "holdUserContext"
           };
           callMedia.Hold(holdOptions);
@@ -1222,12 +1232,15 @@ namespace Call_Automation_GCCH.Controllers
 
         CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
-        {
-          VoiceName = "en-US-NancyNeural"
-        };
+        //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //{
+        //  VoiceName = "en-US-NancyNeural"
+        //};
 
-        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(textSource, target)
+        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(fileSource, target)
         {
           OperationContext = "innterruptContext"
         };
@@ -1287,12 +1300,15 @@ namespace Call_Automation_GCCH.Controllers
 
         CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
-        {
-          VoiceName = "en-US-NancyNeural"
-        };
+        //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //{
+        //  VoiceName = "en-US-NancyNeural"
+        //};
 
-        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(textSource, target)
+        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(fileSource, target)
         {
           OperationContext = "innterruptContext"
         };
@@ -1350,13 +1366,14 @@ namespace Call_Automation_GCCH.Controllers
 
         CallMedia callMedia = _service.GetCallMedia(callConnectionId);
 
-        TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
-        {
-          VoiceName = "en-US-NancyNeural"
-        };
-
+        //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //{
+        //  VoiceName = "en-US-NancyNeural"
+        //};
+        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
         List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-        PlayOptions playToOptions = new PlayOptions(textSource, playTo)
+        PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
         {
           OperationContext = "playToContext",
           InterruptHoldAudio = true
