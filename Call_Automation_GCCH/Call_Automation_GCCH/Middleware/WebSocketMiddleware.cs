@@ -1,10 +1,4 @@
-﻿using System.Net.WebSockets;
-using Azure.Communication.CallAutomation;
-using System.Text.Json;
-using System.Text;
-using Microsoft.AspNetCore.Http;
-
-namespace Call_Automation_GCCH.Middleware
+﻿namespace Call_Automation_GCCH.Middleware
 {
   public class WebSocketMiddleware
   {
