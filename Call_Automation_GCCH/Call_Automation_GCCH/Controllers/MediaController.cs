@@ -318,7 +318,6 @@ namespace Call_Automation_GCCH.Controllers
     [Tags("Media streaming APIs")]
     public async Task<IActionResult> CreateCallToAcsWithMediaStreamingAsync(
         string acsTarget,
-        MediaStreamingAudioChannel audioChannel,
         bool enableMediaStreaming = false,
         bool isEnableBidirectional = false,
         bool isPcm24kMono = false)
@@ -332,7 +331,7 @@ namespace Call_Automation_GCCH.Controllers
         MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
                     new Uri(websocketUri),
                     MediaStreamingContent.Audio,
-                    audioChannel,
+                    MediaStreamingAudioChannel.Mixed,
                     MediaStreamingTransport.Websocket,
                     enableMediaStreaming)
         {
