@@ -6,16 +6,26 @@ namespace Call_Automation_GCCH.Services
 {
   public class CallAutomationService
   {
-    private readonly CallAutomationClient _client;
-    private readonly ILogger<CallAutomationService> _logger;
+    private CallAutomationClient _client;
+    private ILogger<CallAutomationService> _logger;
     private static string? _recordingLocation;
     private static string _recordingFileFormat = "mp4";
+    private string _currentPmaEndpoint = string.Empty;
 
     public CallAutomationService(string connectionString, string pmaEndpoint, ILogger<CallAutomationService> logger)
     {
-      _client = new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: connectionString);
-     // _client = new CallAutomationClient(connectionString: connectionString);
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+      _currentPmaEndpoint = pmaEndpoint;
+      
+      if (!string.IsNullOrEmpty(pmaEndpoint))
+      {
+        _client = new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: connectionString);
+      }
+      else
+      {
+        _logger.LogWarning("PmaEndpoint is empty. Creating CallAutomationClient without PmaEndpoint parameter.");
+        _client = new CallAutomationClient(connectionString: connectionString);
+      }
     }
 
     /// <summary>
@@ -103,6 +113,33 @@ namespace Call_Automation_GCCH.Services
         _logger.LogError(errorMessage);
         throw;
       }
+    }
+
+    /// <summary>
+    /// Updates the CallAutomationClient with new connection settings
+    /// </summary>
+    /// <param name="connectionString">The ACS connection string</param>
+    /// <param name="pmaEndpoint">The PMA endpoint to use</param>
+    public void UpdateClient(string connectionString, string pmaEndpoint)
+    {
+      _logger = _logger ?? throw new InvalidOperationException("Logger is not initialized");
+      _currentPmaEndpoint = pmaEndpoint;
+      
+      if (!string.IsNullOrEmpty(pmaEndpoint))
+      {
+        _client = new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: connectionString);
+        _logger.LogInformation($"CallAutomationClient recreated with PMA endpoint: {pmaEndpoint}");
+      }
+      else
+      {
+        _logger.LogWarning("PmaEndpoint is empty. Creating CallAutomationClient without PmaEndpoint parameter.");
+        _client = new CallAutomationClient(connectionString: connectionString);
+      }
+    }
+
+    public string GetCurrentPmaEndpoint()
+    {
+      return _currentPmaEndpoint;
     }
 
     //Need Azure Cognitive services for this so in phase 2

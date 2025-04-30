@@ -22,7 +22,13 @@ builder.Services.AddSwaggerGen();
 // Add CallAutomationService as a singleton
 builder.Services.AddSingleton<CallAutomationService>(sp => {
     string connectionString = commSection["AcsConnectionString"];
-    string pmaEndpoint = commSection["PmaEndpoint"];
+    bool isArizona = bool.Parse(commSection["IsArizona"] ?? "true");
+    string pmaEndpoint = isArizona ? commSection["PmaEndpointArizona"] : commSection["PmaEndpointTexas"];
+    
+    if (string.IsNullOrEmpty(pmaEndpoint)) {
+        sp.GetRequiredService<ILogger<Program>>().LogWarning($"The {(isArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
+    }
+    
     return new CallAutomationService(connectionString, pmaEndpoint, sp.GetRequiredService<ILogger<CallAutomationService>>());
 });
 
