@@ -166,7 +166,68 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Error processing callbacks: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Updates the IsArizona configuration and switches PMA endpoint accordingly
+        /// </summary>
+        /// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
+        /// <returns>Action result indicating success or error</returns>
+        [HttpPost("/setRegion")]
+        [Tags("Region Configuration")]
+        public IActionResult SetRegion(bool isArizona)
+        {
+            try
+            {
+                _logger.LogInformation($"Changing region configuration. IsArizona: {isArizona}");
 
+                // Get the current configuration section
+                var configSection = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("CommunicationSettings");
+
+                // Get the current endpoint being used to determine if an update is needed
+                string currentEndpoint = _service.GetCurrentPmaEndpoint() ?? string.Empty;
+                string newEndpoint = isArizona
+                    ? configSection["PmaEndpointArizona"] ?? string.Empty
+                    : configSection["PmaEndpointTexas"] ?? string.Empty;
+
+                // Check if new endpoint is empty
+                if (string.IsNullOrEmpty(newEndpoint))
+                {
+                    _logger.LogWarning($"The {(isArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
+                }
+
+                // Only update if the endpoint would actually change
+                if (currentEndpoint == newEndpoint)
+                {
+                    if (string.IsNullOrEmpty(currentEndpoint))
+                    {
+                        return Ok($"Configuration unchanged as the endpoints are empty");
+                    }
+                    else
+                    {
+                        return Ok($"Configuration unchanged. Already using {(isArizona ? "Arizona" : "Texas")} region.");
+                    }
+                }
+
+                // Update the IsArizona setting in memory
+                ((IConfigurationSection)configSection.GetSection("IsArizona")).Value = isArizona.ToString();
+
+                // Update the client with the new endpoint
+                var connectionString = configSection["AcsConnectionString"] ?? string.Empty;
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    _logger.LogError("AcsConnectionString is empty");
+                    return Problem("AcsConnectionString is empty");
+                }
+
+                _service.UpdateClient(connectionString, newEndpoint);
+
+                return Ok($"Region updated successfully to {(isArizona ? "Arizona" : "Texas")}.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error updating region configuration: {ex.Message}");
+                return Problem($"Failed to update region configuration: {ex.Message}");
+            }
+        }
         /// <summary>
         /// Processes individual call automation events
         /// </summary>
@@ -380,74 +441,6 @@ namespace Call_Automation_GCCH.Controllers
                 _logger.LogInformation($"Received call event: {recordingStateChanged.GetType()}, CallConnectionId: {recordingStateChanged.CallConnectionId}, CorrelationId: {recordingStateChanged.CorrelationId}");
                 _logger.LogInformation($"Recording State: {recordingStateChanged.State}");
             }
-        }
-
-        /// <summary>
-        /// Updates the IsArizona configuration and switches PMA endpoint accordingly
-        /// </summary>
-        /// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
-        /// <returns>Action result indicating success or error</returns>
-        [HttpPost("setRegion")]
-        public IActionResult SetRegion([FromBody] RegionConfigRequest request)
-        {
-            try
-            {
-                _logger.LogInformation($"Changing region configuration. IsArizona: {request.IsArizona}");
-                
-                // Get the current configuration section
-                var configSection = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("CommunicationSettings");
-                
-                // Get the current endpoint being used to determine if an update is needed
-                string currentEndpoint = _service.GetCurrentPmaEndpoint() ?? string.Empty;
-                string newEndpoint = request.IsArizona 
-                    ? configSection["PmaEndpointArizona"] ?? string.Empty
-                    : configSection["PmaEndpointTexas"] ?? string.Empty;
-                
-                // Check if new endpoint is empty
-                if (string.IsNullOrEmpty(newEndpoint))
-                {
-                    _logger.LogWarning($"The {(request.IsArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
-                }
-                    
-                // Only update if the endpoint would actually change
-                if (currentEndpoint == newEndpoint)
-                {
-                    if(string.IsNullOrEmpty(currentEndpoint))
-                    {
-                        return Ok($"Configuration unchanged as the endpoints are empty");
-                    }
-                    else
-                    {
-                        return Ok($"Configuration unchanged. Already using {(request.IsArizona ? "Arizona" : "Texas")} region.");
-                    }
-                }
-                
-                // Update the IsArizona setting in memory
-                ((IConfigurationSection)configSection.GetSection("IsArizona")).Value = request.IsArizona.ToString();
-                
-                // Update the client with the new endpoint
-                var connectionString = configSection["AcsConnectionString"] ?? string.Empty;
-                if (string.IsNullOrEmpty(connectionString))
-                {
-                    _logger.LogError("AcsConnectionString is empty");
-                    return Problem("AcsConnectionString is empty");
-                }
-                
-                _service.UpdateClient(connectionString, newEndpoint);
-                
-                return Ok($"Region updated successfully to {(request.IsArizona ? "Arizona" : "Texas")}.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error updating region configuration: {ex.Message}");
-                return Problem($"Failed to update region configuration: {ex.Message}");
-            }
-        }
-
-        // Request model for setting the region
-        public class RegionConfigRequest
-        {
-            public bool IsArizona { get; set; }
         }
     }
 }
