@@ -442,6 +442,172 @@ namespace Call_Automation_GCCH.Controllers
                 _logger.LogInformation($"Recording State: {recordingStateChanged.State}");
             }
         }
+
+        #region Incoming Call with Media Streaming
+
+        /// <summary>
+        /// Handles incoming calls with media streaming using query parameters to configure options
+        /// </summary>
+        /// <remarks>
+        /// ## URL Template for Azure Communication Services Configuration
+        /// 
+        /// ```
+        /// https://your-domain.com/api/events/incomingcall?audioChannelMixed=true&amp;audioFormat16k=true&amp;mediaStreaming=true&amp;bidirectionalStreaming=true
+        /// ```
+        /// 
+        /// Simply copy this URL and change the true/false values as needed for your specific configuration.
+        /// </remarks>
+        /// <param name="eventGridEvents">The array of EventGrid events</param>
+        /// <param name="audioChannelMixed">If true, use Mixed audio channel; if false, use Unmixed</param>
+        /// <param name="audioFormat16k">If true, use 16kHz format; if false, use 24kHz</param>
+        /// <param name="mediaStreaming">If true, enable media streaming; if false, disable</param>
+        /// <param name="bidirectionalStreaming">If true, enable bidirectional streaming; if false, disable</param>
+        /// <returns>Action result indicating success or error</returns>
+        [HttpPost("events/incomingcall")]
+        [Tags("Incoming Call with Media Streaming Options")]
+        public async Task<IActionResult> HandleIncomingCallWithOptions(
+            [FromBody] EventGridEvent[] eventGridEvents,
+            [FromQuery] bool audioChannelMixed = true,
+            [FromQuery] bool audioFormat16k = true,
+            [FromQuery] bool mediaStreaming = true,
+            [FromQuery] bool bidirectionalStreaming = true)
+        {
+            MediaStreamingAudioChannel audioChannel = audioChannelMixed 
+                ? MediaStreamingAudioChannel.Mixed 
+                : MediaStreamingAudioChannel.Unmixed;
+            
+            bool isPcm24kHz = !audioFormat16k;
+
+            return await HandleIncomingCallWithMediaStreaming(
+                eventGridEvents,
+                audioChannel,
+                mediaStreaming,
+                isPcm24kHz,
+                bidirectionalStreaming);
+        }
+
+        /// <summary>
+        /// Generic handler for incoming calls with specific media streaming configurations
+        /// </summary>
+        private async Task<IActionResult> HandleIncomingCallWithMediaStreaming(
+            EventGridEvent[] eventGridEvents,
+            MediaStreamingAudioChannel audioChannel,
+            bool enableMediaStreaming,
+            bool isPcm24kHz,
+            bool enableBidirectional)
+        {
+            try
+            {
+                _logger.LogInformation($"Received {eventGridEvents.Length} event(s) for incoming call with media streaming");
+                foreach (var eventGridEvent in eventGridEvents)
+                {
+                    try
+                    {
+                        _logger.LogInformation($"Processing event: {eventGridEvent.EventType}, Id: {eventGridEvent.Id}");
+
+                        if (eventGridEvent.TryGetSystemEventData(out object eventData))
+                        {
+                            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+                            {
+                                _logger.LogInformation($"Subscription validation event received with code: {subscriptionValidationEventData.ValidationCode}");
+
+                                var responseData = new SubscriptionValidationResponse
+                                {
+                                    ValidationResponse = subscriptionValidationEventData.ValidationCode
+                                };
+                                return Ok(responseData);
+                            }
+                            if (eventData is AcsIncomingCallEventData incomingCallEventData)
+                            {
+                                try
+                                {
+                                    var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
+                                    _logger.LogInformation($"Incoming call from caller ID: {callerId}, CorrelationId: {incomingCallEventData.CorrelationId}");
+
+                                    var callbackUri = new Uri(new Uri(_config.CallbackUriHost), $"/api/callbacks");
+                                    var websocketUri = new Uri(_config.CallbackUriHost.Replace("https", "wss") + "/ws");
+                                    
+                                    _logger.LogInformation($"Incoming call with media streaming - correlationId: {incomingCallEventData.CorrelationId}, " +
+                                        $"AudioChannel: {audioChannel}, EnableMediaStreaming: {enableMediaStreaming}, " +
+                                        $"IsPcm24kHz: {isPcm24kHz}, EnableBidirectional: {enableBidirectional}");
+
+                                    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+                                        websocketUri,
+                                        MediaStreamingContent.Audio,
+                                        audioChannel,
+                                        MediaStreamingTransport.Websocket,
+                                        enableMediaStreaming)
+                                    {
+                                        EnableBidirectional = enableBidirectional,
+                                        AudioFormat = isPcm24kHz ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
+                                    };
+
+                                    var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
+                                    {
+                                        MediaStreamingOptions = mediaStreamingOptions
+                                        // ACS GCCH Phase 2
+                                        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
+                                    };
+
+                                    _logger.LogInformation($"Answering call with correlationId: {incomingCallEventData.CorrelationId} and media streaming options " +
+                                        $"(AudioChannel: {(audioChannel == MediaStreamingAudioChannel.Mixed ? "Mixed" : "Unmixed")}, " +
+                                        $"Format: {(isPcm24kHz ? "24kHz" : "16kHz")}, " +
+                                        $"Streaming: {(enableMediaStreaming ? "Enabled" : "Disabled")}, " +
+                                        $"Bidirectional: {(enableBidirectional ? "Enabled" : "Disabled")})");
+
+                                    AnswerCallResult answerCallResult = await _service.GetCallAutomationClient().AnswerCallAsync(options);
+                                    var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+
+                                    _logger.LogInformation($"Call answered successfully with media streaming. CallConnectionId: {answerCallResult.CallConnection.CallConnectionId}");
+
+                                    // Start media streaming if enabled
+                                    if (enableMediaStreaming)
+                                    {
+                                        try
+                                        {
+                                            await callConnectionMedia.StartMediaStreamingAsync();
+                                            _logger.LogInformation($"Media streaming started for CallConnectionId: {answerCallResult.CallConnection.CallConnectionId}");
+                                        }
+                                        catch (Exception streamingEx)
+                                        {
+                                            _logger.LogError($"Error starting media streaming: {streamingEx.Message}");
+                                        }
+                                    }
+                                }
+                                catch (Exception callEx)
+                                {
+                                    _logger.LogError($"Error handling incoming call with media streaming: {callEx.Message}");
+                                }
+                            }
+                            if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+                            {
+                                try
+                                {
+                                    CallAutomationService.SetRecordingLocation(statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation);
+                                    _logger.LogInformation($"The recording location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation}");
+                                }
+                                catch (Exception recordingEx)
+                                {
+                                    _logger.LogError($"Error handling recording status: {recordingEx.Message}");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception eventEx)
+                    {
+                        _logger.LogError($"Error processing event: {eventEx.Message}");
+                    }
+                }
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in handling incoming call with media streaming: {ex.Message}");
+                return Problem($"Error processing events: {ex.Message}");
+            }
+        }
+
+        #endregion
     }
 }
 
