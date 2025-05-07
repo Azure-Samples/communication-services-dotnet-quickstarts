@@ -131,7 +131,91 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to create outbound ACS call: {ex.Message}");
             }
         }
-        
+        /// <summary>
+        /// Transfers a call to an ACS participant asynchronously
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTransferTarget">The ACS user identifier to transfer to</param>
+        /// <param name="acsTarget">The ACS target identifier</param>
+        /// <returns>Call connection status</returns>
+        [HttpPost("/transferCallToAcsParticipantAsync")]
+        [Tags("Transfer Call APIs")]
+        public async Task<IActionResult> TransferCallToAcsParticipantAsync(string callConnectionId, string acsTransferTarget, string acsTarget)
+        {
+            try
+            {
+                _logger.LogInformation($"Starting async call transfer to ACS user: {acsTransferTarget} for call {callConnectionId}");
+
+                CallConnection callConnection = _service.GetCallConnection(callConnectionId);
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+                TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new CommunicationUserIdentifier(acsTransferTarget))
+                {
+                    OperationContext = "TransferCallContext",
+                    Transferee = new CommunicationUserIdentifier(acsTarget),
+                };
+
+                var transferResult = await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
+                var status = transferResult.GetRawResponse().Status.ToString();
+
+                _logger.LogInformation($"Call transferred successfully. CallConnectionId: {callConnectionId}, correlation id: {correlationId}, status: {status}");
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = status
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error transferring call: {ex.Message}. CallConnectionId: {callConnectionId}");
+                return Problem($"Failed to transfer call: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Transfers a call to an ACS participant synchronously
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTransferTarget">The ACS user identifier to transfer to</param>
+        /// <param name="acsTarget">The ACS target identifier</param>
+        /// <returns>Call connection status</returns>
+        [HttpPost("/transferCallToAcsParticipant")]
+        [Tags("Transfer Call APIs")]
+        public IActionResult TransferCallToAcsParticipant(string callConnectionId, string acsTransferTarget, string acsTarget)
+        {
+            try
+            {
+                _logger.LogInformation($"Starting call transfer to ACS user: {acsTransferTarget} for call {callConnectionId}");
+
+                CallConnection callConnection = _service.GetCallConnection(callConnectionId);
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+                TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new CommunicationUserIdentifier(acsTransferTarget))
+                {
+                    OperationContext = "TransferCallContext",
+                    Transferee = new CommunicationUserIdentifier(acsTarget),
+                };
+
+                var transferResult = callConnection.TransferCallToParticipant(transferToParticipantOptions);
+                var status = transferResult.GetRawResponse().Status.ToString();
+
+                _logger.LogInformation($"Call transferred successfully. CallConnectionId: {callConnectionId}, correlation id: {correlationId}, status: {status}");
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = status
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error transferring call: {ex.Message}. CallConnectionId: {callConnectionId}");
+                return Problem($"Failed to transfer call: {ex.Message}");
+            }
+        }
         /// <summary>
         /// Hangs up a call asynchronously
         /// </summary>
