@@ -441,6 +441,37 @@ namespace Call_Automation_GCCH.Controllers
                 _logger.LogInformation($"Received call event: {recordingStateChanged.GetType()}, CallConnectionId: {recordingStateChanged.CallConnectionId}, CorrelationId: {recordingStateChanged.CorrelationId}");
                 _logger.LogInformation($"Recording State: {recordingStateChanged.State}");
             }
+            else if (parsedEvent is DialogStarted dialogStarted)
+            {
+                _logger.LogInformation($"Received call event: {dialogStarted.GetType()}, CallConnectionId: {dialogStarted.CallConnectionId}, CorrelationId: {dialogStarted.CorrelationId}");
+                _logger.LogInformation($"Dialog Id: {dialogStarted.DialogId}");
+
+            }
+            else if (parsedEvent is DialogTransfer dialogTransfer)
+            {
+                _logger.LogInformation($"Received call event: {dialogTransfer.GetType()}, CallConnectionId: {dialogTransfer.CallConnectionId}, CorrelationId: {dialogTransfer.CorrelationId}");
+                _logger.LogInformation($"Dialog Id: {dialogTransfer.DialogId}");
+            }
+            else if (parsedEvent is DialogHangup dialogHangup)
+            {
+                _logger.LogInformation($"Received call event: {dialogHangup.GetType()}, CallConnectionId: {dialogHangup.CallConnectionId}, CorrelationId: {dialogHangup.CorrelationId}");
+                _logger.LogInformation($"Dialog Id: {dialogHangup.DialogId}");
+            }
+            else if (parsedEvent is DialogConsent dialogConsent)
+            {
+                _logger.LogInformation($"Received call event: {dialogConsent.GetType()}, CallConnectionId: {dialogConsent.CallConnectionId}, CorrelationId: {dialogConsent.CorrelationId}");
+                _logger.LogInformation($"Dialog Id: {dialogConsent.DialogId}");
+            }
+            else if (parsedEvent is DialogCompleted dialogCompleted)
+            {
+                _logger.LogInformation($"Received call event: {dialogCompleted.GetType()}, CallConnectionId: {dialogCompleted.CallConnectionId}, CorrelationId: {dialogCompleted.CorrelationId}");
+                _logger.LogInformation($"Dialog Id: {dialogCompleted.DialogId}");
+            }
+            else if (parsedEvent is DialogFailed dialogFailed)
+            {
+                _logger.LogInformation($"Received call event: {dialogFailed.GetType()}, CorrelationId: {dialogFailed.CorrelationId}, " +
+                          $"subCode: {dialogFailed.ResultInformation?.SubCode}, message: {dialogFailed.ResultInformation?.Message}, context: {dialogFailed.OperationContext}");
+            }
         }
 
         #region Incoming Call with Media Streaming
