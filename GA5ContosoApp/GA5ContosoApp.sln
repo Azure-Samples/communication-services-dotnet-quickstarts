@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35728.132
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GA5ContosoApp", "..\..\..\..\Desktop\GA5ContossoApp\GA5ContossoApp\GA5ContosoApp.csproj", "{606CA168-B0F7-BA86-648E-AE7EAA18C85F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GA5ContosoApp", "GA5ContosoApp\GA5ContosoApp.csproj", "{006A8CF2-660F-CD4C-D92F-23DF7129C899}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{606CA168-B0F7-BA86-648E-AE7EAA18C85F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{606CA168-B0F7-BA86-648E-AE7EAA18C85F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{606CA168-B0F7-BA86-648E-AE7EAA18C85F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{606CA168-B0F7-BA86-648E-AE7EAA18C85F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{006A8CF2-660F-CD4C-D92F-23DF7129C899}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{006A8CF2-660F-CD4C-D92F-23DF7129C899}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{006A8CF2-660F-CD4C-D92F-23DF7129C899}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{006A8CF2-660F-CD4C-D92F-23DF7129C899}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {CC97D946-75F7-4817-9D23-949974F9BE0A}
+		SolutionGuid = {99998281-4DF2-4536-B2AD-266FB84E2025}
 	EndGlobalSection
 EndGlobal

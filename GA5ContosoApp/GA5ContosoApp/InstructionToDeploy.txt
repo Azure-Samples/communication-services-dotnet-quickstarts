@@ -4,13 +4,13 @@ Open Git Bash
 
 Navigate to deployment file location
 
-<Drive>:/<Drive>/Call_Automation_GCCH/Call_Automation_GCCH
+#<Drive>:/<Drive>/GA5ContosoApp/GA5ContosoApp
 
 Execute following command to create executable.
-chmod +x gcchDeploy.sh
+chmod +x azure-deploy.sh
 
 Execute following command to deploy
-./gcchDeploy.sh
+./azure-deploy.sh
 
 https://<app-name>.scm.azurewebsites.net/swagger/index.html
 
