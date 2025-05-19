@@ -37,7 +37,6 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("Recording APIs")]
         public async Task<IActionResult> StartRecordingWithVideoMp4MixedAsync(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
             bool isPauseOnStart)
         {
             try
@@ -47,9 +46,11 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                //var recordingOptions = isRecordingWithCallConnectionId
+                //    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
+                //    : new StartRecordingOptions(callLocator);
+
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = RecordingContent.AudioVideo;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp4;
@@ -86,7 +87,7 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("Recording APIs")]
         public IActionResult StartRecordingWithVideoMp4Mixed(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
+            
             bool isPauseOnStart)
         {
             try
@@ -96,9 +97,7 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = RecordingContent.AudioVideo;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp4;
@@ -134,7 +133,7 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("Recording APIs")]
         public async Task<IActionResult> StartRecordingWithAudioMp3MixedAsync(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
+            
             bool isPauseOnStart)
         {
             try
@@ -144,16 +143,14 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp3;
                 recordingOptions.RecordingChannel = RecordingChannel.Mixed;
                 recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
-
+                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Mp3.ToString());
                 var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
                 var recordingId = recordingResult.Value.RecordingId;
 
@@ -182,7 +179,6 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("Recording APIs")]
         public IActionResult StartRecordingWithAudioMp3Mixed(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
             bool isPauseOnStart)
         {
             try
@@ -192,9 +188,7 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp3;
@@ -225,13 +219,13 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         /// <summary>
-        /// Starts a recording with audio in MP3 format and unmixed channel asynchronously
+        /// Starts a recording with audio in Wav format and mixed channel asynchronously
         /// </summary>
-        [HttpPost("startRecordingWithAudioWavUnmixedAsync")]
+        [HttpPost("startRecordingWithAudioWavMixedAsync")]
         [Tags("Recording APIs")]
-        public async Task<IActionResult> StartRecordingWithAudioWavUnmixedAsync(
+        public async Task<IActionResult> StartRecordingWithAudioWavMixedAsync(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
+
             bool isPauseOnStart)
         {
             try
@@ -241,9 +235,98 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
+
+                recordingOptions.RecordingContent = RecordingContent.Audio;
+                recordingOptions.RecordingFormat = RecordingFormat.Wav;
+                recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.PauseOnStart = isPauseOnStart;
+                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Wav.ToString());
+                var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
+                var recordingId = recordingResult.Value.RecordingId;
+
+                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting recording: {ex.Message}. CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to start recording: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
+
+        /// <summary>
+        /// Starts a recording with audio in Wav format and mixed channel synchronously
+        /// </summary>
+        [HttpPost("startRecordingWithAudioWavMixed")]
+        [Tags("Recording APIs")]
+        public IActionResult StartRecordingWithAudioWavMixed(
+            string callConnectionId,
+            bool isPauseOnStart)
+        {
+            try
+            {
+                CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var serverCallId = callConnectionProperties.ServerCallId;
+                var correlationId = callConnectionProperties.CorrelationId;
+                CallLocator callLocator = new ServerCallLocator(serverCallId);
+
+                var recordingOptions = new StartRecordingOptions(callLocator);
+
+                recordingOptions.RecordingContent = RecordingContent.Audio;
+                recordingOptions.RecordingFormat = RecordingFormat.Wav;
+                recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.PauseOnStart = isPauseOnStart;
+                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Wav.ToString());
+
+                var recordingResult = _service.GetCallAutomationClient().GetCallRecording().Start(recordingOptions);
+                var recordingId = recordingResult.Value.RecordingId;
+
+                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting recording: {ex.Message}. CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to start recording: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
+
+        /// <summary>
+        /// Starts a recording with audio in MP3 format and unmixed channel asynchronously
+        /// </summary>
+        [HttpPost("startRecordingWithAudioWavUnmixedAsync")]
+        [Tags("Recording APIs")]
+        public async Task<IActionResult> StartRecordingWithAudioWavUnmixedAsync(
+            string callConnectionId,
+            bool isPauseOnStart)
+        {
+            try
+            {
+                CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var serverCallId = callConnectionProperties.ServerCallId;
+                var correlationId = callConnectionProperties.CorrelationId;
+                CallLocator callLocator = new ServerCallLocator(serverCallId);
+
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Wav;
@@ -280,7 +363,6 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("Recording APIs")]
         public IActionResult StartRecordingWithAudioWavUnmixed(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
             bool isPauseOnStart)
         {
             try
@@ -290,9 +372,7 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Wav;

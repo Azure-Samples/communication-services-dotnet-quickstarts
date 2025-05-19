@@ -14,1396 +14,1445 @@ using Microsoft.Extensions.Options;
 
 namespace Call_Automation_GCCH.Controllers
 {
-  [ApiController]
-  [Route("api/media")]
-  [Produces("application/json")]
-  public class MediaController : ControllerBase
-  {
-    private readonly CallAutomationService _service;
-    private readonly ILogger<MediaController> _logger;
-    private readonly ConfigurationRequest _config; // final, bound object
-
-    public MediaController(
-        CallAutomationService service,
-        ILogger<MediaController> logger, IOptions<ConfigurationRequest> configOptions)
+    [ApiController]
+    [Route("api/media")]
+    [Produces("application/json")]
+    public class MediaController : ControllerBase
     {
-      _service = service ?? throw new ArgumentNullException(nameof(service));
-      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-      _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
-    }
+        private readonly CallAutomationService _service;
+        private readonly ILogger<MediaController> _logger;
+        private readonly ConfigurationRequest _config; // final, bound object
 
-    #region Play Media with File Source
-
-    /// <summary>
-    /// Plays a file to a specific ACS target asynchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier to play to</param>
-    /// <returns>Play operation result</returns>
-    [HttpPost("/playFileSourceAcsTargetAsync")]
-    [Tags("Play FileSource Media APIs")]
-    public async Task<IActionResult> PlayFileSourceAcsTargetAsync(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
+        public MediaController(
+            CallAutomationService service,
+            ILogger<MediaController> logger, IOptions<ConfigurationRequest> configOptions)
         {
-          return BadRequest("Call Connection ID is required");
+            _service = service ?? throw new ArgumentNullException(nameof(service));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
         }
 
-        if (string.IsNullOrEmpty(acsTarget))
+        #region Play Media with File Source
+
+        /// <summary>
+        /// Plays a file to a specific ACS target asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier to play to</param>
+        /// <returns>Play operation result</returns>
+        [HttpPost("/playFileSourceAcsTargetAsync")]
+        [Tags("Play FileSource Media APIs")]
+        public async Task<IActionResult> PlayFileSourceAcsTargetAsync(string callConnectionId, string acsTarget, bool isMultiplePlaySource = false)
         {
-          return BadRequest("ACS Target ID is required");
-        }
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        _logger.LogInformation($"Playing file source to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                _logger.LogInformation($"Playing file source to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        var playTo = new List<CommunicationIdentifier>
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                var playTo = new List<CommunicationIdentifier>
                 {
                     new CommunicationUserIdentifier(acsTarget)
                 };
 
-        var playToOptions = new PlayOptions(fileSource, playTo)
-        {
-          OperationContext = "playToContext"
-        };
+                PlayOptions playToOptions;
+                if (isMultiplePlaySource)
+                {
+                    playToOptions = new PlayOptions(new List<PlaySource>(){ fileSource, fileSource }, playTo)
+                    {
+                        OperationContext = "playToContextWithMultiplePlaySource"
+                    };
+                }
+                else
+                {
+                    playToOptions = new PlayOptions(fileSource, playTo)
+                    {
+                        OperationContext = "playToContext",
 
-        var playResponse = await callMedia.PlayAsync(playToOptions);
-        var operationStatus = playResponse.GetRawResponse().ToString();
+                    };
+                }
 
-        string successMessage = $"File source played successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
-        _logger.LogInformation(successMessage);
+                var playResponse = await callMedia.PlayAsync(playToOptions);
+                var operationStatus = playResponse.GetRawResponse().ToString();
 
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error playing file source to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
+                string successMessage = $"File source played successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                _logger.LogInformation(successMessage);
 
-        return Problem($"Failed to play file source: {ex.Message}");
-      }
-    }
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error playing file source to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-    /// <summary>
-    /// Plays a file to a specific ACS target synchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier to play to</param>
-    /// <returns>Play operation result</returns>
-    [HttpPost("/playFileSourceToAcsTarget")]
-    [Tags("Play FileSource Media APIs")]
-    public IActionResult PlayFileSourceToAcsTarget(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
+                return Problem($"Failed to play file source: {ex.Message}");
+            }
         }
 
-        if (string.IsNullOrEmpty(acsTarget))
+        /// <summary>
+        /// Plays a file to a specific ACS target synchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier to play to</param>
+        /// <returns>Play operation result</returns>
+        [HttpPost("/playFileSourceToAcsTarget")]
+        [Tags("Play FileSource Media APIs")]
+        public IActionResult PlayFileSourceToAcsTarget(string callConnectionId, string acsTarget, bool isMultiplePlaySource = false)
         {
-          return BadRequest("ACS Target ID is required");
-        }
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        _logger.LogInformation($"Playing file source to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
 
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                _logger.LogInformation($"Playing file source to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
 
-        var playTo = new List<CommunicationIdentifier>
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                var playTo = new List<CommunicationIdentifier>
                 {
                     new CommunicationUserIdentifier(acsTarget)
                 };
 
-        var playToOptions = new PlayOptions(fileSource, playTo)
-        {
-          OperationContext = "playToContext"
-        };
-
-        var playResponse = callMedia.Play(playToOptions);
-        var operationStatus = playResponse.GetRawResponse().ToString();
-
-        string successMessage = $"File source played successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error playing file source to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to play file source: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Plays a file to all participants asynchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <returns>Play operation result</returns>
-    [HttpPost("/playFileSourceToAllAsync")]
-    [Tags("Play FileSource Media APIs")]
-    public async Task<IActionResult> PlayFileSourceToAllAsync(string callConnectionId)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        _logger.LogInformation($"Playing file source to all participants. CallConnectionId: {callConnectionId}");
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        var playToAllOptions = new PlayToAllOptions(fileSource)
-        {
-          OperationContext = "playToAllContext"
-        };
-
-        var playResponse = await callMedia.PlayToAllAsync(playToAllOptions);
-        var operationStatus = playResponse.GetRawResponse().ToString();
-
-        string successMessage = $"File source played successfully to all participants. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error playing file source to all participants. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to play file source: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Plays a file to all participants synchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <returns>Play operation result</returns>
-    [HttpPost("/playFileSourceToAll")]
-    [Tags("Play FileSource Media APIs")]
-    public IActionResult PlayFileSourceToAll(string callConnectionId)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        _logger.LogInformation($"Playing file source to all participants. CallConnectionId: {callConnectionId}");
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        var playToAllOptions = new PlayToAllOptions(fileSource)
-        {
-          OperationContext = "playToAllContext"
-        };
-
-        var playResponse = callMedia.PlayToAll(playToAllOptions);
-        var operationStatus = playResponse.GetRawResponse().ToString();
-
-        string successMessage = $"File source played successfully to all participants. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error playing file source to all participants. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to play file source: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Plays a file source to all participants with barge-in enabled (interrupting current media).
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <returns>Play operation result</returns>
-    [HttpPost("/playFileSourceBargeInAsync")]
-    [Tags("Play FileSource Media APIs")]
-    public async Task<IActionResult> PlayFileSourceBargeInAsync(string callConnectionId)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        _logger.LogInformation($"Playing file source barge-in. CallConnectionId: {callConnectionId}");
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        var playToAllOptions = new PlayToAllOptions(fileSource)
-        {
-          OperationContext = "playBargeInContext",
-          InterruptCallMediaOperation = true
-        };
-
-        var playResponse = await callMedia.PlayToAllAsync(playToAllOptions);
-        var operationStatus = playResponse.GetRawResponse().ToString();
-
-        string successMessage = $"File source barge-in played successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error playing file source barge-in. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to play file source: {ex.Message}");
-      }
-    }
-    #endregion
-    #region Media Streaming
-
-    [HttpPost("/createCallToAcsWithMediaStreamingAsync")]
-    [Tags("Media streaming APIs")]
-    public async Task<IActionResult> CreateCallToAcsWithMediaStreamingAsync(
-        string acsTarget,
-        bool enableMediaStreaming = false,
-        bool isEnableBidirectional = false,
-        bool isPcm24kMono = false)
-    {
-      try
-      {
-        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
-
-        _logger.LogInformation($"CreateCallToAcsWithMediaStreamingAsync. websocket url: {websocketUri}, callback uri: {callbackUri}");
-        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-                    new Uri(websocketUri),
-                    MediaStreamingContent.Audio,
-                    MediaStreamingAudioChannel.Mixed,
-                    MediaStreamingTransport.Websocket,
-                    enableMediaStreaming)
-        {
-          EnableBidirectional = isEnableBidirectional,
-          AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
-        };
-
-        var callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-        var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-        {
-          MediaStreamingOptions = mediaStreamingOptions
-        };
-
-        CreateCallResult createCallResult = await _service.GetCallAutomationClient().CreateCallAsync(createCallOptions);
-        string callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
-        string correlationId = createCallResult.CallConnectionProperties.CorrelationId;
-        // Use call state or some other property as "operation status"
-        string operationStatus = createCallResult.CallConnectionProperties.CallConnectionState.ToString();
-
-        string successMessage = $"[createCallToAcsWithMediaStreamingAsync] Created ACS call. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[createCallToAcsWithMediaStreamingAsync] Error creating ACS call: {ex.Message}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to create ACS call with media streaming: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/createCallToAcsWithMediaStreaming")]
-    [Tags("Media streaming APIs")]
-    public IActionResult CreateCallToAcsWithMediaStreaming(
-        string acsTarget,
-        MediaStreamingAudioChannel audioChannel,
-        bool enableMediaStreaming = false,
-        bool isEnableBidirectional = false,
-        bool isPcm24kMono = false)
-    {
-      try
-      {
-        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
-
-        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-            new Uri(websocketUri),
-            MediaStreamingContent.Audio,
-            audioChannel,
-            MediaStreamingTransport.Websocket,
-            enableMediaStreaming)
-        {
-          EnableBidirectional = isEnableBidirectional,
-          AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
-        };
-
-        var callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-        var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-        {
-          MediaStreamingOptions = mediaStreamingOptions
-        };
-
-        CreateCallResult createCallResult = _service.GetCallAutomationClient().CreateCall(createCallOptions);
-        string callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
-        string correlationId = createCallResult.CallConnectionProperties.CorrelationId;
-        string operationStatus = createCallResult.CallConnectionProperties.CallConnectionState.ToString();
-
-        string successMessage = $"[createCallToAcsWithMediaStreaming] Created ACS call. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[createCallToAcsWithMediaStreaming] Error creating ACS call: {ex.Message}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to create ACS call with media streaming: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/startMediaStreamingAsync")]
-    [Tags("Media streaming APIs")]
-    public async Task<IActionResult> StartMediaStreamingAsync(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        Response response = await callMedia.StartMediaStreamingAsync();
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[startMediaStreamingAsync] Media streaming started. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[startMediaStreamingAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to start media streaming: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/startMediaStreaming")]
-    [Tags("Media streaming APIs")]
-    public IActionResult StartMediaStreaming(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        Response response = callMedia.StartMediaStreaming();
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[startMediaStreaming] Media streaming started. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[startMediaStreaming] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to start media streaming: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/stopMediaStreamingAsync")]
-    [Tags("Media streaming APIs")]
-    public async Task<IActionResult> StopMediaStreamingAsync(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        Response response = await callMedia.StopMediaStreamingAsync();
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[stopMediaStreamingAsync] Media streaming stopped. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[stopMediaStreamingAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to stop media streaming: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/stopMediaStreaming")]
-    [Tags("Media streaming APIs")]
-    public IActionResult StopMediaStreaming(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        Response response = callMedia.StopMediaStreaming();
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[stopMediaStreaming] Media streaming stopped. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[stopMediaStreaming] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to stop media streaming: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/startMediaStreamingWithOptionsAsync")]
-    [Tags("Media streaming APIs")]
-    public async Task<IActionResult> StartMediaStreamingWithOptionsAsync(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        StartMediaStreamingOptions options = new()
-        {
-          OperationContext = "StartMediaStreamingContext",
-          OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
-        };
-
-        Response response = await callMedia.StartMediaStreamingAsync(options);
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[startMediaStreamingWithOptionsAsync] Media streaming with options started. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[startMediaStreamingWithOptionsAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to start media streaming with options: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/startMediaStreamingWithOptions")]
-    [Tags("Media streaming APIs")]
-    public IActionResult StartMediaStreamingWithOptions(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        StartMediaStreamingOptions options = new()
-        {
-          OperationContext = "StartMediaStreamingContext",
-          OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
-        };
-
-        Response response = callMedia.StartMediaStreaming(options);
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[startMediaStreamingWithOptions] Media streaming with options started. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[startMediaStreamingWithOptions] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to start media streaming with options: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/stopMediaStreamingWithOptionsAsync")]
-    [Tags("Media streaming APIs")]
-    public async Task<IActionResult> StopMediaStreamingWithOptionsAsync(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        StopMediaStreamingOptions options = new()
-        {
-          OperationContext = "StopMediaStreamingContext",
-          OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
-        };
-
-        Response response = await callMedia.StopMediaStreamingAsync(options);
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[stopMediaStreamingWithOptionsAsync] Media streaming with options stopped. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[stopMediaStreamingWithOptionsAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to stop media streaming with options: {ex.Message}");
-      }
-    }
-
-    [HttpPost("/stopMediaStreamingWithOptions")]
-    [Tags("Media streaming APIs")]
-    public IActionResult StopMediaStreamingWithOptions(string callConnectionId)
-    {
-      try
-      {
-        var callMedia = _service.GetCallMedia(callConnectionId);
-        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-
-        StopMediaStreamingOptions options = new()
-        {
-          OperationContext = "StopMediaStreamingContext",
-          OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
-        };
-
-        Response response = callMedia.StopMediaStreaming(options);
-        string operationStatus = response.Status.ToString();
-
-        string successMessage = $"[stopMediaStreamingWithOptions] Media streaming with options stopped. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[stopMediaStreamingWithOptions] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to stop media streaming with options: {ex.Message}");
-      }
-    }
-
-    #endregion
-
-    #region Cancel All Media Operations
-
-    [HttpPost("/cancelAllMediaOperationAsync")]
-    [Tags("Cancel All Media Opertation APIs")]
-    public async Task<IActionResult> CancelAllMediaOperationAsync(string callConnectionId)
-    {
-      try
-      {
-        // Get the correlationId from the call properties
-        var callProperties = _service.GetCallConnectionProperties(callConnectionId);
-        var correlationId = callProperties.CorrelationId;
-
-        // Cancel all media operations
-        // If CancelAllMediaOperationsAsync returns a Response, capture that:
-        var response = await _service.GetCallMedia(callConnectionId).CancelAllMediaOperationsAsync();
-        string operationStatus = response.GetRawResponse().Status.ToString();
-
-        string successMessage = $"[cancelAllMediaOperationAsync] All media operations cancelled. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[cancelAllMediaOperationAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to cancel all media operations: {ex.Message}. CallConnectionId: {callConnectionId}");
-      }
-    }
-
-    [HttpPost("/cancelAllMediaOperation")]
-    [Tags("Cancel All Media Opertation APIs")]
-    public IActionResult CancelAllMediaOperation(string callConnectionId)
-    {
-      try
-      {
-        // Get the correlationId from the call properties
-        var callProperties = _service.GetCallConnectionProperties(callConnectionId);
-        var correlationId = callProperties.CorrelationId;
-
-        // Cancel all media operations
-        var response = _service.GetCallMedia(callConnectionId).CancelAllMediaOperations();
-        string operationStatus = response.GetRawResponse().Status.ToString();
-
-        string successMessage = $"[cancelAllMediaOperation] All media operations cancelled. " +
-                                $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = operationStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"[cancelAllMediaOperation] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
-        _logger.LogError(errorMessage);
-        return Problem($"Failed to cancel all media operations: {ex.Message}. CallConnectionId: {callConnectionId}");
-      }
-    }
-
-    #endregion
-    #region Recognization
-
-    /// <summary>
-    /// Recognize DTMF asynchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <returns>status result</returns>
-    [HttpPost("/recognizeDTMFAcsTargetAsync")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Start Recognization APIs")]
-    public async Task<IActionResult> RecognizeDTMFAcsTargetAsync(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        //TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        //{
-        //  VoiceName = "en-US-NancyNeural"
-        //};
-
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-
-        var recognizeOptions =
-            new CallMediaRecognizeDtmfOptions(
-                targetParticipant: target, maxTonesToCollect: 4)
+                PlayOptions playToOptions;
+                if (isMultiplePlaySource)
+                {
+                    playToOptions = new PlayOptions(new List<PlaySource>() { fileSource, fileSource }, playTo)
+                    {
+                        OperationContext = "playToContextWithMultiplePlaySource"
+                    };
+                }
+                else
+                {
+                    playToOptions = new PlayOptions(fileSource, playTo)
+                    {
+                        OperationContext = "playToContext",
+
+                    };
+                }
+
+                var playResponse = callMedia.Play(playToOptions);
+                var operationStatus = playResponse.GetRawResponse().ToString();
+
+                string successMessage = $"File source played successfully to ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
             {
-              InterruptPrompt = false,
-              InterToneTimeout = TimeSpan.FromSeconds(5),
-              OperationContext = "DtmfContext",
-              InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-              Prompt = fileSource
-            };
+                string errorMessage = $"Error playing file source to ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-        await callMedia.StartRecognizingAsync(recognizeOptions);
-
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to start DTMF recognition: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Recognize DTMF.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <returns>status result</returns>
-    [HttpPost("/recognizeDTMFAcsTarget")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Start Recognization APIs")]
-    public IActionResult RecognizeDTMFAcsTarget(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
+                return Problem($"Failed to play file source: {ex.Message}");
+            }
         }
 
-        if (string.IsNullOrEmpty(acsTarget))
+        /// <summary>
+        /// Plays a file to all participants asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <returns>Play operation result</returns>
+        [HttpPost("/playFileSourceToAllAsync")]
+        [Tags("Play FileSource Media APIs")]
+        public async Task<IActionResult> PlayFileSourceToAllAsync(string callConnectionId, bool isMultiplePlaySource = false)
         {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        //TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-        //{
-        //  VoiceName = "en-US-NancyNeural"
-        //};
-
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-
-        var recognizeOptions =
-            new CallMediaRecognizeDtmfOptions(
-                targetParticipant: target, maxTonesToCollect: 4)
+            try
             {
-              InterruptPrompt = false,
-              InterToneTimeout = TimeSpan.FromSeconds(5),
-              OperationContext = "DtmfContext",
-              InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-              Prompt = fileSource
-            };
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-        callMedia.StartRecognizing(recognizeOptions);
+                _logger.LogInformation($"Playing file source to all participants. CallConnectionId: {callConnectionId}");
 
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                PlayToAllOptions playToAllOptions;
+                if (isMultiplePlaySource)
+                {
+                    playToAllOptions = new PlayToAllOptions(new List<PlaySource>() { fileSource, fileSource })
+                    {
+                        OperationContext = "playToAllContextWithMultiplePlaySource"
+                    };
+                }
+                else
+                {
+                    playToAllOptions = new PlayToAllOptions(fileSource)
+                    {
+                        OperationContext = "playToContext",
 
-        string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
+                    };
+                }
 
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
+                var playResponse = await callMedia.PlayToAllAsync(playToAllOptions);
+                var operationStatus = playResponse.GetRawResponse().ToString();
 
-        return Problem($"Failed to start DTMF recognition: {ex.Message}");
-      }
-    }
+                string successMessage = $"File source played successfully to all participants. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                _logger.LogInformation(successMessage);
 
-    #endregion
-    #region Hold/Unhold
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error playing file source to all participants. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
 
-    /// <summary>
-    /// Hold ACS target asynchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <param name="isPlaySource">true or false</param>
-    /// <returns>status result</returns>
-    [HttpPost("/holdAcsTargetAsync")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public async Task<IActionResult> HoldAcsTargetAsync(string callConnectionId, string acsTarget, bool isPlaySource)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
+                return Problem($"Failed to play file source: {ex.Message}");
+            }
         }
 
-        if (string.IsNullOrEmpty(acsTarget))
+        /// <summary>
+        /// Plays a file to all participants synchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <returns>Play operation result</returns>
+        [HttpPost("/playFileSourceToAll")]
+        [Tags("Play FileSource Media APIs")]
+        public IActionResult PlayFileSourceToAll(string callConnectionId, bool isMultiplePlaySource = false)
         {
-          return BadRequest("ACS Target ID is required");
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                _logger.LogInformation($"Playing file source to all participants. CallConnectionId: {callConnectionId}");
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                PlayToAllOptions playToAllOptions;
+                if (isMultiplePlaySource)
+                {
+                    playToAllOptions = new PlayToAllOptions(new List<PlaySource>() { fileSource, fileSource })
+                    {
+                        OperationContext = "playToAllContextWithMultiplePlaySource"
+                    };
+                }
+                else
+                {
+                    playToAllOptions = new PlayToAllOptions(fileSource)
+                    {
+                        OperationContext = "playToContext",
+
+                    };
+                }
+
+                var playResponse = callMedia.PlayToAll(playToAllOptions);
+                var operationStatus = playResponse.GetRawResponse().ToString();
+
+                string successMessage = $"File source played successfully to all participants. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error playing file source to all participants. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to play file source: {ex.Message}");
+            }
         }
 
-        _logger.LogInformation($"Hold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        if (isPlaySource)
+        /// <summary>
+        /// Plays a file source to all participants with barge-in enabled (interrupting current media).
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <returns>Play operation result</returns>
+        [HttpPost("/playFileSourceBargeInAsync")]
+        [Tags("Play FileSource Media APIs")]
+        public async Task<IActionResult> PlayFileSourceBargeInAsync(string callConnectionId)
         {
-          //TextSource textSource = new TextSource("You are on hold please wait..")
-          //{
-          //  VoiceName = "en-US-NancyNeural"
-          //};
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
 
-          var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-          FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                _logger.LogInformation($"Playing file source barge-in. CallConnectionId: {callConnectionId}");
 
-          HoldOptions holdOptions = new HoldOptions(target)
-          {
-            PlaySource = fileSource,
-            OperationContext = "holdUserContext"
-          };
-          await callMedia.HoldAsync(holdOptions);
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                var playToAllOptions = new PlayToAllOptions(fileSource)
+                {
+                    OperationContext = "playBargeInContext",
+                    InterruptCallMediaOperation = true
+                };
+
+                var playResponse = await callMedia.PlayToAllAsync(playToAllOptions);
+                var operationStatus = playResponse.GetRawResponse().ToString();
+
+                string successMessage = $"File source barge-in played successfully. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}, OperationStatus: {operationStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error playing file source barge-in. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to play file source: {ex.Message}");
+            }
         }
-        else
-        {
-          HoldOptions holdOptions = new HoldOptions(target)
-          {
-            OperationContext = "holdUserContext"
-          };
-          await callMedia.HoldAsync(holdOptions);
-        }
+        #endregion
+        //#region Media Streaming
 
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        string successMessage = $"Hold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error holding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to hold: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Hold ACS target.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <param name="isPlaySource">true or false</param>
-    /// <returns>status result</returns>
-    [HttpPost("/holdAcsTarget")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public IActionResult HoldAcsTarget(string callConnectionId, string acsTarget, bool isPlaySource)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Hold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        if (isPlaySource)
-        {
-          //TextSource textSource = new TextSource("You are on hold please wait..")
-          //{
-          //  VoiceName = "en-US-NancyNeural"
-          //};
-          var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-          FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-          HoldOptions holdOptions = new HoldOptions(target)
-          {
-            PlaySource = fileSource,
-            OperationContext = "holdUserContext"
-          };
-          callMedia.Hold(holdOptions);
-        }
-        else
-        {
-          HoldOptions holdOptions = new HoldOptions(target)
-          {
-            OperationContext = "holdUserContext"
-          };
-          callMedia.Hold(holdOptions);
-        }
-
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        string successMessage = $"Hold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error holding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to hold: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Unhold ACS target asynchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <param name="isPlaySource">true or false</param>
-    /// <returns>status result</returns>
-    [HttpPost("/unholdAcsTargetAsync")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public async Task<IActionResult> UnholdAcsTargetAsync(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Unhold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        UnholdOptions unholdOptions = new UnholdOptions(target)
-        {
-          OperationContext = "unholdUserContext"
-        };
-        await callMedia.UnholdAsync(unholdOptions);
-
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        string successMessage = $"Unhold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error unholding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to unhold: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Unhold ACS target.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <param name="isPlaySource">true or false</param>
-    /// <returns>status result</returns>
-    [HttpPost("/unholdAcsTarget")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public IActionResult UnholdAcsTarget(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Unhold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        UnholdOptions unholdOptions = new UnholdOptions(target)
-        {
-          OperationContext = "unholdUserContext"
-        };
-        callMedia.Unhold(unholdOptions);
-
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
-
-        string successMessage = $"Unhold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
-
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error unholding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to unhold: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Interrupt audio and announce asynchronously.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <returns>status result</returns>
-    [HttpPost("/interruptAudioAndAnnounceAsync")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public async Task<IActionResult> InterruptAudioAndAnnounceAsync(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //[HttpPost("/createCallToAcsWithMediaStreamingAsync")]
+        //[Tags("Media streaming APIs")]
+        //public async Task<IActionResult> CreateCallToAcsWithMediaStreamingAsync(
+        //    string acsTarget,
+        //    bool enableMediaStreaming = false,
+        //    bool isEnableBidirectional = false,
+        //    bool isPcm24kMono = false)
         //{
-        //  VoiceName = "en-US-NancyNeural"
-        //};
+        //  try
+        //  {
+        //    var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+        //    var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
 
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+        //    _logger.LogInformation($"CreateCallToAcsWithMediaStreamingAsync. websocket url: {websocketUri}, callback uri: {callbackUri}");
+        //    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+        //                new Uri(websocketUri),
+        //                MediaStreamingContent.Audio,
+        //                MediaStreamingAudioChannel.Mixed,
+        //                MediaStreamingTransport.Websocket,
+        //                enableMediaStreaming)
+        //    {
+        //      EnableBidirectional = isEnableBidirectional,
+        //      AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
+        //    };
 
-        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(fileSource, target)
-        {
-          OperationContext = "innterruptContext"
-        };
+        //    var callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+        //    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+        //    {
+        //      MediaStreamingOptions = mediaStreamingOptions
+        //    };
 
-        await callMedia.InterruptAudioAndAnnounceAsync(interruptAudio);
+        //    CreateCallResult createCallResult = await _service.GetCallAutomationClient().CreateCallAsync(createCallOptions);
+        //    string callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
+        //    string correlationId = createCallResult.CallConnectionProperties.CorrelationId;
+        //    // Use call state or some other property as "operation status"
+        //    string operationStatus = createCallResult.CallConnectionProperties.CallConnectionState.ToString();
 
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+        //    string successMessage = $"[createCallToAcsWithMediaStreamingAsync] Created ACS call. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
 
-        string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[createCallToAcsWithMediaStreamingAsync] Error creating ACS call: {ex.Message}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to create ACS call with media streaming: {ex.Message}");
+        //  }
+        //}
 
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to interrupt audio and announce: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Interrupt audio and announce.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <returns>status result</returns>
-    [HttpPost("/interruptAudioAndAnnounce")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public IActionResult InterruptAudioAndAnnounce(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //[HttpPost("/createCallToAcsWithMediaStreaming")]
+        //[Tags("Media streaming APIs")]
+        //public IActionResult CreateCallToAcsWithMediaStreaming(
+        //    string acsTarget,
+        //    MediaStreamingAudioChannel audioChannel,
+        //    bool enableMediaStreaming = false,
+        //    bool isEnableBidirectional = false,
+        //    bool isPcm24kMono = false)
         //{
-        //  VoiceName = "en-US-NancyNeural"
-        //};
+        //  try
+        //  {
+        //    var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+        //    var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
 
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+        //    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+        //        new Uri(websocketUri),
+        //        MediaStreamingContent.Audio,
+        //        audioChannel,
+        //        MediaStreamingTransport.Websocket,
+        //        enableMediaStreaming)
+        //    {
+        //      EnableBidirectional = isEnableBidirectional,
+        //      AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
+        //    };
 
-        InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(fileSource, target)
-        {
-          OperationContext = "innterruptContext"
-        };
+        //    var callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+        //    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+        //    {
+        //      MediaStreamingOptions = mediaStreamingOptions
+        //    };
 
-        callMedia.InterruptAudioAndAnnounce(interruptAudio);
+        //    CreateCallResult createCallResult = _service.GetCallAutomationClient().CreateCall(createCallOptions);
+        //    string callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
+        //    string correlationId = createCallResult.CallConnectionProperties.CorrelationId;
+        //    string operationStatus = createCallResult.CallConnectionProperties.CallConnectionState.ToString();
 
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+        //    string successMessage = $"[createCallToAcsWithMediaStreaming] Created ACS call. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
 
-        string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[createCallToAcsWithMediaStreaming] Error creating ACS call: {ex.Message}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to create ACS call with media streaming: {ex.Message}");
+        //  }
+        //}
 
-        return Ok(new CallConnectionResponse
-        {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
-
-        return Problem($"Failed to interrupt audio and announce: {ex.Message}");
-      }
-    }
-
-    /// <summary>
-    /// Interrupt hold with play.
-    /// </summary>
-    /// <param name="callConnectionId">The call connection ID</param>
-    /// <param name="acsTarget">The ACS user identifier</param>
-    /// <returns>status result</returns>
-    [HttpPost("/interruptHoldWithPlay")]
-    [ProducesResponseType(typeof(CallConnectionResponse), 200)]
-    [ProducesResponseType(typeof(ProblemDetails), 400)]
-    [ProducesResponseType(typeof(ProblemDetails), 500)]
-    [Tags("Hold Participant APIs")]
-    public IActionResult InterruptHoldWithPlay(string callConnectionId, string acsTarget)
-    {
-      try
-      {
-        if (string.IsNullOrEmpty(callConnectionId))
-        {
-          return BadRequest("Call Connection ID is required");
-        }
-
-        if (string.IsNullOrEmpty(acsTarget))
-        {
-          return BadRequest("ACS Target ID is required");
-        }
-
-        _logger.LogInformation($"Interrupt hold with play to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
-
-        CallMedia callMedia = _service.GetCallMedia(callConnectionId);
-
-        //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //[HttpPost("/startMediaStreamingAsync")]
+        //[Tags("Media streaming APIs")]
+        //public async Task<IActionResult> StartMediaStreamingAsync(string callConnectionId)
         //{
-        //  VoiceName = "en-US-NancyNeural"
-        //};
-        var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
-        FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
-        List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-        PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    Response response = await callMedia.StartMediaStreamingAsync();
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[startMediaStreamingAsync] Media streaming started. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[startMediaStreamingAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to start media streaming: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/startMediaStreaming")]
+        //[Tags("Media streaming APIs")]
+        //public IActionResult StartMediaStreaming(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    Response response = callMedia.StartMediaStreaming();
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[startMediaStreaming] Media streaming started. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[startMediaStreaming] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to start media streaming: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/stopMediaStreamingAsync")]
+        //[Tags("Media streaming APIs")]
+        //public async Task<IActionResult> StopMediaStreamingAsync(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    Response response = await callMedia.StopMediaStreamingAsync();
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[stopMediaStreamingAsync] Media streaming stopped. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[stopMediaStreamingAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to stop media streaming: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/stopMediaStreaming")]
+        //[Tags("Media streaming APIs")]
+        //public IActionResult StopMediaStreaming(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    Response response = callMedia.StopMediaStreaming();
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[stopMediaStreaming] Media streaming stopped. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[stopMediaStreaming] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to stop media streaming: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/startMediaStreamingWithOptionsAsync")]
+        //[Tags("Media streaming APIs")]
+        //public async Task<IActionResult> StartMediaStreamingWithOptionsAsync(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    StartMediaStreamingOptions options = new()
+        //    {
+        //      OperationContext = "StartMediaStreamingContext",
+        //      OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
+        //    };
+
+        //    Response response = await callMedia.StartMediaStreamingAsync(options);
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[startMediaStreamingWithOptionsAsync] Media streaming with options started. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[startMediaStreamingWithOptionsAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to start media streaming with options: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/startMediaStreamingWithOptions")]
+        //[Tags("Media streaming APIs")]
+        //public IActionResult StartMediaStreamingWithOptions(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    StartMediaStreamingOptions options = new()
+        //    {
+        //      OperationContext = "StartMediaStreamingContext",
+        //      OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
+        //    };
+
+        //    Response response = callMedia.StartMediaStreaming(options);
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[startMediaStreamingWithOptions] Media streaming with options started. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[startMediaStreamingWithOptions] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to start media streaming with options: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/stopMediaStreamingWithOptionsAsync")]
+        //[Tags("Media streaming APIs")]
+        //public async Task<IActionResult> StopMediaStreamingWithOptionsAsync(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    StopMediaStreamingOptions options = new()
+        //    {
+        //      OperationContext = "StopMediaStreamingContext",
+        //      OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
+        //    };
+
+        //    Response response = await callMedia.StopMediaStreamingAsync(options);
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[stopMediaStreamingWithOptionsAsync] Media streaming with options stopped. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[stopMediaStreamingWithOptionsAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to stop media streaming with options: {ex.Message}");
+        //  }
+        //}
+
+        //[HttpPost("/stopMediaStreamingWithOptions")]
+        //[Tags("Media streaming APIs")]
+        //public IActionResult StopMediaStreamingWithOptions(string callConnectionId)
+        //{
+        //  try
+        //  {
+        //    var callMedia = _service.GetCallMedia(callConnectionId);
+        //    var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+
+        //    StopMediaStreamingOptions options = new()
+        //    {
+        //      OperationContext = "StopMediaStreamingContext",
+        //      OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
+        //    };
+
+        //    Response response = callMedia.StopMediaStreaming(options);
+        //    string operationStatus = response.Status.ToString();
+
+        //    string successMessage = $"[stopMediaStreamingWithOptions] Media streaming with options stopped. " +
+        //                            $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = operationStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"[stopMediaStreamingWithOptions] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+        //    _logger.LogError(errorMessage);
+        //    return Problem($"Failed to stop media streaming with options: {ex.Message}");
+        //  }
+        //}
+
+        //#endregion
+
+        #region Cancel All Media Operations
+
+        [HttpPost("/cancelAllMediaOperationAsync")]
+        [Tags("Cancel All Media Opertation APIs")]
+        public async Task<IActionResult> CancelAllMediaOperationAsync(string callConnectionId)
         {
-          OperationContext = "playToContext",
-          InterruptHoldAudio = true
-        };
+            try
+            {
+                // Get the correlationId from the call properties
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
 
-        callMedia.Play(playToOptions);
+                // Cancel all media operations
+                // If CancelAllMediaOperationsAsync returns a Response, capture that:
+                var response = await _service.GetCallMedia(callConnectionId).CancelAllMediaOperationsAsync();
+                string operationStatus = response.GetRawResponse().Status.ToString();
 
-        var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
-        var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+                string successMessage = $"[cancelAllMediaOperationAsync] All media operations cancelled. " +
+                                        $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+                _logger.LogInformation(successMessage);
 
-        string successMessage = $"Interrupt hold with play successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
-        _logger.LogInformation(successMessage);
+                return Ok(new
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"[cancelAllMediaOperationAsync] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to cancel all media operations: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
 
-        return Ok(new CallConnectionResponse
+        [HttpPost("/cancelAllMediaOperation")]
+        [Tags("Cancel All Media Opertation APIs")]
+        public IActionResult CancelAllMediaOperation(string callConnectionId)
         {
-          CallConnectionId = callConnectionId,
-          CorrelationId = correlationId,
-          Status = callStatus
-        });
-      }
-      catch (Exception ex)
-      {
-        string errorMessage = $"Error interrupting hold and play on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
-        _logger.LogError(errorMessage);
+            try
+            {
+                // Get the correlationId from the call properties
+                var callProperties = _service.GetCallConnectionProperties(callConnectionId);
+                var correlationId = callProperties.CorrelationId;
 
-        return Problem($"Failed to interrupt hold and play: {ex.Message}");
-      }
+                // Cancel all media operations
+                var response = _service.GetCallMedia(callConnectionId).CancelAllMediaOperations();
+                string operationStatus = response.GetRawResponse().Status.ToString();
+
+                string successMessage = $"[cancelAllMediaOperation] All media operations cancelled. " +
+                                        $"CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {operationStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = operationStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"[cancelAllMediaOperation] Error: {ex.Message}, CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to cancel all media operations: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
+
+        #endregion
+        #region Recognization
+
+        /// <summary>
+        /// Recognize DTMF asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/recognizeDTMFAcsTargetAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Start Recognization APIs")]
+        public async Task<IActionResult> RecognizeDTMFAcsTargetAsync(string callConnectionId, string acsTarget, bool isMultiplePlayPrompts = false)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
+
+                _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                //TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+                //{
+                //  VoiceName = "en-US-NancyNeural"
+                //};
+
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+                var recognizeOptions =
+                    new CallMediaRecognizeDtmfOptions(
+                        targetParticipant: target, maxTonesToCollect: 4)
+                    {
+                        InterruptPrompt = false,
+                        InterToneTimeout = TimeSpan.FromSeconds(5),
+                        OperationContext = "DtmfContext",
+                        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                        Prompt = isMultiplePlayPrompts ? null : fileSource,
+                        PlayPrompts = isMultiplePlayPrompts ? new List<PlaySource>() { fileSource, fileSource } : null
+                    };
+
+                await callMedia.StartRecognizingAsync(recognizeOptions);
+
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to start DTMF recognition: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Recognize DTMF.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <returns>status result</returns>
+        [HttpPost("/recognizeDTMFAcsTarget")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Start Recognization APIs")]
+        public IActionResult RecognizeDTMFAcsTarget(string callConnectionId, string acsTarget, bool isMultiplePlayPrompts = false)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
+
+                _logger.LogInformation($"Starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                //TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+                //{
+                //  VoiceName = "en-US-NancyNeural"
+                //};
+
+                var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+                var recognizeOptions =
+                    new CallMediaRecognizeDtmfOptions(
+                        targetParticipant: target, maxTonesToCollect: 4)
+                    {
+                        InterruptPrompt = false,
+                        InterToneTimeout = TimeSpan.FromSeconds(5),
+                        OperationContext = "DtmfContext",
+                        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                        Prompt = isMultiplePlayPrompts ? null : fileSource,
+                        PlayPrompts = isMultiplePlayPrompts ? new List<PlaySource>() { fileSource, fileSource } : null
+                    };
+
+                callMedia.StartRecognizing(recognizeOptions);
+
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                string successMessage = $"DTMF recognition started successfully with ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error starting DTMF recognition with ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to start DTMF recognition: {ex.Message}");
+            }
+        }
+
+        #endregion
+        #region Hold/Unhold
+
+        /// <summary>
+        /// Hold ACS target asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <param name="isPlaySource">true or false</param>
+        /// <returns>status result</returns>
+        [HttpPost("/holdAcsTargetAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public async Task<IActionResult> HoldAcsTargetAsync(string callConnectionId, string acsTarget, bool isPlaySource)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
+
+                _logger.LogInformation($"Hold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                if (isPlaySource)
+                {
+                    //TextSource textSource = new TextSource("You are on hold please wait..")
+                    //{
+                    //  VoiceName = "en-US-NancyNeural"
+                    //};
+
+                    var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                    FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+                    HoldOptions holdOptions = new HoldOptions(target)
+                    {
+                        PlaySource = fileSource,
+                        OperationContext = "holdUserContext"
+                    };
+                    await callMedia.HoldAsync(holdOptions);
+                }
+                else
+                {
+                    HoldOptions holdOptions = new HoldOptions(target)
+                    {
+                        OperationContext = "holdUserContext"
+                    };
+                    await callMedia.HoldAsync(holdOptions);
+                }
+
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                string successMessage = $"Hold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error holding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to hold: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Hold ACS target.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <param name="isPlaySource">true or false</param>
+        /// <returns>status result</returns>
+        [HttpPost("/holdAcsTarget")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public IActionResult HoldAcsTarget(string callConnectionId, string acsTarget, bool isPlaySource)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
+
+                _logger.LogInformation($"Hold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                if (isPlaySource)
+                {
+                    //TextSource textSource = new TextSource("You are on hold please wait..")
+                    //{
+                    //  VoiceName = "en-US-NancyNeural"
+                    //};
+                    var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+                    FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+                    HoldOptions holdOptions = new HoldOptions(target)
+                    {
+                        PlaySource = fileSource,
+                        OperationContext = "holdUserContext"
+                    };
+                    callMedia.Hold(holdOptions);
+                }
+                else
+                {
+                    HoldOptions holdOptions = new HoldOptions(target)
+                    {
+                        OperationContext = "holdUserContext"
+                    };
+                    callMedia.Hold(holdOptions);
+                }
+
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                string successMessage = $"Hold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error holding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to hold: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Unhold ACS target asynchronously.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <param name="isPlaySource">true or false</param>
+        /// <returns>status result</returns>
+        [HttpPost("/unholdAcsTargetAsync")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public async Task<IActionResult> UnholdAcsTargetAsync(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
+
+                _logger.LogInformation($"Unhold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                UnholdOptions unholdOptions = new UnholdOptions(target)
+                {
+                    OperationContext = "unholdUserContext"
+                };
+                await callMedia.UnholdAsync(unholdOptions);
+
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                string successMessage = $"Unhold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error unholding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to unhold: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Unhold ACS target.
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="acsTarget">The ACS user identifier</param>
+        /// <param name="isPlaySource">true or false</param>
+        /// <returns>status result</returns>
+        [HttpPost("/unholdAcsTarget")]
+        [ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        [Tags("Hold Participant APIs")]
+        public IActionResult UnholdAcsTarget(string callConnectionId, string acsTarget)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(callConnectionId))
+                {
+                    return BadRequest("Call Connection ID is required");
+                }
+
+                if (string.IsNullOrEmpty(acsTarget))
+                {
+                    return BadRequest("ACS Target ID is required");
+                }
+
+                _logger.LogInformation($"Unhold ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+                CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+                CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+                UnholdOptions unholdOptions = new UnholdOptions(target)
+                {
+                    OperationContext = "unholdUserContext"
+                };
+                callMedia.Unhold(unholdOptions);
+
+                var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+                var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+                string successMessage = $"Unhold successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = callStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error unholding ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+                _logger.LogError(errorMessage);
+
+                return Problem($"Failed to unhold: {ex.Message}");
+            }
+        }
+        #region InterruptAudioAndAnnounce   
+        //    /// <summary>
+        //    /// Interrupt audio and announce asynchronously.
+        //    /// </summary>
+        //    /// <param name="callConnectionId">The call connection ID</param>
+        //    /// <param name="acsTarget">The ACS user identifier</param>
+        //    /// <returns>status result</returns>
+        //    [HttpPost("/interruptAudioAndAnnounceAsync")]
+        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        //[ProducesResponseType(typeof(ProblemDetails), 400)]
+        //[ProducesResponseType(typeof(ProblemDetails), 500)]
+        //[Tags("Hold Participant APIs")]
+        //public async Task<IActionResult> InterruptAudioAndAnnounceAsync(string callConnectionId, string acsTarget)
+        //{
+        //  try
+        //  {
+        //    if (string.IsNullOrEmpty(callConnectionId))
+        //    {
+        //      return BadRequest("Call Connection ID is required");
+        //    }
+
+        //    if (string.IsNullOrEmpty(acsTarget))
+        //    {
+        //      return BadRequest("ACS Target ID is required");
+        //    }
+
+        //    _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+        //    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+        //    CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+        //    //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //    //{
+        //    //  VoiceName = "en-US-NancyNeural"
+        //    //};
+
+        //    var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        //    FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+        //    InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(fileSource, target)
+        //    {
+        //      OperationContext = "innterruptContext"
+        //    };
+
+        //    await callMedia.InterruptAudioAndAnnounceAsync(interruptAudio);
+
+        //    var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+        //    var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+        //    string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new CallConnectionResponse
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = callStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        //    _logger.LogError(errorMessage);
+
+        //    return Problem($"Failed to interrupt audio and announce: {ex.Message}");
+        //  }
+        //}
+
+        ///// <summary>
+        ///// Interrupt audio and announce.
+        ///// </summary>
+        ///// <param name="callConnectionId">The call connection ID</param>
+        ///// <param name="acsTarget">The ACS user identifier</param>
+        ///// <returns>status result</returns>
+        //[HttpPost("/interruptAudioAndAnnounce")]
+        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        //[ProducesResponseType(typeof(ProblemDetails), 400)]
+        //[ProducesResponseType(typeof(ProblemDetails), 500)]
+        //[Tags("Hold Participant APIs")]
+        //public IActionResult InterruptAudioAndAnnounce(string callConnectionId, string acsTarget)
+        //{
+        //  try
+        //  {
+        //    if (string.IsNullOrEmpty(callConnectionId))
+        //    {
+        //      return BadRequest("Call Connection ID is required");
+        //    }
+
+        //    if (string.IsNullOrEmpty(acsTarget))
+        //    {
+        //      return BadRequest("ACS Target ID is required");
+        //    }
+
+        //    _logger.LogInformation($"Interrupt audio and announce to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+        //    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+        //    CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+        //    //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //    //{
+        //    //  VoiceName = "en-US-NancyNeural"
+        //    //};
+
+        //    var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        //    FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+
+        //    InterruptAudioAndAnnounceOptions interruptAudio = new InterruptAudioAndAnnounceOptions(fileSource, target)
+        //    {
+        //      OperationContext = "innterruptContext"
+        //    };
+
+        //    callMedia.InterruptAudioAndAnnounce(interruptAudio);
+
+        //    var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+        //    var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+        //    string successMessage = $"Interrupt audio and announce successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new CallConnectionResponse
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = callStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"Error interrupting audio and announce on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        //    _logger.LogError(errorMessage);
+
+        //    return Problem($"Failed to interrupt audio and announce: {ex.Message}");
+        //  }
+        //}
+
+        ///// <summary>
+        ///// Interrupt hold with play.
+        ///// </summary>
+        ///// <param name="callConnectionId">The call connection ID</param>
+        ///// <param name="acsTarget">The ACS user identifier</param>
+        ///// <returns>status result</returns>
+        //[HttpPost("/interruptHoldWithPlay")]
+        //[ProducesResponseType(typeof(CallConnectionResponse), 200)]
+        //[ProducesResponseType(typeof(ProblemDetails), 400)]
+        //[ProducesResponseType(typeof(ProblemDetails), 500)]
+        //[Tags("Hold Participant APIs")]
+        //public IActionResult InterruptHoldWithPlay(string callConnectionId, string acsTarget)
+        //{
+        //  try
+        //  {
+        //    if (string.IsNullOrEmpty(callConnectionId))
+        //    {
+        //      return BadRequest("Call Connection ID is required");
+        //    }
+
+        //    if (string.IsNullOrEmpty(acsTarget))
+        //    {
+        //      return BadRequest("ACS Target ID is required");
+        //    }
+
+        //    _logger.LogInformation($"Interrupt hold with play to ACS target. CallConnectionId: {callConnectionId}, Target: {acsTarget}");
+
+        //    CallMedia callMedia = _service.GetCallMedia(callConnectionId);
+
+        //    //TextSource textSource = new TextSource("Hi, This is interrup audio and announcement test")
+        //    //{
+        //    //  VoiceName = "en-US-NancyNeural"
+        //    //};
+        //    var _fileSourceUri = _config.CallbackUriHost + "/audio/prompt.wav";
+        //    FileSource fileSource = new FileSource(new Uri(_fileSourceUri));
+        //    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+        //    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+        //    {
+        //      OperationContext = "playToContext",
+        //      InterruptHoldAudio = true
+        //    };
+
+        //    callMedia.Play(playToOptions);
+
+        //    var correlationId = (_service.GetCallConnectionProperties(callConnectionId)).CorrelationId;
+        //    var callStatus = (_service.GetCallConnectionProperties(callConnectionId)).CallConnectionState.ToString();
+
+        //    string successMessage = $"Interrupt hold with play successfully on ACS target. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, CallStatus: {callStatus}";
+        //    _logger.LogInformation(successMessage);
+
+        //    return Ok(new CallConnectionResponse
+        //    {
+        //      CallConnectionId = callConnectionId,
+        //      CorrelationId = correlationId,
+        //      Status = callStatus
+        //    });
+        //  }
+        //  catch (Exception ex)
+        //  {
+        //    string errorMessage = $"Error interrupting hold and play on ACS target. CallConnectionId: {callConnectionId}. Error: {ex.Message}";
+        //    _logger.LogError(errorMessage);
+
+        //    return Problem($"Failed to interrupt hold and play: {ex.Message}");
+        //  }
+        //}
+        #endregion
+        #endregion
     }
-
-    #endregion
-  }
 }
 
 #region Play Media with File Source

@@ -19,7 +19,7 @@ namespace Call_Automation_GCCH.Services
       
       if (!string.IsNullOrEmpty(pmaEndpoint))
       {
-        _client = new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: connectionString);
+        _client = new CallAutomationClient(/*pmaEndpoint: new Uri(pmaEndpoint),*/ connectionString: connectionString);
       }
       else
       {
@@ -127,7 +127,7 @@ namespace Call_Automation_GCCH.Services
       
       if (!string.IsNullOrEmpty(pmaEndpoint))
       {
-        _client = new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: connectionString);
+        _client = new CallAutomationClient(/*pmaEndpoint: new Uri(pmaEndpoint), */connectionString: connectionString);
         _logger.LogInformation($"CallAutomationClient recreated with PMA endpoint: {pmaEndpoint}");
       }
       else

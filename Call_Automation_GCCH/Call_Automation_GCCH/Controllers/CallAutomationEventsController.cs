@@ -166,68 +166,70 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Error processing callbacks: {ex.Message}");
             }
         }
-        /// <summary>
-        /// Updates the IsArizona configuration and switches PMA endpoint accordingly
-        /// </summary>
-        /// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
-        /// <returns>Action result indicating success or error</returns>
-        [HttpPost("/setRegion")]
-        [Tags("Region Configuration")]
-        public IActionResult SetRegion(bool isArizona)
-        {
-            try
-            {
-                _logger.LogInformation($"Changing region configuration. IsArizona: {isArizona}");
+        ///// <summary>
+        ///// Updates the IsArizona configuration and switches PMA endpoint accordingly
+        ///// </summary>
+        ///// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
+        ///// <returns>Action result indicating success or error</returns>
+        //[HttpPost("/setRegion")]
+        //[Tags("Region Configuration")]
+        //public IActionResult SetRegion(bool isArizona)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation($"Changing region configuration. IsArizona: {isArizona}");
 
-                // Get the current configuration section
-                var configSection = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("CommunicationSettings");
+        //        // Get the current configuration section
+        //        var configSection = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("CommunicationSettings");
 
-                // Get the current endpoint being used to determine if an update is needed
-                string currentEndpoint = _service.GetCurrentPmaEndpoint() ?? string.Empty;
-                string newEndpoint = isArizona
-                    ? configSection["PmaEndpointArizona"] ?? string.Empty
-                    : configSection["PmaEndpointTexas"] ?? string.Empty;
+        //        // Get the current endpoint being used to determine if an update is needed
+        //        string currentEndpoint = _service.GetCurrentPmaEndpoint() ?? string.Empty;
+        //        string newEndpoint = isArizona
+        //            ? configSection["PmaEndpointArizona"] ?? string.Empty
+        //            : configSection["PmaEndpointTexas"] ?? string.Empty;
 
-                // Check if new endpoint is empty
-                if (string.IsNullOrEmpty(newEndpoint))
-                {
-                    _logger.LogWarning($"The {(isArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
-                }
+        //        // Check if new endpoint is empty
+        //        if (string.IsNullOrEmpty(newEndpoint))
+        //        {
+        //            _logger.LogWarning($"The {(isArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
+        //        }
 
-                // Only update if the endpoint would actually change
-                if (currentEndpoint == newEndpoint)
-                {
-                    if (string.IsNullOrEmpty(currentEndpoint))
-                    {
-                        return Ok($"Configuration unchanged as the endpoints are empty");
-                    }
-                    else
-                    {
-                        return Ok($"Configuration unchanged. Already using {(isArizona ? "Arizona" : "Texas")} region.");
-                    }
-                }
+        //        // Only update if the endpoint would actually change
+        //        if (currentEndpoint == newEndpoint)
+        //        {
+        //            if (string.IsNullOrEmpty(currentEndpoint))
+        //            {
+        //                return Ok($"Configuration unchanged as the endpoints are empty");
+        //            }
+        //            else
+        //            {
+        //                return Ok($"Configuration unchanged. Already using {(isArizona ? "Arizona" : "Texas")} region.");
+        //            }
+        //        }
 
-                // Update the IsArizona setting in memory
-                ((IConfigurationSection)configSection.GetSection("IsArizona")).Value = isArizona.ToString();
+        //        // Update the IsArizona setting in memory
+        //        ((IConfigurationSection)configSection.GetSection("IsArizona")).Value = isArizona.ToString();
 
-                // Update the client with the new endpoint
-                var connectionString = configSection["AcsConnectionString"] ?? string.Empty;
-                if (string.IsNullOrEmpty(connectionString))
-                {
-                    _logger.LogError("AcsConnectionString is empty");
-                    return Problem("AcsConnectionString is empty");
-                }
+        //        // Update the client with the new endpoint
+        //        var connectionString = configSection["AcsConnectionString"] ?? string.Empty;
+        //        if (string.IsNullOrEmpty(connectionString))
+        //        {
+        //            _logger.LogError("AcsConnectionString is empty");
+        //            return Problem("AcsConnectionString is empty");
+        //        }
 
-                _service.UpdateClient(connectionString, newEndpoint);
+        //        _service.UpdateClient(connectionString, newEndpoint);
 
-                return Ok($"Region updated successfully to {(isArizona ? "Arizona" : "Texas")}.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error updating region configuration: {ex.Message}");
-                return Problem($"Failed to update region configuration: {ex.Message}");
-            }
-        }
+        //        return Ok($"Region updated successfully to {(isArizona ? "Arizona" : "Texas")}.");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError($"Error updating region configuration: {ex.Message}");
+        //        return Problem($"Failed to update region configuration: {ex.Message}");
+        //    }
+        //}
+
+
         /// <summary>
         /// Processes individual call automation events
         /// </summary>
@@ -263,6 +265,7 @@ namespace Call_Automation_GCCH.Controllers
             else if (parsedEvent is RecognizeCompleted recognizeCompleted)
             {
                 _logger.LogInformation($"Received call event: {recognizeCompleted.GetType()}, CallConnectionId: {recognizeCompleted.CallConnectionId}");
+                _logger.LogInformation($"Operation Context: {recognizeCompleted.OperationContext}");
 
                 switch (recognizeCompleted.RecognizeResult)
                 {
@@ -298,15 +301,18 @@ namespace Call_Automation_GCCH.Controllers
             {
                 _logger.LogInformation($"Received call event: {recognizeFailed.GetType()}, CallConnectionId: {recognizeFailed.CallConnectionId}, CorrelationId: {recognizeFailed.CorrelationId}, " +
                            $"subCode: {recognizeFailed.ResultInformation?.SubCode}, message: {recognizeFailed.ResultInformation?.Message}, context: {recognizeFailed.OperationContext}");
+                _logger.LogInformation($"Failed play source index: {recognizeFailed.FailedPlaySourceIndex}");
             }
             else if (parsedEvent is PlayCompleted playCompleted)
             {
                 _logger.LogInformation($"Received call event: {playCompleted.GetType()}, CallConnectionId: {playCompleted.CallConnectionId}");
+                _logger.LogInformation($"Operation Context: {playCompleted.OperationContext}");
             }
             else if (parsedEvent is PlayFailed playFailed)
             {
                 _logger.LogInformation($"Received call event: {playFailed.GetType()}, CallConnectionId: {playFailed.CallConnectionId}, CorrelationId: {playFailed.CorrelationId}, " +
                           $"subCode: {playFailed.ResultInformation?.SubCode}, message: {playFailed.ResultInformation?.Message}, context: {playFailed.OperationContext}");
+                _logger.LogInformation($"Failed play source index: {playFailed.FailedPlaySourceIndex}");
             }
             else if (parsedEvent is PlayCanceled playCanceled)
             {
@@ -367,57 +373,57 @@ namespace Call_Automation_GCCH.Controllers
                 _logger.LogInformation($"Received call event: {continuousDtmfRecognitionToneFailed.GetType()}, CallConnectionId: {continuousDtmfRecognitionToneFailed.CallConnectionId}, CorrelationId: {continuousDtmfRecognitionToneFailed.CorrelationId}, " +
                           $"subCode: {continuousDtmfRecognitionToneFailed.ResultInformation?.SubCode}, message: {continuousDtmfRecognitionToneFailed.ResultInformation?.Message}, context: {continuousDtmfRecognitionToneFailed.OperationContext}");
             }
-            else if (parsedEvent is HoldAudioStarted holdAudioStarted)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioStarted.GetType()}, CallConnectionId: {holdAudioStarted.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldAudioPaused holdAudioPaused)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioPaused.GetType()}, CallConnectionId: {holdAudioPaused.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldAudioResumed holdAudioResumed)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioResumed.GetType()}, CallConnectionId: {holdAudioResumed.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldAudioCompleted holdAudioCompleted)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioCompleted.GetType()}, CallConnectionId: {holdAudioCompleted.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldFailed holdFailed)
-            {
-                _logger.LogInformation($"Received call event: {holdFailed.GetType()}, CallConnectionId: {holdFailed.CallConnectionId}, CorrelationId: {holdFailed.CorrelationId}, " +
-                          $"subCode: {holdFailed.ResultInformation?.SubCode}, message: {holdFailed.ResultInformation?.Message}, context: {holdFailed.OperationContext}");
-            }
-            else if (parsedEvent is TranscriptionStarted transcriptionStarted)
-            {
-                _logger.LogInformation($"Received call event: {transcriptionStarted.GetType()}, CallConnectionId: {transcriptionStarted.CallConnectionId}");
-                _logger.LogInformation($"Operation context: {transcriptionStarted.OperationContext}");
-            }
-            else if (parsedEvent is TranscriptionStopped transcriptionStopped)
-            {
-                _logger.LogInformation($"Received call event: {transcriptionStopped.GetType()}, CallConnectionId: {transcriptionStopped.CallConnectionId}");
-                _logger.LogInformation($"Operation context: {transcriptionStopped.OperationContext}");
-            }
-            else if (parsedEvent is TranscriptionUpdated transcriptionUpdated)
-            {
-                _logger.LogInformation($"Received call event: {transcriptionUpdated.GetType()}, CallConnectionId: {transcriptionUpdated.CallConnectionId}, CorrelationId: {transcriptionUpdated.CorrelationId}");
-                _logger.LogInformation($"Operation context: {transcriptionUpdated.OperationContext}");
-            }
-            else if (parsedEvent is MediaStreamingStarted mediaStreamingStarted)
-            {
-                _logger.LogInformation($"Received call event: {mediaStreamingStarted.GetType()}, CallConnectionId: {mediaStreamingStarted.CallConnectionId}, CorrelationId: {mediaStreamingStarted.CorrelationId}");
-                _logger.LogInformation($"Operation context: {mediaStreamingStarted.OperationContext}");
-            }
-            else if (parsedEvent is MediaStreamingStopped mediaStreamingStopped)
-            {
-                _logger.LogInformation($"Received call event: {mediaStreamingStopped.GetType()}, CallConnectionId: {mediaStreamingStopped.CallConnectionId}, CorrelationId: {mediaStreamingStopped.CorrelationId}");
-                _logger.LogInformation($"Operation context: {mediaStreamingStopped.OperationContext}");
-            }
-            else if (parsedEvent is MediaStreamingFailed mediaStreamingFailed)
-            {
-                _logger.LogInformation($"Received call event: {mediaStreamingFailed.GetType()}, CorrelationId: {mediaStreamingFailed.CorrelationId}, " +
-                          $"subCode: {mediaStreamingFailed.ResultInformation?.SubCode}, message: {mediaStreamingFailed.ResultInformation?.Message}, context: {mediaStreamingFailed.OperationContext}");
-            }
+            //else if (parsedEvent is HoldAudioStarted holdAudioStarted)
+            //{
+            //    _logger.LogInformation($"Received call event: {holdAudioStarted.GetType()}, CallConnectionId: {holdAudioStarted.CallConnectionId}");
+            //}
+            //else if (parsedEvent is HoldAudioPaused holdAudioPaused)
+            //{
+            //    _logger.LogInformation($"Received call event: {holdAudioPaused.GetType()}, CallConnectionId: {holdAudioPaused.CallConnectionId}");
+            //}
+            //else if (parsedEvent is HoldAudioResumed holdAudioResumed)
+            //{
+            //    _logger.LogInformation($"Received call event: {holdAudioResumed.GetType()}, CallConnectionId: {holdAudioResumed.CallConnectionId}");
+            //}
+            //else if (parsedEvent is HoldAudioCompleted holdAudioCompleted)
+            //{
+            //    _logger.LogInformation($"Received call event: {holdAudioCompleted.GetType()}, CallConnectionId: {holdAudioCompleted.CallConnectionId}");
+            //}
+            //else if (parsedEvent is HoldFailed holdFailed)
+            //{
+            //    _logger.LogInformation($"Received call event: {holdFailed.GetType()}, CallConnectionId: {holdFailed.CallConnectionId}, CorrelationId: {holdFailed.CorrelationId}, " +
+            //              $"subCode: {holdFailed.ResultInformation?.SubCode}, message: {holdFailed.ResultInformation?.Message}, context: {holdFailed.OperationContext}");
+            //}
+            //else if (parsedEvent is TranscriptionStarted transcriptionStarted)
+            //{
+            //    _logger.LogInformation($"Received call event: {transcriptionStarted.GetType()}, CallConnectionId: {transcriptionStarted.CallConnectionId}");
+            //    _logger.LogInformation($"Operation context: {transcriptionStarted.OperationContext}");
+            //}
+            //else if (parsedEvent is TranscriptionStopped transcriptionStopped)
+            //{
+            //    _logger.LogInformation($"Received call event: {transcriptionStopped.GetType()}, CallConnectionId: {transcriptionStopped.CallConnectionId}");
+            //    _logger.LogInformation($"Operation context: {transcriptionStopped.OperationContext}");
+            //}
+            //else if (parsedEvent is TranscriptionUpdated transcriptionUpdated)
+            //{
+            //    _logger.LogInformation($"Received call event: {transcriptionUpdated.GetType()}, CallConnectionId: {transcriptionUpdated.CallConnectionId}, CorrelationId: {transcriptionUpdated.CorrelationId}");
+            //    _logger.LogInformation($"Operation context: {transcriptionUpdated.OperationContext}");
+            //}
+            //else if (parsedEvent is MediaStreamingStarted mediaStreamingStarted)
+            //{
+            //    _logger.LogInformation($"Received call event: {mediaStreamingStarted.GetType()}, CallConnectionId: {mediaStreamingStarted.CallConnectionId}, CorrelationId: {mediaStreamingStarted.CorrelationId}");
+            //    _logger.LogInformation($"Operation context: {mediaStreamingStarted.OperationContext}");
+            //}
+            //else if (parsedEvent is MediaStreamingStopped mediaStreamingStopped)
+            //{
+            //    _logger.LogInformation($"Received call event: {mediaStreamingStopped.GetType()}, CallConnectionId: {mediaStreamingStopped.CallConnectionId}, CorrelationId: {mediaStreamingStopped.CorrelationId}");
+            //    _logger.LogInformation($"Operation context: {mediaStreamingStopped.OperationContext}");
+            //}
+            //else if (parsedEvent is MediaStreamingFailed mediaStreamingFailed)
+            //{
+            //    _logger.LogInformation($"Received call event: {mediaStreamingFailed.GetType()}, CorrelationId: {mediaStreamingFailed.CorrelationId}, " +
+            //              $"subCode: {mediaStreamingFailed.ResultInformation?.SubCode}, message: {mediaStreamingFailed.ResultInformation?.Message}, context: {mediaStreamingFailed.OperationContext}");
+            //}
             else if (parsedEvent is CallDisconnected callDisconnected)
             {
                 _logger.LogInformation($"Received call event: {callDisconnected.GetType()}, CallConnectionId: {callDisconnected.CallConnectionId}, CorrelationId: {callDisconnected.CorrelationId}");
@@ -441,204 +447,204 @@ namespace Call_Automation_GCCH.Controllers
                 _logger.LogInformation($"Received call event: {recordingStateChanged.GetType()}, CallConnectionId: {recordingStateChanged.CallConnectionId}, CorrelationId: {recordingStateChanged.CorrelationId}");
                 _logger.LogInformation($"Recording State: {recordingStateChanged.State}");
             }
-            else if (parsedEvent is DialogStarted dialogStarted)
-            {
-                _logger.LogInformation($"Received call event: {dialogStarted.GetType()}, CallConnectionId: {dialogStarted.CallConnectionId}, CorrelationId: {dialogStarted.CorrelationId}");
-                _logger.LogInformation($"Dialog Id: {dialogStarted.DialogId}");
+            //else if (parsedEvent is DialogStarted dialogStarted)
+            //{
+            //    _logger.LogInformation($"Received call event: {dialogStarted.GetType()}, CallConnectionId: {dialogStarted.CallConnectionId}, CorrelationId: {dialogStarted.CorrelationId}");
+            //    _logger.LogInformation($"Dialog Id: {dialogStarted.DialogId}");
 
-            }
-            else if (parsedEvent is DialogTransfer dialogTransfer)
-            {
-                _logger.LogInformation($"Received call event: {dialogTransfer.GetType()}, CallConnectionId: {dialogTransfer.CallConnectionId}, CorrelationId: {dialogTransfer.CorrelationId}");
-                _logger.LogInformation($"Dialog Id: {dialogTransfer.DialogId}");
-            }
-            else if (parsedEvent is DialogHangup dialogHangup)
-            {
-                _logger.LogInformation($"Received call event: {dialogHangup.GetType()}, CallConnectionId: {dialogHangup.CallConnectionId}, CorrelationId: {dialogHangup.CorrelationId}");
-                _logger.LogInformation($"Dialog Id: {dialogHangup.DialogId}");
-            }
-            else if (parsedEvent is DialogConsent dialogConsent)
-            {
-                _logger.LogInformation($"Received call event: {dialogConsent.GetType()}, CallConnectionId: {dialogConsent.CallConnectionId}, CorrelationId: {dialogConsent.CorrelationId}");
-                _logger.LogInformation($"Dialog Id: {dialogConsent.DialogId}");
-            }
-            else if (parsedEvent is DialogCompleted dialogCompleted)
-            {
-                _logger.LogInformation($"Received call event: {dialogCompleted.GetType()}, CallConnectionId: {dialogCompleted.CallConnectionId}, CorrelationId: {dialogCompleted.CorrelationId}");
-                _logger.LogInformation($"Dialog Id: {dialogCompleted.DialogId}");
-            }
-            else if (parsedEvent is DialogFailed dialogFailed)
-            {
-                _logger.LogInformation($"Received call event: {dialogFailed.GetType()}, CorrelationId: {dialogFailed.CorrelationId}, " +
-                          $"subCode: {dialogFailed.ResultInformation?.SubCode}, message: {dialogFailed.ResultInformation?.Message}, context: {dialogFailed.OperationContext}");
-            }
+            //}
+            //else if (parsedEvent is DialogTransfer dialogTransfer)
+            //{
+            //    _logger.LogInformation($"Received call event: {dialogTransfer.GetType()}, CallConnectionId: {dialogTransfer.CallConnectionId}, CorrelationId: {dialogTransfer.CorrelationId}");
+            //    _logger.LogInformation($"Dialog Id: {dialogTransfer.DialogId}");
+            //}
+            //else if (parsedEvent is DialogHangup dialogHangup)
+            //{
+            //    _logger.LogInformation($"Received call event: {dialogHangup.GetType()}, CallConnectionId: {dialogHangup.CallConnectionId}, CorrelationId: {dialogHangup.CorrelationId}");
+            //    _logger.LogInformation($"Dialog Id: {dialogHangup.DialogId}");
+            //}
+            //else if (parsedEvent is DialogConsent dialogConsent)
+            //{
+            //    _logger.LogInformation($"Received call event: {dialogConsent.GetType()}, CallConnectionId: {dialogConsent.CallConnectionId}, CorrelationId: {dialogConsent.CorrelationId}");
+            //    _logger.LogInformation($"Dialog Id: {dialogConsent.DialogId}");
+            //}
+            //else if (parsedEvent is DialogCompleted dialogCompleted)
+            //{
+            //    _logger.LogInformation($"Received call event: {dialogCompleted.GetType()}, CallConnectionId: {dialogCompleted.CallConnectionId}, CorrelationId: {dialogCompleted.CorrelationId}");
+            //    _logger.LogInformation($"Dialog Id: {dialogCompleted.DialogId}");
+            //}
+            //else if (parsedEvent is DialogFailed dialogFailed)
+            //{
+            //    _logger.LogInformation($"Received call event: {dialogFailed.GetType()}, CorrelationId: {dialogFailed.CorrelationId}, " +
+            //              $"subCode: {dialogFailed.ResultInformation?.SubCode}, message: {dialogFailed.ResultInformation?.Message}, context: {dialogFailed.OperationContext}");
+            //}
         }
 
-        #region Incoming Call with Media Streaming
+        //#region Incoming Call with Media Streaming
 
-        /// <summary>
-        /// Handles incoming calls with media streaming using query parameters to configure options
-        /// </summary>
-        /// <remarks>
-        /// ## URL Template for Azure Communication Services Configuration
-        /// 
-        /// ```
-        /// https://your-domain.com/api/events/incomingcall?audioChannelMixed=true&amp;audioFormat16k=true&amp;mediaStreaming=true&amp;bidirectionalStreaming=true
-        /// ```
-        /// 
-        /// Simply copy this URL and change the true/false values as needed for your specific configuration.
-        /// </remarks>
-        /// <param name="eventGridEvents">The array of EventGrid events</param>
-        /// <param name="audioChannelMixed">If true, use Mixed audio channel; if false, use Unmixed</param>
-        /// <param name="audioFormat16k">If true, use 16kHz format; if false, use 24kHz</param>
-        /// <param name="mediaStreaming">If true, enable media streaming; if false, disable</param>
-        /// <param name="bidirectionalStreaming">If true, enable bidirectional streaming; if false, disable</param>
-        /// <returns>Action result indicating success or error</returns>
-        [HttpPost("events/incomingcall")]
-        [Tags("Incoming Call with Media Streaming Options")]
-        public async Task<IActionResult> HandleIncomingCallWithOptions(
-            [FromBody] EventGridEvent[] eventGridEvents,
-            [FromQuery] bool audioChannelMixed = true,
-            [FromQuery] bool audioFormat16k = true,
-            [FromQuery] bool mediaStreaming = true,
-            [FromQuery] bool bidirectionalStreaming = true)
-        {
-            MediaStreamingAudioChannel audioChannel = audioChannelMixed 
-                ? MediaStreamingAudioChannel.Mixed 
-                : MediaStreamingAudioChannel.Unmixed;
+        ///// <summary>
+        ///// Handles incoming calls with media streaming using query parameters to configure options
+        ///// </summary>
+        ///// <remarks>
+        ///// ## URL Template for Azure Communication Services Configuration
+        ///// 
+        ///// ```
+        ///// https://your-domain.com/api/events/incomingcall?audioChannelMixed=true&amp;audioFormat16k=true&amp;mediaStreaming=true&amp;bidirectionalStreaming=true
+        ///// ```
+        ///// 
+        ///// Simply copy this URL and change the true/false values as needed for your specific configuration.
+        ///// </remarks>
+        ///// <param name="eventGridEvents">The array of EventGrid events</param>
+        ///// <param name="audioChannelMixed">If true, use Mixed audio channel; if false, use Unmixed</param>
+        ///// <param name="audioFormat16k">If true, use 16kHz format; if false, use 24kHz</param>
+        ///// <param name="mediaStreaming">If true, enable media streaming; if false, disable</param>
+        ///// <param name="bidirectionalStreaming">If true, enable bidirectional streaming; if false, disable</param>
+        ///// <returns>Action result indicating success or error</returns>
+        //[HttpPost("events/incomingcall")]
+        //[Tags("Incoming Call with Media Streaming Options")]
+        //public async Task<IActionResult> HandleIncomingCallWithOptions(
+        //    [FromBody] EventGridEvent[] eventGridEvents,
+        //    [FromQuery] bool audioChannelMixed = true,
+        //    [FromQuery] bool audioFormat16k = true,
+        //    [FromQuery] bool mediaStreaming = true,
+        //    [FromQuery] bool bidirectionalStreaming = true)
+        //{
+        //    MediaStreamingAudioChannel audioChannel = audioChannelMixed 
+        //        ? MediaStreamingAudioChannel.Mixed 
+        //        : MediaStreamingAudioChannel.Unmixed;
             
-            bool isPcm24kHz = !audioFormat16k;
+        //    bool isPcm24kHz = !audioFormat16k;
 
-            return await HandleIncomingCallWithMediaStreaming(
-                eventGridEvents,
-                audioChannel,
-                mediaStreaming,
-                isPcm24kHz,
-                bidirectionalStreaming);
-        }
+        //    return await HandleIncomingCallWithMediaStreaming(
+        //        eventGridEvents,
+        //        audioChannel,
+        //        mediaStreaming,
+        //        isPcm24kHz,
+        //        bidirectionalStreaming);
+        //}
 
-        /// <summary>
-        /// Generic handler for incoming calls with specific media streaming configurations
-        /// </summary>
-        private async Task<IActionResult> HandleIncomingCallWithMediaStreaming(
-            EventGridEvent[] eventGridEvents,
-            MediaStreamingAudioChannel audioChannel,
-            bool enableMediaStreaming,
-            bool isPcm24kHz,
-            bool enableBidirectional)
-        {
-            try
-            {
-                _logger.LogInformation($"Received {eventGridEvents.Length} event(s) for incoming call with media streaming");
-                foreach (var eventGridEvent in eventGridEvents)
-                {
-                    try
-                    {
-                        _logger.LogInformation($"Processing event: {eventGridEvent.EventType}, Id: {eventGridEvent.Id}");
+        ///// <summary>
+        ///// Generic handler for incoming calls with specific media streaming configurations
+        ///// </summary>
+        //private async Task<IActionResult> HandleIncomingCallWithMediaStreaming(
+        //    EventGridEvent[] eventGridEvents,
+        //    MediaStreamingAudioChannel audioChannel,
+        //    bool enableMediaStreaming,
+        //    bool isPcm24kHz,
+        //    bool enableBidirectional)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation($"Received {eventGridEvents.Length} event(s) for incoming call with media streaming");
+        //        foreach (var eventGridEvent in eventGridEvents)
+        //        {
+        //            try
+        //            {
+        //                _logger.LogInformation($"Processing event: {eventGridEvent.EventType}, Id: {eventGridEvent.Id}");
 
-                        if (eventGridEvent.TryGetSystemEventData(out object eventData))
-                        {
-                            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
-                            {
-                                _logger.LogInformation($"Subscription validation event received with code: {subscriptionValidationEventData.ValidationCode}");
+        //                if (eventGridEvent.TryGetSystemEventData(out object eventData))
+        //                {
+        //                    if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+        //                    {
+        //                        _logger.LogInformation($"Subscription validation event received with code: {subscriptionValidationEventData.ValidationCode}");
 
-                                var responseData = new SubscriptionValidationResponse
-                                {
-                                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                                };
-                                return Ok(responseData);
-                            }
-                            if (eventData is AcsIncomingCallEventData incomingCallEventData)
-                            {
-                                try
-                                {
-                                    var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
-                                    _logger.LogInformation($"Incoming call from caller ID: {callerId}, CorrelationId: {incomingCallEventData.CorrelationId}");
+        //                        var responseData = new SubscriptionValidationResponse
+        //                        {
+        //                            ValidationResponse = subscriptionValidationEventData.ValidationCode
+        //                        };
+        //                        return Ok(responseData);
+        //                    }
+        //                    if (eventData is AcsIncomingCallEventData incomingCallEventData)
+        //                    {
+        //                        try
+        //                        {
+        //                            var callerId = incomingCallEventData.FromCommunicationIdentifier.RawId;
+        //                            _logger.LogInformation($"Incoming call from caller ID: {callerId}, CorrelationId: {incomingCallEventData.CorrelationId}");
 
-                                    var callbackUri = new Uri(new Uri(_config.CallbackUriHost), $"/api/callbacks");
-                                    var websocketUri = new Uri(_config.CallbackUriHost.Replace("https", "wss") + "/ws");
+        //                            var callbackUri = new Uri(new Uri(_config.CallbackUriHost), $"/api/callbacks");
+        //                            var websocketUri = new Uri(_config.CallbackUriHost.Replace("https", "wss") + "/ws");
                                     
-                                    _logger.LogInformation($"Incoming call with media streaming - correlationId: {incomingCallEventData.CorrelationId}, " +
-                                        $"AudioChannel: {audioChannel}, EnableMediaStreaming: {enableMediaStreaming}, " +
-                                        $"IsPcm24kHz: {isPcm24kHz}, EnableBidirectional: {enableBidirectional}");
+        //                            _logger.LogInformation($"Incoming call with media streaming - correlationId: {incomingCallEventData.CorrelationId}, " +
+        //                                $"AudioChannel: {audioChannel}, EnableMediaStreaming: {enableMediaStreaming}, " +
+        //                                $"IsPcm24kHz: {isPcm24kHz}, EnableBidirectional: {enableBidirectional}");
 
-                                    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-                                        websocketUri,
-                                        MediaStreamingContent.Audio,
-                                        audioChannel,
-                                        MediaStreamingTransport.Websocket,
-                                        enableMediaStreaming)
-                                    {
-                                        EnableBidirectional = enableBidirectional,
-                                        AudioFormat = isPcm24kHz ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
-                                    };
+        //                            MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
+        //                                websocketUri,
+        //                                MediaStreamingContent.Audio,
+        //                                audioChannel,
+        //                                MediaStreamingTransport.Websocket,
+        //                                enableMediaStreaming)
+        //                            {
+        //                                EnableBidirectional = enableBidirectional,
+        //                                AudioFormat = isPcm24kHz ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
+        //                            };
 
-                                    var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
-                                    {
-                                        MediaStreamingOptions = mediaStreamingOptions
-                                        // ACS GCCH Phase 2
-                                        // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
-                                    };
+        //                            var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
+        //                            {
+        //                                MediaStreamingOptions = mediaStreamingOptions
+        //                                // ACS GCCH Phase 2
+        //                                // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
+        //                            };
 
-                                    _logger.LogInformation($"Answering call with correlationId: {incomingCallEventData.CorrelationId} and media streaming options " +
-                                        $"(AudioChannel: {(audioChannel == MediaStreamingAudioChannel.Mixed ? "Mixed" : "Unmixed")}, " +
-                                        $"Format: {(isPcm24kHz ? "24kHz" : "16kHz")}, " +
-                                        $"Streaming: {(enableMediaStreaming ? "Enabled" : "Disabled")}, " +
-                                        $"Bidirectional: {(enableBidirectional ? "Enabled" : "Disabled")})");
+        //                            _logger.LogInformation($"Answering call with correlationId: {incomingCallEventData.CorrelationId} and media streaming options " +
+        //                                $"(AudioChannel: {(audioChannel == MediaStreamingAudioChannel.Mixed ? "Mixed" : "Unmixed")}, " +
+        //                                $"Format: {(isPcm24kHz ? "24kHz" : "16kHz")}, " +
+        //                                $"Streaming: {(enableMediaStreaming ? "Enabled" : "Disabled")}, " +
+        //                                $"Bidirectional: {(enableBidirectional ? "Enabled" : "Disabled")})");
 
-                                    AnswerCallResult answerCallResult = await _service.GetCallAutomationClient().AnswerCallAsync(options);
-                                    var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+        //                            AnswerCallResult answerCallResult = await _service.GetCallAutomationClient().AnswerCallAsync(options);
+        //                            var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
 
-                                    _logger.LogInformation($"Call answered successfully with media streaming. CallConnectionId: {answerCallResult.CallConnection.CallConnectionId}");
+        //                            _logger.LogInformation($"Call answered successfully with media streaming. CallConnectionId: {answerCallResult.CallConnection.CallConnectionId}");
 
-                                    // Start media streaming if enabled
-                                    if (enableMediaStreaming)
-                                    {
-                                        try
-                                        {
-                                            await callConnectionMedia.StartMediaStreamingAsync();
-                                            _logger.LogInformation($"Media streaming started for CallConnectionId: {answerCallResult.CallConnection.CallConnectionId}");
-                                        }
-                                        catch (Exception streamingEx)
-                                        {
-                                            _logger.LogError($"Error starting media streaming: {streamingEx.Message}");
-                                        }
-                                    }
-                                }
-                                catch (Exception callEx)
-                                {
-                                    _logger.LogError($"Error handling incoming call with media streaming: {callEx.Message}");
-                                }
-                            }
-                            if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
-                            {
-                                try
-                                {
-                                    CallAutomationService.SetRecordingLocation(statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation);
-                                    _logger.LogInformation($"The recording location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation}");
-                                }
-                                catch (Exception recordingEx)
-                                {
-                                    _logger.LogError($"Error handling recording status: {recordingEx.Message}");
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception eventEx)
-                    {
-                        _logger.LogError($"Error processing event: {eventEx.Message}");
-                    }
-                }
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error in handling incoming call with media streaming: {ex.Message}");
-                return Problem($"Error processing events: {ex.Message}");
-            }
-        }
+        //                            // Start media streaming if enabled
+        //                            if (enableMediaStreaming)
+        //                            {
+        //                                try
+        //                                {
+        //                                    await callConnectionMedia.StartMediaStreamingAsync();
+        //                                    _logger.LogInformation($"Media streaming started for CallConnectionId: {answerCallResult.CallConnection.CallConnectionId}");
+        //                                }
+        //                                catch (Exception streamingEx)
+        //                                {
+        //                                    _logger.LogError($"Error starting media streaming: {streamingEx.Message}");
+        //                                }
+        //                            }
+        //                        }
+        //                        catch (Exception callEx)
+        //                        {
+        //                            _logger.LogError($"Error handling incoming call with media streaming: {callEx.Message}");
+        //                        }
+        //                    }
+        //                    if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
+        //                    {
+        //                        try
+        //                        {
+        //                            CallAutomationService.SetRecordingLocation(statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation);
+        //                            _logger.LogInformation($"The recording location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation}");
+        //                        }
+        //                        catch (Exception recordingEx)
+        //                        {
+        //                            _logger.LogError($"Error handling recording status: {recordingEx.Message}");
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //            catch (Exception eventEx)
+        //            {
+        //                _logger.LogError($"Error processing event: {eventEx.Message}");
+        //            }
+        //        }
+        //        return Ok();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError($"Error in handling incoming call with media streaming: {ex.Message}");
+        //        return Problem($"Error processing events: {ex.Message}");
+        //    }
+        //}
 
-        #endregion
+        //#endregion
     }
 }
 

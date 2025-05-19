@@ -62,31 +62,31 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // Enable WebSocket support
-app.UseWebSockets();
-app.Use(async (context, next) =>
-{
-  // Get the logger instance from the DI container
-  var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+//app.UseWebSockets();
+//app.Use(async (context, next) =>
+//{
+//  // Get the logger instance from the DI container
+//  var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
 
-  if (context.Request.Path == "/ws")
-  {
-    logger.LogInformation($"Request received. Path: {context.Request.Path}");
-    if (context.WebSockets.IsWebSocketRequest)
-    {
-      logger.LogInformation("WebSocket request received.");
-      using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-      await Helper.ProcessRequest(webSocket);
-    }
-    else
-    {
-      context.Response.StatusCode = StatusCodes.Status400BadRequest;
-    }
-  }
-  else
-  {
-    await next(context);
-  }
-});
+//  if (context.Request.Path == "/ws")
+//  {
+//    logger.LogInformation($"Request received. Path: {context.Request.Path}");
+//    if (context.WebSockets.IsWebSocketRequest)
+//    {
+//      logger.LogInformation("WebSocket request received.");
+//      using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+//      await Helper.ProcessRequest(webSocket);
+//    }
+//    else
+//    {
+//      context.Response.StatusCode = StatusCodes.Status400BadRequest;
+//    }
+//  }
+//  else
+//  {
+//    await next(context);
+//  }
+//});
 
 // Add custom WebSocket middleware
 // app.UseMiddleware<Call_Automation_GCCH.Middleware.WebSocketMiddleware>();
