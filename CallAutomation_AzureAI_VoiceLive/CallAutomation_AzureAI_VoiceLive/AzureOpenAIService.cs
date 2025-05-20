@@ -22,20 +22,20 @@ namespace CallAutomation.AzureAI.VoiceLive
 
         private async Task CreateAISessionAsync(IConfiguration configuration)
         {
-            var openAiKey = configuration.GetValue<string>("AzureAIServiceKey");
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiKey);
+            var azureAIFoundryKey = configuration.GetValue<string>("AzureAIFoundryKey");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryKey);
 
-            var openAiUri = configuration.GetValue<string>("AzureAIServiceEndpoint");
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiUri);
+            var azureAIFoundryEndpoint = configuration.GetValue<string>("AzureAIFoundryEndpoint");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryEndpoint);
 
-            var openAiModelName = configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiModelName);
+            var azureAIFoundryDeploymentModelName = configuration.GetValue<string>("AzureAIFoundryDeploymentModelName");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryDeploymentModelName);
 
             var systemPrompt = configuration.GetValue<string>("SystemPrompt") ?? m_answerPromptSystemTemplate;
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiUri);
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryEndpoint);
 
             // The URL to connect to (replace with your actual WebSocket URL)
-            var openAIWwebsocket = $"{openAiUri.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={openAiModelName}&api-key={openAiKey}";
+            var openAIWwebsocket = $"{azureAIFoundryEndpoint.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={azureAIFoundryDeploymentModelName}&api-key={azureAIFoundryKey}";
 
             Uri serverUri = new Uri(openAIWwebsocket);
 
