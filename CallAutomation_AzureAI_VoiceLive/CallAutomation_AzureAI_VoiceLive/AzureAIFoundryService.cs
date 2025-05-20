@@ -46,35 +46,43 @@ namespace CallAutomation.AzureAI.VoiceLive
             await m_azureAIFoundryWebsocket.ConnectAsync(azureAIFoundryWebsocketUrl, CancellationToken.None);
             Console.WriteLine("Connected successfully!");
 
+            // Listen to messages over websocket
             StartConversation();
   
-            // Send a test message
-            await SendMessageAsync(GetSessionUpdate().ToJson(), CancellationToken.None);
+            // Update the session
+            await SendMessageAsync(GetSessionUpdate(), CancellationToken.None);
         }
 
-        private SessionUpdate GetSessionUpdate()
+        private string GetSessionUpdate()
         {
-            return new SessionUpdate()
+            var jsonObject = new
             {
-               Session = new SessionUpdate.SessionConfig()
-               {
-                   Voice = new()
-                   {
-                       Name = "en-US-AvaNeural",
-                       Type = "azure-standard"
-                   },
-                   InputAudioTranscription = new()
-                   {
-                       Model = "whisper-1"
-                   },
-                   TurnDetection = new()
-                   {
-                       Type = "server_vad"
-                   },
-                   Modalities = new List<string> { "text", "audio" },
-                   Temperature = 0.9
-            }
+                type = "session.update",
+                session = new
+                {
+                    turn_detection = new
+                    {
+                        type = "azure_semantic_vad",
+                        threshold = 0.3,
+                        prefix_padding_ms = 200,
+                        silence_duration_ms = 200,
+                        remove_filler_words = false
+                    },
+                    input_audio_noise_reduction = new { type = "azure_deep_noise_suppression" },
+                    input_audio_echo_cancellation = new { type = "server_echo_cancellation" },
+                    voice = new
+                    {
+                        name = "en-US-Aria:DragonHDLatestNeural",
+                        type = "azure-standard",
+                        temperature = 0.8
+                    }
+                }
             };
+
+            // Convert object to JSON string with indentation
+            string jsonreturn = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+            Console.WriteLine($"SessionUpdate: {jsonreturn}");
+            return jsonreturn;
         }
 
         // Method to send messages to the WebSocket server
