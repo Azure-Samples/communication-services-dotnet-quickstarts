@@ -7,7 +7,7 @@ products:
 - azure-communication-services
 ---
 
-# ACS Call Automation and Azure OpenAI Service
+# ACS Call Automation and Azure AI Voice Live API
 
 This is a sample application demonstrated during Microsoft Ignite 2024. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
 
@@ -17,8 +17,8 @@ This is a sample application demonstrated during Microsoft Ignite 2024. It highl
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
 - Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
-- Azure OpenAI Resource: Set up an Azure OpenAI resource by following the instructions in [Create and deploy an Azure OpenAI Service resource.](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
-- Azure OpenAI Service Model: To use this sample, you must have the GPT-4o-Realtime-Preview model deployed. Follow the instructions at [GPT-4o Realtime API for speech and audio (Preview)](https://learn.microsoft.com/en-us/azure/ai-services/openai/realtime-audio-quickstart?tabs=keyless%2Cwindows&pivots=ai-foundry-portal) to set it up. 
+- Azure AI Foundary Resource: Set up an Azure AI Foundary resource by following the instructions in [Create and deploy an Azure AI Foundary resource.](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
+
 
 ## Setup Instructions
 
@@ -39,8 +39,8 @@ Open the appsettings.json file to configure the following settings:
 
     - `DevTunnelUri`: your dev tunnel endpoint
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
-    - `AzureOpenAIServiceKey`: Open AI's Service Key. Refer to prerequisites section.
-    - `AzureOpenAIServiceEndpoint`: OpenAI's service endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
+    - `AzureAIServiceKey`: Azure AI Foundary's Service Key. Refer to prerequisites section.
+    - `AzureAIServiceEndpoint`: OpenAI's service endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
     - `AzureOpenAIDeploymentModelName`: Open AI's Model name. Refer to prerequisites section.
 
 ## Running the application
