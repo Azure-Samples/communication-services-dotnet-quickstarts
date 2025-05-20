@@ -8,10 +8,10 @@ public class AcsMediaStreamingHandler
     private WebSocket m_webSocket;
     private CancellationTokenSource m_cts;
     private MemoryStream m_buffer;
-    private AzureOpenAIService m_aiServiceHandler;
+    private AzureAIFoundryService m_aiServiceHandler;
     private IConfiguration m_configuration;
 
-    // Constructor to inject OpenAIClient
+    // Constructor to inject AzureAIFoundryClient
     public AcsMediaStreamingHandler(WebSocket webSocket, IConfiguration configuration)
     {
         m_webSocket = webSocket;
@@ -29,7 +29,7 @@ public class AcsMediaStreamingHandler
         }
         
         // start forwarder to AI model
-        m_aiServiceHandler = new AzureOpenAIService(this, m_configuration);
+        m_aiServiceHandler = new AzureAIFoundryService(this, m_configuration);
         
         try
         {
@@ -75,7 +75,7 @@ public class AcsMediaStreamingHandler
         m_buffer.Dispose();
     }
 
-    private async Task WriteToAzOpenAIServiceInputStream(string data)
+    private async Task WriteToAzureFoundryAIServiceInputStream(string data)
     {
         var input = StreamingData.Parse(data);
         if (input is AudioData audioData)
@@ -104,7 +104,7 @@ public class AcsMediaStreamingHandler
                 if (receiveResult.MessageType != WebSocketMessageType.Close)
                 {
                     string data = Encoding.UTF8.GetString(receiveBuffer).TrimEnd('\0');
-                    await WriteToAzOpenAIServiceInputStream(data);               
+                    await WriteToAzureFoundryAIServiceInputStream(data);               
                 }
             }
         }

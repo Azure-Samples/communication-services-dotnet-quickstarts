@@ -3,13 +3,13 @@ page_type: sample
 languages:
 - csharp
 products:
-- open ai
+- azure ai foundry
 - azure-communication-services
 ---
 
-# ACS Call Automation and Azure AI Voice Live API
+# ACS Call Automation and Azure AI Voice Live API 
 
-This is a sample application demonstrated during Microsoft Ignite 2024. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
+This sample, discussed at the Microsoft Build 2025 session, demonstrates the integration of Azure Communication Services Call Automation bidirectional streaming with the newly announced Azure AI Voice Live API (Preview). This integration unlocks powerful capabilities for creating next-generation AI voice agents that can be deployed effectively. By combining Azure Communication Services' robust telephony and communication infrastructure with the sophisticated natural language processing and real-time voice capabilities of Azure AI, companies can provide seamless and efficient customer service, automate routine tasks, and deliver personalized experiences. This integration enables scalable solutions that handle diverse communication scenarios, offering significant improvements in customer engagement and operational efficiency.
 
 ## Prerequisites
 
@@ -17,14 +17,21 @@ This is a sample application demonstrated during Microsoft Ignite 2024. It highl
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
 - Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
-- Azure AI Foundary Resource: Set up an Azure AI Foundary resource by following the instructions in [Create and deploy an Azure AI Foundary resource.](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource?pivots=web-portal).
+- Create an [Azure AI Foundry](https://portal.azure.com/#create/Microsoft.CognitiveServicesAIServices) resource.
 
+>[!NOTE]
+> ### Azure AI Foundry endpoint
+> The Voice Live API is only supported in east-us2 and swedencentral regions.
+>#### Regional endpoints
+>If you are using a regional endpoint for your Azure AI Services resource, the VA WebSocket endpoint would be `https://<region>.api.cognitive.microsoft.com/`.
+>#### Custom domains
+>If you have an Azure AI Foundry resource with a custom domain, where the endpoint shown in Azure portal is `https://<custom-domain>.cognitiveservices.azure.com/`.
 
 ## Setup Instructions
 
 Before running this sample, you'll need to setup the resources above with the following configuration updates:
 
-##### 1. Setup and host your Azure DevTunnel
+### 1. Setup and host your Azure DevTunnel
 
 [Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
 
@@ -34,14 +41,14 @@ devtunnel port create -p 49412
 devtunnel host
 ```
 
-##### 2. Add the required API Keys and endpoints
+### 2. Add the required API Keys and endpoints
 Open the appsettings.json file to configure the following settings:
 
     - `DevTunnelUri`: your dev tunnel endpoint
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
-    - `AzureAIServiceKey`: Azure AI Foundary's Service Key. Refer to prerequisites section.
-    - `AzureAIServiceEndpoint`: OpenAI's service endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
-    - `AzureOpenAIDeploymentModelName`: Open AI's Model name. Refer to prerequisites section.
+    - `AzureAIFoundryKey`: Azure AI Foundry Key. Refer to prerequisites section.
+    - `AzureAIFoundryEndpoint`: Azure AI Foundry endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
+    - `AzureAIFoundryDeploymentModelName`: The model name. Refer to prerequisites section.
 
 ## Running the application
 
@@ -51,3 +58,4 @@ Open the appsettings.json file to configure the following settings:
 
 
 Once that's completed you should have a running application. The best way to test this is to place a call to your ACS phone number and talk to your intelligent agent.
+

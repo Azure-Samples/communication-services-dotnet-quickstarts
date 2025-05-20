@@ -6,14 +6,14 @@ using CallAutomation.AzureAI.VoiceLive.Models;
 
 namespace CallAutomation.AzureAI.VoiceLive
 {
-    public class AzureOpenAIService
+    public class AzureAIFoundryService
     {
         private CancellationTokenSource m_cts;
         private AcsMediaStreamingHandler m_mediaStreaming;
         private string m_answerPromptSystemTemplate = "You are an AI assistant that helps people find information.";
-        private ClientWebSocket m_openAIWebsocket;
+        private ClientWebSocket m_azureAIFoundryWebsocket;
 
-        public AzureOpenAIService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
+        public AzureAIFoundryService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
         {            
             m_mediaStreaming = mediaStreaming;
             m_cts = new CancellationTokenSource();
@@ -22,30 +22,28 @@ namespace CallAutomation.AzureAI.VoiceLive
 
         private async Task CreateAISessionAsync(IConfiguration configuration)
         {
-            var openAiKey = configuration.GetValue<string>("AzureAIServiceKey");
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiKey);
+            var azureAIFoundryKey = configuration.GetValue<string>("AzureAIFoundryKey");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryKey);
 
-            var openAiUri = configuration.GetValue<string>("AzureAIServiceEndpoint");
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiUri);
+            var azureAIFoundryEndpoint = configuration.GetValue<string>("AzureAIFoundryEndpoint");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryEndpoint);
 
-            var openAiModelName = configuration.GetValue<string>("AzureOpenAIDeploymentModelName");
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiModelName);
+            var azureAIFoundryDeploymentModelName = configuration.GetValue<string>("AzureAIFoundryDeploymentModelName");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryDeploymentModelName);
 
             var systemPrompt = configuration.GetValue<string>("SystemPrompt") ?? m_answerPromptSystemTemplate;
-            ArgumentNullException.ThrowIfNullOrEmpty(openAiUri);
+            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryEndpoint);
 
-            // The URL to connect to (replace with your actual WebSocket URL)
-            var openAIWwebsocket = $"{openAiUri.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={openAiModelName}&api-key={openAiKey}";
-
-            Uri serverUri = new Uri(openAIWwebsocket);
+            // The URL to connect to
+            var azureAIFoundryWebsocketUrl = new Uri($"{azureAIFoundryEndpoint.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={azureAIFoundryDeploymentModelName}&api-key={azureAIFoundryKey}");
 
             // Create a new WebSocket client
-            m_openAIWebsocket = new ClientWebSocket();
+            m_azureAIFoundryWebsocket = new ClientWebSocket();
 
-            Console.WriteLine($"Connecting to {serverUri}...");
+            Console.WriteLine($"Connecting to {azureAIFoundryWebsocketUrl}...");
 
             // Connect to the WebSocket server
-            await m_openAIWebsocket.ConnectAsync(serverUri, CancellationToken.None);
+            await m_azureAIFoundryWebsocket.ConnectAsync(azureAIFoundryWebsocketUrl, CancellationToken.None);
             Console.WriteLine("Connected successfully!");
 
             StartConversation();
@@ -84,13 +82,13 @@ namespace CallAutomation.AzureAI.VoiceLive
         {
             //Console.WriteLine($"Sending Message: {message}");
 
-            if (m_openAIWebsocket != null)
+            if (m_azureAIFoundryWebsocket != null)
             {
-                if (m_openAIWebsocket.State != WebSocketState.Open)
+                if (m_azureAIFoundryWebsocket.State != WebSocketState.Open)
                     return;
 
                 byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-                await m_openAIWebsocket.SendAsync(
+                await m_azureAIFoundryWebsocket.SendAsync(
                     new ArraySegment<byte>(messageBytes),
                     WebSocketMessageType.Text,
                     true,
@@ -107,7 +105,7 @@ namespace CallAutomation.AzureAI.VoiceLive
 
             try
             {
-                while (m_openAIWebsocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+                while (m_azureAIFoundryWebsocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
                 {
                     var receiveBuffer = new ArraySegment<byte>(buffer);
                     StringBuilder messageBuilder = new StringBuilder();
@@ -116,12 +114,12 @@ namespace CallAutomation.AzureAI.VoiceLive
 
                     do
                     {
-                        result = await m_openAIWebsocket.ReceiveAsync(receiveBuffer, cancellationToken);
+                        result = await m_azureAIFoundryWebsocket.ReceiveAsync(receiveBuffer, cancellationToken);
                         messageBuilder.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
 
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            await m_openAIWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                            await m_azureAIFoundryWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
                             return;
                         }
 
@@ -183,9 +181,9 @@ namespace CallAutomation.AzureAI.VoiceLive
         {
             m_cts.Cancel();
             m_cts.Dispose();
-            if (m_openAIWebsocket != null)
+            if (m_azureAIFoundryWebsocket != null)
             {
-                await m_openAIWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal", CancellationToken.None);
+                await m_azureAIFoundryWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal", CancellationToken.None);
             }
             //m_aiSession.Dispose();
         }
