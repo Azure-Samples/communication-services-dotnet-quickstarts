@@ -1,8 +1,7 @@
 using System.Net.WebSockets;
-using CallAutomationOpenAI;
 using Azure.Communication.CallAutomation;
 using System.Text;
-#pragma warning disable OPENAI002
+using CallAutomation.AzureAI.VoiceLive;
 
 public class AcsMediaStreamingHandler
 {
@@ -34,7 +33,7 @@ public class AcsMediaStreamingHandler
         
         try
         {
-            m_aiServiceHandler.StartConversation();
+            //m_aiServiceHandler.StartConversation();
             await StartReceivingFromAcsMediaWebSocket();
         }
         catch (Exception ex)
@@ -43,7 +42,7 @@ public class AcsMediaStreamingHandler
         }
         finally
         {
-            m_aiServiceHandler.Close();
+            await m_aiServiceHandler.Close();
             this.Close();
         }
     }
@@ -83,10 +82,7 @@ public class AcsMediaStreamingHandler
         {
             if (!audioData.IsSilent)
             {
-                using (var ms = new MemoryStream(audioData.Data))
-                {
-                    await m_aiServiceHandler.SendAudioToExternalAI(ms);
-                }
+              await m_aiServiceHandler.SendAudioToExternalAI(audioData.Data);
             }
         }
     }

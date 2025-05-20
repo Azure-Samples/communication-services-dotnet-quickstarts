@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "CallAutomation_AzOpenAI_Voice": {
+    "CallAutomation_AzureAI_VoiceLive": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
