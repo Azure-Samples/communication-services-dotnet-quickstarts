@@ -46,9 +46,9 @@ Open the appsettings.json file to configure the following settings:
 
     - `DevTunnelUri`: your dev tunnel endpoint
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
-    - `AzureAIFoundryKey`: Azure AI Foundry Key. Refer to prerequisites section.
-    - `AzureAIFoundryEndpoint`: Azure AI Foundry endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
-    - `AzureAIFoundryDeploymentModelName`: The model name. Refer to prerequisites section.
+    - `AzureVoiceLiveApiKey`: Azure AI Foundry Key. Refer to prerequisites section.
+    - `AzureVoiceLiveEndpoint`: Azure AI Foundry endpoint. Your endpoint should be like https://{AI_RESOURCE_NAME}.services.ai.azure.com/. Refer to the prerequisites section.
+    - `VoiceLiveModel`: The model name. Refer to prerequisites section.
 
 ## Running the application
 
