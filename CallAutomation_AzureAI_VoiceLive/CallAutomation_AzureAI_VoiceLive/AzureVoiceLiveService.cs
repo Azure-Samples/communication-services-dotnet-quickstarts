@@ -5,14 +5,14 @@ using System.Text.Json;
 
 namespace CallAutomation.AzureAI.VoiceLive
 {
-    public class AzureAIFoundryService
+    public class AzureVoiceLiveService
     {
         private CancellationTokenSource m_cts;
         private AcsMediaStreamingHandler m_mediaStreaming;
         private string m_answerPromptSystemTemplate = "You are an AI assistant that helps people find information.";
-        private ClientWebSocket m_azureAIFoundryWebsocket;
+        private ClientWebSocket m_azureVoiceLiveWebsocket;
 
-        public AzureAIFoundryService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
+        public AzureVoiceLiveService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
         {            
             m_mediaStreaming = mediaStreaming;
             m_cts = new CancellationTokenSource();
@@ -21,28 +21,28 @@ namespace CallAutomation.AzureAI.VoiceLive
 
         private async Task CreateAISessionAsync(IConfiguration configuration)
         {
-            var azureAIFoundryKey = configuration.GetValue<string>("AzureAIFoundryKey");
-            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryKey);
+            var azureVoiceLiveApiKey = configuration.GetValue<string>("AzureVoiceLiveApiKey");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureVoiceLiveApiKey);
 
-            var azureAIFoundryEndpoint = configuration.GetValue<string>("AzureAIFoundryEndpoint");
-            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryEndpoint);
+            var azureVoiceLiveEndpoint = configuration.GetValue<string>("AzureVoiceLiveEndpoint");
+            ArgumentNullException.ThrowIfNullOrEmpty(azureVoiceLiveEndpoint);
 
-            var azureAIFoundryDeploymentModelName = configuration.GetValue<string>("AzureAIFoundryDeploymentModelName");
-            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryDeploymentModelName);
+            var voiceLiveModel = configuration.GetValue<string>("VoiceLiveModel");
+            ArgumentNullException.ThrowIfNullOrEmpty(voiceLiveModel);
 
             var systemPrompt = configuration.GetValue<string>("SystemPrompt") ?? m_answerPromptSystemTemplate;
             ArgumentNullException.ThrowIfNullOrEmpty(systemPrompt);
 
             // The URL to connect to
-            var azureAIFoundryWebsocketUrl = new Uri($"{azureAIFoundryEndpoint.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={azureAIFoundryDeploymentModelName}&api-key={azureAIFoundryKey}");
+            var azureVoiceLiveWebsocketUrl = new Uri($"{azureVoiceLiveEndpoint.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={voiceLiveModel}&api-key={azureVoiceLiveApiKey}");
 
             // Create a new WebSocket client
-            m_azureAIFoundryWebsocket = new ClientWebSocket();
+            m_azureVoiceLiveWebsocket = new ClientWebSocket();
 
-            Console.WriteLine($"Connecting to {azureAIFoundryWebsocketUrl}...");
+            Console.WriteLine($"Connecting to {azureVoiceLiveWebsocketUrl}...");
 
             // Connect to the WebSocket server
-            await m_azureAIFoundryWebsocket.ConnectAsync(azureAIFoundryWebsocketUrl, CancellationToken.None);
+            await m_azureVoiceLiveWebsocket.ConnectAsync(azureVoiceLiveWebsocketUrl, CancellationToken.None);
             Console.WriteLine("Connected successfully!");
 
             // Listen to messages over websocket
@@ -89,13 +89,13 @@ namespace CallAutomation.AzureAI.VoiceLive
         {
             //Console.WriteLine($"Sending Message: {message}");
 
-            if (m_azureAIFoundryWebsocket != null)
+            if (m_azureVoiceLiveWebsocket != null)
             {
-                if (m_azureAIFoundryWebsocket.State != WebSocketState.Open)
+                if (m_azureVoiceLiveWebsocket.State != WebSocketState.Open)
                     return;
 
                 byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-                await m_azureAIFoundryWebsocket.SendAsync(
+                await m_azureVoiceLiveWebsocket.SendAsync(
                     new ArraySegment<byte>(messageBytes),
                     WebSocketMessageType.Text,
                     true,
@@ -112,7 +112,7 @@ namespace CallAutomation.AzureAI.VoiceLive
 
             try
             {
-                while (m_azureAIFoundryWebsocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+                while (m_azureVoiceLiveWebsocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
                 {
                     var receiveBuffer = new ArraySegment<byte>(buffer);
                     StringBuilder messageBuilder = new StringBuilder();
@@ -121,12 +121,12 @@ namespace CallAutomation.AzureAI.VoiceLive
 
                     do
                     {
-                        result = await m_azureAIFoundryWebsocket.ReceiveAsync(receiveBuffer, cancellationToken);
+                        result = await m_azureVoiceLiveWebsocket.ReceiveAsync(receiveBuffer, cancellationToken);
                         messageBuilder.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
 
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            await m_azureAIFoundryWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                            await m_azureVoiceLiveWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
                             return;
                         }
 
@@ -191,9 +191,9 @@ namespace CallAutomation.AzureAI.VoiceLive
         {
             m_cts.Cancel();
             m_cts.Dispose();
-            if (m_azureAIFoundryWebsocket != null)
+            if (m_azureVoiceLiveWebsocket != null)
             {
-                await m_azureAIFoundryWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal", CancellationToken.None);
+                await m_azureVoiceLiveWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal", CancellationToken.None);
             }
             //m_aiSession.Dispose();
         }
