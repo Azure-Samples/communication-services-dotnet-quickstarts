@@ -170,7 +170,7 @@ namespace CallAutomation.AzureAI.VoiceLive
 
         public void StartConversation()
         {
-            _ = Task.Run(async () => await ReceiveMessagesAsync(CancellationToken.None));
+            _ = Task.Run(async () => await ReceiveMessagesAsync(m_cts.Token));
         }
 
         public async Task SendAudioToExternalAI(byte[] data)

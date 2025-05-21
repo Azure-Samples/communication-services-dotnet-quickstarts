@@ -8,7 +8,7 @@ public class AcsMediaStreamingHandler
     private WebSocket m_webSocket;
     private CancellationTokenSource m_cts;
     private MemoryStream m_buffer;
-    private AzureAIFoundryService m_aiServiceHandler;
+    private AzureVoiceLiveService m_aiServiceHandler;
     private IConfiguration m_configuration;
 
     // Constructor to inject AzureAIFoundryClient
@@ -29,7 +29,7 @@ public class AcsMediaStreamingHandler
         }
         
         // start forwarder to AI model
-        m_aiServiceHandler = new AzureAIFoundryService(this, m_configuration);
+        m_aiServiceHandler = new AzureVoiceLiveService(this, m_configuration);
         
         try
         {
