@@ -19,8 +19,7 @@ var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/
 
 if (string.IsNullOrEmpty(appBaseUrl))
 {
-    appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri")?.TrimEnd('/');;
-    Console.WriteLine($"appBaseUrl :{appBaseUrl}");
+    appBaseUrl = builder.Configuration["BaseUri"];
 }
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
