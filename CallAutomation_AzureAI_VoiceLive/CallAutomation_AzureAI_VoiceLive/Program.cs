@@ -19,8 +19,8 @@ var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/
 
 if (string.IsNullOrEmpty(appBaseUrl))
 {
-    appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri")?.TrimEnd('/');;
-    Console.WriteLine($"appBaseUrl :{appBaseUrl}");
+    appBaseUrl = $"https://{Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME")}";
+    Console.WriteLine($"App base URL: {appBaseUrl}");
 }
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
@@ -50,6 +50,7 @@ app.MapPost("/api/incomingCall", async (
         var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
         var callerId = Helper.GetCallerId(jsonObject);
         var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
+        logger.LogInformation($"appBaseUrl: {appBaseUrl}");
         var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
         logger.LogInformation($"Callback Url: {callbackUri}");
         var websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";

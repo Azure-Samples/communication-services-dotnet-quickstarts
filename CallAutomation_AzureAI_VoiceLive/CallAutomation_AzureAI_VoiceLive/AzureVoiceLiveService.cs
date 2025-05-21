@@ -47,12 +47,15 @@ namespace CallAutomation.AzureAI.VoiceLive
 
             // Listen to messages over websocket
             StartConversation();
-  
+
             // Update the session
-            await SendMessageAsync(GetSessionUpdate(), CancellationToken.None);
+            await UpdateSessionAsync();
+
+            //Start Response from AI
+            await StartResponseAsync();
         }
 
-        private string GetSessionUpdate()
+        private async Task UpdateSessionAsync()
         {
             var jsonObject = new
             {
@@ -79,9 +82,19 @@ namespace CallAutomation.AzureAI.VoiceLive
             };
 
             // Convert object to JSON string with indentation
-            string jsonreturn = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
-            Console.WriteLine($"SessionUpdate: {jsonreturn}");
-            return jsonreturn;
+            string sessionUpdate = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+            Console.WriteLine($"SessionUpdate: {sessionUpdate}");
+            await SendMessageAsync(sessionUpdate, CancellationToken.None);
+        }
+
+        private async Task StartResponseAsync()
+        {
+            var jsonObject = new
+            {
+                type = "response.create"
+            };
+            var message = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+            await SendMessageAsync(message, CancellationToken.None);
         }
 
         // Method to send messages to the WebSocket server
