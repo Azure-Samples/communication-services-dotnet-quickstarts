@@ -195,7 +195,6 @@ namespace CallAutomation.AzureAI.VoiceLive
             {
                 await m_azureVoiceLiveWebsocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal", CancellationToken.None);
             }
-            //m_aiSession.Dispose();
         }
     }
 }
