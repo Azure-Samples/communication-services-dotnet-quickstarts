@@ -51,7 +51,7 @@ namespace CallAutomation.AzureAI.VoiceLive
             // Update the session
             await UpdateSessionAsync();
 
-            //Send Greeting Command
+            //Start Response from AI
             await StartResponseAsync();
         }
 
