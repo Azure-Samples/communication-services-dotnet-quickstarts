@@ -2,7 +2,6 @@
 using Azure.Communication.CallAutomation;
 using System.Text;
 using System.Text.Json;
-using CallAutomation.AzureAI.VoiceLive.Models;
 
 namespace CallAutomation.AzureAI.VoiceLive
 {
@@ -32,7 +31,7 @@ namespace CallAutomation.AzureAI.VoiceLive
             ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryDeploymentModelName);
 
             var systemPrompt = configuration.GetValue<string>("SystemPrompt") ?? m_answerPromptSystemTemplate;
-            ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryEndpoint);
+            ArgumentNullException.ThrowIfNullOrEmpty(systemPrompt);
 
             // The URL to connect to
             var azureAIFoundryWebsocketUrl = new Uri($"{azureAIFoundryEndpoint.Replace("https", "wss")}/voice-agent/realtime?api-version=2025-05-01-preview&x-ms-client-request-id={Guid.NewGuid()}&model={azureAIFoundryDeploymentModelName}&api-key={azureAIFoundryKey}");
@@ -136,26 +135,26 @@ namespace CallAutomation.AzureAI.VoiceLive
                     string receivedMessage = messageBuilder.ToString();
                     Console.WriteLine($"Received: {receivedMessage}");
 
-                    if (receivedMessage.Contains("response.audio.delta"))
-                    {
-                        var responseAudio = JsonSerializer.Deserialize<ResponseAudio>(receivedMessage);
+                    var data = JsonSerializer.Deserialize<Dictionary<string, object>>(receivedMessage);
 
-                        if (!string.IsNullOrEmpty(responseAudio?.Delta) && responseAudio.Delta.Length % 4 == 0) // Validate B
-                                                                                                                // ase64
+                    if (data != null)
+                    {
+                        if (data["type"].ToString() == "response.audio.delta")
                         {
-                            var jsonString = OutStreamingData.GetAudioDataForOutbound(Convert.FromBase64String(responseAudio.Delta));
+                            var jsonString = OutStreamingData.GetAudioDataForOutbound(Convert.FromBase64String(data["delta"].ToString()));
+                            await m_mediaStreaming.SendMessageAsync(jsonString);                            
+                        }
+                        else if (data["type"].ToString() == "input_audio_buffer.speech_started")
+                        {
+                            Console.WriteLine($"  -- Voice activity detection started");
+                            // Barge-in, send stop audio
+                            var jsonString = OutStreamingData.GetStopAudioForOutbound();
                             await m_mediaStreaming.SendMessageAsync(jsonString);
                         }
                     }
-                    else if (receivedMessage.Contains("input_audio_buffer.speech_started"))
+                    else
                     {
-                        var speechStartedUpdate = JsonSerializer.Deserialize<InputSpeechStarted>(receivedMessage);
-
-                        Console.WriteLine(
-                            $"  -- Voice activity detection started at {speechStartedUpdate.AudioStartTime} ms");
-                        // Barge-in, send stop audio
-                        var jsonString = OutStreamingData.GetStopAudioForOutbound();
-                        await m_mediaStreaming.SendMessageAsync(jsonString);
+                        Console.WriteLine($"Received message is null or empty.");
                     }
                 }
             }
@@ -176,12 +175,15 @@ namespace CallAutomation.AzureAI.VoiceLive
 
         public async Task SendAudioToExternalAI(byte[] data)
         {
-            var inputAudio = new InputAudio()
+            var audioBytes = Convert.ToBase64String(data);
+            var jsonObject = new
             {
-                Audio = Convert.ToBase64String(data)
+                type = "input_audio_buffer.append",
+                audio = audioBytes
             };
 
-            await SendMessageAsync(inputAudio.ToJson(), CancellationToken.None);
+            var message = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+            await SendMessageAsync(message, CancellationToken.None);
         }
         
 
