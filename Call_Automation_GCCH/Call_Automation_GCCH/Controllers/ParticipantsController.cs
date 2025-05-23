@@ -18,15 +18,15 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<ParticipantsController> _logger;
-        private readonly ConfigurationRequest _config; // final, bound object
+        private readonly ICommunicationConfigurationService _communicationConfigurationService; // final, bound object
 
         public ParticipantsController(
             CallAutomationService service,
-            ILogger<ParticipantsController> logger, IOptions<ConfigurationRequest> configOptions)
+            ILogger<ParticipantsController> logger, ICommunicationConfigurationService communicationConfigurationService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _communicationConfigurationService = communicationConfigurationService ?? throw new ArgumentNullException(nameof(communicationConfigurationService));
         }
 
         // ─ Add ───────────────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ namespace Call_Automation_GCCH.Controllers
                 CallInvite invite = isPstn
                     ? new CallInvite(
                           new PhoneNumberIdentifier(participantId),
-                          new PhoneNumberIdentifier(_config.AcsPhoneNumber))
+                          new PhoneNumberIdentifier(_communicationConfigurationService.communicationConfiguration.AcsPhoneNumber))
                     : new CallInvite(new CommunicationUserIdentifier(participantId));
 
                 var options = new AddParticipantOptions(invite)

@@ -18,16 +18,16 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<RecordingsController> _logger;
-        private readonly ConfigurationRequest _config;
+        private readonly ICommunicationConfigurationService _communicationConfigurationService;
 
         public RecordingsController(
             CallAutomationService service,
             ILogger<RecordingsController> logger,
-            IOptions<ConfigurationRequest> configOptions)
+            ICommunicationConfigurationService communicationConfigurationService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _communicationConfigurationService = communicationConfigurationService ?? throw new ArgumentNullException(nameof(communicationConfigurationService));
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Call_Automation_GCCH.Controllers
                 recordingOptions.RecordingContent = RecordingContent.AudioVideo;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp4;
                 recordingOptions.RecordingChannel = RecordingChannel.Mixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
                 CallAutomationService.SetRecordingFileFormat(RecordingFormat.Mp4.ToString());
 
@@ -103,7 +103,7 @@ namespace Call_Automation_GCCH.Controllers
                 recordingOptions.RecordingContent = RecordingContent.AudioVideo;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp4;
                 recordingOptions.RecordingChannel = RecordingChannel.Mixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
 
                 var recordingResult = _service.GetCallAutomationClient().GetCallRecording().Start(recordingOptions);
@@ -151,7 +151,7 @@ namespace Call_Automation_GCCH.Controllers
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp3;
                 recordingOptions.RecordingChannel = RecordingChannel.Mixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
 
                 var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
@@ -199,7 +199,7 @@ namespace Call_Automation_GCCH.Controllers
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Mp3;
                 recordingOptions.RecordingChannel = RecordingChannel.Mixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
                 CallAutomationService.SetRecordingFileFormat(RecordingFormat.Mp3.ToString());
 
@@ -248,7 +248,7 @@ namespace Call_Automation_GCCH.Controllers
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Wav;
                 recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
                 CallAutomationService.SetRecordingFileFormat(RecordingFormat.Wav.ToString());
 
@@ -297,7 +297,7 @@ namespace Call_Automation_GCCH.Controllers
                 recordingOptions.RecordingContent = RecordingContent.Audio;
                 recordingOptions.RecordingFormat = RecordingFormat.Wav;
                 recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
                 CallAutomationService.SetRecordingFileFormat(RecordingFormat.Wav.ToString());
 

@@ -20,16 +20,16 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<CallController> _logger;
-        private readonly ConfigurationRequest _config;
+        private readonly ICommunicationConfigurationService _communicationConfigurationService;
 
         public CallController(
             CallAutomationService service,
             ILogger<CallController> logger,
-            IOptions<ConfigurationRequest> configOptions)
+            ICommunicationConfigurationService communicationConfigurationService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _communicationConfigurationService = communicationConfigurationService ?? throw new ArgumentNullException(nameof(communicationConfigurationService));
         }
 
         //
@@ -125,10 +125,10 @@ namespace Call_Automation_GCCH.Controllers
             try
             {
                 // Build identifier & invite
-                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
                 CallInvite invite = isPstn
                     ? new CallInvite(new PhoneNumberIdentifier(target),
-                                     new PhoneNumberIdentifier(_config.AcsPhoneNumber))
+                                     new PhoneNumberIdentifier(_communicationConfigurationService.communicationConfiguration.AcsPhoneNumber))
                     : new CallInvite(new CommunicationUserIdentifier(target));
 
                 var options = new CreateCallOptions(invite, callbackUri);
@@ -291,8 +291,8 @@ namespace Call_Automation_GCCH.Controllers
                     }
                 }
 
-                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                var sourceCallerId = new PhoneNumberIdentifier(_config.AcsPhoneNumber);
+                var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+                var sourceCallerId = new PhoneNumberIdentifier(_communicationConfigurationService.communicationConfiguration.AcsPhoneNumber);
 
                 var createGroupOpts = new CreateGroupCallOptions(idList, callbackUri)
                 {
