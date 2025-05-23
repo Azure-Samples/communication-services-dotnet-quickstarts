@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Communication;
 using Azure.Communication.CallAutomation;
@@ -22,15 +24,17 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<CallAutomationEventsController> _logger;
-        private readonly ICommunicationConfigurationService _communicationConfigurationService; // final, bound object
+        private readonly ICommunicationConfigurationService _communicationConfigurationService;
+        private readonly IServerSentEventsService _serverSentEventsService;
 
         public CallAutomationEventsController(
             CallAutomationService service,
-            ILogger<CallAutomationEventsController> logger, ICommunicationConfigurationService communicationConfigurationService)
+            ILogger<CallAutomationEventsController> logger, ICommunicationConfigurationService communicationConfigurationService, IServerSentEventsService serverSentEventsService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _communicationConfigurationService = communicationConfigurationService ?? throw new ArgumentNullException(nameof(communicationConfigurationService));
+            _serverSentEventsService = serverSentEventsService ?? throw new ArgumentNullException(nameof(serverSentEventsService));
         }
 
         /// <summary>
@@ -38,10 +42,26 @@ namespace Call_Automation_GCCH.Controllers
         /// </summary>
         /// <returns>All collected logs</returns>
         [HttpGet("/logs")]
+        [Tags("Developer")]
         public IActionResult GetLogs()
         {
             return Ok(LogCollector.GetAll());
         }
+
+        /// <summary>
+        /// Returns the version of the Call Automation library
+        /// </summary>
+        /// <returns>Version information</returns>
+        [HttpGet("/version")]
+        [Tags("Developer")]
+        public IActionResult GetCallAutomationLibraryVersion()
+        {
+            Assembly assembly = typeof(CallAutomationClient).Assembly;
+            var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+
+            return Ok(new { Library = "Azure.Communication.CallAutomation", Version = version?.InformationalVersion ?? "Unknown" });
+        }
+
 
         /// <summary>
         /// Handles EventGrid events for incoming calls and recording status updates
@@ -166,13 +186,14 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Error processing callbacks: {ex.Message}");
             }
         }
+
         /// <summary>
         /// Updates the IsArizona configuration and switches PMA endpoint accordingly
         /// </summary>
         /// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
         /// <returns>Action result indicating success or error</returns>
-        [HttpPost("/setRegion")]
-        [Tags("Region Configuration")]
+        //[HttpPost("/setRegion")]
+        //[Tags("Region Configuration")]
         // public IActionResult SetRegion(bool isArizona)
         // {
         //     try
@@ -447,6 +468,47 @@ namespace Call_Automation_GCCH.Controllers
         #region Incoming Call with Media Streaming
 
         /// <summary>
+        /// Raises an incoming call event
+        /// </summary>
+        [HttpPost("events/raiseincomingcall")]
+        [Tags("Incoming Call with Media Streaming Options")]
+        public IActionResult HandleRaiseIncomingCall([FromBody] EventGridEvent[] eventGridEvents)
+        {
+            _logger.LogInformation($"Received {eventGridEvents.Length} event(s) in /api/events/raiseincomingcall");
+
+            foreach (var eventGridEvent in eventGridEvents)
+            {
+                try
+                {
+                    _logger.LogInformation($"Processing event: {eventGridEvent.EventType}, Id: {eventGridEvent.Id}");
+
+                    if (eventGridEvent.TryGetSystemEventData(out object eventData) && eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+                    {
+                        _logger.LogInformation($"Subscription validation event received with code: {subscriptionValidationEventData.ValidationCode}");
+
+                        var responseData = new SubscriptionValidationResponse
+                        {
+                            ValidationResponse = subscriptionValidationEventData.ValidationCode
+                        };
+
+                        return Ok(responseData);
+                    }
+                }
+                catch (Exception eventEx)
+                {
+                    _logger.LogError($"Error processing event: {eventEx.Message}");
+                }
+
+            }
+
+            _logger.LogInformation($"Publishing event to server-sent events service");
+
+            _serverSentEventsService.Publish(JsonSerializer.Serialize(eventGridEvents));
+
+            return Ok();
+        }
+
+        /// <summary>
         /// Handles incoming calls with media streaming using query parameters to configure options
         /// </summary>
         /// <remarks>
@@ -471,7 +533,8 @@ namespace Call_Automation_GCCH.Controllers
             [FromQuery] bool audioChannelMixed = true,
             [FromQuery] bool audioFormat16k = true,
             [FromQuery] bool mediaStreaming = true,
-            [FromQuery] bool bidirectionalStreaming = true)
+            [FromQuery] bool bidirectionalStreaming = true
+        )
         {
             MediaStreamingAudioChannel audioChannel = audioChannelMixed
                 ? MediaStreamingAudioChannel.Mixed
