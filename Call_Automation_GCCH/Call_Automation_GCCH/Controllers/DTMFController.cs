@@ -8,7 +8,6 @@ using Azure.Communication.CallAutomation;
 using Call_Automation_GCCH.Models;
 using Call_Automation_GCCH.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -21,15 +20,13 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<DTMFController> _logger;
-        private readonly ConfigurationRequest _config; // final, bound object
 
         public DTMFController(
             CallAutomationService service,
-            ILogger<DTMFController> logger, IOptions<ConfigurationRequest> configOptions)
+            ILogger<DTMFController> logger)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
         }
 
 

@@ -20,16 +20,16 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<MediaController> _logger;
-        private readonly ConfigurationRequest _config;
+        private readonly ICommunicationConfigurationService _communicationConfigurationService;
 
         public MediaController(
             CallAutomationService service,
             ILogger<MediaController> logger,
-            IOptions<ConfigurationRequest> configOptions)
+            ICommunicationConfigurationService communicationConfigurationService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _communicationConfigurationService = communicationConfigurationService ?? throw new ArgumentNullException(nameof(communicationConfigurationService));
         }
 
         // ───────────── PLAY FILE SOURCE ────────────────────────────────────────────
@@ -41,14 +41,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return Task.FromResult<IActionResult>(BadRequest("Target is required"));
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandlePlayFileSource(
                 callConnectionId,
                 new List<CommunicationIdentifier> { identifier },
@@ -65,14 +65,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandlePlayFileSource(
                 callConnectionId,
                 new List<CommunicationIdentifier> { identifier },
@@ -104,14 +104,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandlePlayFileSource(
                 callConnectionId,
                 new List<CommunicationIdentifier> { identifier },
@@ -131,10 +131,10 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return Task.FromResult<IActionResult>(BadRequest("Target is required"));
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
-                
+
             return HandleCreateCallWithMediaStreaming(
                 target,
                 MediaStreamingAudioChannel.Mixed,
@@ -155,10 +155,10 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
+
             return HandleCreateCallWithMediaStreaming(
                 target,
                 audioChannel,
@@ -227,14 +227,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return Task.FromResult<IActionResult>(BadRequest("Target is required"));
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleRecognize(callConnectionId, identifier, RecognizeType.Dtmf, async: true);
         }
 
@@ -244,14 +244,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleRecognize(callConnectionId, identifier, RecognizeType.Dtmf, async: false).Result;
         }
 
@@ -262,14 +262,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return Task.FromResult<IActionResult>(BadRequest("Target is required"));
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleHold(callConnectionId, identifier, isPlaySource, unhold: false, async: true);
         }
 
@@ -279,14 +279,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleHold(callConnectionId, identifier, isPlaySource, unhold: false, async: false).Result;
         }
 
@@ -296,14 +296,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return Task.FromResult<IActionResult>(BadRequest("Target is required"));
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleHold(callConnectionId, identifier, playSource: false, unhold: true, async: true);
         }
 
@@ -313,14 +313,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleHold(callConnectionId, identifier, playSource: false, unhold: true, async: false).Result;
         }
 
@@ -331,14 +331,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return Task.FromResult<IActionResult>(BadRequest("Target is required"));
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleInterruptAudioAndAnnounce(callConnectionId, identifier, async: true);
         }
 
@@ -348,14 +348,14 @@ namespace Call_Automation_GCCH.Controllers
         {
             if (string.IsNullOrEmpty(target))
                 return BadRequest("Target is required");
-                
+
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-                
-            CommunicationIdentifier identifier = target.StartsWith("8:") 
+
+            CommunicationIdentifier identifier = target.StartsWith("8:")
                 ? new CommunicationUserIdentifier(target)
                 : new PhoneNumberIdentifier(target);
-                
+
             return HandleInterruptAudioAndAnnounce(callConnectionId, identifier, async: false).Result;
         }
 
@@ -373,7 +373,7 @@ namespace Call_Automation_GCCH.Controllers
             {
                 var callMedia = _service.GetCallMedia(callConnectionId);
                 var props = _service.GetCallConnectionProperties(callConnectionId);
-                var fileSource = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav"));
+                var fileSource = new FileSource(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost + "/audio/prompt.wav"));
 
                 if (playToAll)
                 {
@@ -420,12 +420,12 @@ namespace Call_Automation_GCCH.Controllers
         {
             bool isPstn = !target.StartsWith("8:");
             string targetType = isPstn ? "PSTN" : "ACS";
-            
+
             _logger.LogInformation($"Creating call with media streaming. Target={target}, Type={targetType}, Channel={audioChannel}, EnableMedia={enableMediaStreaming}, Bidirectional={enableBidirectional}, PCM24kMono={pcm24kMono}, Async={async}");
             try
             {
-                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+                var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+                var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
 
                 MediaStreamingOptions mediaOpts = new MediaStreamingOptions(
                     new Uri(websocketUri),
@@ -439,9 +439,9 @@ namespace Call_Automation_GCCH.Controllers
                 };
 
                 var invite = isPstn
-                    ? new CallInvite(new PhoneNumberIdentifier(target), new PhoneNumberIdentifier(_config.AcsPhoneNumber))
+                    ? new CallInvite(new PhoneNumberIdentifier(target), new PhoneNumberIdentifier(_communicationConfigurationService.communicationConfiguration.AcsPhoneNumber))
                     : new CallInvite(new CommunicationUserIdentifier(target));
-                    
+
                 var createOpts = new CreateCallOptions(invite, callbackUri)
                 {
                     MediaStreamingOptions = mediaOpts
@@ -483,7 +483,7 @@ namespace Call_Automation_GCCH.Controllers
                         var opts = new StartMediaStreamingOptions
                         {
                             OperationContext = "StartMediaStreamingContext",
-                            OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
+                            OperationCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks")
                         };
                         response = async ? await callMedia.StartMediaStreamingAsync(opts) : callMedia.StartMediaStreaming(opts);
                     }
@@ -499,7 +499,7 @@ namespace Call_Automation_GCCH.Controllers
                         var opts = new StopMediaStreamingOptions
                         {
                             OperationContext = "StopMediaStreamingContext",
-                            OperationCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks")
+                            OperationCallbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks")
                         };
                         response = async ? await callMedia.StopMediaStreamingAsync(opts) : callMedia.StopMediaStreaming(opts);
                     }
@@ -558,7 +558,7 @@ namespace Call_Automation_GCCH.Controllers
                 var callMedia = _service.GetCallMedia(callConnectionId);
                 var props = _service.GetCallConnectionProperties(callConnectionId);
                 var textSource = new TextSource("Please respond.") { VoiceName = "en-US-NancyNeural" };
-                var fileSource = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav"));
+                var fileSource = new FileSource(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost + "/audio/prompt.wav"));
 
                 switch (type)
                 {
@@ -652,7 +652,7 @@ namespace Call_Automation_GCCH.Controllers
                         OperationContext = "holdUserContext"
                     };
                     if (playSource)
-                        opts.PlaySource = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav"));
+                        opts.PlaySource = new FileSource(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost + "/audio/prompt.wav"));
                     if (async) await callMedia.HoldAsync(opts); else callMedia.Hold(opts);
                 }
 
@@ -676,7 +676,7 @@ namespace Call_Automation_GCCH.Controllers
             {
                 var callMedia = _service.GetCallMedia(callConnectionId);
                 var props = _service.GetCallConnectionProperties(callConnectionId);
-                var fileSource = new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav"));
+                var fileSource = new FileSource(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost + "/audio/prompt.wav"));
                 var opts = new InterruptAudioAndAnnounceOptions(fileSource, target)
                 {
                     OperationContext = "interruptContext"
