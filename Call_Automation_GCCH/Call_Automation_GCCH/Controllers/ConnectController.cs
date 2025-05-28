@@ -18,15 +18,15 @@ namespace Call_Automation_GCCH.Controllers
     {
         private readonly CallAutomationService _service;
         private readonly ILogger<ConnectController> _logger;
-        private readonly ConfigurationRequest _config; // final, bound object
+        private readonly ICommunicationConfigurationService _communicationConfigurationService; // final, bound object
 
         public ConnectController(
             CallAutomationService service,
-            ILogger<ConnectController> logger, IOptions<ConfigurationRequest> configOptions)
+            ILogger<ConnectController> logger, ICommunicationConfigurationService communicationConfigurationService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _communicationConfigurationService = communicationConfigurationService ?? throw new ArgumentNullException(nameof(communicationConfigurationService));
         }
 
         // Not required at this time
@@ -49,8 +49,8 @@ namespace Call_Automation_GCCH.Controllers
         //        _logger.LogInformation($"Starting async room call connection to: {roomId}");
 
         //        RoomCallLocator roomCallLocator = new RoomCallLocator(roomId);
-        //        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        //        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+        //        var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+        //        var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
         //        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         //            MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
         //        TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
@@ -104,8 +104,8 @@ namespace Call_Automation_GCCH.Controllers
         //        _logger.LogInformation($"Starting room call connection to: {roomId}");
 
         //        RoomCallLocator roomCallLocator = new RoomCallLocator(roomId);
-        //        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        //        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+        //        var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+        //        var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
         //        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         //            MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
         //        TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
@@ -159,8 +159,8 @@ namespace Call_Automation_GCCH.Controllers
         //        _logger.LogInformation($"Starting async group call connection to: {groupId}");
 
         //        GroupCallLocator groupCallLocator = new GroupCallLocator(groupId);
-        //        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        //        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+        //        var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+        //        var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
         //        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         //            MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
         //        TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
@@ -219,8 +219,8 @@ namespace Call_Automation_GCCH.Controllers
         //        _logger.LogInformation($"Starting group call connection to: {groupId}");
 
         //        GroupCallLocator groupCallLocator = new GroupCallLocator(groupId);
-        //        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        //        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+        //        var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+        //        var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
         //        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         //            MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
         //        TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
@@ -279,8 +279,8 @@ namespace Call_Automation_GCCH.Controllers
         //        _logger.LogInformation($"Starting async one-to-N call connection to: {serverCallId}");
 
         //        ServerCallLocator serverCallLocator = new ServerCallLocator(serverCallId);
-        //        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        //        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+        //        var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+        //        var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
         //        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         //            MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
         //        TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
@@ -339,8 +339,8 @@ namespace Call_Automation_GCCH.Controllers
         //        _logger.LogInformation($"Starting one-to-N call connection to: {serverCallId}");
 
         //        ServerCallLocator serverCallLocator = new ServerCallLocator(serverCallId);
-        //        var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-        //        var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+        //        var callbackUri = new Uri(new Uri(_communicationConfigurationService.communicationConfiguration.CallbackUriHost), "/api/callbacks");
+        //        var websocketUri = _communicationConfigurationService.communicationConfiguration.CallbackUriHost.Replace("https", "wss") + "/ws";
         //        MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
         //            MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
         //        TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), TranscriptionTransport.Websocket,
