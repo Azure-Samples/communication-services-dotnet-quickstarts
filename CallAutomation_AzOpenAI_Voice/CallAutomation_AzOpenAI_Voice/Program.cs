@@ -1,19 +1,28 @@
+using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Azure.Messaging;
-using Azure.Messaging.EventGrid;
-using Azure.Messaging.EventGrid.SystemEvents;
-using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
+using Swashbuckle.AspNetCore.Annotations;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 //Get ACS Connection String from appsettings.json
 var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
 ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
+string websocketUri = "test";
+string callConnectionId = "test";
+var targetPstnNumber = builder.Configuration.GetValue<string>("MyPSTNNumber");
+var acsPhoneNumber = builder.Configuration.GetValue<string>("AcsPhoneNumber");
+var cognitiveServiceEndpoint = builder.Configuration.GetValue<string>("AcsCogService");
 
 //Call Automation Client
-var client = new CallAutomationClient(acsConnectionString);
+var pmaEndpoint = new Uri("https://uswc-01.sdf.pma.teams.microsoft.com:6448");
+
+//Call Automation Client
+var client = new CallAutomationClient(pmaEndpoint, acsConnectionString);
 var app = builder.Build();
 var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 
@@ -23,75 +32,77 @@ if (string.IsNullOrEmpty(appBaseUrl))
     Console.WriteLine($"appBaseUrl :{appBaseUrl}");
 }
 
-app.MapGet("/", () => "Hello ACS CallAutomation!");
-
-app.MapPost("/api/incomingCall", async (
-    [FromBody] EventGridEvent[] eventGridEvents,
-    ILogger<Program> logger) =>
-{
-    foreach (var eventGridEvent in eventGridEvents)
+app.MapPost("/createPSTNCall",
+    [SwaggerOperation(Summary = "Creates a PSTN call with optional media streaming settings.")]
+async (ILogger<Program> logger) =>
     {
-        Console.WriteLine($"Incoming Call event received.");
 
-        // Handle system events
-        if (eventGridEvent.TryGetSystemEventData(out object eventData))
-        {
-            // Handle the subscription validation event.
-            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
-            {
-                var responseData = new SubscriptionValidationResponse
-                {
-                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                };
-                return Results.Ok(responseData);
-            }
-        }
+        PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPstnNumber);
+        PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
+        var callbackUri = new Uri(new Uri(appBaseUrl), "/api/callbacks");
+        CallInvite callInvite = new CallInvite(target, caller);
 
-        var jsonObject = Helper.GetJsonObject(eventGridEvent.Data);
-        var callerId = Helper.GetCallerId(jsonObject);
-        var incomingCallContext = Helper.GetIncomingCallContext(jsonObject);
-        var callbackUri = new Uri(new Uri(appBaseUrl), $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
-        logger.LogInformation($"Callback Url: {callbackUri}");
-        var websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
-        logger.LogInformation($"WebSocket Url: {websocketUri}");
+        websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
 
+        /************** MediaStreamingOptions **********************/
         var mediaStreamingOptions = new MediaStreamingOptions(
-                new Uri(websocketUri),
-                MediaStreamingContent.Audio,
-                MediaStreamingAudioChannel.Mixed,
-                startMediaStreaming: true
-                )
+                 new Uri(websocketUri),
+                 MediaStreamingAudioChannel.Unmixed)
         {
             EnableBidirectional = true,
-            AudioFormat = AudioFormat.Pcm24KMono
+            AudioFormat = AudioFormat.Pcm24KMono,
+            StartMediaStreaming = true,
+            MediaStreamingContent = MediaStreamingContent.Audio,
+            EnableDtmfTones = true,
         };
-      
-        var options = new AnswerCallOptions(incomingCallContext, callbackUri)
+
+        var defaultTrans = new TranscriptionOptions(
+                    new Uri(websocketUri),
+                   "en-US")
+        {
+            StartTranscription = true
+
+        };
+
+        /************** CallIntelligenceOptions **********************/
+        var callIntelligent = new CallIntelligenceOptions
+        {
+            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
+        };
+
+        var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
         {
             MediaStreamingOptions = mediaStreamingOptions,
+            // TranscriptionOptions = defaultTrans,
+            //CallIntelligenceOptions = callIntelligent
         };
 
-        AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-        logger.LogInformation($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
-    }
-    return Results.Ok();
-});
+        CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-// api to handle call back events
-app.MapPost("/api/callbacks/{contextId}", async (
-    [FromBody] CloudEvent[] cloudEvents,
-    [FromRoute] string contextId,
-    [Required] string callerId,
-    ILogger<Program> logger) =>
+        callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
+
+        logger.LogInformation($"============ Correlation id: {createCallResult.CallConnectionProperties.CorrelationId}");
+
+        logger.LogInformation($"************ CallConnection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+    })
+.WithName("CreatePSTNCall")
+.WithMetadata(new SwaggerOperationAttribute { Summary = "Creates a PSTN call with media streaming settings." });
+
+app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
 {
     foreach (var cloudEvent in cloudEvents)
     {
-        CallAutomationEventBase @event = CallAutomationEventParser.Parse(cloudEvent);
-        logger.LogInformation($"Event received: {JsonConvert.SerializeObject(@event, Formatting.Indented)}");
+        // PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhonenumber);
+        CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
+        logger.LogInformation(
+                    "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}, operationContext: {operationContext}",
+                    parsedEvent.GetType(),
+                    parsedEvent.CallConnectionId,
+                    parsedEvent.ServerCallId,
+                    parsedEvent?.OperationContext);       
     }
-
     return Results.Ok();
-});
+}).Produces(StatusCodes.Status200OK);
 
 app.UseWebSockets();
 
@@ -124,5 +135,18 @@ app.Use(async (context, next) =>
         await next(context);
     }
 });
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+        options.RoutePrefix = string.Empty; // Set Swagger UI as the root page
+    });
+}
+
+app.MapControllers();
 
 app.Run();

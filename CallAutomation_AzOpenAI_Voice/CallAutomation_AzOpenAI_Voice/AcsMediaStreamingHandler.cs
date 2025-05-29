@@ -34,7 +34,7 @@ public class AcsMediaStreamingHandler
         
         try
         {
-            m_aiServiceHandler.StartConversation();
+            //m_aiServiceHandler.StartConversation();
             await StartReceivingFromAcsMediaWebSocket();
         }
         catch (Exception ex)
@@ -81,13 +81,13 @@ public class AcsMediaStreamingHandler
         var input = StreamingData.Parse(data);
         if (input is AudioData audioData)
         {
-            if (!audioData.IsSilent)
+            /*if (!audioData.IsSilent)
             {
                 using (var ms = new MemoryStream(audioData.Data))
                 {
                     await m_aiServiceHandler.SendAudioToExternalAI(ms);
                 }
-            }
+            }*/
         }
     }
 
@@ -108,7 +108,8 @@ public class AcsMediaStreamingHandler
                 if (receiveResult.MessageType != WebSocketMessageType.Close)
                 {
                     string data = Encoding.UTF8.GetString(receiveBuffer).TrimEnd('\0');
-                    await WriteToAzOpenAIServiceInputStream(data);               
+                    Console.WriteLine("-----------: " + data);
+                    //await WriteToAzOpenAIServiceInputStream(data);               
                 }
             }
         }
