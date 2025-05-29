@@ -509,14 +509,12 @@ app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, ILogger<Pr
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     eventCallbackUri = callbackUri;
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-    //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-    //    "en-us", false, TranscriptionTransport.Websocket);
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+//MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//    "en-us", false, TranscriptionTransport.Websocket);
+MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
     {
         target
@@ -543,14 +541,12 @@ app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logg
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     eventCallbackUri = callbackUri;
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-    //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-    //    "en-us", false, TranscriptionTransport.Websocket);
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+//MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//    "en-us", false, TranscriptionTransport.Websocket);
+MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
     {
         target
@@ -578,10 +574,8 @@ app.MapPost("/ConnectRoomCallAsync", async (string roomId, ILogger<Program> logg
     RoomCallLocator roomCallLocator = !string.IsNullOrEmpty(roomId) ? new RoomCallLocator(roomId) : throw new ArgumentNullException(nameof(roomId));
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -603,10 +597,8 @@ app.MapPost("/ConnectRoomCall", (string roomId, ILogger<Program> logger) =>
     //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
     //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
     //    "en-us", false, TranscriptionTransport.Websocket);
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -628,10 +620,8 @@ app.MapPost("/ConnectGroupCallAsync", async (string groupId, ILogger<Program> lo
     //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
     //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
     //    "en-us", false, TranscriptionTransport.Websocket); 
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -653,10 +643,8 @@ app.MapPost("/ConnectGroupCall", (string groupId, ILogger<Program> logger) =>
     //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
     //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
     //    "en-us", false, TranscriptionTransport.Websocket);
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -678,10 +666,8 @@ app.MapPost("/ConnectOneToNCallAsync", async (string serverCallId, ILogger<Progr
     //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
     //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
     //    "en-us", false, TranscriptionTransport.Websocket);
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -703,10 +689,8 @@ app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger)
     //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
     //TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
     //    "en-us", false, TranscriptionTransport.Websocket);
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -936,7 +920,8 @@ app.MapPost("/playMediaToPstnTargetAsync", async (string pstnTarget, bool isMult
     }
     else
     {
-        playToOptions = new(playSource: textSource, playTo: playTo)
+        FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+        playToOptions = new(playSource: fileSource, playTo: playTo)
         {
             OperationContext = "playToContext"
         };
@@ -1951,18 +1936,16 @@ app.MapPost("/createCallToPstnWithMediaStreamingAsync", async (string targetPhon
     CallInvite callInvite = new CallInvite(target, caller);
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
     MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-        new Uri(websocketUri), 
-        MediaStreamingContent.Audio,
-        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed,
+    new Uri(websocketUri),
+    isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed);
         //MediaStreamingTransport.Websocket,
-        StreamingTransport.Websocket,
-        isStartMediaStreaming);
+        //StreamingTransport.Websocket,
+        //isStartMediaStreaming);
     mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
     mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
-    //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-    //    MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-        "en-us", false, StreamingTransport.Websocket);
+//MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//    MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, false);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, false, StreamingTransport.Websocket);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -1984,15 +1967,14 @@ app.MapPost("/createCallToPstnWithMediaStreaming", (string targetPhoneNumber, bo
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(target, caller);
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    //MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-    //    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    MediaStreamingOptions mediaStreamingOptions = 
-    new MediaStreamingOptions(
-        new Uri(websocketUri), 
-        MediaStreamingContent.Audio,        
-        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed,
-        StreamingTransport.Websocket, 
-        true);
+//MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//    MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+MediaStreamingOptions mediaStreamingOptions =
+new MediaStreamingOptions(
+    new Uri(websocketUri),
+    isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed);
+        //StreamingTransport.Websocket, 
+        //true);
 
     mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
     mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
@@ -2014,9 +1996,9 @@ app.MapPost("/createCallToAcsWithMediaStreamingAsync", async (string acsTarget, 
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed,
-        StreamingTransport.Websocket, isStartMediaStreaming);
+MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri),// MediaStreamingContent.Audio,
+    isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed);//,
+        //StreamingTransport.Websocket, isStartMediaStreaming);
     mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
     mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
@@ -2037,9 +2019,9 @@ app.MapPost("/createCallToAcsWithMediaStreaming", (string acsTarget, bool isEnab
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed, 
-        StreamingTransport.Websocket, true);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), //MediaStreamingContent.Audio,
+        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed);//, 
+       // StreamingTransport.Websocket, true);
     mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
     mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
@@ -2060,8 +2042,8 @@ app.MapPost("/createCallToTeamsWithMediaStreamingAsync", async (string teamsObje
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, true);
+MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), //MediaStreamingContent.Audio,
+    isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, true);
     mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
     mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
@@ -2082,8 +2064,8 @@ app.MapPost("/createCallToTeamsWithMediaStreaming", (string teamsObjectId, bool 
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket, true);
+MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), //MediaStreamingContent.Audio,
+    isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed);//, StreamingTransport.Websocket, true);
     mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
     mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
@@ -2189,8 +2171,7 @@ app.MapPost("/createCallToPstnWithTranscriptionAsync", async (string targetPhone
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(target, caller);
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", isStartTranscription, StreamingTransport.Websocket);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, isStartTranscription, StreamingTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2213,8 +2194,7 @@ app.MapPost("/createCallToPstnWithTranscription", (string targetPhoneNumber, boo
     CallInvite callInvite = new CallInvite(target, caller);
 
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", isStartTranscription, StreamingTransport.Websocket);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, isStartTranscription, StreamingTransport.Websocket);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -2233,8 +2213,7 @@ app.MapPost("/createCallToAcsWithTranscriptionAsync", async (string acsTarget, b
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", isStartTranscription, StreamingTransport.Websocket);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, isStartTranscription, StreamingTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2253,8 +2232,7 @@ app.MapPost("/createCallToAcsWithTranscription", (string acsTarget, bool isStart
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-          "en-us", isStartTranscription, StreamingTransport.Websocket);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, isStartTranscription, StreamingTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2273,8 +2251,7 @@ app.MapPost("/createCallToTeamsWithTranscriptionAsync", async (string teamsObjec
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-           "en-us", isStartTranscription, StreamingTransport.Websocket);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, isStartTranscription, StreamingTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
@@ -2293,8 +2270,7 @@ app.MapPost("/createCallToTeamsWithTranscription", (string teamsObjectId, bool i
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-           "en-us", isStartTranscription, StreamingTransport.Websocket);
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us");//, isStartTranscription, StreamingTransport.Websocket);
 
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {

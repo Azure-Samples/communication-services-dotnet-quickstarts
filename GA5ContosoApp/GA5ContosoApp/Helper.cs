@@ -30,7 +30,7 @@ namespace Call_Automation_GCCH
                             Console.WriteLine("ENCODING-->" + audioMetadata.Encoding);
                             Console.WriteLine("SAMPLE RATE-->" + audioMetadata.SampleRate);
                             Console.WriteLine("CHANNELS-->" + audioMetadata.Channels);
-                            Console.WriteLine("LENGTH-->" + audioMetadata.Length);
+                            //Console.WriteLine("LENGTH-->" + audioMetadata.Length);
                             Console.WriteLine("***************************************************************************************");
                         }
                         if (response is AudioData audioData)
