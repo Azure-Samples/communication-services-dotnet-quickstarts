@@ -27,3 +27,7 @@ Azure Communication Services enable developers to add communication capabilities
 8. [Send Email](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/email/send-email?pivots=programming-language-csharp)
 
 9. [Get started with Rooms](https://docs.microsoft.com/en-us/azure/communication-services/quickstarts/rooms/get-started-rooms?pivots=programming-language-csharp)
+
+## Data CollectionAdd commentMore actions
+ 
+The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. Some Quickstart samples collect information about users and their use of the software that cannot be opted out of. Do not use Quickstart samples that collect information if you wish to avoid telemetry. You can learn more about data collection and use in the help documentation and Microsoft’s [privacy statement](https://go.microsoft.com/fwlink/?LinkID=824704). For more information on the data collected by the Azure SDK, please visit the [Telemetry Policy](https://learn.microsoft.com/azure/communication-services/concepts/privacy) page.
