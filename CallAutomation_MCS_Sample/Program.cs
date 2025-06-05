@@ -87,8 +87,10 @@ app.MapPost("/api/incomingCall", async (
             {
                 CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint)
             },
-            TranscriptionOptions = new TranscriptionOptions(new Uri($"wss://{baseWssUri}/ws"), "en-US", true, TranscriptionTransport.Websocket)
+            TranscriptionOptions = new TranscriptionOptions("en-US")
             {
+                TransportUri = new Uri($"wss://{baseWssUri}/ws"),
+                TranscriptionTransport = StreamingTransport.Websocket,
                 EnableIntermediateResults = true
             }
         };

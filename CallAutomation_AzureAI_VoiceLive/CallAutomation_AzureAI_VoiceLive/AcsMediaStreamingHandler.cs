@@ -82,7 +82,7 @@ public class AcsMediaStreamingHandler
         {
             if (!audioData.IsSilent)
             {
-              await m_aiServiceHandler.SendAudioToExternalAI(audioData.Data);
+              await m_aiServiceHandler.SendAudioToExternalAI(audioData.Data.ToArray());
             }
         }
     }

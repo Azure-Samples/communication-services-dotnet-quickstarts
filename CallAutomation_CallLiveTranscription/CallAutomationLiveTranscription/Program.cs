@@ -88,8 +88,12 @@ app.MapPost("/api/incomingCall", async (
             logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, " +
                 $"Callback url: {callbackUri}, websocket Url: {websocketUri}");
 
-            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-                locale, true, TranscriptionTransport.Websocket);
+            TranscriptionOptions transcriptionOptions = new TranscriptionOptions(locale)
+            {
+                TransportUri = new Uri(websocketUri),
+                TranscriptionTransport = StreamingTransport.Websocket,
+                StartTranscription = true
+            };
 
             var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
             {
