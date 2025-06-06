@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Azure.Identity;
+﻿using Azure.Identity;
 using Azure.Communication;
 
 namespace EntraIdUsersSupportQuickstart
