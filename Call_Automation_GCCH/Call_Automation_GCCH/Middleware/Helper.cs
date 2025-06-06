@@ -45,6 +45,16 @@ namespace Call_Automation_GCCH
                             }
 
                             LogCollector.Log("***************************************************************************************");
+                            // Send audio bytes back to client if bidirectional streaming is enabled
+                            if (audioData.Data is byte[] audioBytes)
+                            {
+                                LogCollector.Log("Bidirectional Logs are given below:");
+                                await webSocket.SendAsync(
+                                    new ArraySegment<byte>(audioBytes, 0, audioBytes.Length),
+                                    WebSocketMessageType.Binary,
+                                    endOfMessage: true,
+                                    cancellationToken: CancellationToken.None);
+                            }
                         }
 
                         if (response is TranscriptionMetadata transcriptionMetadata)
@@ -75,12 +85,14 @@ namespace Call_Automation_GCCH
                             LogCollector.Log("***************************************************************************************");
                         }
                     }
-
-                    await webSocket.SendAsync(
-                        new ArraySegment<byte>(buffer, 0, receiveResult.Count),
-                        receiveResult.MessageType,
-                        receiveResult.EndOfMessage,
-                        CancellationToken.None);
+                    if (response == null || (response != null && response is not AudioData))
+                    {
+                        await webSocket.SendAsync(
+                            new ArraySegment<byte>(buffer, 0, receiveResult.Count),
+                            receiveResult.MessageType,
+                            receiveResult.EndOfMessage,
+                            CancellationToken.None);
+                    }
 
                     receiveResult = await webSocket.ReceiveAsync(
                      new ArraySegment<byte>(buffer), CancellationToken.None);
