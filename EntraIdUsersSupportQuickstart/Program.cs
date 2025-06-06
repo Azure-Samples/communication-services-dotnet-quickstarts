@@ -13,7 +13,7 @@ namespace EntraIdUsersSupportQuickstart
             string clientId = Environment.GetEnvironmentVariable("ENTRA_CLIENT_ID");
             string tenantId = Environment.GetEnvironmentVariable("ENTRA_TENANT_ID");
 
-            //Initialize InteractiveBrowserCredential for use with AzureCommunicationTokenCredential.
+            //Initialize InteractiveBrowserCredential for use with CommunicationTokenCredential.
             var options = new InteractiveBrowserCredentialOptions
             {
                 TenantId = tenantId,
