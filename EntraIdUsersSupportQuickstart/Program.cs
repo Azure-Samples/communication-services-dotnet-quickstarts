@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Azure.Communication.Common;
 using Azure.Identity;
+using Azure.Communication;
 
 namespace EntraIdUsersSupportQuickstart
 {
@@ -38,9 +38,9 @@ namespace EntraIdUsersSupportQuickstart
 
             var credential = new CommunicationTokenCredential(entraTokenCredentialOptions);
             
-            // To obtain a Communication Services access token for Microsoft Entra ID call getToken() function.
-            var accessToken = await credential.GetToken();
-            Console.WriteLine($"Token: {accessToken.Value.Token}");
+            // To obtain a Communication Services access token for Microsoft Entra ID call GetTokenAsync() method.
+            var accessToken = await credential.GetTokenAsync();
+            Console.WriteLine($"Token: {accessToken.Token}");
         }
     }
 }
