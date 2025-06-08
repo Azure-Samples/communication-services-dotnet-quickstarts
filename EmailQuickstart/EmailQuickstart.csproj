@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,11 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-
-
-    <PackageReference Include="Azure.Communication.Identity" Version="1.2.0" />
-    <PackageReference Include="Azure.Identity" Version="1.4.1" />
-
+    <PackageReference Include="Azure.Communication.Email" Version="1.0.0-beta.1" />
+    <PackageReference Include="Azure.Identity" Version="1.6.1" />
   </ItemGroup>
 
 </Project>
