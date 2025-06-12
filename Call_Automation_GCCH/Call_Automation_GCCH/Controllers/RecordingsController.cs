@@ -68,10 +68,21 @@ namespace Call_Automation_GCCH.Controllers
                 var recordingContent = isAudioVideo ? RecordingContent.AudioVideo : RecordingContent.Audio;
                 var recordingChannel = isMixed ? RecordingChannel.Mixed : RecordingChannel.Unmixed;
 
-                // Parse and validate recording format
-                if (!Enum.TryParse<RecordingFormat>(recordingFormat, true, out var format))
+                // Parse and validate recording format using switch case
+                RecordingFormat format;
+                switch (recordingFormat.ToLowerInvariant())
                 {
-                    return BadRequest($"Invalid recording format '{recordingFormat}'. Valid options: Mp3, Mp4, Wav");
+                    case "mp3":
+                        format = RecordingFormat.Mp3;
+                        break;
+                    case "mp4":
+                        format = RecordingFormat.Mp4;
+                        break;
+                    case "wav":
+                        format = RecordingFormat.Wav;
+                        break;
+                    default:
+                        return BadRequest($"Invalid recording format '{recordingFormat}'. Valid options: Mp3, Mp4, Wav");
                 }
 
                 // Validate format compatibility
@@ -151,10 +162,21 @@ namespace Call_Automation_GCCH.Controllers
                 var recordingContent = isAudioVideo ? RecordingContent.AudioVideo : RecordingContent.Audio;
                 var recordingChannel = isMixed ? RecordingChannel.Mixed : RecordingChannel.Unmixed;
 
-                // Parse and validate recording format
-                if (!Enum.TryParse<RecordingFormat>(recordingFormat, true, out var format))
+                // Parse and validate recording format using switch case
+                RecordingFormat format;
+                switch (recordingFormat.ToLowerInvariant())
                 {
-                    return BadRequest($"Invalid recording format '{recordingFormat}'. Valid options: Mp3, Mp4, Wav");
+                    case "mp3":
+                        format = RecordingFormat.Mp3;
+                        break;
+                    case "mp4":
+                        format = RecordingFormat.Mp4;
+                        break;
+                    case "wav":
+                        format = RecordingFormat.Wav;
+                        break;
+                    default:
+                        return BadRequest($"Invalid recording format '{recordingFormat}'. Valid options: Mp3, Mp4, Wav");
                 }
 
                 // Validate format compatibility
