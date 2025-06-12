@@ -1,14 +1,17 @@
 # DurableIdentitiesBYOID
 
-This sample demonstrates how to use Azure Communication Services (ACS) to create and manage durable identities with the Bring Your Own Identity (BYOID) feature in .NET.
+This sample demonstrates how to use Azure Communication Services (ACS) to create and manage identities in .NET. The sample prepares for future Bring Your Own Identity (BYOID) functionality and shows standard identity management practices.
 
 ## Overview
 
 The sample shows how to:
 - Authenticate a `CommunicationIdentityClient` using a connection string from an environment variable.
-- Create a new ACS identity.
-- Use a custom ID (BYOID) to create and retrieve durable identities.
-- Validate that the same custom ID always returns the same ACS identity.
+- Create new ACS identities.
+- Generate access tokens for different communication scopes (Chat, VoIP).
+- Manage multiple identities and demonstrate token lifecycle.
+- Clean up resources properly.
+
+**Note:** The Bring Your Own Identity (BYOID) feature may require preview SDK versions or specific API access. This sample demonstrates the standard identity management workflow that serves as a foundation for BYOID implementations.
 
 ## Prerequisites
 - [.NET 6.0 SDK or later](https://dotnet.microsoft.com/download)
@@ -39,9 +42,11 @@ The sample shows how to:
    ```
 
 ## What the Sample Does
-- Creates a new ACS identity.
-- Demonstrates BYOID by creating a user with a custom ID and retrieving its details.
-- Validates that using the same custom ID returns the same identity.
+- Creates new ACS identities.
+- Demonstrates token generation with different scopes (Chat, VoIP).
+- Shows how to manage multiple identities.
+- Validates that different identity creation calls generate unique identities.
+- Demonstrates proper resource cleanup.
 
 ## Resources
 - [Azure Communication Services documentation](https://learn.microsoft.com/azure/communication-services/)
