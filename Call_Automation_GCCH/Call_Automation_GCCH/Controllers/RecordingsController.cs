@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Call_Automation_GCCH.Models;
 using Call_Automation_GCCH.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace Call_Automation_GCCH.Controllers
 {
@@ -19,29 +20,66 @@ namespace Call_Automation_GCCH.Controllers
         private readonly CallAutomationService _service;
         private readonly ILogger<RecordingsController> _logger;
         private readonly ConfigurationRequest _config;
+        private readonly IStorageService _storageService;
 
         public RecordingsController(
             CallAutomationService service,
             ILogger<RecordingsController> logger,
-            IOptions<ConfigurationRequest> configOptions)
+            IOptions<ConfigurationRequest> configOptions,
+            IStorageService storageService)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         }
 
         /// <summary>
-        /// Starts a recording with video in MP4 format and mixed channel asynchronously
+        /// Starts a recording with configurable options asynchronously
         /// </summary>
-        [HttpPost("startRecordingWithVideoMp4MixedAsync")]
+        /// <param name="callConnectionId">The call connection ID for the call to record</param>
+        /// <param name="isAudioVideo">True for AudioVideo content, false for Audio only</param>
+        /// <param name="recordingFormat">Recording format (valid options: Mp3, Mp4, Wav)</param>
+        /// <param name="isMixed">True for mixed channel (all participants combined), false for unmixed (separate streams)</param>
+        /// <param name="isRecordingWithCallConnectionId">Whether to use call connection ID for recording</param>
+        /// <param name="isPauseOnStart">Whether to pause recording on start</param>
+        [HttpPost("startRecordingAsync")]
         [Tags("Recording APIs")]
-        public async Task<IActionResult> StartRecordingWithVideoMp4MixedAsync(
+        public async Task<IActionResult> StartRecordingAsync(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
-            bool isPauseOnStart)
+            bool isAudioVideo = false,
+            string recordingFormat = "Mp3",
+            bool isMixed = true,
+            bool isRecordingWithCallConnectionId = true,
+            bool isPauseOnStart = false)
         {
             try
             {
+                // Validate required parameter
+                if (string.IsNullOrWhiteSpace(callConnectionId))
+                {
+                    return BadRequest("CallConnectionId is required.");
+                }
+
+                // Trim whitespace from text inputs (except callConnectionId)
+                recordingFormat = recordingFormat?.Trim() ?? "Mp3";
+
+                // Convert bool parameters to enums
+                var recordingContent = isAudioVideo ? RecordingContent.AudioVideo : RecordingContent.Audio;
+                var recordingChannel = isMixed ? RecordingChannel.Mixed : RecordingChannel.Unmixed;
+
+                // Parse and validate recording format
+                if (!Enum.TryParse<RecordingFormat>(recordingFormat, true, out var format))
+                {
+                    return BadRequest($"Invalid recording format '{recordingFormat}'. Valid options: Mp3, Mp4, Wav");
+                }
+
+                // Validate format compatibility
+                if (recordingContent == RecordingContent.AudioVideo && format != RecordingFormat.Mp4)
+                {
+                    return BadRequest("AudioVideo content is only supported with Mp4 format.");
+                }
+
                 CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
                 var serverCallId = callConnectionProperties.ServerCallId;
                 var correlationId = callConnectionProperties.CorrelationId;
@@ -51,24 +89,24 @@ namespace Call_Automation_GCCH.Controllers
                     ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
                     : new StartRecordingOptions(callLocator);
 
-                recordingOptions.RecordingContent = RecordingContent.AudioVideo;
-                recordingOptions.RecordingFormat = RecordingFormat.Mp4;
-                recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+                recordingOptions.RecordingContent = recordingContent;
+                recordingOptions.RecordingFormat = format;
+                recordingOptions.RecordingChannel = recordingChannel;
                 recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
-                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Mp4.ToString());
+                CallAutomationService.SetRecordingFileFormat(format.ToString());
 
                 var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
                 var recordingId = recordingResult.Value.RecordingId;
 
-                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
+                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Content: {recordingContent}, Format: {format}, Channel: {recordingChannel}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
                 _logger.LogInformation(successMessage);
 
                 return Ok(new CallConnectionResponse
                 {
                     CallConnectionId = callConnectionId,
                     CorrelationId = correlationId,
-                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
+                    Status = $"Recording started. RecordingId: {recordingId}. Content: {recordingContent}, Format: {format}, Channel: {recordingChannel}, Status: {recordingResult.GetRawResponse().Status.ToString()}"
                 });
             }
             catch (Exception ex)
@@ -80,17 +118,51 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         /// <summary>
-        /// Starts a recording with video in MP4 format and mixed channel synchronously
+        /// Starts a recording with configurable options synchronously
         /// </summary>
-        [HttpPost("startRecordingWithVideoMp4Mixed")]
+        /// <param name="callConnectionId">The call connection ID for the call to record</param>
+        /// <param name="isAudioVideo">True for AudioVideo content, false for Audio only</param>
+        /// <param name="recordingFormat">Recording format (valid options: Mp3, Mp4, Wav)</param>
+        /// <param name="isMixed">True for mixed channel (all participants combined), false for unmixed (separate streams)</param>
+        /// <param name="isRecordingWithCallConnectionId">Whether to use call connection ID for recording</param>
+        /// <param name="isPauseOnStart">Whether to pause recording on start</param>
+        [HttpPost("startRecording")]
         [Tags("Recording APIs")]
-        public IActionResult StartRecordingWithVideoMp4Mixed(
+        public IActionResult StartRecording(
             string callConnectionId,
-            bool isRecordingWithCallConnectionId,
-            bool isPauseOnStart)
+            bool isAudioVideo = false,
+            string recordingFormat = "Mp3",
+            bool isMixed = true,
+            bool isRecordingWithCallConnectionId = true,
+            bool isPauseOnStart = false)
         {
             try
             {
+                // Validate required parameter
+                if (string.IsNullOrWhiteSpace(callConnectionId))
+                {
+                    return BadRequest("CallConnectionId is required.");
+                }
+
+                // Trim whitespace from text inputs (except callConnectionId)
+                recordingFormat = recordingFormat?.Trim() ?? "Mp3";
+
+                // Convert bool parameters to enums
+                var recordingContent = isAudioVideo ? RecordingContent.AudioVideo : RecordingContent.Audio;
+                var recordingChannel = isMixed ? RecordingChannel.Mixed : RecordingChannel.Unmixed;
+
+                // Parse and validate recording format
+                if (!Enum.TryParse<RecordingFormat>(recordingFormat, true, out var format))
+                {
+                    return BadRequest($"Invalid recording format '{recordingFormat}'. Valid options: Mp3, Mp4, Wav");
+                }
+
+                // Validate format compatibility
+                if (recordingContent == RecordingContent.AudioVideo && format != RecordingFormat.Mp4)
+                {
+                    return BadRequest("AudioVideo content is only supported with Mp4 format.");
+                }
+
                 CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
                 var serverCallId = callConnectionProperties.ServerCallId;
                 var correlationId = callConnectionProperties.CorrelationId;
@@ -100,218 +172,24 @@ namespace Call_Automation_GCCH.Controllers
                     ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
                     : new StartRecordingOptions(callLocator);
 
-                recordingOptions.RecordingContent = RecordingContent.AudioVideo;
-                recordingOptions.RecordingFormat = RecordingFormat.Mp4;
-                recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+                recordingOptions.RecordingContent = recordingContent;
+                recordingOptions.RecordingFormat = format;
+                recordingOptions.RecordingChannel = recordingChannel;
                 recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
+                CallAutomationService.SetRecordingFileFormat(format.ToString());
 
                 var recordingResult = _service.GetCallAutomationClient().GetCallRecording().Start(recordingOptions);
                 var recordingId = recordingResult.Value.RecordingId;
 
-                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
+                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Content: {recordingContent}, Format: {format}, Channel: {recordingChannel}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
                 _logger.LogInformation(successMessage);
 
                 return Ok(new CallConnectionResponse
                 {
                     CallConnectionId = callConnectionId,
                     CorrelationId = correlationId,
-                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
-                });
-            }
-            catch (Exception ex)
-            {
-                string errorMessage = $"Error starting recording: {ex.Message}. CallConnectionId: {callConnectionId}";
-                _logger.LogError(errorMessage);
-                return Problem($"Failed to start recording: {ex.Message}. CallConnectionId: {callConnectionId}");
-            }
-        }
-
-        /// <summary>
-        /// Starts a recording with audio in MP3 format and mixed channel asynchronously
-        /// </summary>
-        [HttpPost("startRecordingWithAudioMp3MixedAsync")]
-        [Tags("Recording APIs")]
-        public async Task<IActionResult> StartRecordingWithAudioMp3MixedAsync(
-            string callConnectionId,
-            bool isRecordingWithCallConnectionId,
-            bool isPauseOnStart)
-        {
-            try
-            {
-                CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
-                var serverCallId = callConnectionProperties.ServerCallId;
-                var correlationId = callConnectionProperties.CorrelationId;
-                CallLocator callLocator = new ServerCallLocator(serverCallId);
-
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
-
-                recordingOptions.RecordingContent = RecordingContent.Audio;
-                recordingOptions.RecordingFormat = RecordingFormat.Mp3;
-                recordingOptions.RecordingChannel = RecordingChannel.Mixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                recordingOptions.PauseOnStart = isPauseOnStart;
-
-                var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
-                var recordingId = recordingResult.Value.RecordingId;
-
-                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
-                _logger.LogInformation(successMessage);
-
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = correlationId,
-                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
-                });
-            }
-            catch (Exception ex)
-            {
-                string errorMessage = $"Error starting recording: {ex.Message}. CallConnectionId: {callConnectionId}";
-                _logger.LogError(errorMessage);
-                return Problem($"Failed to start recording: {ex.Message}. CallConnectionId: {callConnectionId}");
-            }
-        }
-
-        /// <summary>
-        /// Starts a recording with audio in MP3 format and mixed channel synchronously
-        /// </summary>
-        [HttpPost("startRecordingWithAudioMp3Mixed")]
-        [Tags("Recording APIs")]
-        public IActionResult StartRecordingWithAudioMp3Mixed(
-            string callConnectionId,
-            bool isRecordingWithCallConnectionId,
-            bool isPauseOnStart)
-        {
-            try
-            {
-                CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
-                var serverCallId = callConnectionProperties.ServerCallId;
-                var correlationId = callConnectionProperties.CorrelationId;
-                CallLocator callLocator = new ServerCallLocator(serverCallId);
-
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
-
-                recordingOptions.RecordingContent = RecordingContent.Audio;
-                recordingOptions.RecordingFormat = RecordingFormat.Mp3;
-                recordingOptions.RecordingChannel = RecordingChannel.Mixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                recordingOptions.PauseOnStart = isPauseOnStart;
-                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Mp3.ToString());
-
-                var recordingResult = _service.GetCallAutomationClient().GetCallRecording().Start(recordingOptions);
-                var recordingId = recordingResult.Value.RecordingId;
-
-                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
-                _logger.LogInformation(successMessage);
-
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = correlationId,
-                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
-                });
-            }
-            catch (Exception ex)
-            {
-                string errorMessage = $"Error starting recording: {ex.Message}. CallConnectionId: {callConnectionId}";
-                _logger.LogError(errorMessage);
-                return Problem($"Failed to start recording: {ex.Message}. CallConnectionId: {callConnectionId}");
-            }
-        }
-
-        /// <summary>
-        /// Starts a recording with audio in MP3 format and unmixed channel asynchronously
-        /// </summary>
-        [HttpPost("startRecordingWithAudioWavUnmixedAsync")]
-        [Tags("Recording APIs")]
-        public async Task<IActionResult> StartRecordingWithAudioWavUnmixedAsync(
-            string callConnectionId,
-            bool isRecordingWithCallConnectionId,
-            bool isPauseOnStart)
-        {
-            try
-            {
-                CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
-                var serverCallId = callConnectionProperties.ServerCallId;
-                var correlationId = callConnectionProperties.CorrelationId;
-                CallLocator callLocator = new ServerCallLocator(serverCallId);
-
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
-
-                recordingOptions.RecordingContent = RecordingContent.Audio;
-                recordingOptions.RecordingFormat = RecordingFormat.Wav;
-                recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                recordingOptions.PauseOnStart = isPauseOnStart;
-                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Wav.ToString());
-
-                var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
-                var recordingId = recordingResult.Value.RecordingId;
-
-                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
-                _logger.LogInformation(successMessage);
-
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = correlationId,
-                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
-                });
-            }
-            catch (Exception ex)
-            {
-                string errorMessage = $"Error starting recording: {ex.Message}. CallConnectionId: {callConnectionId}";
-                _logger.LogError(errorMessage);
-                return Problem($"Failed to start recording: {ex.Message}. CallConnectionId: {callConnectionId}");
-            }
-        }
-
-        /// <summary>
-        /// Starts a recording with audio in MP3 format and unmixed channel synchronously
-        /// </summary>
-        [HttpPost("startRecordingWithAudioWavUnmixed")]
-        [Tags("Recording APIs")]
-        public IActionResult StartRecordingWithAudioWavUnmixed(
-            string callConnectionId,
-            bool isRecordingWithCallConnectionId,
-            bool isPauseOnStart)
-        {
-            try
-            {
-                CallConnectionProperties callConnectionProperties = _service.GetCallConnectionProperties(callConnectionId);
-                var serverCallId = callConnectionProperties.ServerCallId;
-                var correlationId = callConnectionProperties.CorrelationId;
-                CallLocator callLocator = new ServerCallLocator(serverCallId);
-
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
-
-                recordingOptions.RecordingContent = RecordingContent.Audio;
-                recordingOptions.RecordingFormat = RecordingFormat.Wav;
-                recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-                recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                recordingOptions.PauseOnStart = isPauseOnStart;
-                CallAutomationService.SetRecordingFileFormat(RecordingFormat.Wav.ToString());
-
-                var recordingResult = _service.GetCallAutomationClient().GetCallRecording().Start(recordingOptions);
-                var recordingId = recordingResult.Value.RecordingId;
-
-                string successMessage = $"Recording started. RecordingId: {recordingId}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {recordingResult.GetRawResponse().Status.ToString()}";
-                _logger.LogInformation(successMessage);
-
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = correlationId,
-                    Status = $"Recording started. RecordingId: {recordingId}. Status: {recordingResult.GetRawResponse().Status.ToString()}"
+                    Status = $"Recording started. RecordingId: {recordingId}. Content: {recordingContent}, Format: {format}, Channel: {recordingChannel}, Status: {recordingResult.GetRawResponse().Status.ToString()}"
                 });
             }
             catch (Exception ex)
@@ -526,60 +404,166 @@ namespace Call_Automation_GCCH.Controllers
             }
         }
 
-        // Commenting as we have to create a storage account to store the download file and redirect it
-        ///// <summary>
-        ///// Streams the recording to the user's browser for download (synchronous version)
-        ///// </summary>
-        //[HttpGet("downloadRecording")]
-        //[Tags("Recording APIs")]
-        //public IActionResult DownloadRecording(string callConnectionId)
-        //{
-        //    try
-        //    {
-        //        var location = CallAutomationService.GetRecordingLocation();
-        //        var format = CallAutomationService.GetRecordingFileFormat();
+        /// <summary>
+        /// Downloads the recording to VM and uploads to storage account asynchronously
+        /// </summary>
+        [HttpPost("downloadRecordingAsync")]
+        [Tags("Recording APIs")]
+        public async Task<IActionResult> DownloadRecordingAsync(string callConnectionId)
+        {
+            try
+            {
+                var location = CallAutomationService.GetRecordingLocation();
+                var format = CallAutomationService.GetRecordingFileFormat();
 
-        //        if (string.IsNullOrEmpty(location))
-        //        {
-        //            _logger.LogError($"Recording location is not available from the events. CallConnectionId: {callConnectionId}");
-        //            return Problem("Recording Location from Azure Events is Null");
-        //        }
+                if (string.IsNullOrEmpty(location))
+                {
+                    _logger.LogError($"Recording location is not available from the events. CallConnectionId: {callConnectionId}");
+                    return Problem("Recording Location from Azure Events is Null");
+                }
 
-        //        if (string.IsNullOrEmpty(format))
-        //        {
-        //            _logger.LogError($"Recording File Format is not available from the events. CallConnectionId: {callConnectionId}");
-        //            return Problem("Recording File Format from Azure Events is Null");
-        //        }
+                if (string.IsNullOrEmpty(format))
+                {
+                    _logger.LogError($"Recording File Format is not available from the events. CallConnectionId: {callConnectionId}");
+                    return Problem("Recording File Format from Azure Events is Null");
+                }
 
-        //        var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
-        //        var date = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-        //        var fileName = $"Recording_{date}.{format}";
-        //        var mimeType = format.ToLower() switch
-        //        {
-        //            "mp4" => "video/mp4",
-        //            "wav" => "audio/wav",
-        //            _ => "application/octet-stream"
-        //        };
+                if (string.IsNullOrEmpty(_config.StorageConnectionString))
+                {
+                    _logger.LogError($"Storage connection string is not configured. CallConnectionId: {callConnectionId}");
+                    return Problem("Storage account is not configured");
+                }
 
-        //        // Set response headers for browser download
-        //        Response.ContentType = mimeType;
-        //        Response.Headers.Add("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+                var date = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"Recording_{callConnectionId}_{date}.{format}";
+                var mimeType = format.ToLower() switch
+                {
+                    "mp4" => "video/mp4",
+                    "wav" => "audio/wav",
+                    "mp3" => "audio/mpeg",
+                    _ => "application/octet-stream"
+                };
 
-        //        // Use MemoryStream with DownloadTo (sync)
-        //        using var memoryStream = new MemoryStream();
-        //        var recordingClient = _service.GetCallAutomationClient().GetCallRecording();
-        //        var result = recordingClient.DownloadTo(new Uri(location), memoryStream);
+                // Create local temporary directory for recordings
+                var tempDir = Path.Combine(Path.GetTempPath(), "call-recordings");
+                Directory.CreateDirectory(tempDir);
+                var localFilePath = Path.Combine(tempDir, fileName);
 
-        //        memoryStream.Position = 0; // Reset position for reading
-        //        _logger.LogInformation($"Recording streamed to browser. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}, Status: {result.Status}");
+                // Download recording to local VM storage first
+                using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write);
+                var recordingClient = _service.GetCallAutomationClient().GetCallRecording();
+                var downloadResult = await recordingClient.DownloadToAsync(new Uri(location), fileStream);
 
-        //        return File(memoryStream, mimeType, fileName); // ASP.NET handles stream flushing
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError($"Error streaming recording: {ex.Message}. CallConnectionId: {callConnectionId}");
-        //        return Problem($"Failed to stream recording: {ex.Message}. CallConnectionId: {callConnectionId}");
-        //    }
-        //}
+                _logger.LogInformation($"Recording downloaded to VM. Path: {localFilePath}, CallConnectionId: {callConnectionId}, Status: {downloadResult.Status}");
+
+                // Upload to Azure Storage Account
+                using var uploadStream = new FileStream(localFilePath, FileMode.Open, FileAccess.Read);
+                var storageUrl = await _storageService.UploadRecordingAsync(fileName, uploadStream, mimeType);
+
+                // Clean up local file
+                if (System.IO.File.Exists(localFilePath))
+                {
+                    System.IO.File.Delete(localFilePath);
+                }
+
+                string successMessage = $"Recording downloaded and uploaded to storage. StorageUrl: {storageUrl}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = $"Recording downloaded and uploaded to storage. StorageUrl: {storageUrl}"
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error downloading and uploading recording: {ex.Message}. CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to download and upload recording: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
+
+        /// <summary>
+        /// Downloads the recording to VM and uploads to storage account synchronously
+        /// </summary>
+        [HttpPost("downloadRecording")]
+        [Tags("Recording APIs")]
+        public IActionResult DownloadRecording(string callConnectionId)
+        {
+            try
+            {
+                var location = CallAutomationService.GetRecordingLocation();
+                var format = CallAutomationService.GetRecordingFileFormat();
+
+                if (string.IsNullOrEmpty(location))
+                {
+                    _logger.LogError($"Recording location is not available from the events. CallConnectionId: {callConnectionId}");
+                    return Problem("Recording Location from Azure Events is Null");
+                }
+
+                if (string.IsNullOrEmpty(format))
+                {
+                    _logger.LogError($"Recording File Format is not available from the events. CallConnectionId: {callConnectionId}");
+                    return Problem("Recording File Format from Azure Events is Null");
+                }
+
+                if (string.IsNullOrEmpty(_config.StorageConnectionString))
+                {
+                    _logger.LogError($"Storage connection string is not configured. CallConnectionId: {callConnectionId}");
+                    return Problem("Storage account is not configured");
+                }
+
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+                var date = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"Recording_{callConnectionId}_{date}.{format}";
+                var mimeType = format.ToLower() switch
+                {
+                    "mp4" => "video/mp4",
+                    "wav" => "audio/wav",
+                    "mp3" => "audio/mpeg",
+                    _ => "application/octet-stream"
+                };
+
+                // Create local temporary directory for recordings
+                var tempDir = Path.Combine(Path.GetTempPath(), "call-recordings");
+                Directory.CreateDirectory(tempDir);
+                var localFilePath = Path.Combine(tempDir, fileName);
+
+                // Download recording to local VM storage first
+                using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write);
+                var recordingClient = _service.GetCallAutomationClient().GetCallRecording();
+                var downloadResult = recordingClient.DownloadTo(new Uri(location), fileStream);
+
+                _logger.LogInformation($"Recording downloaded to VM. Path: {localFilePath}, CallConnectionId: {callConnectionId}, Status: {downloadResult.Status}");
+
+                // Upload to Azure Storage Account
+                using var uploadStream = new FileStream(localFilePath, FileMode.Open, FileAccess.Read);
+                var storageUrl = _storageService.UploadRecording(fileName, uploadStream, mimeType);
+
+                // Clean up local file
+                if (System.IO.File.Exists(localFilePath))
+                {
+                    System.IO.File.Delete(localFilePath);
+                }
+
+                string successMessage = $"Recording downloaded and uploaded to storage. StorageUrl: {storageUrl}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}";
+                _logger.LogInformation(successMessage);
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = $"Recording downloaded and uploaded to storage. StorageUrl: {storageUrl}"
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error downloading and uploading recording: {ex.Message}. CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to download and upload recording: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
     }
 }

@@ -8,5 +8,7 @@
         // ACS GCCH Phase 2
         // public string CongnitiveServiceEndpoint { get; set; }
         public string? CallbackUriHost { get; set; }
+        public string? StorageConnectionString { get; set; }
+        public string? ContainerName { get; set; }
     }
 }

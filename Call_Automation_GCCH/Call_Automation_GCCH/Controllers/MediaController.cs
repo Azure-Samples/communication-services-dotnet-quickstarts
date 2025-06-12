@@ -121,10 +121,19 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         // ──────────── MEDIA STREAMING: CREATE CALL ─────────────────────────────────
+        /// <summary>
+        /// Creates a call with media streaming capabilities asynchronously
+        /// </summary>
+        /// <param name="target">Target phone number (with country code) or communication user ID</param>
+        /// <param name="isMixed">True for mixed audio channel (all participants combined), false for unmixed (separate streams)</param>
+        /// <param name="enableMediaStreaming">Whether to enable media streaming</param>
+        /// <param name="isEnableBidirectional">Whether to enable bidirectional streaming</param>
+        /// <param name="isPcm24kMono">Whether to use PCM 24kHz mono format</param>
         [HttpPost("/createCallWithMediaStreamingAsync")]
         [Tags("Media Streaming")]
         public Task<IActionResult> CreateCallWithMediaStreamingAsync(
             string target,
+            bool isMixed = true,
             bool enableMediaStreaming = false,
             bool isEnableBidirectional = false,
             bool isPcm24kMono = false)
@@ -135,20 +144,30 @@ namespace Call_Automation_GCCH.Controllers
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
                 
+            var audioChannel = isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed;
+                
             return HandleCreateCallWithMediaStreaming(
                 target,
-                MediaStreamingAudioChannel.Mixed,
+                audioChannel,
                 enableMediaStreaming,
                 isEnableBidirectional,
                 isPcm24kMono,
                 async: true);
         }
 
+        /// <summary>
+        /// Creates a call with media streaming capabilities synchronously
+        /// </summary>
+        /// <param name="target">Target phone number (with country code) or communication user ID</param>
+        /// <param name="isMixed">True for mixed audio channel (all participants combined), false for unmixed (separate streams)</param>
+        /// <param name="enableMediaStreaming">Whether to enable media streaming</param>
+        /// <param name="isEnableBidirectional">Whether to enable bidirectional streaming</param>
+        /// <param name="isPcm24kMono">Whether to use PCM 24kHz mono format</param>
         [HttpPost("/createCallWithMediaStreaming")]
         [Tags("Media Streaming")]
         public IActionResult CreateCallWithMediaStreaming(
             string target,
-            MediaStreamingAudioChannel audioChannel,
+            bool isMixed = true,
             bool enableMediaStreaming = false,
             bool isEnableBidirectional = false,
             bool isPcm24kMono = false)
@@ -158,6 +177,8 @@ namespace Call_Automation_GCCH.Controllers
                 
             if (!target.StartsWith("8:") && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+                
+            var audioChannel = isMixed ? MediaStreamingAudioChannel.Mixed : MediaStreamingAudioChannel.Unmixed;
                 
             return HandleCreateCallWithMediaStreaming(
                 target,

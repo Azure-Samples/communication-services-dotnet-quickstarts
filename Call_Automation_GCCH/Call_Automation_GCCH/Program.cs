@@ -32,6 +32,9 @@ builder.Services.AddSingleton<CallAutomationService>(sp => {
     return new CallAutomationService(connectionString, pmaEndpoint, sp.GetRequiredService<ILogger<CallAutomationService>>());
 });
 
+// Add Storage Service
+builder.Services.AddScoped<IStorageService, StorageService>();
+
 builder.Logging.ClearProviders();
 builder.Logging.AddProvider(new ConsoleCollectorLoggerProvider());
 
