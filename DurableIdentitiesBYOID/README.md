@@ -1,56 +1,107 @@
-# DurableIdentitiesBYOID
+---
+page_type: sample
+languages:
+- csharp
+products:
+- azure
+- azure-communication-services
+---
 
-This sample demonstrates how to use Azure Communication Services (ACS) to create and manage identities in .NET. The sample prepares for future Bring Your Own Identity (BYOID) functionality and shows standard identity management practices.
+# Durable Identities with Bring Your Own Identity (BYOID)
+
+This sample demonstrates how to use Azure Communication Services (ACS) to create and manage durable identities using the Bring Your Own Identity (BYOID) feature in .NET.
+
+For full instructions on Azure Communication Services identity management, look at [Quickstart: Create and manage access tokens](https://docs.microsoft.com/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp)
 
 ## Overview
 
 The sample shows how to:
 - Authenticate a `CommunicationIdentityClient` using a connection string from an environment variable.
-- Create new ACS identities.
-- Generate access tokens for different communication scopes (Chat, VoIP).
-- Manage multiple identities and demonstrate token lifecycle.
+- Create standard ACS identities.
+- Use the Bring Your Own Identity (BYOID) feature to create identities with custom IDs.
+- Retrieve user details including custom ID information.
+- Validate that the same custom ID always returns the same ACS identity.
+- Generate access tokens for BYOID identities.
 - Clean up resources properly.
 
-**Note:** The Bring Your Own Identity (BYOID) feature may require preview SDK versions or specific API access. This sample demonstrates the standard identity management workflow that serves as a foundation for BYOID implementations.
+**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the BYOID functionality.
 
 ## Prerequisites
-- [.NET 6.0 SDK or later](https://dotnet.microsoft.com/download)
-- An [Azure Communication Services resource](https://learn.microsoft.com/azure/communication-services/quickstarts/create-communication-resource)
-- The `COMMUNICATION_SERVICES_CONNECTION_STRING` environment variable set with your ACS connection string.
 
-## How to Run
+- An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F). 
+- Install [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+- The latest version .NET Core SDK for your operating system.
+- Create an Azure Communication Services resource. For details, see [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your connection string for this quickstart.
 
-1. **Clone the repository** (if you haven't already):
-   ```sh
-   git clone <this-repo-url>
-   cd communication-services-dotnet-quickstarts/DurableIdentitiesBYOID
-   ```
+## Code Structure
 
-2. **Set the environment variable**:
-   - On Windows (PowerShell):
-     ```powershell
-     $env:COMMUNICATION_SERVICES_CONNECTION_STRING="<your-acs-connection-string>"
-     ```
-   - On Linux/macOS:
-     ```sh
-     export COMMUNICATION_SERVICES_CONNECTION_STRING="<your-acs-connection-string>"
-     ```
+- **./DurableIdentitiesBYOID/Program.cs:** Core application code with BYOID identity operations implementation.
+- **./DurableIdentitiesBYOID/DurableIdentitiesBYOID.csproj:** Project configuration file.
 
-3. **Run the sample**:
-   ```sh
-   dotnet run
-   ```
+## Before running sample code
+
+1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
+2. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
+3. With the Communication Services procured in pre-requisites, add connection string to environment variable using below command
+
+```
+setx COMMUNICATION_SERVICES_CONNECTION_STRING <CONNECTION_STRING>
+```
+
+## Run Locally
+
+1. Open `DurableIdentitiesBYOID.csproj`
+2. Run the `DurableIdentitiesBYOID` project
+
+Alternatively, you can run the project from the command line:
+
+```console
+dotnet run
+```
+
+## Expected Output
+
+When you run the application successfully, you should see output similar to the following:
+
+```console
+Azure Communication Services - Durable Identities BYOID Quickstart
+
+Created a standard identity with ID: 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+User ID: 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+Custom ID: alice@contoso.com
+
+User ID (second call): 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+Custom ID (second call): alice@contoso.com
+
+Validation successful: Both identities have the same ID as expected.
+
+Issued access token with 'chat' scope:
+Token expires at: 6/13/2025 5:49:30 PM +00:00
+
+Deleted identities.
+```
+
+The key points to observe:
+- A standard ACS identity is created first
+- Two BYOID identities are created using the same custom ID (`alice@contoso.com`)
+- Both BYOID calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
+- An access token is successfully generated for the BYOID identity
+- All resources are properly cleaned up at the end
 
 ## What the Sample Does
-- Creates new ACS identities.
-- Demonstrates token generation with different scopes (Chat, VoIP).
-- Shows how to manage multiple identities.
-- Validates that different identity creation calls generate unique identities.
-- Demonstrates proper resource cleanup.
 
-## Resources
-- [Azure Communication Services documentation](https://learn.microsoft.com/azure/communication-services/)
-- [Azure.Communication.Identity SDK](https://learn.microsoft.com/dotnet/api/azure.communication.identity)
+- Creates a standard ACS identity to demonstrate regular identity creation.
+- Demonstrates BYOID by creating a user with a custom ID (`alice@contoso.com`) and retrieving its details.
+- Validates that using the same custom ID returns the same ACS identity on subsequent calls.
+- Issues access tokens for BYOID identities with different scopes.
+- Demonstrates proper resource cleanup by deleting created identities.
 
-## License
-See [LICENSE.md](../LICENSE.md) for license information.
+## Key Features Demonstrated
+
+- **Standard Identity Creation**: Shows how to create regular ACS identities
+- **BYOID Identity Creation**: Uses custom IDs to create durable identities  
+- **Identity Persistence**: Validates that custom IDs map consistently to the same ACS identity
+- **User Detail Retrieval**: Demonstrates how to get user details including custom ID information
+- **Token Generation**: Shows how to generate access tokens for BYOID identities
+- **Resource Management**: Proper cleanup of created identities
