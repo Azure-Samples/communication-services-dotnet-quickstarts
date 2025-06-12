@@ -7,9 +7,9 @@ products:
 - azure-communication-services
 ---
 
-# Durable Identities with Bring Your Own Identity (BYOID)
+# Durable Identities with Bring your own durable identity (BYO durable identity)
 
-This sample demonstrates how to use Azure Communication Services (ACS) to create and manage durable identities using the Bring Your Own Identity (BYOID) feature in .NET.
+This sample demonstrates how to use Azure Communication Services (ACS) to create and manage durable identities using the Bring your own durable identity (BYO durable identity) feature in .NET.
 
 For full instructions on Azure Communication Services identity management, look at [Quickstart: Create and manage access tokens](https://docs.microsoft.com/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp)
 
@@ -18,13 +18,13 @@ For full instructions on Azure Communication Services identity management, look 
 The sample shows how to:
 - Authenticate a `CommunicationIdentityClient` using a connection string from an environment variable.
 - Create standard ACS identities.
-- Use the Bring Your Own Identity (BYOID) feature to create identities with custom IDs.
+- Use the Bring your own durable identity (BYO durable identity) feature to create identities with custom IDs.
 - Retrieve user details including custom ID information.
 - Validate that the same custom ID always returns the same ACS identity.
-- Generate access tokens for BYOID identities.
+- Generate access tokens for BYO durable identities.
 - Clean up resources properly.
 
-**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the BYOID functionality.
+**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the Bring your own durable identity (BYO durable identity) functionality.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ The sample shows how to:
 
 ## Code Structure
 
-- **./DurableIdentitiesBYOID/Program.cs:** Core application code with BYOID identity operations implementation.
+- **./DurableIdentitiesBYOID/Program.cs:** Core application code with BYO durable identity operations implementation.
 - **./DurableIdentitiesBYOID/DurableIdentitiesBYOID.csproj:** Project configuration file.
 
 ## Before running sample code
@@ -84,24 +84,24 @@ Deleted identities.
 
 The key points to observe:
 - A standard ACS identity is created first
-- Two BYOID identities are created using the same custom ID (`alice@contoso.com`)
-- Both BYOID calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
-- An access token is successfully generated for the BYOID identity
+- Two BYO durable identity identities are created using the same custom ID (`alice@contoso.com`)
+- Both BYO durable identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
+- An access token is successfully generated for the BYO durable identity
 - All resources are properly cleaned up at the end
 
 ## What the Sample Does
 
 - Creates a standard ACS identity to demonstrate regular identity creation.
-- Demonstrates BYOID by creating a user with a custom ID (`alice@contoso.com`) and retrieving its details.
+- Demonstrates BYO durable identity by creating a user with a custom ID (`alice@contoso.com`) and retrieving its details.
 - Validates that using the same custom ID returns the same ACS identity on subsequent calls.
-- Issues access tokens for BYOID identities with different scopes.
+- Issues access tokens for BYO durable identities with different scopes.
 - Demonstrates proper resource cleanup by deleting created identities.
 
 ## Key Features Demonstrated
 
 - **Standard Identity Creation**: Shows how to create regular ACS identities
-- **BYOID Identity Creation**: Uses custom IDs to create durable identities  
+- **BYO durable identity Creation**: Uses custom IDs to create durable identities  
 - **Identity Persistence**: Validates that custom IDs map consistently to the same ACS identity
 - **User Detail Retrieval**: Demonstrates how to get user details including custom ID information
-- **Token Generation**: Shows how to generate access tokens for BYOID identities
+- **Token Generation**: Shows how to generate access tokens for BYO durable identities
 - **Resource Management**: Proper cleanup of created identities
