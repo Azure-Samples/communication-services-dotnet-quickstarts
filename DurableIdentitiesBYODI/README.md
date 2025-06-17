@@ -7,9 +7,9 @@ products:
 - azure-communication-services
 ---
 
-# Durable Identities with Bring your own durable identity (BYODI)
+# Bring your own durable identity (BYODI) with Azure Communication Services
 
-This sample demonstrates how to use Azure Communication Services (ACS) to create and manage durable identities using the Bring your own durable identity (BYODI) feature in .NET.
+This sample demonstrates how to use Bring your own durable identity (BYODI) with Azure Communication Services (ACS) feature in .NET.
 
 For full instructions on Azure Communication Services identity management, look at [Quickstart: Create and manage access tokens](https://docs.microsoft.com/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp)
 
@@ -18,13 +18,13 @@ For full instructions on Azure Communication Services identity management, look 
 The sample shows how to:
 - Authenticate a `CommunicationIdentityClient` using a connection string from an environment variable.
 - Create standard ACS identities.
-- Use the Bring your own durable identity (BYODI) feature to create identities with custom IDs.
+- Bring your own durable identity (BYODI) with Azure Communication Services to create identities with custom IDs.
 - Retrieve user details including custom ID information.
 - Validate that the same custom ID always returns the same ACS identity.
 - Generate access tokens for BYODI identities.
 - Clean up resources properly.
 
-**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the Bring your own durable identity (BYODI) functionality.
+**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the Bring your own durable identity (BYODI) with ACS functionality.
 
 ## Prerequisites
 
@@ -35,8 +35,8 @@ The sample shows how to:
 
 ## Code Structure
 
-- **./DurableIdentitiesBYOID/Program.cs:** Core application code with BYODI operations implementation.
-- **./DurableIdentitiesBYOID/DurableIdentitiesBYOID.csproj:** Project configuration file.
+- **./DurableIdentitiesBYODI/Program.cs:** Core application code with BYODI operations implementation.
+- **./DurableIdentitiesBYODI/DurableIdentitiesBYODI.csproj:** Project configuration file.
 
 ## Before Running Sample Code
 
