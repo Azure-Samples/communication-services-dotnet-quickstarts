@@ -5,7 +5,7 @@ using Azure.Core;
 using Azure.Communication;
 using Azure;
 
-namespace DurableIdentitiesBYOID
+namespace DurableIdentitiesBYODI
 {
     class Program
     {
