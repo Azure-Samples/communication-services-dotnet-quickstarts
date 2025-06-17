@@ -50,8 +50,8 @@ setx COMMUNICATION_SERVICES_CONNECTION_STRING <CONNECTION_STRING>
 
 ## Run Locally
 
-1. Open `DurableIdentitiesBYOID.csproj`
-2. Run the `DurableIdentitiesBYOID` project
+1. Open `DurableIdentitiesBYODI.csproj`
+2. Run the `DurableIdentitiesBYODI` project
 
 Alternatively, you can run the project from the command line:
 
