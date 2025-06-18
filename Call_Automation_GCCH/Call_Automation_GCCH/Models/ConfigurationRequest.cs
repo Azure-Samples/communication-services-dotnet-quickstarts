@@ -10,5 +10,6 @@
         public string? CallbackUriHost { get; set; }
         public string? StorageConnectionString { get; set; }
         public string? ContainerName { get; set; }
+        public string? RecordingBlobStorageContainerName { get; set; }
     }
 }

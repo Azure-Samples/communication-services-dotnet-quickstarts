@@ -44,6 +44,17 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         /// <summary>
+        /// Clears all logs in the LogCollector
+        /// </summary>
+        /// <returns>Action result indicating success</returns>
+        [HttpPost("/logs/clear")]
+        public IActionResult ClearLogs()
+        {
+            LogCollector.Clear();
+            return Ok(new { message = "Logs cleared successfully" });
+        }
+
+        /// <summary>
         /// Handles EventGrid events for incoming calls and recording status updates
         /// </summary>
         /// <param name="eventGridEvents">The array of EventGrid events</param>

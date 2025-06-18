@@ -46,8 +46,24 @@
       const clearButton = document.createElement('button');
       clearButton.textContent = "Clear Logs";
       clearButton.style = "margin-left: 10px; padding: 5px 10px; background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;";
-      clearButton.onclick = function () {
-          logBox.value = '';
+      clearButton.onclick = async function () {
+          try {
+              const response = await fetch('/logs/clear', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  }
+              });
+              
+              if (response.ok) {
+                  logBox.value = '';
+                  console.log('Logs cleared successfully');
+              } else {
+                  console.error('Failed to clear logs');
+              }
+          } catch (error) {
+              console.error('Error clearing logs:', error);
+          }
       };
 
       // Create header container
@@ -70,8 +86,17 @@
         try {
           const response = await fetch('/logs');
           const logs = await response.json();
+          
+          // Check if user was scrolled near the bottom before updating
+          const wasAtBottom = logBox.scrollTop >= (logBox.scrollHeight - logBox.clientHeight - 10);
+          
           logBox.value = logs.join('\n');
-          logBox.scrollTop = logBox.scrollHeight;
+          
+          // Only auto-scroll to bottom if user was already at the bottom
+          if (wasAtBottom) {
+            logBox.scrollTop = logBox.scrollHeight;
+          }
+          // Otherwise, preserve the user's scroll position
         } catch (err) {
           logBox.value = 'Error loading logs.';
         }
