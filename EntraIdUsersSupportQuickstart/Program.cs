@@ -8,7 +8,6 @@ namespace EntraIdUsersSupportQuickstart
         static async Task Main(string[] args)
         {
             Console.WriteLine("Azure Communication Services - Obtain Access Token for Entra ID User Quickstart");
-
             string clientId = Environment.GetEnvironmentVariable("ENTRA_CLIENT_ID");
             string tenantId = Environment.GetEnvironmentVariable("ENTRA_TENANT_ID");
             string resourceEndpoint = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_RESOURCE_ENDPOINT");

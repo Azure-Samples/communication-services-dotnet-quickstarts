@@ -28,7 +28,7 @@ This sample application utilizes the [Azure.Identity](https://docs.microsoft.com
 
 ## Before running sample code
 
-1. Complete the `Administrator actions` from the [Quickstart: Set up and obtain access tokens for Microsoft Entra ID users](https://docs.microsoft.com/azure/communication-services/quickstarts/entra-id-authentication-integration).
+1. Complete the `Administrator actions` from the [Quickstart: Set up and obtain access tokens for Microsoft Entra ID users](https://docs.microsoft.com/azure/communication-services/quickstarts/entra-id-authentication-integration). You can use the `ManageEntraUserAccess` class to programmatically control which Entra ID users or groups have access to your Azure Communication Services resource. The class includes sample implementations for listing current assignments, creating or updating user access, and deleting assignments as needed.
 1. On the Authentication pane of your Entra ID App, add a new platform of the mobile and desktop application type with the Redirect URI of `http://localhost`.
 1. Open an instance of PowerShell, Windows Terminal, Command Prompt or equivalent and navigate to the directory that you'd like to clone the sample to.
 1. `git clone https://github.com/Azure-Samples/Communication-Services-dotnet-quickstarts.git`
