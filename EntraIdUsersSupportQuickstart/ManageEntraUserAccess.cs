@@ -5,6 +5,12 @@ using Newtonsoft.Json;
 
 namespace EntraIdUsersSupportQuickstart
 {
+    /*
+     * This class provides methods to manage Microsoft Entra ID user access assignments 
+     * for Azure Communication Services (ACS) resources.
+     * It demonstrates how to list, create/update, get, and delete access assignments by making authenticated HTTP requests 
+     * to the ACS REST APIs.
+     */
     class ManageEntraUserAccess
     {
         // Replace <ACS_Resource_Endpoint> and <ACS_Resource_Key> with your actual ACS resource endpoint and key
