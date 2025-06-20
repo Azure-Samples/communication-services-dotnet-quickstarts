@@ -1,14 +1,8 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using Azure.Communication;
-using Azure.Communication.CallAutomation;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+﻿using Azure.Communication.CallAutomation;
 using Call_Automation_GCCH.Models;
 using Call_Automation_GCCH.Services;
-using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Call_Automation_GCCH.Controllers
 {
@@ -50,7 +44,6 @@ namespace Call_Automation_GCCH.Controllers
             bool isAudioVideo = false,
             string recordingFormat = "Mp3",
             bool isMixed = true,
-            bool isRecordingWithCallConnectionId = true,
             bool isPauseOnStart = false,
             bool isBlobStorage = false)
         {
@@ -97,41 +90,39 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = recordingContent;
                 recordingOptions.RecordingFormat = format;
                 recordingOptions.RecordingChannel = recordingChannel;
                 recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
-                
+
                 // Configure recording storage if blob storage is requested
                 if (isBlobStorage)
                 {
                     var blobStorageConnectionString = _config.StorageConnectionString;
                     var blobContainerName = _config.RecordingBlobStorageContainerName ?? "recordingbyos";
-                    
+
                     // Create the container URL for blob storage
                     var containerUrl = blobStorageConnectionString.Replace("DefaultEndpointsProtocol=https;", "https://")
                                                                    .Replace("AccountName=", "")
                                                                    .Replace("AccountKey=", "")
                                                                    .Replace("EndpointSuffix=", "");
-                    
+
                     // Extract account name from connection string to build proper URL
                     var accountNameStart = blobStorageConnectionString.IndexOf("AccountName=") + "AccountName=".Length;
                     var accountNameEnd = blobStorageConnectionString.IndexOf(";", accountNameStart);
                     var accountName = blobStorageConnectionString.Substring(accountNameStart, accountNameEnd - accountNameStart);
-                    
+
                     var endpointSuffixStart = blobStorageConnectionString.IndexOf("EndpointSuffix=") + "EndpointSuffix=".Length;
                     var endpointSuffix = blobStorageConnectionString.Substring(endpointSuffixStart);
-                    
+
                     var blobContainerUrl = $"https://{accountName}.blob.{endpointSuffix}/{blobContainerName}";
-                    
+
                     recordingOptions.RecordingStorage = RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri(blobContainerUrl));
                 }
-                
+
                 CallAutomationService.SetRecordingFileFormat(format.ToString());
 
                 var recordingResult = await _service.GetCallAutomationClient().GetCallRecording().StartAsync(recordingOptions);
@@ -171,7 +162,6 @@ namespace Call_Automation_GCCH.Controllers
             bool isAudioVideo = false,
             string recordingFormat = "Mp3",
             bool isMixed = true,
-            bool isRecordingWithCallConnectionId = true,
             bool isPauseOnStart = false,
             bool isBlobStorage = false)
         {
@@ -218,35 +208,33 @@ namespace Call_Automation_GCCH.Controllers
                 var correlationId = callConnectionProperties.CorrelationId;
                 CallLocator callLocator = new ServerCallLocator(serverCallId);
 
-                var recordingOptions = isRecordingWithCallConnectionId
-                    ? new StartRecordingOptions(callConnectionProperties.CallConnectionId)
-                    : new StartRecordingOptions(callLocator);
+                var recordingOptions = new StartRecordingOptions(callLocator);
 
                 recordingOptions.RecordingContent = recordingContent;
                 recordingOptions.RecordingFormat = format;
                 recordingOptions.RecordingChannel = recordingChannel;
                 recordingOptions.RecordingStateCallbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
                 recordingOptions.PauseOnStart = isPauseOnStart;
-                
+
                 // Configure recording storage if blob storage is requested
                 if (isBlobStorage)
                 {
                     var blobStorageConnectionString = _config.StorageConnectionString;
                     var blobContainerName = _config.RecordingBlobStorageContainerName ?? "recordingbyos";
-                    
+
                     // Extract account name from connection string to build proper URL
                     var accountNameStart = blobStorageConnectionString.IndexOf("AccountName=") + "AccountName=".Length;
                     var accountNameEnd = blobStorageConnectionString.IndexOf(";", accountNameStart);
                     var accountName = blobStorageConnectionString.Substring(accountNameStart, accountNameEnd - accountNameStart);
-                    
+
                     var endpointSuffixStart = blobStorageConnectionString.IndexOf("EndpointSuffix=") + "EndpointSuffix=".Length;
                     var endpointSuffix = blobStorageConnectionString.Substring(endpointSuffixStart);
-                    
+
                     var blobContainerUrl = $"https://{accountName}.blob.{endpointSuffix}/{blobContainerName}";
-                    
+
                     recordingOptions.RecordingStorage = RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri(blobContainerUrl));
                 }
-                
+
                 CallAutomationService.SetRecordingFileFormat(format.ToString());
 
                 var recordingResult = _service.GetCallAutomationClient().GetCallRecording().Start(recordingOptions);
