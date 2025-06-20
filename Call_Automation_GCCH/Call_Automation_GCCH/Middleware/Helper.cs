@@ -30,7 +30,6 @@ namespace Call_Automation_GCCH
                             LogCollector.Log("ENCODING-->" + audioMetadata.Encoding);
                             LogCollector.Log("SAMPLE RATE-->" + audioMetadata.SampleRate);
                             LogCollector.Log("CHANNELS-->" + audioMetadata.Channels);
-                            LogCollector.Log("LENGTH-->" + audioMetadata.Length);
                             LogCollector.Log("***************************************************************************************");
                         }
                         if (response is AudioData audioData)
@@ -46,8 +45,9 @@ namespace Call_Automation_GCCH
 
                             LogCollector.Log("***************************************************************************************");
                             // Send audio bytes back to client if bidirectional streaming is enabled
-                            if (!audioData.IsSilent && audioData.Data is byte[] audioBytes)
+                            if (!audioData.IsSilent)
                             {
+                                var audioBytes = audioData.Data.ToArray(); // Convert ReadOnlyMemory<byte> to byte[]
                                 LogCollector.Log("Bidirectional Logs are given below:");
                                 await webSocket.SendAsync(
                                     new ArraySegment<byte>(audioBytes, 0, audioBytes.Length),

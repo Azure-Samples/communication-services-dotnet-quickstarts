@@ -1,16 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
-using Azure.Communication;
-using Azure.Communication.CallAutomation;
+﻿using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Call_Automation_GCCH.Models;
 using Call_Automation_GCCH.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Call_Automation_GCCH.Controllers
@@ -177,68 +171,68 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Error processing callbacks: {ex.Message}");
             }
         }
-        /// <summary>
-        /// Updates the IsArizona configuration and switches PMA endpoint accordingly
-        /// </summary>
-        /// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
-        /// <returns>Action result indicating success or error</returns>
-        [HttpPost("/setRegion")]
-        [Tags("Region Configuration")]
-        public IActionResult SetRegion(bool isArizona)
-        {
-            try
-            {
-                _logger.LogInformation($"Changing region configuration. IsArizona: {isArizona}");
+        ///// <summary>
+        ///// Updates the IsArizona configuration and switches PMA endpoint accordingly
+        ///// </summary>
+        ///// <param name="isArizona">Boolean flag to determine which PMA endpoint to use</param>
+        ///// <returns>Action result indicating success or error</returns>
+        //[HttpPost("/setRegion")]
+        //[Tags("Region Configuration")]
+        //public IActionResult SetRegion(bool isArizona)
+        //{
+        //    try
+        //    {
+        //        _logger.LogInformation($"Changing region configuration. IsArizona: {isArizona}");
 
-                // Get the current configuration section
-                var configSection = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("CommunicationSettings");
+        //        // Get the current configuration section
+        //        var configSection = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("CommunicationSettings");
 
-                // Get the current endpoint being used to determine if an update is needed
-                string currentEndpoint = _service.GetCurrentPmaEndpoint() ?? string.Empty;
-                string newEndpoint = isArizona
-                    ? configSection["PmaEndpointArizona"] ?? string.Empty
-                    : configSection["PmaEndpointTexas"] ?? string.Empty;
+        //        // Get the current endpoint being used to determine if an update is needed
+        //        string currentEndpoint = _service.GetCurrentPmaEndpoint() ?? string.Empty;
+        //        string newEndpoint = isArizona
+        //            ? configSection["PmaEndpointArizona"] ?? string.Empty
+        //            : configSection["PmaEndpointTexas"] ?? string.Empty;
 
-                // Check if new endpoint is empty
-                if (string.IsNullOrEmpty(newEndpoint))
-                {
-                    _logger.LogWarning($"The {(isArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
-                }
+        //        // Check if new endpoint is empty
+        //        if (string.IsNullOrEmpty(newEndpoint))
+        //        {
+        //            _logger.LogWarning($"The {(isArizona ? "PmaEndpointArizona" : "PmaEndpointTexas")} setting is empty");
+        //        }
 
-                // Only update if the endpoint would actually change
-                if (currentEndpoint == newEndpoint)
-                {
-                    if (string.IsNullOrEmpty(currentEndpoint))
-                    {
-                        return Ok($"Configuration unchanged as the endpoints are empty");
-                    }
-                    else
-                    {
-                        return Ok($"Configuration unchanged. Already using {(isArizona ? "Arizona" : "Texas")} region.");
-                    }
-                }
+        //        // Only update if the endpoint would actually change
+        //        if (currentEndpoint == newEndpoint)
+        //        {
+        //            if (string.IsNullOrEmpty(currentEndpoint))
+        //            {
+        //                return Ok($"Configuration unchanged as the endpoints are empty");
+        //            }
+        //            else
+        //            {
+        //                return Ok($"Configuration unchanged. Already using {(isArizona ? "Arizona" : "Texas")} region.");
+        //            }
+        //        }
 
-                // Update the IsArizona setting in memory
-                ((IConfigurationSection)configSection.GetSection("IsArizona")).Value = isArizona.ToString();
+        //        // Update the IsArizona setting in memory
+        //        ((IConfigurationSection)configSection.GetSection("IsArizona")).Value = isArizona.ToString();
 
-                // Update the client with the new endpoint
-                var connectionString = configSection["AcsConnectionString"] ?? string.Empty;
-                if (string.IsNullOrEmpty(connectionString))
-                {
-                    _logger.LogError("AcsConnectionString is empty");
-                    return Problem("AcsConnectionString is empty");
-                }
+        //        // Update the client with the new endpoint
+        //        var connectionString = configSection["AcsConnectionString"] ?? string.Empty;
+        //        if (string.IsNullOrEmpty(connectionString))
+        //        {
+        //            _logger.LogError("AcsConnectionString is empty");
+        //            return Problem("AcsConnectionString is empty");
+        //        }
 
-                _service.UpdateClient(connectionString, newEndpoint);
+        //        _service.UpdateClient(connectionString, newEndpoint);
 
-                return Ok($"Region updated successfully to {(isArizona ? "Arizona" : "Texas")}.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error updating region configuration: {ex.Message}");
-                return Problem($"Failed to update region configuration: {ex.Message}");
-            }
-        }
+        //        return Ok($"Region updated successfully to {(isArizona ? "Arizona" : "Texas")}.");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError($"Error updating region configuration: {ex.Message}");
+        //        return Problem($"Failed to update region configuration: {ex.Message}");
+        //    }
+        //}
         /// <summary>
         /// Processes individual call automation events
         /// </summary>
@@ -378,22 +372,6 @@ namespace Call_Automation_GCCH.Controllers
                 _logger.LogInformation($"Received call event: {continuousDtmfRecognitionToneFailed.GetType()}, CallConnectionId: {continuousDtmfRecognitionToneFailed.CallConnectionId}, CorrelationId: {continuousDtmfRecognitionToneFailed.CorrelationId}, " +
                           $"subCode: {continuousDtmfRecognitionToneFailed.ResultInformation?.SubCode}, message: {continuousDtmfRecognitionToneFailed.ResultInformation?.Message}, context: {continuousDtmfRecognitionToneFailed.OperationContext}");
             }
-            else if (parsedEvent is HoldAudioStarted holdAudioStarted)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioStarted.GetType()}, CallConnectionId: {holdAudioStarted.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldAudioPaused holdAudioPaused)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioPaused.GetType()}, CallConnectionId: {holdAudioPaused.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldAudioResumed holdAudioResumed)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioResumed.GetType()}, CallConnectionId: {holdAudioResumed.CallConnectionId}");
-            }
-            else if (parsedEvent is HoldAudioCompleted holdAudioCompleted)
-            {
-                _logger.LogInformation($"Received call event: {holdAudioCompleted.GetType()}, CallConnectionId: {holdAudioCompleted.CallConnectionId}");
-            }
             else if (parsedEvent is HoldFailed holdFailed)
             {
                 _logger.LogInformation($"Received call event: {holdFailed.GetType()}, CallConnectionId: {holdFailed.CallConnectionId}, CorrelationId: {holdFailed.CorrelationId}, " +
@@ -483,10 +461,10 @@ namespace Call_Automation_GCCH.Controllers
             [FromQuery] bool mediaStreaming = true,
             [FromQuery] bool bidirectionalStreaming = true)
         {
-            MediaStreamingAudioChannel audioChannel = audioChannelMixed 
-                ? MediaStreamingAudioChannel.Mixed 
+            MediaStreamingAudioChannel audioChannel = audioChannelMixed
+                ? MediaStreamingAudioChannel.Mixed
                 : MediaStreamingAudioChannel.Unmixed;
-            
+
             bool isPcm24kHz = !audioFormat16k;
 
             return await HandleIncomingCallWithMediaStreaming(
@@ -537,20 +515,18 @@ namespace Call_Automation_GCCH.Controllers
 
                                     var callbackUri = new Uri(new Uri(_config.CallbackUriHost), $"/api/callbacks");
                                     var websocketUri = new Uri(_config.CallbackUriHost.Replace("https", "wss") + "/ws");
-                                    
+
                                     _logger.LogInformation($"Incoming call with media streaming - correlationId: {incomingCallEventData.CorrelationId}, " +
                                         $"AudioChannel: {audioChannel}, EnableMediaStreaming: {enableMediaStreaming}, " +
                                         $"IsPcm24kHz: {isPcm24kHz}, EnableBidirectional: {enableBidirectional}");
 
-                                    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(
-                                        websocketUri,
-                                        MediaStreamingContent.Audio,
-                                        audioChannel,
-                                        MediaStreamingTransport.Websocket,
-                                        enableMediaStreaming)
+                                    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(audioChannel, StreamingTransport.Websocket)
                                     {
+                                        TransportUri = websocketUri,
+                                        MediaStreamingContent = MediaStreamingContent.Audio,
                                         EnableBidirectional = enableBidirectional,
-                                        AudioFormat = isPcm24kHz ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono
+                                        AudioFormat = isPcm24kHz ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono,
+                                        StartMediaStreaming = enableMediaStreaming
                                     };
 
                                     var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
@@ -621,47 +597,3 @@ namespace Call_Automation_GCCH.Controllers
         #endregion
     }
 }
-
-
-
-//app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, CallAutomationService service, ILogger<Program> logger) =>
-//{
-//    try
-//    {
-//        logger.LogInformation("Setting configurations...");
-
-//        acsConnectionString = string.Empty;
-//        acsPhoneNumber = string.Empty;
-//        callbackUriHost = string.Empty;
-//     //   fileSourceUri = string.Empty;
-
-//        if (configurationRequest != null)
-//        {
-//            configuration.AcsConnectionString = !string.IsNullOrEmpty(configurationRequest.AcsConnectionString)
-//                ? configurationRequest.AcsConnectionString
-//                : throw new ArgumentNullException(nameof(configurationRequest.AcsConnectionString));
-
-//            configuration.pmaEndpoint = !string.IsNullOrEmpty(configurationRequest.pmaEndpoint) ? configurationRequest.pmaEndpoint : throw new ArgumentNullException(nameof(configurationRequest.pmaEndpoint));
-//            //configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
-//            configuration.AcsPhoneNumber = !string.IsNullOrEmpty(configurationRequest.AcsPhoneNumber) ? configurationRequest.AcsPhoneNumber : throw new ArgumentNullException(nameof(configurationRequest.AcsPhoneNumber));
-//            configuration.CallbackUriHost = !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) ? configurationRequest.CallbackUriHost : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
-//            service.SetConfiguration(configurationRequest);
-//        }
-
-//        acsConnectionString = configuration.AcsConnectionString;
-//        acsPhoneNumber = configuration.AcsPhoneNumber;
-//        callbackUriHost = configuration.CallbackUriHost;
-//        //  fileSourceUri = "https://sample-videos.com/audio/mp3/crowd-cheering.mp3";
-
-//        logger.LogInformation($"Configuration set: AcsPhoneNumber={acsPhoneNumber}, CallbackUriHost={callbackUriHost}");
-
-//        client = new CallAutomationClient(connectionString: acsConnectionString);
-//        logger.LogInformation("Initialized call automation client.");
-//        return Results.Ok("Configuration set successfully. Initialized call automation client.");
-//    }
-//    catch (Exception ex)
-//    {
-//        logger.LogError($"Error in setConfigurations: {ex.Message}");
-//        return Results.Problem($"Failed to set configuration: {ex.Message}");
-//    }
-//}).WithTags("1. Add Connection string and configuration settings.");
