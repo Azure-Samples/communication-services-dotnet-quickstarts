@@ -18,6 +18,7 @@ namespace EntraIdUsersSupportQuickstart
             {
                 TenantId = tenantId,
                 ClientId = clientId,
+                RedirectUri = new Uri("<REDIRECT_URI>") // Ensure this URI is registered in your Azure AD app
             });
 
             // Set up CommunicationTokenCredential to request a Communication Services access token for a Microsoft Entra ID user.
