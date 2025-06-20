@@ -11,5 +11,6 @@
         public string? StorageConnectionString { get; set; }
         public string? ContainerName { get; set; }
         public string? RecordingBlobStorageContainerName { get; set; }
+        public string? CognitiveServiceEndpoint { get; set; }
     }
 }

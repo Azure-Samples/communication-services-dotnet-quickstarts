@@ -348,6 +348,7 @@ namespace Call_Automation_GCCH.Controllers
 
             return HandleRecognize(callConnectionId, identifier, RecognizeType.SpeechOrDtmf, async: false).Result;
         }
+
         // ──────────── HOLD / UNHOLD ─────────────────────────────────────────────────
         [HttpPost("/holdTargetAsync")]
         [Tags("Hold Management")]
@@ -501,7 +502,8 @@ namespace Call_Automation_GCCH.Controllers
 
                 var createOpts = new CreateCallOptions(invite, callbackUri)
                 {
-                    MediaStreamingOptions = mediaOpts
+                    MediaStreamingOptions = mediaOpts,
+                    CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(_config.CognitiveServiceEndpoint) }
                 };
 
                 CreateCallResult result = async

@@ -131,7 +131,10 @@ namespace Call_Automation_GCCH.Controllers
                                      new PhoneNumberIdentifier(_config.AcsPhoneNumber))
                     : new CallInvite(new CommunicationUserIdentifier(target));
 
-                var options = new CreateCallOptions(invite, callbackUri);
+                var options = new CreateCallOptions(invite, callbackUri)
+                {
+                     CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(_config.CognitiveServiceEndpoint) },
+                };
 
                 // Call SDK
                 CreateCallResult result = async
@@ -297,6 +300,7 @@ namespace Call_Automation_GCCH.Controllers
                 var createGroupOpts = new CreateGroupCallOptions(idList, callbackUri)
                 {
                     SourceCallerIdNumber = sourceCallerId,
+                    CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(_config.CognitiveServiceEndpoint) },
                     // ... any media/transcription options you need
                 };
 
