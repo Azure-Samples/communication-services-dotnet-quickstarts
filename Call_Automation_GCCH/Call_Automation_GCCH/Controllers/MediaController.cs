@@ -247,107 +247,107 @@ namespace Call_Automation_GCCH.Controllers
             return HandleRecognize(callConnectionId, identifier, RecognizeType.Dtmf, async: false).Result;
         }
 
-        [HttpPost("/recognizeChoiceAsync")]
-        [Tags("Recognition")]
-        public Task<IActionResult> RecognizeChoiceAsync(string callConnectionId, string target)
-        {
-            if (string.IsNullOrEmpty(target))
-                return Task.FromResult<IActionResult>(BadRequest("Target is required"));
+        //[HttpPost("/recognizeChoiceAsync")]
+        //[Tags("Recognition")]
+        //public Task<IActionResult> RecognizeChoiceAsync(string callConnectionId, string target)
+        //{
+        //    if (string.IsNullOrEmpty(target))
+        //        return Task.FromResult<IActionResult>(BadRequest("Target is required"));
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
+        //    if (!target.StartsWith("8:") && !target.StartsWith("+"))
+        //        return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
 
-            CommunicationIdentifier identifier = target.StartsWith("8:")
-                ? new CommunicationUserIdentifier(target)
-                : new PhoneNumberIdentifier(target);
+        //    CommunicationIdentifier identifier = target.StartsWith("8:")
+        //        ? new CommunicationUserIdentifier(target)
+        //        : new PhoneNumberIdentifier(target);
 
-            return HandleRecognize(callConnectionId, identifier, RecognizeType.Choice, async: true);
-        }
+        //    return HandleRecognize(callConnectionId, identifier, RecognizeType.Choice, async: true);
+        //}
 
-        [HttpPost("/recognizeChoice")]
-        [Tags("Recognition")]
-        public IActionResult RecognizeChoice(string callConnectionId, string target)
-        {
-            if (string.IsNullOrEmpty(target))
-                return BadRequest("Target is required");
+        //[HttpPost("/recognizeChoice")]
+        //[Tags("Recognition")]
+        //public IActionResult RecognizeChoice(string callConnectionId, string target)
+        //{
+        //    if (string.IsNullOrEmpty(target))
+        //        return BadRequest("Target is required");
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+        //    if (!target.StartsWith("8:") && !target.StartsWith("+"))
+        //        return BadRequest("PSTN number must include country code (e.g., +1 for US)");
 
-            CommunicationIdentifier identifier = target.StartsWith("8:")
-                ? new CommunicationUserIdentifier(target)
-                : new PhoneNumberIdentifier(target);
+        //    CommunicationIdentifier identifier = target.StartsWith("8:")
+        //        ? new CommunicationUserIdentifier(target)
+        //        : new PhoneNumberIdentifier(target);
 
-            return HandleRecognize(callConnectionId, identifier, RecognizeType.Choice, async: false).Result;
-        }
+        //    return HandleRecognize(callConnectionId, identifier, RecognizeType.Choice, async: false).Result;
+        //}
 
-        [HttpPost("/recognizeSpeechAsync")]
-        [Tags("Recognition")]
-        public Task<IActionResult> RecognizeSpeechAsync(string callConnectionId, string target)
-        {
-            if (string.IsNullOrEmpty(target))
-                return Task.FromResult<IActionResult>(BadRequest("Target is required"));
+        //[HttpPost("/recognizeSpeechAsync")]
+        //[Tags("Recognition")]
+        //public Task<IActionResult> RecognizeSpeechAsync(string callConnectionId, string target)
+        //{
+        //    if (string.IsNullOrEmpty(target))
+        //        return Task.FromResult<IActionResult>(BadRequest("Target is required"));
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
+        //    if (!target.StartsWith("8:") && !target.StartsWith("+"))
+        //        return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
 
-            CommunicationIdentifier identifier = target.StartsWith("8:")
-                ? new CommunicationUserIdentifier(target)
-                : new PhoneNumberIdentifier(target);
+        //    CommunicationIdentifier identifier = target.StartsWith("8:")
+        //        ? new CommunicationUserIdentifier(target)
+        //        : new PhoneNumberIdentifier(target);
 
-            return HandleRecognize(callConnectionId, identifier, RecognizeType.Speech, async: true);
-        }
+        //    return HandleRecognize(callConnectionId, identifier, RecognizeType.Speech, async: true);
+        //}
 
-        [HttpPost("/recognizeSpeech")]
-        [Tags("Recognition")]
-        public IActionResult RecognizeSpeech(string callConnectionId, string target)
-        {
-            if (string.IsNullOrEmpty(target))
-                return BadRequest("Target is required");
+        //[HttpPost("/recognizeSpeech")]
+        //[Tags("Recognition")]
+        //public IActionResult RecognizeSpeech(string callConnectionId, string target)
+        //{
+        //    if (string.IsNullOrEmpty(target))
+        //        return BadRequest("Target is required");
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+        //    if (!target.StartsWith("8:") && !target.StartsWith("+"))
+        //        return BadRequest("PSTN number must include country code (e.g., +1 for US)");
 
-            CommunicationIdentifier identifier = target.StartsWith("8:")
-                ? new CommunicationUserIdentifier(target)
-                : new PhoneNumberIdentifier(target);
+        //    CommunicationIdentifier identifier = target.StartsWith("8:")
+        //        ? new CommunicationUserIdentifier(target)
+        //        : new PhoneNumberIdentifier(target);
 
-            return HandleRecognize(callConnectionId, identifier, RecognizeType.Speech, async: false).Result;
-        }
+        //    return HandleRecognize(callConnectionId, identifier, RecognizeType.Speech, async: false).Result;
+        //}
 
-        [HttpPost("/recognizeSpeechOrDTMFAsync")]
-        [Tags("Recognition")]
-        public Task<IActionResult> RecognizeSpeechOrDTMFAsync(string callConnectionId, string target)
-        {
-            if (string.IsNullOrEmpty(target))
-                return Task.FromResult<IActionResult>(BadRequest("Target is required"));
+        //[HttpPost("/recognizeSpeechOrDTMFAsync")]
+        //[Tags("Recognition")]
+        //public Task<IActionResult> RecognizeSpeechOrDTMFAsync(string callConnectionId, string target)
+        //{
+        //    if (string.IsNullOrEmpty(target))
+        //        return Task.FromResult<IActionResult>(BadRequest("Target is required"));
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
+        //    if (!target.StartsWith("8:") && !target.StartsWith("+"))
+        //        return Task.FromResult<IActionResult>(BadRequest("PSTN number must include country code (e.g., +1 for US)"));
 
-            CommunicationIdentifier identifier = target.StartsWith("8:")
-                ? new CommunicationUserIdentifier(target)
-                : new PhoneNumberIdentifier(target);
+        //    CommunicationIdentifier identifier = target.StartsWith("8:")
+        //        ? new CommunicationUserIdentifier(target)
+        //        : new PhoneNumberIdentifier(target);
 
-            return HandleRecognize(callConnectionId, identifier, RecognizeType.SpeechOrDtmf, async: true);
-        }
+        //    return HandleRecognize(callConnectionId, identifier, RecognizeType.SpeechOrDtmf, async: true);
+        //}
 
-        [HttpPost("/recognizeSpeechOrDTMF")]
-        [Tags("Recognition")]
-        public IActionResult RecognizeSpeechOrDTMF(string callConnectionId, string target)
-        {
-            if (string.IsNullOrEmpty(target))
-                return BadRequest("Target is required");
+        //[HttpPost("/recognizeSpeechOrDTMF")]
+        //[Tags("Recognition")]
+        //public IActionResult RecognizeSpeechOrDTMF(string callConnectionId, string target)
+        //{
+        //    if (string.IsNullOrEmpty(target))
+        //        return BadRequest("Target is required");
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+        //    if (!target.StartsWith("8:") && !target.StartsWith("+"))
+        //        return BadRequest("PSTN number must include country code (e.g., +1 for US)");
 
-            CommunicationIdentifier identifier = target.StartsWith("8:")
-                ? new CommunicationUserIdentifier(target)
-                : new PhoneNumberIdentifier(target);
+        //    CommunicationIdentifier identifier = target.StartsWith("8:")
+        //        ? new CommunicationUserIdentifier(target)
+        //        : new PhoneNumberIdentifier(target);
 
-            return HandleRecognize(callConnectionId, identifier, RecognizeType.SpeechOrDtmf, async: false).Result;
-        }
+        //    return HandleRecognize(callConnectionId, identifier, RecognizeType.SpeechOrDtmf, async: false).Result;
+        //}
 
         // ──────────── HOLD / UNHOLD ─────────────────────────────────────────────────
         [HttpPost("/holdTargetAsync")]
@@ -502,8 +502,7 @@ namespace Call_Automation_GCCH.Controllers
 
                 var createOpts = new CreateCallOptions(invite, callbackUri)
                 {
-                    MediaStreamingOptions = mediaOpts,
-                    CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(_config.CognitiveServiceEndpoint) }
+                    MediaStreamingOptions = mediaOpts
                 };
 
                 CreateCallResult result = async
