@@ -7,9 +7,9 @@ products:
 - azure-communication-services
 ---
 
-# Bring your own durable identity (BYODI) with Azure Communication Services
+# Access Tokens with Custom Id with Azure Communication Services
 
-This sample demonstrates how to use Bring your own durable identity (BYODI) with Azure Communication Services (ACS) feature in .NET.
+This sample demonstrates how to use Access Tokens with Custom Id with Azure Communication Services (ACS) feature in .NET.
 
 For full instructions on Azure Communication Services identity management, look at [Quickstart: Create and manage access tokens](https://docs.microsoft.com/azure/communication-services/quickstarts/access-tokens?pivots=programming-language-csharp)
 
@@ -18,13 +18,13 @@ For full instructions on Azure Communication Services identity management, look 
 The sample shows how to:
 - Authenticate a `CommunicationIdentityClient` using a connection string from an environment variable.
 - Create standard ACS identities.
-- Bring your own durable identity (BYODI) with Azure Communication Services to create identities with custom IDs.
+- Use Access Tokens with Custom Id with Azure Communication Services to create identities with custom IDs.
 - Retrieve user details including custom ID information.
 - Validate that the same custom ID always returns the same ACS identity.
-- Generate access tokens for BYODI identities.
+- Generate access tokens for custom identities.
 - Clean up resources properly.
 
-**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the Bring your own durable identity (BYODI) with ACS functionality.
+**Note:** This sample uses the preview version of the Azure Communication Services Identity SDK (1.4.0-beta.1) which includes the Access Tokens with Custom Id with ACS functionality.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ The sample shows how to:
 
 ## Code Structure
 
-- **./DurableIdentitiesBYODI/Program.cs:** Core application code with BYODI operations implementation.
+- **./DurableIdentitiesBYODI/Program.cs:** Core application code with custom identity operations implementation.
 - **./DurableIdentitiesBYODI/DurableIdentitiesBYODI.csproj:** Project configuration file.
 
 ## Before Running Sample Code
@@ -64,7 +64,7 @@ dotnet run
 When you run the application successfully, you should see output similar to the following:
 
 ```console
-Azure Communication Services - Durable Identities BYODI Quickstart
+Azure Communication Services - Access Tokens with Custom Id Quickstart
 
 Created a standard identity with ID: 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
@@ -84,17 +84,17 @@ Deleted identities.
 
 The key points to observe:
 - A standard ACS identity is created first
-- Two BYODI identities are created using the same custom ID (`alice@contoso.com`)
-- Both BYODI calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
-- An access token is successfully generated for the BYODI identity
+- Two custom identities are created using the same custom ID (`alice@contoso.com`)
+- Both custom identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
+- An access token is successfully generated for the custom identity
 - All resources are properly cleaned up at the end
 
 ## What the Sample Does
 
 - Creates a standard ACS identity to demonstrate regular identity creation.
-- Demonstrates BYODI by creating a user with a custom ID (`alice@contoso.com`) and retrieving its details.
+- Demonstrates Access Tokens with Custom Id by creating a user with a custom ID (`alice@contoso.com`) and retrieving its details.
 - Validates that using the same custom ID returns the same ACS identity on subsequent calls.
-- Issues access tokens for BYODI identities with different scopes.
+- Issues access tokens for custom identities with different scopes.
 - Demonstrates proper resource cleanup by deleting created identities.
 
 ## Key Features Demonstrated

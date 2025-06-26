@@ -5,7 +5,7 @@ using Azure.Core;
 using Azure.Communication;
 using Azure;
 
-namespace DurableIdentitiesBYODI
+namespace AccessTokensWithCustomIdQuickstart
 {
     class Program
     {
@@ -38,25 +38,26 @@ namespace DurableIdentitiesBYODI
 
             var client = new CommunicationIdentityClient(connectionString);
 
-            // Create a standard identity
-            var identityResponse = await client.CreateUserAsync();
-            var identity = identityResponse.Value;
-            Console.WriteLine($"\nCreated a standard identity with ID: {identity.Id}");
 
-            // Bring Your Own Identity (BYOID) feature demonstration
+            // Access Tokens with Custom Id feature demonstration
             string customId = "alice@contoso.com"; // Alphanumeric custom ID
-            Response<CommunicationUserIdentifier> user = await client.CreateUserAsync(customId: customId);
-            var userDetails = await client.GetUserDetailAsync(user.Value);
-            Console.WriteLine($"\nUser ID: {user.Value.Id}");
+            var userAndTokenResponse = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.Chat }, customId: customId);
+            var user = userAndTokenResponse.Value.User;
+            var token = userAndTokenResponse.Value.AccessToken;
+            var userDetails = await client.GetUserDetailAsync(user);
+            Console.WriteLine($"\nUser ID: {user.Id}");
             Console.WriteLine($"Custom ID: {userDetails.Value.CustomId}");
+            Console.WriteLine($"Issued access token with 'chat' scope:");
+            Console.WriteLine($"Token expires at: {token.ExpiresOn}");
 
-            // Create another identity with the same customId and validate that it the same user is returned
-            Response<CommunicationUserIdentifier> user2 = await client.CreateUserAsync(customId: customId);
-            var userDetails2 = await client.GetUserDetailAsync(user2.Value);
-            Console.WriteLine($"\nUser ID (second call): {user2.Value.Id}");
+            // Create another token with the same customId and validate that it the same user is returned
+            var userAndTokenResponse2 = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.Chat }, customId: customId);
+            var user2 = userAndTokenResponse2.Value.User;
+            var userDetails2 = await client.GetUserDetailAsync(user2);
+            Console.WriteLine($"\nUser ID (second call): {user2.Id}");
             Console.WriteLine($"Custom ID (second call): {userDetails2.Value.CustomId}");
 
-            if (user.Value.Id == user2.Value.Id)
+            if (user.Id == user2.Id)
             {
                 Console.WriteLine("\nValidation successful: Both identities have the same ID as expected.");
             }
@@ -65,16 +66,9 @@ namespace DurableIdentitiesBYODI
                 Console.WriteLine("\nValidation failed: Identity IDs do not match!");
             }
 
-            // Issue access tokens for the BYOID identity
-            var tokenResponse = await client.GetTokenAsync(user.Value, scopes: new[] { CommunicationTokenScope.Chat });
-            Console.WriteLine($"\nIssued access token with 'chat' scope:");
-            Console.WriteLine($"Token expires at: {tokenResponse.Value.ExpiresOn}");
-            
-
             // Cleanup: Delete the identities created in this example
             Console.WriteLine("\nCleaning up: Deleting identities...");
-            await client.DeleteUserAsync(identity);
-            await client.DeleteUserAsync(user.Value);
+            await client.DeleteUserAsync(user);
             Console.WriteLine($"\nDeleted identities.");
         }
     }
