@@ -103,5 +103,5 @@ The key points to observe:
 - **Identity Creation**: Uses custom IDs to create mapped ACS identities
 - **Identity Persistence**: Validates that custom IDs map consistently to the same ACS identity
 - **User Detail Retrieval**: Demonstrates how to get user details including custom ID information
-- **Token Generation**: Shows how to generate access tokens for BYODI identities
+- **Token Generation**: Shows how to generate access tokens for identities
 - **Resource Management**: Proper cleanup of created identities
