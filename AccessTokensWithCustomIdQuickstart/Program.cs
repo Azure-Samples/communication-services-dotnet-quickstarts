@@ -47,8 +47,6 @@ namespace AccessTokensWithCustomIdQuickstart
             var userDetails = await client.GetUserDetailAsync(user);
             Console.WriteLine($"\nUser ID: {user.Id}");
             Console.WriteLine($"Custom ID: {userDetails.Value.CustomId}");
-            Console.WriteLine($"Issued access token with 'chat' scope:");
-            Console.WriteLine($"Token expires at: {token.ExpiresOn}");
 
             // Create another token with the same customId and validate that it the same user is returned
             var userAndTokenResponse2 = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.Chat }, customId: customId);
@@ -56,6 +54,7 @@ namespace AccessTokensWithCustomIdQuickstart
             var userDetails2 = await client.GetUserDetailAsync(user2);
             Console.WriteLine($"\nUser ID (second call): {user2.Id}");
             Console.WriteLine($"Custom ID (second call): {userDetails2.Value.CustomId}");
+
 
             if (user.Id == user2.Id)
             {
