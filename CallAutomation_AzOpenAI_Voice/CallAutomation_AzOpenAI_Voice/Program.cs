@@ -55,13 +55,11 @@ app.MapPost("/api/incomingCall", async (
         var websocketUri = appBaseUrl.Replace("https", "wss") + "/ws";
         logger.LogInformation($"WebSocket Url: {websocketUri}");
 
-        var mediaStreamingOptions = new MediaStreamingOptions(
-                new Uri(websocketUri),
-                MediaStreamingContent.Audio,
-                MediaStreamingAudioChannel.Mixed,
-                startMediaStreaming: true
-                )
+        var mediaStreamingOptions = new MediaStreamingOptions(MediaStreamingAudioChannel.Mixed)
         {
+            TransportUri = new Uri(websocketUri),
+            MediaStreamingContent = MediaStreamingContent.Audio,
+            StartMediaStreaming = true,
             EnableBidirectional = true,
             AudioFormat = AudioFormat.Pcm24KMono
         };

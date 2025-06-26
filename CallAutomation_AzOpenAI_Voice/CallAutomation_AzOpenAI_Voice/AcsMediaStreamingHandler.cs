@@ -83,7 +83,7 @@ public class AcsMediaStreamingHandler
         {
             if (!audioData.IsSilent)
             {
-                using (var ms = new MemoryStream(audioData.Data))
+                using (var ms = new MemoryStream(audioData.Data.ToArray()))
                 {
                     await m_aiServiceHandler.SendAudioToExternalAI(ms);
                 }
