@@ -11,7 +11,7 @@ namespace DurableIdentitiesBYODI
     {
         static async System.Threading.Tasks.Task Main(string[] args)
         {
-            Console.WriteLine("Azure Communication Services - Durable Identities BYOID Quickstart");
+            Console.WriteLine("Azure Communication Services - Access Tokens for Identity with customId Quickstart");
 
             // Authenticate the client
             // This code demonstrates how to fetch your connection string
