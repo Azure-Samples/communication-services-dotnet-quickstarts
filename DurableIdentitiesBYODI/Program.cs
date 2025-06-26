@@ -50,7 +50,7 @@ namespace DurableIdentitiesBYODI
             Console.WriteLine($"\nUser ID: {user.Value.Id}");
             Console.WriteLine($"Custom ID: {userDetails.Value.CustomId}");
 
-            // Create ano ther identity with the same customId and validate
+            // Create another identity with the same customId and validate that it the same user is returned
             Response<CommunicationUserIdentifier> user2 = await client.CreateUserAsync(customId: customId);
             var userDetails2 = await client.GetUserDetailAsync(user2.Value);
             Console.WriteLine($"\nUser ID (second call): {user2.Value.Id}");
