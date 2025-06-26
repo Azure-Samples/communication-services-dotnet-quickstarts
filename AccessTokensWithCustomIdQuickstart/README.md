@@ -17,7 +17,6 @@ For full instructions on Azure Communication Services identity management, look 
 
 The sample shows how to:
 - Authenticate a `CommunicationIdentityClient` using a connection string from an environment variable.
-- Create standard ACS identities.
 - Use Access Tokens with Custom Id with Azure Communication Services to create identities with custom IDs.
 - Retrieve user details including custom ID information.
 - Validate that the same custom ID always returns the same ACS identity.
@@ -29,14 +28,13 @@ The sample shows how to:
 ## Prerequisites
 
 - An Azure account with an active subscription. [Create an account for free](https://azure.microsoft.com/free/?WT.mc_id=A261C142F). 
-- Install [Visual Studio](https://visualstudio.microsoft.com/downloads/)
 - The latest version .NET Core SDK for your operating system.
 - Create an Azure Communication Services resource. For details, see [Create a Communication Services resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your connection string for this quickstart.
 
 ## Code Structure
 
-- **./DurableIdentitiesBYODI/Program.cs:** Core application code with custom identity operations implementation.
-- **./DurableIdentitiesBYODI/DurableIdentitiesBYODI.csproj:** Project configuration file.
+- **./AccessTokensWithCustomIdQuickstart/Program.cs:** Core application code with custom identity operations implementation.
+- **./AccessTokensWithCustomIdQuickstart/AccessTokensWithCustomIdQuickstart.csproj:** Project configuration file.
 
 ## Before Running Sample Code
 
@@ -50,8 +48,8 @@ setx COMMUNICATION_SERVICES_CONNECTION_STRING <CONNECTION_STRING>
 
 ## Run Locally
 
-1. Open `DurableIdentitiesBYODI.csproj`
-2. Run the `DurableIdentitiesBYODI` project
+1. Open `AccessTokensWithCustomIdQuickstart.csproj`
+2. Run the `AccessTokensWithCustomIdQuickstart` project
 
 Alternatively, you can run the project from the command line:
 
@@ -64,9 +62,7 @@ dotnet run
 When you run the application successfully, you should see output similar to the following:
 
 ```console
-Azure Communication Services - Access Tokens with Custom Id Quickstart
-
-Created a standard identity with ID: 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+Azure Communication Services - Access Tokens for Identity with customId Quickstart
 
 User ID: 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 Custom ID: alice@contoso.com
@@ -76,32 +72,21 @@ Custom ID (second call): alice@contoso.com
 
 Validation successful: Both identities have the same ID as expected.
 
-Issued access token with 'chat' scope:
-Token expires at: 6/13/2025 5:49:30 PM +00:00
+Cleaning up: Deleting identities...
 
 Deleted identities.
 ```
 
 The key points to observe:
-- A standard ACS identity is created first
 - Two custom identities are created using the same custom ID (`alice@contoso.com`)
 - Both custom identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
-- An access token is successfully generated for the custom identity
+- Access tokens are generated for the custom identity during the creation process
 - All resources are properly cleaned up at the end
-
-## What the Sample Does
-
-- Creates a standard ACS identity to demonstrate regular identity creation.
-- Demonstrates Access Tokens with Custom Id by creating a user with a custom ID (`alice@contoso.com`) and retrieving its details.
-- Validates that using the same custom ID returns the same ACS identity on subsequent calls.
-- Issues access tokens for custom identities with different scopes.
-- Demonstrates proper resource cleanup by deleting created identities.
 
 ## Key Features Demonstrated
 
-- **Standard Identity Creation**: Shows how to create regular ACS identities
-- **Identity Creation**: Uses custom IDs to create mapped ACS identities
+- **Custom Identity Creation**: Uses custom IDs to create mapped ACS identities
 - **Identity Persistence**: Validates that custom IDs map consistently to the same ACS identity
 - **User Detail Retrieval**: Demonstrates how to get user details including custom ID information
-- **Token Generation**: Shows how to generate access tokens for identities
-- **Resource Management**: Proper cleanup of created identities
+- **Token Generation**: Shows how to generate access tokens for identities with custom IDs
+
