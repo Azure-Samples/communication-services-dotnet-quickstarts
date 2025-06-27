@@ -79,7 +79,7 @@ Deleted identities.
 
 The key points to observe:
 - Two identities are created using the same custom ID (`alice@contoso.com`)
-- Both custom identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
+- Both identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
 - Access tokens are generated for the custom identity during the creation process
 - All resources are properly cleaned up at the end
 
