@@ -66,6 +66,7 @@ Azure Communication Services - Access Tokens for Identity with customId Quicksta
 
 User ID: 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 Custom ID: alice@contoso.com
+Access Token: eyJhbGciOiJSUzI1NiIsImtpZCI6IkRCQTFENTczNEY1MzM4QkRENjRGNjA4NjE2QTQ5NzFCOTEwNjU5QjAiLCJ4NXQiOiIyNkhWYzA5VE9MM1dUMkNHRnFTWEc1RUdXYkEiLCJ0eXAiOiJKV1QifQ.eyJ...truncated...
 
 User ID (second call): 8:acs:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx_00000028-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 Custom ID (second call): alice@contoso.com

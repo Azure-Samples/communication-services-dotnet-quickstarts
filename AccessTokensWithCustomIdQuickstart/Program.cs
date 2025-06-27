@@ -38,7 +38,6 @@ namespace AccessTokensWithCustomIdQuickstart
 
             var client = new CommunicationIdentityClient(connectionString);
 
-
             // Access Tokens with Custom Id feature demonstration
             string customId = "alice@contoso.com"; // Alphanumeric custom ID
             var userAndTokenResponse = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.Chat }, customId: customId);
@@ -47,6 +46,7 @@ namespace AccessTokensWithCustomIdQuickstart
             var userDetails = await client.GetUserDetailAsync(user);
             Console.WriteLine($"\nUser ID: {user.Id}");
             Console.WriteLine($"Custom ID: {userDetails.Value.CustomId}");
+            Console.WriteLine($"Access Token: {token.Token}");
 
             // Create another token with the same customId and validate that it the same user is returned
             var userAndTokenResponse2 = await client.CreateUserAndTokenAsync(scopes: new[] { CommunicationTokenScope.Chat }, customId: customId);
