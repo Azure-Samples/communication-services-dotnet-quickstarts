@@ -79,14 +79,14 @@ Deleted identities.
 ```
 
 The key points to observe:
-- Two custom identities are created using the same custom ID (`alice@contoso.com`)
-- Both custom identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
-- Access tokens are generated for the custom identity during the creation process
+- Two identities are created using the same custom ID (`alice@contoso.com`)
+- Both identity calls return the **same identity ID**, demonstrating that custom IDs map consistently to the same ACS identity
+- Access tokens are generated for the customId-mapped identity during the creation process
 - All resources are properly cleaned up at the end
 
 ## Key Features Demonstrated
 
-- **Custom Identity Creation**: Uses custom IDs to create mapped ACS identities
+- **Identity Creation with custom ID**: Uses custom IDs to create mapped ACS identities
 - **Identity Persistence**: Validates that custom IDs map consistently to the same ACS identity
 - **User Detail Retrieval**: Demonstrates how to get user details including custom ID information
 - **Token Generation**: Shows how to generate access tokens for identities with custom IDs
