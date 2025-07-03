@@ -1,0 +1,16 @@
+Install Git Bash 
+
+Open Git Bash
+
+Navigate to deployment file location
+
+#<Drive>:/<Drive>/GA5ContosoApp/GA5ContosoApp
+
+Execute following command to create executable.
+chmod +x azure-deploy.sh
+
+Execute following command to deploy
+./azure-deploy.sh
+
+https://<app-name>.scm.azurewebsites.net/swagger/index.html
+
