@@ -21,7 +21,7 @@ This sample, discussed at the Microsoft Build 2025 session, demonstrates the int
 
 >[!NOTE]
 > ### Azure AI Foundry endpoint
-> The Voice Live API is only supported in east-us2 and swedencentral regions.
+> The Voice Live API is only supported in certain regions. See [supported regions](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/regions?tabs=voice-live#regions) for more details.
 >#### Regional endpoints
 >If you are using a regional endpoint for your Azure AI Services resource, the VA WebSocket endpoint would be `https://<region>.api.cognitive.microsoft.com/`.
 >#### Custom domains
