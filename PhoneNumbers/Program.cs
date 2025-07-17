@@ -28,7 +28,7 @@ namespace PhoneNumbers
 
             // Get purchased phone number(s)
             var getPhoneNumberResponse = await client.GetPurchasedPhoneNumberAsync(phoneNumber);
-            Console.WriteLine($"Phone number: {getPhoneNumberResponse.Value.PhoneNumber}, country code: {getPhoneNumberResponse.Value.CountryCode}");
+            Console.WriteLine($"Successfully purchased phone number: {getPhoneNumberResponse.Value.PhoneNumber}, country code: {getPhoneNumberResponse.Value.CountryCode}");
 
             var purchasedPhoneNumbers = client.GetPurchasedPhoneNumbersAsync();
             await foreach (var purchasedPhoneNumber in purchasedPhoneNumbers)
@@ -39,10 +39,12 @@ namespace PhoneNumbers
             // Update capabilities
             var updateCapabilitiesOperation = await client.StartUpdateCapabilitiesAsync(phoneNumber, calling: PhoneNumberCapabilityType.Outbound, sms: PhoneNumberCapabilityType.InboundOutbound);
             await updateCapabilitiesOperation.WaitForCompletionAsync();
+            Console.WriteLine("Phone number updated successfully.");
 
             // Release phone number
             var releaseOperation = await client.StartReleasePhoneNumberAsync(phoneNumber);
             await releaseOperation.WaitForCompletionResponseAsync();
+            Console.WriteLine("Successfully release phone number.");
         }
     }
 }
