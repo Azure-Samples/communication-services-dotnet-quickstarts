@@ -34,9 +34,6 @@ string
     callbackUriHost = 
         builder.Configuration["callbackUriHost"] 
         ?? throw new ArgumentNullException("callbackUriHost"),
-    pmaEndpoint = 
-        builder.Configuration["pmaEndpoint"] 
-        ?? throw new ArgumentNullException("pmaEndpoint"),
 
     // Phone numbers and identities for Move Participants scenario
     acsOutboundPhoneNumber = 
@@ -63,8 +60,7 @@ string
     callConnectionId1 = string.Empty, // User's incoming call
     callConnectionId2 = string.Empty; // ACS user's redirected call
 
-CallAutomationClient client =
-    new(pmaEndpoint: new Uri(pmaEndpoint), connectionString: acsConnectionString);
+CallAutomationClient client =  new(connectionString: acsConnectionString);
 #endregion
 
 #region Configuration Endpoint
@@ -81,10 +77,6 @@ app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, IL
             !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) 
                 ? configurationRequest.CallbackUriHost 
                 : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
-        pmaEndpoint = 
-            !string.IsNullOrEmpty(configurationRequest.PmaEndpoint) 
-                ? configurationRequest.PmaEndpoint 
-                : throw new ArgumentNullException(nameof(configurationRequest.PmaEndpoint));
         acsOutboundPhoneNumber = 
             !string.IsNullOrEmpty(configurationRequest.AcsOutboundPhoneNumber) 
                 ? configurationRequest.AcsOutboundPhoneNumber 
@@ -447,7 +439,7 @@ app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId
     StringBuilder msgLog = new();
     msgLog.AppendLine($"""
 
-            ~~~~~~~~~~~~ /GetParticipants/02001680-31c8-40b0-9d8b-9200ae9b805f ~~~~~~~~~~~~
+            ~~~~~~~~~~~~ /GetParticipants/{callConnectionId} ~~~~~~~~~~~~
         """);
     try
     {
@@ -508,7 +500,6 @@ public class ConfigurationRequest
 {
     public string? AcsConnectionString { get; set; }
     public string? CallbackUriHost { get; set; }
-    public string? PmaEndpoint { get; set; }
     public string? AcsOutboundPhoneNumber { get; set; }
     public string? AcsInboundPhoneNumber { get; set; }
     public string? AcsUserPhoneNumber { get; set; }
