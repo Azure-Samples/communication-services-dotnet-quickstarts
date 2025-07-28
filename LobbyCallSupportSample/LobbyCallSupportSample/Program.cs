@@ -4,6 +4,7 @@ using Azure.Core;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using System.Net.WebSockets;
 using System.Text;
 
 #region Bootstrap
@@ -38,10 +39,18 @@ string
     pmaEndpoint = 
         builder.Configuration["pmaEndpoint"] 
         ?? throw new ArgumentNullException("pmaEndpoint"),
-    acsGeneratedId =
-        builder.Configuration["acsGeneratedId"]
-        ?? throw new ArgumentNullException("acsGeneratedId"),
-        
+    acsGeneratedIdForLobbyCall =
+        builder.Configuration["acsGeneratedIdForLobbyCall"]
+        ?? throw new ArgumentNullException("acsGeneratedIdForLobbyCall"),
+    acsGeneratedIdForTargetCall =
+        builder.Configuration["acsGeneratedIdForTargetCall"]
+        ?? throw new ArgumentNullException("acsGeneratedIdForTargetCall"),
+    socketToken =
+        builder.Configuration["socketToken"]
+        ?? throw new ArgumentNullException("socketToken"),
+    confirmMessageToTargetCall =
+        builder.Configuration["confirmMessageToTargetCall"]
+        ?? throw new ArgumentNullException("confirmMessageToTargetCall"),
     // Track which type of workflow call was last created
     lastWorkflowCallType = string.Empty, // "CallTwo" or "CallThree"
     acsIdentity = string.Empty,
@@ -50,6 +59,9 @@ string
     lobbyConnectionId = string.Empty, // User's incoming call
     lobbyCallerId = string.Empty, // User's incoming call
     callConnectionId2 = string.Empty; // ACS user's redirected call
+
+// Web socket
+WebSocket? webSocket = null;
 
 CallAutomationClient client =
     new(pmaEndpoint: new Uri(pmaEndpoint), connectionString: acsConnectionString);
@@ -85,7 +97,7 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
                     toCallerId = incomingCallEventData.ToCommunicationIdentifier.RawId;
 
                 // Lobby Call: Answer 
-                if (toCallerId.Contains(acsGeneratedId))
+                if (toCallerId.Contains(acsGeneratedIdForLobbyCall))
                 {
                     #region Answer Call
                     Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks");
@@ -110,8 +122,7 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
                         Lobby Call answered successfully.
                         """);
                     #endregion
-                }
-                
+                }                
                 else
                 {
                     //msgLog.AppendLine($"Call filtered out - not matching expected scenarios");
@@ -193,67 +204,19 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                     """);
 
             // TODO: Notify Target Cal user
-            // By Recognition or pop up in Client app
-
-            #region Move Participant
-            try
+            // By pop up in Client app
+            if (webSocket is null || webSocket.State != WebSocketState.Open)
             {
-                msgLog.AppendLine($"""
-                    ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~
-                    Move Participant operation started..
-                    Source Caller Id:     {lobbyCallerId}
-                    Source Connection Id: {lobbyConnectionId}
-                    Target Connection Id: {targetCallConnectionId}
-                    """);
-
-                // Get the target connection
-                CallConnection targetConnection = client.GetCallConnection(targetCallConnectionId);
-
-                // Get participants from source connection for reference
-                CallConnection sourceConnection = client.GetCallConnection(lobbyConnectionId);
-
-                // Create participant identifier based on the input
-                CommunicationIdentifier participantToMove;
-                if (lobbyCallerId.StartsWith("+"))
-                {
-                    // Phone number
-                    participantToMove = new PhoneNumberIdentifier(lobbyCallerId);
-                }
-                else if (lobbyCallerId.StartsWith("8:acs:"))
-                {
-                    // ACS Communication User
-                    participantToMove = new CommunicationUserIdentifier(lobbyCallerId);
-                }
-                else
-                {
-                    return Results.BadRequest("Invalid participant format. Use phone number (+1234567890) or ACS user ID (8:acs:...)");
-                }
-
-                var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], lobbyConnectionId));
-                var rawResponse = response.GetRawResponse();
-                if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
-                {
-                    msgLog.AppendLine().AppendLine("Move Participants operation completed successfully.");
-                }
-                else
-                {
-                    throw new Exception($"Move Participants operation failed with status code: {rawResponse.Status}");
-                }
-
-                Console.WriteLine(msgLog.ToString());
-                return Results.Text(msgLog.ToString(), "text/plain");
+                msgLog.AppendLine("ERROR: Web socket is not available.");
+                return Results.NotFound("Message not sent");
+                // throw new ArgumentNullException("web socket is not available.");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in manual move participants operation: {ex.Message}");
-                return Results.BadRequest(new
-                {
-                    Success = false,
-                    Error = ex.Message,
-                    Message = "Move participants operation failed."
-                });
-            }
-            #endregion
+
+            // Notify Client
+            var msg = System.Text.Encoding.UTF8.GetBytes(confirmMessageToTargetCall);
+            await webSocket.SendAsync(new ArraySegment<byte>(msg), WebSocketMessageType.Text, true, CancellationToken.None);
+            msgLog.AppendLine($"Target Call notified with message: {confirmMessageToTargetCall}");
+            return Results.Ok("Target Call notified with message: {confirmMessageToTargetCall}");
         }
         else if (parsedEvent is MoveParticipantSucceeded moveParticipantSucceeded)
         {
@@ -380,6 +343,194 @@ app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId
     }
 }).WithTags("Lobby Call Support APIs");
 
-#endregion 
+#endregion
+
+#region Websocket implementation
+app.UseWebSockets();
+app.Map($"/ws/{socketToken}", async context =>
+{
+
+    Console.WriteLine("Received WEB SOCKET request.");
+    if (context.WebSockets.IsWebSocketRequest)
+    {
+        webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var buffer = new byte[1024 * 4];
+
+        //// 1. Send message to JS
+        //var msg = "A user is waiting in lobby, do you want to add the user to your call?";
+        //var bytes = Encoding.UTF8.GetBytes(msg);
+        //await webSocketFromContext.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+
+        // 2. Receive client response
+        // Keep alive with a read loop
+        while (webSocket.State == WebSocketState.Open)
+        {
+            try
+            {
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                var jsResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                Console.WriteLine($"Received response from Client App: {jsResponse}");
+                // Move participant to target call if response is "yes"
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    Console.WriteLine($"result.MessageType: {result.MessageType}");
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                }
+                else
+                {
+                    // Process incoming message or ignore
+                    if (!jsResponse.Equals("no", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"Move Participant operation begins..");
+                        // Call the Move Participants API
+                        #region Move Participant
+                        try
+                        {
+                            targetCallConnectionId = jsResponse;
+                            Console.WriteLine($"""
+                            ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~
+                            Move Participant operation started..
+                            Source Caller Id:     {lobbyCallerId}
+                            Source Connection Id: {lobbyConnectionId}
+                            Target Connection Id: {targetCallConnectionId}
+                            """);
+
+                            // Get the target connection
+                            CallConnection targetConnection = client.GetCallConnection(targetCallConnectionId);
+                            Console.WriteLine("targetConnection fetched..");
+
+                            // Get participants from source connection for reference
+                            CallConnection sourceConnection = client.GetCallConnection(lobbyConnectionId);
+                            Console.WriteLine("sourceConnection fetched..");
+
+                            // Create participant identifier based on the input
+                            CommunicationIdentifier participantToMove;
+                            if (lobbyCallerId.StartsWith("+"))
+                            {
+                                // Phone number
+                                participantToMove = new PhoneNumberIdentifier(lobbyCallerId);
+                            }
+                            else // if (lobbyCallerId.StartsWith("8:acs:"))
+                            {
+                                // ACS Communication User
+                                participantToMove = new CommunicationUserIdentifier(lobbyCallerId);
+                            }
+
+                            var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], lobbyConnectionId));
+                            var rawResponse = response.GetRawResponse();
+                            Console.WriteLine($"rawResponse: {rawResponse}");
+                            if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
+                            {
+                                Console.WriteLine();
+                                Console.WriteLine("Move Participants operation completed successfully.");
+                            }
+                            else
+                            {
+                                throw new Exception($"Move Participants operation failed with status code: {rawResponse.Status}");
+                            }
+
+                            // Console.WriteLine(msgLog.ToString());
+                            // return Results.Text(msgLog.ToString(), "text/plain");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error in move participants operation: {ex.Message}");
+                            //return Results.BadRequest(new
+                            //{
+                            //    Success = false,
+                            //    Error = ex.Message,
+                            //    Message = "Move participants operation failed."
+                            //});
+                        }
+                        #endregion
+
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("----- Web socket error -----");
+                Console.WriteLine(ex.Message);
+                Console.WriteLine("----- End: Web socket error -----");
+
+                //throw;
+            }
+        }
+
+        //var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+        //var jsResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
+        //Console.WriteLine($"Received from JS: {jsResponse}");
+        //// Move participant to target call if response is "yes"
+        //if (jsResponse.Equals("yes", StringComparison.OrdinalIgnoreCase))
+        //{
+        //    Console.WriteLine($"TODO: Move Participant");
+        //    // Call the Move Participants API
+        //    #region Move Participant
+        //    try
+        //    {
+        //        Console.WriteLine($"""
+        //            ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~
+        //            Move Participant operation started..
+        //            Source Caller Id:     {lobbyCallerId}
+        //            Source Connection Id: {lobbyConnectionId}
+        //            Target Connection Id: {targetCallConnectionId}
+        //            """);
+
+        //        // Get the target connection
+        //        CallConnection targetConnection = client.GetCallConnection(targetCallConnectionId);
+
+        //        // Get participants from source connection for reference
+        //        CallConnection sourceConnection = client.GetCallConnection(lobbyConnectionId);
+
+        //        // Create participant identifier based on the input
+        //        CommunicationIdentifier participantToMove;
+        //        if (lobbyCallerId.StartsWith("+"))
+        //        {
+        //            // Phone number
+        //            participantToMove = new PhoneNumberIdentifier(lobbyCallerId);
+        //        }
+        //        else // if (lobbyCallerId.StartsWith("8:acs:"))
+        //        {
+        //            // ACS Communication User
+        //            participantToMove = new CommunicationUserIdentifier(lobbyCallerId);
+        //        }
+
+        //        var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], lobbyConnectionId));
+        //        var rawResponse = response.GetRawResponse();
+        //        if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
+        //        {
+        //            Console.WriteLine();
+        //            Console.WriteLine("Move Participants operation completed successfully.");
+        //        }
+        //        else
+        //        {
+        //            throw new Exception($"Move Participants operation failed with status code: {rawResponse.Status}");
+        //        }
+
+        //        // Console.WriteLine(msgLog.ToString());
+        //        // return Results.Text(msgLog.ToString(), "text/plain");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Error in manual move participants operation: {ex.Message}");
+        //        //return Results.BadRequest(new
+        //        //{
+        //        //    Success = false,
+        //        //    Error = ex.Message,
+        //        //    Message = "Move participants operation failed."
+        //        //});
+        //    }
+        //    #endregion
+
+        //}
+    }
+    else
+    {
+        context.Response.StatusCode = 400;
+    }
+});
+#endregion
 
 app.Run();
