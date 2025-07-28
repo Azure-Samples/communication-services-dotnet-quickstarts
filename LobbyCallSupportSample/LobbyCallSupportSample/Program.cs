@@ -36,15 +36,15 @@ string
     callbackUriHost = 
         builder.Configuration["callbackUriHost"] 
         ?? throw new ArgumentNullException("callbackUriHost"),
-    pmaEndpoint = 
-        builder.Configuration["pmaEndpoint"] 
-        ?? throw new ArgumentNullException("pmaEndpoint"),
-    acsGeneratedIdForLobbyCall =
-        builder.Configuration["acsGeneratedIdForLobbyCall"]
-        ?? throw new ArgumentNullException("acsGeneratedIdForLobbyCall"),
-    acsGeneratedIdForTargetCall =
-        builder.Configuration["acsGeneratedIdForTargetCall"]
-        ?? throw new ArgumentNullException("acsGeneratedIdForTargetCall"),
+    acsGeneratedIdForLobbyCallReceiver =
+        builder.Configuration["acsGeneratedIdForLobbyCallReceiver"]
+        ?? throw new ArgumentNullException("acsGeneratedIdForLobbyCallReceiver"),
+    acsGeneratedIdForTargetCallReceiver =
+        builder.Configuration["acsGeneratedIdForTargetCallReceiver"]
+        ?? throw new ArgumentNullException("acsGeneratedIdForTargetCallReceiver"),
+    acsGeneratedIdForTargetCallSender =
+        builder.Configuration["acsGeneratedIdForTargetCallSender"]
+        ?? throw new ArgumentNullException("acsGeneratedIdForTargetCallSender"),
     socketToken =
         builder.Configuration["socketToken"]
         ?? throw new ArgumentNullException("socketToken"),
@@ -56,15 +56,15 @@ string
     acsIdentity = string.Empty,
     // Call connection IDs
     targetCallConnectionId = string.Empty,
-    lobbyConnectionId = string.Empty, // User's incoming call
-    lobbyCallerId = string.Empty, // User's incoming call
+    lobbyConnectionId = string.Empty, // User's incoming call connection id
+    lobbyCallerId = string.Empty, // User's incoming caller id
     callConnectionId2 = string.Empty; // ACS user's redirected call
 
 // Web socket
 WebSocket? webSocket = null;
 
 CallAutomationClient client =
-    new(pmaEndpoint: new Uri(pmaEndpoint), connectionString: acsConnectionString);
+    new(connectionString: acsConnectionString);
 #endregion
 
 #region Event Handler
@@ -97,13 +97,13 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
                     toCallerId = incomingCallEventData.ToCommunicationIdentifier.RawId;
 
                 // Lobby Call: Answer 
-                if (toCallerId.Contains(acsGeneratedIdForLobbyCall))
+                if (toCallerId.Contains(acsGeneratedIdForLobbyCallReceiver) || toCallerId.Contains(acsGeneratedIdForTargetCallReceiver))
                 {
                     #region Answer Call
                     Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks");
                     AnswerCallOptions options = new (incomingCallEventData.IncomingCallContext, callbackUri)
                     {
-                        OperationContext = "LobbyCall", 
+                        OperationContext = !toCallerId.Contains(acsGeneratedIdForTargetCallReceiver) ?  "LobbyCall" : "OtherCall", 
                         CallIntelligenceOptions = new CallIntelligenceOptions
                         {
                             CognitiveServicesEndpoint = new Uri("https://cognitive-service-waferwire.cognitiveservices.azure.com/")
@@ -111,16 +111,33 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
                     };
 
                     AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-                    lobbyConnectionId = answerCallResult.CallConnection.CallConnectionId;
+                    
+                    if (toCallerId.Contains(acsGeneratedIdForTargetCallReceiver))
+                    {
+                        targetCallConnectionId = answerCallResult.CallConnection.CallConnectionId;
 
-                    msgLog.AppendLine($"""
-                        User Call(Inbound) Answered by Call Automation.
-                        From Caller Raw Id: {fromCallerId}
-                        To Caller Raw Id:   {toCallerId}
-                        Lobby Call Connection Id: {lobbyConnectionId}
-                        Correlation Id:           {incomingCallEventData.CorrelationId}
-                        Lobby Call answered successfully.
-                        """);
+                        msgLog.AppendLine($"""
+                            Target Call(Inbound) Answered by Call Automation.
+                            From Caller Raw Id: {fromCallerId}
+                            To Caller Raw Id:   {toCallerId}
+                            Target Call Connection Id: {targetCallConnectionId}
+                            Correlation Id:           {incomingCallEventData.CorrelationId}
+                            Target Call answered successfully.
+                            """);
+                    }
+                    else
+                    {
+                        lobbyConnectionId = answerCallResult.CallConnection.CallConnectionId;
+
+                        msgLog.AppendLine($"""
+                            User Call(Inbound) Answered by Call Automation.
+                            From Caller Raw Id: {fromCallerId}
+                            To Caller Raw Id:   {toCallerId}
+                            Lobby Call Connection Id: {lobbyConnectionId}
+                            Correlation Id:           {incomingCallEventData.CorrelationId}
+                            Lobby Call answered successfully.
+                            """);
+                    }
                     #endregion
                 }                
                 else
@@ -175,6 +192,9 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 
                 #region Play lobby waiting message
                 // setup cognitive service end point
+                Console.WriteLine($"""
+                    Playing Media to Lobby Call..
+                    """);
                 CallMedia callMedia = !string.IsNullOrEmpty(callConnected.CallConnectionId) ?
                     client.GetCallConnection(callConnected.CallConnectionId).GetCallMedia()
                     : throw new ArgumentNullException("Call connection id is empty");
@@ -380,14 +400,13 @@ app.Map($"/ws/{socketToken}", async context =>
                 else
                 {
                     // Process incoming message or ignore
-                    if (!jsResponse.Equals("no", StringComparison.OrdinalIgnoreCase))
+                    if (jsResponse.Equals("yes", StringComparison.OrdinalIgnoreCase))
                     {
                         Console.WriteLine($"Move Participant operation begins..");
                         // Call the Move Participants API
                         #region Move Participant
                         try
                         {
-                            targetCallConnectionId = jsResponse;
                             Console.WriteLine($"""
                             ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~
                             Move Participant operation started..
@@ -398,11 +417,9 @@ app.Map($"/ws/{socketToken}", async context =>
 
                             // Get the target connection
                             CallConnection targetConnection = client.GetCallConnection(targetCallConnectionId);
-                            Console.WriteLine("targetConnection fetched..");
 
                             // Get participants from source connection for reference
                             CallConnection sourceConnection = client.GetCallConnection(lobbyConnectionId);
-                            Console.WriteLine("sourceConnection fetched..");
 
                             // Create participant identifier based on the input
                             CommunicationIdentifier participantToMove;
@@ -411,7 +428,7 @@ app.Map($"/ws/{socketToken}", async context =>
                                 // Phone number
                                 participantToMove = new PhoneNumberIdentifier(lobbyCallerId);
                             }
-                            else // if (lobbyCallerId.StartsWith("8:acs:"))
+                            else
                             {
                                 // ACS Communication User
                                 participantToMove = new CommunicationUserIdentifier(lobbyCallerId);
@@ -419,7 +436,6 @@ app.Map($"/ws/{socketToken}", async context =>
 
                             var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], lobbyConnectionId));
                             var rawResponse = response.GetRawResponse();
-                            Console.WriteLine($"rawResponse: {rawResponse}");
                             if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
                             {
                                 Console.WriteLine();
@@ -429,19 +445,10 @@ app.Map($"/ws/{socketToken}", async context =>
                             {
                                 throw new Exception($"Move Participants operation failed with status code: {rawResponse.Status}");
                             }
-
-                            // Console.WriteLine(msgLog.ToString());
-                            // return Results.Text(msgLog.ToString(), "text/plain");
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Error in move participants operation: {ex.Message}");
-                            //return Results.BadRequest(new
-                            //{
-                            //    Success = false,
-                            //    Error = ex.Message,
-                            //    Message = "Move participants operation failed."
-                            //});
                         }
                         #endregion
 
@@ -455,76 +462,8 @@ app.Map($"/ws/{socketToken}", async context =>
                 Console.WriteLine(ex.Message);
                 Console.WriteLine("----- End: Web socket error -----");
 
-                //throw;
             }
         }
-
-        //var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-        //var jsResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
-        //Console.WriteLine($"Received from JS: {jsResponse}");
-        //// Move participant to target call if response is "yes"
-        //if (jsResponse.Equals("yes", StringComparison.OrdinalIgnoreCase))
-        //{
-        //    Console.WriteLine($"TODO: Move Participant");
-        //    // Call the Move Participants API
-        //    #region Move Participant
-        //    try
-        //    {
-        //        Console.WriteLine($"""
-        //            ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~
-        //            Move Participant operation started..
-        //            Source Caller Id:     {lobbyCallerId}
-        //            Source Connection Id: {lobbyConnectionId}
-        //            Target Connection Id: {targetCallConnectionId}
-        //            """);
-
-        //        // Get the target connection
-        //        CallConnection targetConnection = client.GetCallConnection(targetCallConnectionId);
-
-        //        // Get participants from source connection for reference
-        //        CallConnection sourceConnection = client.GetCallConnection(lobbyConnectionId);
-
-        //        // Create participant identifier based on the input
-        //        CommunicationIdentifier participantToMove;
-        //        if (lobbyCallerId.StartsWith("+"))
-        //        {
-        //            // Phone number
-        //            participantToMove = new PhoneNumberIdentifier(lobbyCallerId);
-        //        }
-        //        else // if (lobbyCallerId.StartsWith("8:acs:"))
-        //        {
-        //            // ACS Communication User
-        //            participantToMove = new CommunicationUserIdentifier(lobbyCallerId);
-        //        }
-
-        //        var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], lobbyConnectionId));
-        //        var rawResponse = response.GetRawResponse();
-        //        if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
-        //        {
-        //            Console.WriteLine();
-        //            Console.WriteLine("Move Participants operation completed successfully.");
-        //        }
-        //        else
-        //        {
-        //            throw new Exception($"Move Participants operation failed with status code: {rawResponse.Status}");
-        //        }
-
-        //        // Console.WriteLine(msgLog.ToString());
-        //        // return Results.Text(msgLog.ToString(), "text/plain");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"Error in manual move participants operation: {ex.Message}");
-        //        //return Results.BadRequest(new
-        //        //{
-        //        //    Success = false,
-        //        //    Error = ex.Message,
-        //        //    Message = "Move participants operation failed."
-        //        //});
-        //    }
-        //    #endregion
-
-        //}
     }
     else
     {
