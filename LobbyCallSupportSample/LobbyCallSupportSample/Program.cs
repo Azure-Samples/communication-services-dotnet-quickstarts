@@ -51,6 +51,9 @@ string
     confirmMessageToTargetCall =
         builder.Configuration["confirmMessageToTargetCall"]
         ?? throw new ArgumentNullException("confirmMessageToTargetCall"),
+    textToPlayToLobbyUser =
+        builder.Configuration["textToPlayToLobbyUser"]
+        ?? throw new ArgumentNullException("textToPlayToLobbyUser"),
     // Track which type of workflow call was last created
     lastWorkflowCallType = string.Empty, // "CallTwo" or "CallThree"
     acsIdentity = string.Empty,
@@ -199,7 +202,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                     client.GetCallConnection(callConnected.CallConnectionId).GetCallMedia()
                     : throw new ArgumentNullException("Call connection id is empty");
                 TextSource textSource =
-                    new("You are currently in a lobby call, we will notify the admin that you are waiting.")
+                    new(textToPlayToLobbyUser)
                     {
                         VoiceName = "en-US-NancyNeural"
                     };
@@ -274,7 +277,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 #endregion
 
 #region Lobby Call Support Workflow Endpoints
-app.MapPost("/TargetCallToAcsUser(Create)", async (string acsTarget, ILogger<Program> logger) =>
+app.MapPost("/TargetCallToAcsUser(Call Replaced with client app)", async (string acsTarget, ILogger<Program> logger) =>
 {
     StringBuilder msgLog = new();
     msgLog.AppendLine("""
