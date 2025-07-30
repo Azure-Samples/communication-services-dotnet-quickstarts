@@ -18,12 +18,12 @@ In this sample, we cover how you can use Call Automation SDK to support Lobby Ca
 - A [phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number) in your Azure Communication Services resource that can make outbound calls. NB: phone numbers are not available in free subscriptions.
 - Create Azure AI Multi Service resource. For details, see [Create an Azure AI Multi service](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account).
 - Create and host a Azure Dev Tunnel. Instructions [here](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started)
-- A Client application that can make calls to the Azure Communication Services resource. This can be a web client or a mobile client. You can use the [Web Client Quickstart](https://learn.microsoft.com/azure/communication-services/quickstarts/voice/csharp)
+- A Client application that can make calls to the Azure Communication Services resource. This can be a web client or a mobile client. You can use the [Web Client Quickstart](https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/users/v-kuppu/LobbyCallConfirmSample)
 
 ## Before running the sample for the first time
 
-1. Open the web client app at `https://<your-web-client-app-url>/` and sign in with your Azure Communication Services identity.
-2. Clone the sample repository by running `git clone https://github.com/Azure-Samples/communication-services-python-quickstarts.git`.
+1. Open the web client app at [JS Client Sample](https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/users/v-kuppu/LobbyCallConfirmSample) and sign in with your Azure Communication Services identity.
+2. Clone the sample repository by running `git clone https://github.com/Azure-Samples/communication-services-javascript-quickstarts.git`.
 3. Run the application and observe logs at console, keep this application running.
 
     ```
@@ -36,7 +36,7 @@ In this sample, we cover how you can use Call Automation SDK to support Lobby Ca
 
 ### Configuring application
 
-Open `main.py` file to configure the following settings
+Open `appSettings.json` file to configure the following settings
 
 1. `acsConnectionString`: Azure Communication Service resource's connection string.
 2. `cognitiveServiceEndpoint`: Cognitive Service resource's endpoint.
@@ -46,10 +46,13 @@ Open `main.py` file to configure the following settings
 4. `confirmMessageToTargetCall`: Notification message to be played to the target call participants when they are moved from lobby call to target call.
    - This is used to notify the target call participants that they are being moved from lobby call to target call.
    - For more information, see [Play media in a call](https://learn.microsoft.com/en-us/azure/communication-services/concepts/calls/play-media).
-5. `acsGeneratedIdForLobbyCallReceiver`: ACS Inbound Phone Number
-6. `acsGeneratedIdForTargetCallReceiver`: ACS Phone Number to make the first call, external user number in real time
-7. `acsGeneratedIdForTargetCallSender`: ACS identity generated using web client
-8. `socketToken`: ACS identity generated using web client
+5. `textToPlayToLobbyUser`: Text to be played to the lobby call user when they are waiting in the lobby.
+   - This is used to notify the lobby call user that they are waiting in the lobby.
+   - For more information, see [Play media in a call](https://learn.microsoft.com/en-us/azure/communication-services/concepts/calls/play-media).
+6. `acsGeneratedIdForLobbyCallReceiver`: ACS Inbound Phone Number
+7. `acsGeneratedIdForTargetCallReceiver`: ACS Phone Number to make the first call, external user number in real time
+8. `acsGeneratedIdForTargetCallSender`: ACS identity generated using web client
+9. `socketToken`: ACS identity generated using web client
 
 ## Run app locally
 
