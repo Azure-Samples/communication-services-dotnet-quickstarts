@@ -45,9 +45,6 @@ string
     acsGeneratedIdForTargetCallSender =
         builder.Configuration["acsGeneratedIdForTargetCallSender"]
         ?? throw new ArgumentNullException("acsGeneratedIdForTargetCallSender"),
-    socketToken =
-        builder.Configuration["socketToken"]
-        ?? throw new ArgumentNullException("socketToken"),
     confirmMessageToTargetCall =
         builder.Configuration["confirmMessageToTargetCall"]
         ?? throw new ArgumentNullException("confirmMessageToTargetCall"),
@@ -370,21 +367,14 @@ app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId
 
 #region Websocket implementation
 app.UseWebSockets();
-app.Map($"/ws/{socketToken}", async context =>
+app.Map("/ws", async context =>
 {
-
     Console.WriteLine("Received WEB SOCKET request.");
     if (context.WebSockets.IsWebSocketRequest)
     {
         webSocket = await context.WebSockets.AcceptWebSocketAsync();
         var buffer = new byte[1024 * 4];
 
-        //// 1. Send message to JS
-        //var msg = "A user is waiting in lobby, do you want to add the user to your call?";
-        //var bytes = Encoding.UTF8.GetBytes(msg);
-        //await webSocketFromContext.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-
-        // 2. Receive client response
         // Keep alive with a read loop
         while (webSocket.State == WebSocketState.Open)
         {
