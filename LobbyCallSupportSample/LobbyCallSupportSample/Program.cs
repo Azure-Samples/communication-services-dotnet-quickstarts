@@ -33,6 +33,9 @@ string
     acsConnectionString = 
         builder.Configuration["acsConnectionString"] 
         ?? throw new ArgumentNullException("acsConnectionString"),
+    cognitiveServiceEndpoint =
+        builder.Configuration["cognitiveServiceEndpoint"]
+        ?? throw new ArgumentNullException("cognitiveServiceEndpoint"),
     callbackUriHost = 
         builder.Configuration["callbackUriHost"] 
         ?? throw new ArgumentNullException("callbackUriHost"),
@@ -91,9 +94,9 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
             if (eventData is AcsIncomingCallEventData incomingCallEventData)
             {
                 msgLog.AppendLine($"Event received: {eventGridEvent.EventType}");
-                
-                string 
-                    fromCallerId = acsIdentity = incomingCallEventData.FromCommunicationIdentifier.RawId,
+                string
+                    fromCallerId =
+                    acsIdentity = incomingCallEventData.FromCommunicationIdentifier.RawId,
                     toCallerId = incomingCallEventData.ToCommunicationIdentifier.RawId;
 
                 // Lobby Call: Answer 
@@ -106,7 +109,7 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
                         OperationContext = !toCallerId.Contains(acsGeneratedIdForTargetCallReceiver) ?  "LobbyCall" : "OtherCall", 
                         CallIntelligenceOptions = new CallIntelligenceOptions
                         {
-                            CognitiveServicesEndpoint = new Uri("https://cognitive-service-waferwire.cognitiveservices.azure.com/")
+                            CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
                         }
                     };
 
