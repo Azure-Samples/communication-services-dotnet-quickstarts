@@ -5,6 +5,10 @@ using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using CallAutomation_Beta6_Test_sample;
 using Microsoft.Extensions.FileProviders;
+using System.Buffers.Text;
+using System.Text;
+using static System.Net.WebRequestMethods;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,47 +20,24 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-string acsConnectionString = string.Empty;
-string cognitiveServicesEndpoint = string.Empty;
-string acsPhoneNumber = string.Empty;
-string callbackUriHost = string.Empty;
-string fileSourceUri = string.Empty;
+string acsConnectionString = "";
+string cognitiveServicesEndpoint = "";
+string acsPhoneNumber = "";
+
+string callbackUriHost = "https://9675p4k5-7286.inc1.devtunnels.ms";
+string fileSourceUri = "https://pixabay.com/sound-effects/countdown-from-10-190389/";
 
 string callConnectionId = string.Empty;
 string recordingId = string.Empty;
 string recordingLocation = string.Empty;
+string metadataLocation = string.Empty;
 string recordingFileFormat = string.Empty;
 Uri eventCallbackUri = null!;
 string callerId = string.Empty;
+string roomCallId = string.Empty;
 ConfigurationRequest configuration = new();
-CallAutomationClient client = null!;
-
-app.MapPost("/setConfigurations", (ConfigurationRequest configurationRequest, ILogger<Program> logger) =>
-{
-    acsConnectionString = string.Empty;
-    cognitiveServicesEndpoint = string.Empty;
-    acsPhoneNumber = string.Empty;
-    callbackUriHost = string.Empty;
-    fileSourceUri = string.Empty;
-
-    if (configurationRequest != null)
-    {
-        configuration.AcsConnectionString = !string.IsNullOrEmpty(configurationRequest.AcsConnectionString) ? configurationRequest.AcsConnectionString : throw new ArgumentNullException(nameof(configurationRequest.AcsConnectionString));
-        configuration.CongnitiveServiceEndpoint = !string.IsNullOrEmpty(configurationRequest.CongnitiveServiceEndpoint) ? configurationRequest.CongnitiveServiceEndpoint : throw new ArgumentNullException(nameof(configurationRequest.CongnitiveServiceEndpoint));
-        configuration.AcsPhoneNumber = !string.IsNullOrEmpty(configurationRequest.AcsPhoneNumber) ? configurationRequest.AcsPhoneNumber : throw new ArgumentNullException(nameof(configurationRequest.AcsPhoneNumber));
-        configuration.CallbackUriHost = !string.IsNullOrEmpty(configurationRequest.CallbackUriHost) ? configurationRequest.CallbackUriHost : throw new ArgumentNullException(nameof(configurationRequest.CallbackUriHost));
-    }
-
-    acsConnectionString = configuration.AcsConnectionString;
-    cognitiveServicesEndpoint = configuration.CongnitiveServiceEndpoint;
-    acsPhoneNumber = configuration.AcsPhoneNumber;
-    callbackUriHost = configuration.CallbackUriHost;
-    fileSourceUri = "https://sample-videos.com/audio/mp3/crowd-cheering.mp3";
-
-    client = new CallAutomationClient(connectionString: acsConnectionString);
-    logger.LogInformation("Initialized call automation client.");
-    return Results.Ok("Configurtion set successfully. Initialized call automation client.");
-}).WithTags("1. Add Connection string and configuration settings.");
+CallAutomationClient client = new CallAutomationClient(new Uri("https://uswe-03.sdf.pma.teams.microsoft.com"), connectionString: acsConnectionString);
+//CallAutomationClient client = new CallAutomationClient(connectionString: acsConnectionString);
 
 app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
 {
@@ -82,10 +63,25 @@ app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Prog
                     $"Callback url: {callbackUri}");
 
                 eventCallbackUri = callbackUri;
-
+                var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+                var mediaStreamingOptions = new MediaStreamingOptions(
+                MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+                {
+                    StartMediaStreaming = false,
+                    TransportUri = new Uri(websocketUri),
+                    MediaStreamingContent = MediaStreamingContent.Audio,
+                };
+                TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+                {
+                    StartTranscription = false,
+                    TransportUri = new Uri(websocketUri)
+                };
                 var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
                 {
-                    CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
+                    CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+                    //IsLoopbackAudioEnabled = true,
+                    MediaStreamingOptions = mediaStreamingOptions,
+                    TranscriptionOptions = transcriptionOptions
                 };
 
                 AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
@@ -95,7 +91,9 @@ app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Prog
             if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
             {
                 recordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+                metadataLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation;
                 logger.LogInformation($"The recording location is : {recordingLocation}");
+                logger.LogInformation($"The recording metadata location is : {metadataLocation}");
             }
         }
     }
@@ -120,6 +118,7 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
             logger.LogInformation("************************************************************");
             logger.LogInformation($"CORRELATION ID: {callConnectionProperties.CorrelationId}");
+            logger.LogInformation($"CALL CONNECTION ID: {callConnectionProperties.CallConnectionId}");
             logger.LogInformation("************************************************************");
         }
         else if (parsedEvent is ConnectFailed connectFailed)
@@ -137,19 +136,27 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             {
                 case DtmfResult dtmfResult:
                     var tones = dtmfResult.Tones;
-                    logger.LogInformation("Recognize completed succesfully, tones={tones}", tones);
+                    logger.LogInformation("Recognize completed successfully, tones={tones}", tones);
                     break;
                 case ChoiceResult choiceResult:
                     var labelDetected = choiceResult.Label;
                     var phraseDetected = choiceResult.RecognizedPhrase;
-                    logger.LogInformation("Recognize completed succesfully, labelDetected={labelDetected}, phraseDetected={phraseDetected}", labelDetected, phraseDetected);
+                    //var languageIdentified = choiceResult.LanguageIdentified;
+                    //var sentimentAnalysisResult = choiceResult.SentimentAnalysisResult.Sentiment;
+                    //logger.LogInformation("Recognize completed successfully, labelDetected={labelDetected}, phraseDetected={phraseDetected}", labelDetected, phraseDetected);
+                    //logger.LogInformation("Recognize Language Identified: {languageIdentified}", languageIdentified);
+                    //logger.LogInformation("Recognize Sentiment Analysis: {sentimentAnalysisResult}", sentimentAnalysisResult);
                     break;
                 case SpeechResult speechResult:
                     var text = speechResult.Speech;
-                    logger.LogInformation("Recognize completed succesfully, text={text}", text);
+                    //var identifiedLanguage = speechResult.LanguageIdentified;
+                    //var sentimentAnalysis = speechResult.SentimentAnalysisResult.Sentiment;
+                    logger.LogInformation("Recognize completed successfully, text={text}", text);
+                    //logger.LogInformation("Recognize Language Identified: {identifiedLanguage}", identifiedLanguage);
+                    //logger.LogInformation("Recognize Sentiment Analysis: {sentimentAnalysis}", sentimentAnalysis);
                     break;
                 default:
-                    logger.LogInformation("Recognize completed succesfully, recognizeResult={recognizeResult}", recognizeCompleted.RecognizeResult);
+                    logger.LogInformation("Recognize completed successfully, recognizeResult={recognizeResult}", recognizeCompleted.RecognizeResult);
                     break;
             }
         }
@@ -243,11 +250,41 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
             logger.LogInformation($"Received call event: {continuousDtmfRecognitionToneFailed.GetType()}, CorrelationId: {continuousDtmfRecognitionToneFailed.CorrelationId}, " +
                       $"subCode: {continuousDtmfRecognitionToneFailed.ResultInformation?.SubCode}, message: {continuousDtmfRecognitionToneFailed.ResultInformation?.Message}, context: {continuousDtmfRecognitionToneFailed.OperationContext}");
         }
+        //else if (parsedEvent is HoldAudioStarted holdAudioStarted)
+        //{
+        //    logger.LogInformation($"Received call event: {holdAudioStarted.GetType()}");
+        //    logger.LogInformation($"Operation Context: {holdAudioStarted.OperationContext}");
+        //    callConnectionId = holdAudioStarted.CallConnectionId;
+        //}
+        //else if (parsedEvent is HoldAudioPaused holdAudioPaused)
+        //{
+        //    logger.LogInformation($"Received call event: {holdAudioPaused.GetType()}");
+        //    logger.LogInformation($"Operation Context: {holdAudioPaused.OperationContext}");
+        //    callConnectionId = holdAudioPaused.CallConnectionId;
+        //}
+        //else if (parsedEvent is HoldAudioResumed holdAudioResumed)
+        //{
+        //    logger.LogInformation($"Received call event: {holdAudioResumed.GetType()}");
+        //    logger.LogInformation($"Operation Context: {holdAudioResumed.OperationContext}");
+        //    callConnectionId = holdAudioResumed.CallConnectionId;
+        //}
+        //else if (parsedEvent is HoldAudioCompleted holdAudioCompleted)
+        //{
+        //    logger.LogInformation($"Received call event: {holdAudioCompleted.GetType()}");
+        //    logger.LogInformation($"Operation Context: {holdAudioCompleted.OperationContext}");
+        //    callConnectionId = holdAudioCompleted.CallConnectionId;
+        //}
         else if (parsedEvent is HoldFailed holdFailed)
         {
             callConnectionId = holdFailed.CallConnectionId;
             logger.LogInformation($"Received call event: {holdFailed.GetType()}, CorrelationId: {holdFailed.CorrelationId}, " +
                       $"subCode: {holdFailed.ResultInformation?.SubCode}, message: {holdFailed.ResultInformation?.Message}, context: {holdFailed.OperationContext}");
+        }
+        else if (parsedEvent is ParticipantsUpdated participantsUpdated)
+        {
+            logger.LogInformation($"Received call event: {participantsUpdated.GetType()}");
+            logger.LogInformation($"Operation Context: {participantsUpdated.OperationContext}");
+            callConnectionId = participantsUpdated.CallConnectionId;
         }
         else if (parsedEvent is TranscriptionStarted transcriptionStarted)
         {
@@ -294,6 +331,9 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
         else if (parsedEvent is CallDisconnected callDisconnected)
         {
             logger.LogInformation($"Received call event: {callDisconnected.GetType()}");
+            logger.LogInformation("************************************************************");
+            logger.LogInformation($"CORRELATION ID: {callDisconnected.CorrelationId}");
+            logger.LogInformation("************************************************************");
         }
         else if (parsedEvent is CreateCallFailed createCallFailed)
         {
@@ -323,7 +363,40 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
 
 #region Outbound Call
 
-app.MapPost("/outboundCallToPstnAsync", async (string targetPhoneNumber, ILogger<Program> logger) =>
+app.MapPost("/outboundCallToTeamsExtensionAsync", async (string userId, string tenantId, string resourceId, string teamsAppId, ILogger<Program> logger) =>
+{
+    var target = new TeamsExtensionUserIdentifier(userId: userId, tenantId: tenantId, resourceId: resourceId);
+
+    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    eventCallbackUri = callbackUri;
+    CallInvite callInvite = new CallInvite(target);
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    var mediaStreamingOptions = new MediaStreamingOptions(
+        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+    {
+        StartMediaStreaming = false,
+        TransportUri = new Uri(websocketUri),
+        MediaStreamingContent = MediaStreamingContent.Audio,
+    };
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+    {
+        StartTranscription = false,
+        TransportUri = new Uri(websocketUri)
+    };
+    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+    {
+        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+        TeamsAppSource = new MicrosoftTeamsAppIdentifier(teamsAppId),
+        MediaStreamingOptions = mediaStreamingOptions,
+        TranscriptionOptions = transcriptionOptions
+    };
+    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+
+    logger.LogInformation($"Created async call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+
+}).WithTags("Create Outbound Call APIs");
+
+app.MapPost("/outboundCallToPstnAsync", async (string targetPhoneNumber, bool isEnableLoopbackAudio, ILogger < Program> logger) =>
 {
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
     PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
@@ -333,10 +406,25 @@ app.MapPost("/outboundCallToPstnAsync", async (string targetPhoneNumber, ILogger
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(target, caller);
 
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    var mediaStreamingOptions = new MediaStreamingOptions(
+        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+    {
+        StartMediaStreaming = false,
+        TransportUri = new Uri(websocketUri),
+        MediaStreamingContent = MediaStreamingContent.Audio,
+    };
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+    {
+        StartTranscription = false,
+        TransportUri = new Uri(websocketUri)
+    };
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-
+        TranscriptionOptions = transcriptionOptions,
+        MediaStreamingOptions = mediaStreamingOptions,
+        //IsLoopbackAudioEnabled = isEnableLoopbackAudio,
     };
 
     CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
@@ -344,37 +432,66 @@ app.MapPost("/outboundCallToPstnAsync", async (string targetPhoneNumber, ILogger
     logger.LogInformation($"Created async pstn call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
 }).WithTags("Create Outbound Call APIs");
 
-app.MapPost("/outboundCallToPstn", (string targetPhoneNumber, ILogger<Program> logger) =>
-{
-    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
-    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
 
 
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(target, caller);
+//app.MapPost("/outboundCallToPstn", (string targetPhoneNumber, bool isEnableLoopbackAudio, ILogger<Program> logger) =>
+//{
+//    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+//    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
-    };
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(target, caller);
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    var mediaStreamingOptions = new MediaStreamingOptions(
+//        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+//    {
+//        StartMediaStreaming = false,
+//        TransportUri = new Uri(websocketUri),
+//        MediaStreamingContent = MediaStreamingContent.Audio,
+//    };
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+//    {
+//        StartTranscription = false,
+//        TransportUri = new Uri(websocketUri)
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        //EnableLoopbackAudio = isEnableLoopbackAudio
+//    };
 
-    logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Create Outbound Call APIs");
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+
+//    logger.LogInformation($"Created call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Create Outbound Call APIs");
 
 app.MapPost("/outboundCallToAcsAsync", async (string acsTarget, ILogger<Program> logger) =>
 {
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     eventCallbackUri = callbackUri;
     CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-
+    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+    var mediaStreamingOptions = new MediaStreamingOptions(
+        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+    {
+        StartMediaStreaming = true,
+        TransportUri = new Uri(websocketUri),
+        MediaStreamingContent = MediaStreamingContent.Audio,
+    };
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+    {
+        StartTranscription = false,
+        TransportUri = new Uri(websocketUri)
+    };
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-
+        //MediaStreamingOptions = mediaStreamingOptions,
+        //TranscriptionOptions = transcriptionOptions,
+        OperationContext = "OutboundCallToAcsAsync"
     };
 
     CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
@@ -382,22 +499,22 @@ app.MapPost("/outboundCallToAcsAsync", async (string acsTarget, ILogger<Program>
     logger.LogInformation($"Created async acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
 }).WithTags("Create Outbound Call APIs");
 
-app.MapPost("/outboundCallToAcs", (string acsTarget, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+//app.MapPost("/outboundCallToAcs", (string acsTarget, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
 
-    };
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Create Outbound Call APIs");
+//    logger.LogInformation($"Created acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Create Outbound Call APIs");
 
 app.MapPost("/outboundCallToTeamsAsync", async (string teamsObjectId, ILogger<Program> logger) =>
 {
@@ -437,27 +554,39 @@ app.MapPost("/outboundCallToTeams", (string teamsObjectId, ILogger<Program> logg
 
 #region Group Call
 
-app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, ILogger<Program> logger) =>
+app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, string acsTarget, bool isEnableLoopbackAudio, ILogger <Program> logger) =>
 {
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
     PhoneNumberIdentifier sourceCallerId = new PhoneNumberIdentifier(acsPhoneNumber);
+    CommunicationUserIdentifier acsTargetIdentifier = new CommunicationUserIdentifier(acsTarget);
 
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     eventCallbackUri = callbackUri;
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
-
+    
     IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
     {
-        target
+        target,
+        acsTargetIdentifier
     };
 
+    var mediaStreamingOptions = new MediaStreamingOptions(
+        MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+    {
+        StartMediaStreaming = false,
+        TransportUri = new Uri(websocketUri),
+        MediaStreamingContent = MediaStreamingContent.Audio,
+    };
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+    {
+        StartTranscription = false,
+        TransportUri = new Uri(websocketUri)
+    };
     var createGroupCallOptions = new CreateGroupCallOptions(targets, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         SourceCallerIdNumber = sourceCallerId,
+        //IsLoopbackAudioEnabled = isEnableLoopbackAudio,
         MediaStreamingOptions = mediaStreamingOptions,
         TranscriptionOptions = transcriptionOptions
     };
@@ -467,21 +596,32 @@ app.MapPost("/createGroupCallAsync", async (string targetPhoneNumber, ILogger<Pr
     logger.LogInformation($"Created async group call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
 }).WithTags("Create Group Call APIs");
 
-app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logger) =>
+app.MapPost("/createGroupCall", (string targetPhoneNumber, string acsTarget, bool isEnableLoopbackAudio, ILogger<Program> logger) =>
 {
     PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
     PhoneNumberIdentifier sourceCallerId = new PhoneNumberIdentifier(acsPhoneNumber);
+    CommunicationUserIdentifier acsTargetIdentifier = new CommunicationUserIdentifier(acsTarget);
 
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
     eventCallbackUri = callbackUri;
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+    var mediaStreamingOptions = new MediaStreamingOptions(
+    MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+    {
+        StartMediaStreaming = false,
+        TransportUri = new Uri(websocketUri),
+        MediaStreamingContent = MediaStreamingContent.Audio,
+    };
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+    {
+        StartTranscription = false,
+        TransportUri = new Uri(websocketUri)
+    };
 
     IEnumerable<CommunicationIdentifier> targets = new List<CommunicationIdentifier>()
     {
-        target
+        target,
+        acsTargetIdentifier
     };
 
     var createGroupCallOptions = new CreateGroupCallOptions(targets, callbackUri)
@@ -489,7 +629,8 @@ app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logg
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
         SourceCallerIdNumber = sourceCallerId,
         MediaStreamingOptions = mediaStreamingOptions,
-        TranscriptionOptions = transcriptionOptions
+        TranscriptionOptions = transcriptionOptions,
+        //IsLoopbackAudioEnabled = isEnableLoopbackAudio
     };
 
     CreateCallResult createCallResult = client.CreateGroupCall(createGroupCallOptions);
@@ -503,12 +644,22 @@ app.MapPost("/createGroupCall", (string targetPhoneNumber, ILogger<Program> logg
 
 app.MapPost("/ConnectRoomCallAsync", async (string roomId, ILogger<Program> logger) =>
 {
+    roomCallId = roomId;
     RoomCallLocator roomCallLocator = !string.IsNullOrEmpty(roomId) ? new RoomCallLocator(roomId) : throw new ArgumentNullException(nameof(roomId));
     var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+    eventCallbackUri = callbackUri;
     var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(MediaStreamingAudioChannel.Unmixed, StreamingTransport.Websocket)
+    {
+        TransportUri = new Uri(websocketUri),
+        MediaStreamingContent = MediaStreamingContent.Audio,
+        StartMediaStreaming = false
+    };
+    TranscriptionOptions transcriptionOptions = new TranscriptionOptions("en-us", StreamingTransport.Websocket)
+    {
+        TransportUri = new Uri(websocketUri),
+        StartTranscription = false
+    };
     ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
     {
         CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
@@ -521,105 +672,105 @@ app.MapPost("/ConnectRoomCallAsync", async (string roomId, ILogger<Program> logg
     return Results.Ok();
 }).WithTags("Connect Call APIs");
 
-app.MapPost("/ConnectRoomCall", (string roomId, ILogger<Program> logger) =>
-{
-    RoomCallLocator roomCallLocator = !string.IsNullOrEmpty(roomId) ? new RoomCallLocator(roomId) : throw new ArgumentNullException(nameof(roomId));
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        OperationContext = "ConnectRoomCallContext",
-        MediaStreamingOptions = mediaStreamingOptions,
-        TranscriptionOptions = transcriptionOptions
-    };
-    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
-    logger.LogInformation($"Connected room call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
-    return Results.Ok();
-}).WithTags("Connect Call APIs");
+//app.MapPost("/ConnectRoomCall", (string roomId, ILogger<Program> logger) =>
+//{
+//    RoomCallLocator roomCallLocator = !string.IsNullOrEmpty(roomId) ? new RoomCallLocator(roomId) : throw new ArgumentNullException(nameof(roomId));
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+//    ConnectCallOptions connectCallOptions = new ConnectCallOptions(roomCallLocator, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        OperationContext = "ConnectRoomCallContext",
+//        MediaStreamingOptions = mediaStreamingOptions,
+//        TranscriptionOptions = transcriptionOptions
+//    };
+//    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
+//    logger.LogInformation($"Connected room call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+//    return Results.Ok();
+//}).WithTags("Connect Call APIs");
 
-app.MapPost("/ConnectGroupCallAsync", async (string groupId, ILogger<Program> logger) =>
-{
-    GroupCallLocator groupCallLocator = !string.IsNullOrEmpty(groupId) ? new GroupCallLocator(groupId) : throw new ArgumentNullException(nameof(groupId));
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        OperationContext = "ConnectRoomCallContext",
-        MediaStreamingOptions = mediaStreamingOptions,
-        TranscriptionOptions = transcriptionOptions
-    };
-    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
-    logger.LogInformation($"Connected group async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
-    return Results.Ok();
-}).WithTags("Connect Call APIs");
+//app.MapPost("/ConnectGroupCallAsync", async (string groupId, ILogger<Program> logger) =>
+//{
+//    GroupCallLocator groupCallLocator = !string.IsNullOrEmpty(groupId) ? new GroupCallLocator(groupId) : throw new ArgumentNullException(nameof(groupId));
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+//    ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        OperationContext = "ConnectRoomCallContext",
+//        MediaStreamingOptions = mediaStreamingOptions,
+//        TranscriptionOptions = transcriptionOptions
+//    };
+//    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
+//    logger.LogInformation($"Connected group async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+//    return Results.Ok();
+//}).WithTags("Connect Call APIs");
 
-app.MapPost("/ConnectGroupCall", (string groupId, ILogger<Program> logger) =>
-{
-    GroupCallLocator groupCallLocator = !string.IsNullOrEmpty(groupId) ? new GroupCallLocator(groupId) : throw new ArgumentNullException(nameof(groupId));
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        OperationContext = "ConnectGroupCallContext",
-        MediaStreamingOptions = mediaStreamingOptions,
-        TranscriptionOptions = transcriptionOptions
-    };
-    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
-    logger.LogInformation($"Connected group call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
-    return Results.Ok();
-}).WithTags("Connect Call APIs");
+//app.MapPost("/ConnectGroupCall", (string groupId, ILogger<Program> logger) =>
+//{
+//    GroupCallLocator groupCallLocator = !string.IsNullOrEmpty(groupId) ? new GroupCallLocator(groupId) : throw new ArgumentNullException(nameof(groupId));
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+//    ConnectCallOptions connectCallOptions = new ConnectCallOptions(groupCallLocator, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        OperationContext = "ConnectGroupCallContext",
+//        MediaStreamingOptions = mediaStreamingOptions,
+//        TranscriptionOptions = transcriptionOptions
+//    };
+//    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
+//    logger.LogInformation($"Connected group call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+//    return Results.Ok();
+//}).WithTags("Connect Call APIs");
 
-app.MapPost("/ConnectOneToNCallAsync", async (string serverCallId, ILogger<Program> logger) =>
-{
-    ServerCallLocator serverCallLocator = !string.IsNullOrEmpty(serverCallId) ? new ServerCallLocator(serverCallId) : throw new ArgumentNullException(nameof(serverCallId));
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        OperationContext = "ConnectOneToNCallContext",
-        MediaStreamingOptions = mediaStreamingOptions,
-        TranscriptionOptions = transcriptionOptions
-    };
-    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
-    logger.LogInformation($"Connected 1 to N async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
-    return Results.Ok();
-}).WithTags("Connect Call APIs");
+//app.MapPost("/ConnectOneToNCallAsync", async (string serverCallId, ILogger<Program> logger) =>
+//{
+//    ServerCallLocator serverCallLocator = !string.IsNullOrEmpty(serverCallId) ? new ServerCallLocator(serverCallId) : throw new ArgumentNullException(nameof(serverCallId));
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+//    ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        OperationContext = "ConnectOneToNCallContext",
+//        MediaStreamingOptions = mediaStreamingOptions,
+//        TranscriptionOptions = transcriptionOptions
+//    };
+//    ConnectCallResult connectCallResult = await client.ConnectCallAsync(connectCallOptions);
+//    logger.LogInformation($"Connected 1 to N async call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+//    return Results.Ok();
+//}).WithTags("Connect Call APIs");
 
-app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger) =>
-{
-    ServerCallLocator serverCallLocator = !string.IsNullOrEmpty(serverCallId) ? new ServerCallLocator(serverCallId) : throw new ArgumentNullException(nameof(serverCallId));
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
-    ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        OperationContext = "ConnectOneToNCallContext",
-        MediaStreamingOptions = mediaStreamingOptions,
-        TranscriptionOptions = transcriptionOptions
-    };
-    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
-    logger.LogInformation($"Connected 1 to N call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
-    return Results.Ok();
-}).WithTags("Connect Call APIs");
+//app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger) =>
+//{
+//    ServerCallLocator serverCallLocator = !string.IsNullOrEmpty(serverCallId) ? new ServerCallLocator(serverCallId) : throw new ArgumentNullException(nameof(serverCallId));
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, false);
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri), "en-us", false, TranscriptionTransport.Websocket);
+//    ConnectCallOptions connectCallOptions = new ConnectCallOptions(serverCallLocator, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        OperationContext = "ConnectOneToNCallContext",
+//        MediaStreamingOptions = mediaStreamingOptions,
+//        TranscriptionOptions = transcriptionOptions
+//    };
+//    ConnectCallResult connectCallResult = client.ConnectCall(connectCallOptions);
+//    logger.LogInformation($"Connected 1 to N call with connection id: {connectCallResult.CallConnectionProperties.CallConnectionId}");
+//    return Results.Ok();
+//}).WithTags("Connect Call APIs");
 
 #endregion
 
@@ -627,191 +778,236 @@ app.MapPost("/ConnectOneToNCall", (string serverCallId, ILogger<Program> logger)
 
 app.MapPost("/addPstnParticipantAsync", async (string pstnParticipant, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CallInvite callInvite = new CallInvite(new PhoneNumberIdentifier(pstnParticipant),
-           new PhoneNumberIdentifier(acsPhoneNumber));
-    var addParticipantOptions = new AddParticipantOptions(callInvite)
-    {
-        OperationContext = "addPstnUserContext",
-        InvitationTimeoutInSeconds = 30,
-    };
+CallConnection callConnection = GetConnection();
+//CallInvite callInvite = new CallInvite(new PhoneNumberIdentifier(pstnParticipant), new PhoneNumberIdentifier(acsPhoneNumber));
 
-    var result = await callConnection.AddParticipantAsync(addParticipantOptions);
-    return Results.Ok(result);
+//ops
+CallInvite callInvite = new CallInvite(new PhoneNumberIdentifier(pstnParticipant), null);
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addPstnUserContext",
+InvitationTimeoutInSeconds = 60,
+OperationCallbackUri = eventCallbackUri
+
+};
+
+var result = await callConnection.AddParticipantAsync(addParticipantOptions);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/addPstnParticipant", (string pstnParticipant, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CallInvite callInvite = new CallInvite(new PhoneNumberIdentifier(pstnParticipant),
-           new PhoneNumberIdentifier(acsPhoneNumber));
-    var addParticipantOptions = new AddParticipantOptions(callInvite)
-    {
-        OperationContext = "addPstnUserContext",
-        InvitationTimeoutInSeconds = 30,
-    };
+CallConnection callConnection = GetConnection();
+CallInvite callInvite = new CallInvite(new PhoneNumberIdentifier(pstnParticipant),
+       new PhoneNumberIdentifier(acsPhoneNumber));
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addPstnUserContext",
+InvitationTimeoutInSeconds = 30,
+};
 
-    var result = callConnection.AddParticipant(addParticipantOptions);
-    return Results.Ok(result);
+var result = callConnection.AddParticipant(addParticipantOptions);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/addAcsParticipantAsync", async (string acsParticipant, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsParticipant));
-    var addParticipantOptions = new AddParticipantOptions(callInvite)
-    {
-        OperationContext = "addAcsUserContext",
-        InvitationTimeoutInSeconds = 30,
-    };
+CallConnection callConnection = GetConnection();
+CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsParticipant));
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addAcsUserContext",
+InvitationTimeoutInSeconds = 30,
+};
 
-    var result = await callConnection.AddParticipantAsync(addParticipantOptions);
-    return Results.Ok(result);
+var result = await callConnection.AddParticipantAsync(addParticipantOptions);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/addAcsParticipant", (string acsParticipant, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsParticipant));
-    var addParticipantOptions = new AddParticipantOptions(callInvite)
-    {
-        OperationContext = "addPstnUserContext",
-        InvitationTimeoutInSeconds = 30,
-    };
+CallConnection callConnection = GetConnection();
+CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsParticipant));
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addPstnUserContext",
+InvitationTimeoutInSeconds = 30,
+};
 
-    var result = callConnection.AddParticipant(addParticipantOptions);
-    return Results.Ok(result);
+var result = callConnection.AddParticipant(addParticipantOptions);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/addTeamsParticipantAsync", async (string teamsObjectId, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
-    var addParticipantOptions = new AddParticipantOptions(callInvite)
-    {
-        OperationContext = "addTeamsUserContext",
-        InvitationTimeoutInSeconds = 30,
-    };
+CallConnection callConnection = GetConnection();
+CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+callInvite.CustomCallingContext.AddSipUui("OBOuuivalue");
+callInvite.CustomCallingContext.AddSipX("XheaderOBO", "value");
 
-    var result = await callConnection.AddParticipantAsync(addParticipantOptions);
-    return Results.Ok(result);
+// Create TeamsPhoneCallerDetails
+var teamsPhoneCallerDetails = new TeamsPhoneCallerDetails(new MicrosoftTeamsUserIdentifier(teamsObjectId), name: "John Doe", phoneNumber: "+14256451678");
+teamsPhoneCallerDetails.AdditionalCallerInformation.Add("Department", "Sales");
+teamsPhoneCallerDetails.AdditionalCallerInformation.Add("Priority", "High");
+
+// Create TeamsPhoneSourceDetails
+var teamsPhoneSourceDetails = new TeamsPhoneSourceDetails(new MicrosoftTeamsUserIdentifier(teamsObjectId), language: "en-US", status: "Active");
+
+// Create TeamsPhoneCallDetails
+var teamsPhoneCallDetails = new TeamsPhoneCallDetails()
+{
+TeamsPhoneCallerDetails = teamsPhoneCallerDetails,
+TeamsPhoneSourceDetails = teamsPhoneSourceDetails,
+SessionId = "session-123-abc",
+Intent = "Sales Inquiry",
+CallTopic = "New Product Information",
+CallContext = "Customer is interested in our latest product line",
+CallSentiment = "Positive",
+SuggestedActions = "Offer product demo, Schedule follow-up"
+};
+
+callInvite.CustomCallingContext.SetTeamsPhoneCallDetails(teamsPhoneCallDetails);
+
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addTeamsUserContext",
+InvitationTimeoutInSeconds = 30,
+};
+
+var result = await callConnection.AddParticipantAsync(addParticipantOptions);
+return Results.Ok(result);
+}).WithTags("Add/Remove Participant APIs");
+
+app.MapPost("/addDuelPersonaParticipantAsync", async (string userId, string tenantId, string ResourceId, ILogger<Program> logger) =>
+{
+CallConnection callConnection = GetConnection();
+CallInvite callInvite = new CallInvite(new TeamsExtensionUserIdentifier(userId, tenantId, ResourceId));
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addDuelPersonaUserContext",
+InvitationTimeoutInSeconds = 30,
+};
+
+var result = await callConnection.AddParticipantAsync(addParticipantOptions);
+logger.LogInformation($"Added Duel Persona participant with user id: {userId}");
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/addTeamsParticipant", (string teamsObjectId, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
-    var addParticipantOptions = new AddParticipantOptions(callInvite)
-    {
-        OperationContext = "addTeamsUserContext",
-        InvitationTimeoutInSeconds = 30,
-    };
+CallConnection callConnection = GetConnection();
+CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+var addParticipantOptions = new AddParticipantOptions(callInvite)
+{
+OperationContext = "addTeamsUserContext",
+InvitationTimeoutInSeconds = 30,
+};
 
-    var result = callConnection.AddParticipant(addParticipantOptions);
-    return Results.Ok(result);
+var result = callConnection.AddParticipant(addParticipantOptions);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/removePstnParticipantAsync", async (string pstnTarget, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new PhoneNumberIdentifier(pstnTarget))
-    {
-        OperationContext = "removePstnParticipantContext"
-    };
+CallConnection callConnection = GetConnection();
+RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new PhoneNumberIdentifier(pstnTarget))
+{
+OperationContext = "removePstnParticipantContext"
+};
 
-    await callConnection.RemoveParticipantAsync(removeParticipantOptions);
-    return Results.Ok();
+await callConnection.RemoveParticipantAsync(removeParticipantOptions);
+return Results.Ok();
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/removePstnParticipant", (string pstnTarget, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new PhoneNumberIdentifier(pstnTarget))
-    {
-        OperationContext = "removePstnParticipantContext"
-    };
+CallConnection callConnection = GetConnection();
+RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new PhoneNumberIdentifier(pstnTarget))
+{
+OperationContext = "removePstnParticipantContext"
+};
 
-    callConnection.RemoveParticipant(removeParticipantOptions);
-    return Results.Ok();
+callConnection.RemoveParticipant(removeParticipantOptions);
+return Results.Ok();
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/removeAcsParticipantAsync", async (string acsTarget, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new CommunicationUserIdentifier(acsTarget))
-    {
-        OperationContext = "removeAcsParticipantContext"
-    };
+CallConnection callConnection = GetConnection();
+RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new CommunicationUserIdentifier(acsTarget))
+{
+OperationContext = "removeAcsParticipantContext"
+};
 
-    await callConnection.RemoveParticipantAsync(removeParticipantOptions);
-    return Results.Ok();
+await callConnection.RemoveParticipantAsync(removeParticipantOptions);
+return Results.Ok();
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/removeAcsParticipant", (string acsTarget, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new CommunicationUserIdentifier(acsTarget))
-    {
-        OperationContext = "removeAcsParticipantContext"
-    };
+CallConnection callConnection = GetConnection();
+RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new CommunicationUserIdentifier(acsTarget))
+{
+OperationContext = "removeAcsParticipantContext"
+};
 
-    callConnection.RemoveParticipant(removeParticipantOptions);
-    return Results.Ok();
+callConnection.RemoveParticipant(removeParticipantOptions);
+return Results.Ok();
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/removeTeamsParticipantAsync", async (string teamsObjectId, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new MicrosoftTeamsUserIdentifier(teamsObjectId))
-    {
-        OperationContext = "removeTeamsParticipantContext"
-    };
+CallConnection callConnection = GetConnection();
+RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new MicrosoftTeamsUserIdentifier(teamsObjectId))
+{
+OperationContext = "removeTeamsParticipantContext"
+};
 
-    await callConnection.RemoveParticipantAsync(removeParticipantOptions);
-    return Results.Ok();
+await callConnection.RemoveParticipantAsync(removeParticipantOptions);
+return Results.Ok();
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/removeTeamsParticipant", (string teamsObjectId, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new MicrosoftTeamsUserIdentifier(teamsObjectId))
-    {
-        OperationContext = "removeTeamsParticipantContext"
-    };
+CallConnection callConnection = GetConnection();
+RemoveParticipantOptions removeParticipantOptions = new RemoveParticipantOptions(new MicrosoftTeamsUserIdentifier(teamsObjectId))
+{
+OperationContext = "removeTeamsParticipantContext"
+};
 
-    callConnection.RemoveParticipantAsync(removeParticipantOptions);
-    return Results.Ok();
+callConnection.RemoveParticipantAsync(removeParticipantOptions);
+return Results.Ok();
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/cancelAddParticipantAsync", async (string invitationId, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
+CallConnection callConnection = GetConnection();
 
-    CancelAddParticipantOperationOptions cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(invitationId)
-    {
-        OperationContext = "CancelAddingParticipantContext"
-    };
-    var result = await callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+CancelAddParticipantOperationOptions cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(invitationId)
+{
+OperationContext = "CancelAddingParticipantContext"
+};
+var result = await callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
 
-    return Results.Ok(result);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 app.MapPost("/cancelAddParticipant", (string invitationId, ILogger<Program> logger) =>
 {
-    CallConnection callConnection = GetConnection();
-    CancelAddParticipantOperationOptions cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(invitationId)
-    {
-        OperationContext = "CancelAddingParticipantContext"
-    };
-    var result = callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
-    return Results.Ok(result);
+CallConnection callConnection = GetConnection();
+CancelAddParticipantOperationOptions cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(invitationId)
+{
+    OperationContext = "CancelAddingParticipantContext"
+};
+var result = callConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+return Results.Ok(result);
 }).WithTags("Add/Remove Participant APIs");
 
 #endregion
 
 # region Play Media with text Source
 
-app.MapPost("/playTextSourceToPstnTargetAsync", async (string pstnTarget, ILogger<Program> logger) =>
+app.MapPost("/playTextSourceToPstnTargetAsync", async (string pstnTarget, bool isLoop, ILogger<Program> logger) =>
 {
     CallMedia callMedia = GetCallMedia();
 
@@ -823,7 +1019,9 @@ app.MapPost("/playTextSourceToPstnTargetAsync", async (string pstnTarget, ILogge
     List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
     PlayOptions playToOptions = new PlayOptions(textSource, playTo)
     {
-        OperationContext = "playToContext"
+        OperationContext = "playToContext",
+        OperationCallbackUri = eventCallbackUri, // Set the callback URI for operation events
+        Loop = isLoop, // Set Loop to true or false based on the input parameter,
     };
 
     await callMedia.PlayAsync(playToOptions);
@@ -831,7 +1029,7 @@ app.MapPost("/playTextSourceToPstnTargetAsync", async (string pstnTarget, ILogge
     return Results.Ok();
 }).WithTags("Play TextSource Media APIs");
 
-app.MapPost("/playTextSourceToPstnTarget", (string pstnTarget, ILogger<Program> logger) =>
+app.MapPost("/playTextSourceToPstnTarget", (string pstnTarget, bool isLoop, ILogger<Program> logger) =>
 {
     CallMedia callMedia = GetCallMedia();
 
@@ -843,7 +1041,9 @@ app.MapPost("/playTextSourceToPstnTarget", (string pstnTarget, ILogger<Program> 
     List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
     PlayOptions playToOptions = new PlayOptions(textSource, playTo)
     {
-        OperationContext = "playToContext"
+        OperationContext = "playToContext",
+        OperationCallbackUri = eventCallbackUri,
+        Loop = isLoop // Set Loop to true or false based on the input parameter
     };
 
     callMedia.Play(playToOptions);
@@ -851,127 +1051,91 @@ app.MapPost("/playTextSourceToPstnTarget", (string pstnTarget, ILogger<Program> 
     return Results.Ok();
 }).WithTags("Play TextSource Media APIs");
 
-app.MapPost("/playTextSourceAcsTargetAsync", async (string acsTarget, ILogger<Program> logger) =>
+//app.MapPost("/playTextSourceAcsTargetAsync", async (string acsTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+//    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
+//    {
+//        OperationContext = "playToContext"
+//    };
+
+//    await callMedia.PlayAsync(playToOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play TextSource Media APIs");
+
+//app.MapPost("/playTextSourceToAcsTarget", (string acsTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+//    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
+//    {
+//        OperationContext = "playToContext"
+//    };
+
+//    callMedia.Play(playToOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play TextSource Media APIs");
+
+//app.MapPost("/playTextSourceToTeamsTargetAsync", async (string teamsObjectId, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
+//    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
+//    {
+//        OperationContext = "playToContext"
+//    };
+
+//    await callMedia.PlayAsync(playToOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play TextSource Media APIs");
+
+//app.MapPost("/playTextSourceToTeamsTarget", (string teamsObjectId, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
+//    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
+//    {
+//        OperationContext = "playToContext"
+//    };
+
+//    callMedia.Play(playToOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play TextSource Media APIs");
+
+app.MapPost("/playTextSourceToAllAsync", async (bool isLoop, bool isInterruptCallMediaOperation, ILogger<Program> logger) =>
 {
     CallMedia callMedia = GetCallMedia();
 
     TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play TextSource Media APIs");
-
-app.MapPost("/playTextSourceToAcsTarget", (string acsTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-
-    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play TextSource Media APIs");
-
-app.MapPost("/playTextSourceToTeamsTargetAsync", async (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-
-    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
-    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play TextSource Media APIs");
-
-app.MapPost("/playTextSourceToTeamsTarget", (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-
-    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
-    PlayOptions playToOptions = new PlayOptions(textSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play TextSource Media APIs");
-
-app.MapPost("/playTextSourceToAllAsync", async (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-
-    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(textSource)
-    {
-        OperationContext = "playToAllContext"
-    };
-    await callMedia.PlayToAllAsync(playToAllOptions);
-
-    return Results.Ok();
-}).WithTags("Play TextSource Media APIs");
-
-app.MapPost("/playTextSourceToAll", (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-
-    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(textSource)
-    {
-        OperationContext = "playToAllContext"
-    };
-    callMedia.PlayToAll(playToAllOptions);
-
-    return Results.Ok();
-}).WithTags("Play TextSource Media APIs");
-
-app.MapPost("/playTextSourceBargeInAsync", async (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-
-    TextSource textSource = new TextSource("Hi, this is barge in test played through play source thanks. Goodbye!.")
     {
         VoiceName = "en-US-NancyNeural"
     };
@@ -979,572 +1143,1040 @@ app.MapPost("/playTextSourceBargeInAsync", async (ILogger<Program> logger) =>
     PlayToAllOptions playToAllOptions = new PlayToAllOptions(textSource)
     {
         OperationContext = "playToAllContext",
-        InterruptCallMediaOperation = true
+        OperationCallbackUri = eventCallbackUri, // Set the callback URI for operation events
+        Loop = isLoop, // Set Loop to true or false based on the input parameter
+        InterruptCallMediaOperation = isInterruptCallMediaOperation // Set to true if you want to allow barge-in
     };
     await callMedia.PlayToAllAsync(playToAllOptions);
 
     return Results.Ok();
 }).WithTags("Play TextSource Media APIs");
 
-#endregion 
-
-# region Play Media with Ssml Source
-
-app.MapPost("/playSsmlSourceToPstnTargetAsync", async (string pstnTarget, ILogger<Program> logger) =>
+app.MapPost("/playTextSourceToAll", (bool isLoop, bool isInterruptCallMediaOperation, ILogger<Program> logger) =>
 {
     CallMedia callMedia = GetCallMedia();
 
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
-    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
     {
-        OperationContext = "playToContext"
+        VoiceName = "en-US-NancyNeural"
     };
 
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceToPstnTarget", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
-    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+    PlayToAllOptions playToAllOptions = new PlayToAllOptions(textSource)
     {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceAcsTargetAsync", async (string acsTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceToAcsTarget", (string acsTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceToTeamsTargetAsync", async (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
-    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceToTeamsTarget", (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
-    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceToAllAsync", async (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(ssmlSource)
-    {
-        OperationContext = "playToAllContext"
-    };
-    await callMedia.PlayToAllAsync(playToAllOptions);
-
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
-
-app.MapPost("/playSsmlSourceToAll", (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
-
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(ssmlSource)
-    {
-        OperationContext = "playToAllContext"
+        OperationContext = "playToAllContext",
+        OperationCallbackUri = eventCallbackUri,
+        Loop = isLoop,
+        InterruptCallMediaOperation = isInterruptCallMediaOperation // Set to true if you want to allow barge-in
     };
     callMedia.PlayToAll(playToAllOptions);
 
     return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
+}).WithTags("Play TextSource Media APIs");
 
-app.MapPost("/playSsmlSourceBargeInAsync", async (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml barge in test played through ssml source thanks. Goodbye!</voice></speak>");
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(ssmlSource)
-    {
-        OperationContext = "playBargeInContext",
-        InterruptCallMediaOperation = true
-    };
-    await callMedia.PlayToAllAsync(playToAllOptions);
+//app.MapPost("/playTextSourceBargeInAsync", async (ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
 
-    return Results.Ok();
-}).WithTags("Play SsmlSource Media APIs");
+//    TextSource textSource = new TextSource("Hi, this is barge in test played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
 
-#endregion 
+//    PlayToAllOptions playToAllOptions = new PlayToAllOptions(textSource)
+//    {
+//        OperationContext = "playToAllContext",
+//        InterruptCallMediaOperation = true
+//    };
+//    await callMedia.PlayToAllAsync(playToAllOptions);
 
-# region Play Media with File Source
-
-app.MapPost("/playFileSourceToPstnTargetAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
-    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceToPstnTarget", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
-    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceAcsTargetAsync", async (string acsTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceToAcsTarget", (string acsTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
-    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceToTeamsTargetAsync", async (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
-    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    await callMedia.PlayAsync(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceToTeamsTarget", (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
-    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
-    {
-        OperationContext = "playToContext"
-    };
-
-    callMedia.Play(playToOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceToAllAsync", async (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(fileSource)
-    {
-        OperationContext = "playToAllContext"
-    };
-    await callMedia.PlayToAllAsync(playToAllOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceToAll", (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(fileSource)
-    {
-        OperationContext = "playToAllContext"
-    };
-    callMedia.PlayToAll(playToAllOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
-
-app.MapPost("/playFileSourceBargeInAsync", async (ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
-    PlayToAllOptions playToAllOptions = new PlayToAllOptions(fileSource)
-    {
-        OperationContext = "playBargeInContext",
-        InterruptCallMediaOperation = true
-    };
-    await callMedia.PlayToAllAsync(playToAllOptions);
-
-    return Results.Ok();
-}).WithTags("Play FileSource Media APIs");
+//    return Results.Ok();
+//}).WithTags("Play TextSource Media APIs");
 
 #endregion 
 
-#region Recognization
-
-app.MapPost("/recognizeDTMFAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-    var recognizeOptions =
-            new CallMediaRecognizeDtmfOptions(
-                targetParticipant: target, maxTonesToCollect: 4)
-            {
-                InterruptPrompt = false,
-                InterToneTimeout = TimeSpan.FromSeconds(5),
-                OperationContext = "DtmfContext",
-                InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                Prompt = textSource
-            };
-
-    await callMedia.StartRecognizingAsync(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeDTMF", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-    var recognizeOptions =
-            new CallMediaRecognizeDtmfOptions(
-                targetParticipant: target, maxTonesToCollect: 4)
-            {
-                InterruptPrompt = false,
-                InterToneTimeout = TimeSpan.FromSeconds(5),
-                OperationContext = "DtmfContext",
-                InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                Prompt = textSource
-            };
-
-    callMedia.StartRecognizing(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-
-app.MapPost("/recognizeSpeechAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-    var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant: target)
-    {
-        InterruptPrompt = false,
-        OperationContext = "SpeechContext",
-        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-        Prompt = textSource,
-        EndSilenceTimeout = TimeSpan.FromSeconds(15)
-    };
-
-    await callMedia.StartRecognizingAsync(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeSpeech", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-    var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant: target)
-    {
-        InterruptPrompt = false,
-        OperationContext = "SpeechContext",
-        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-        Prompt = textSource,
-        EndSilenceTimeout = TimeSpan.FromSeconds(15)
-    };
-
-    callMedia.StartRecognizing(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeSpeechOrDtmfAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-    var recognizeOptions =
-               new CallMediaRecognizeSpeechOrDtmfOptions(
-                   targetParticipant: target, maxTonesToCollect: 4)
-               {
-                   InterruptPrompt = false,
-                   OperationContext = "SpeechOrDTMFContext",
-                   InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                   Prompt = textSource,
-                   EndSilenceTimeout = TimeSpan.FromSeconds(5)
-               };
-    await callMedia.StartRecognizingAsync(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeSpeechOrDtmf", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-    var recognizeOptions =
-               new CallMediaRecognizeSpeechOrDtmfOptions(
-                   targetParticipant: target, maxTonesToCollect: 4)
-               {
-                   InterruptPrompt = false,
-                   OperationContext = "SpeechOrDTMFContext",
-                   InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                   Prompt = textSource,
-                   EndSilenceTimeout = TimeSpan.FromSeconds(5)
-               };
-    callMedia.StartRecognizingAsync(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeChoiceAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-
-    var recognizeOptions =
-        new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
-        {
-            InterruptCallMediaOperation = false,
-            InterruptPrompt = false,
-            InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-            Prompt = textSource,
-            OperationContext = "ChoiceContext"
-        };
-
-
-    await callMedia.StartRecognizingAsync(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-app.MapPost("/recognizeChoice", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CallMedia callMedia = GetCallMedia();
-    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
-    {
-        VoiceName = "en-US-NancyNeural"
-    };
-
-    var target = new PhoneNumberIdentifier(pstnTarget);
-
-
-    var recognizeOptions =
-        new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
-        {
-            InterruptCallMediaOperation = false,
-            InterruptPrompt = false,
-            InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-            Prompt = textSource,
-            OperationContext = "ChoiceContext"
-        };
-
-    callMedia.StartRecognizingAsync(recognizeOptions);
-
-    return Results.Ok();
-}).WithTags("Start Recognization APIs");
-
-#endregion
-
-# region DTMF
-
-app.MapPost("/sendDTMFTonesAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-
-    List<DtmfTone> tones = new List<DtmfTone>
-        {
-            DtmfTone.Zero,
-            DtmfTone.One
-        };
-
-    CallMedia callMedia = GetCallMedia();
-
-    await callMedia.SendDtmfTonesAsync(tones, target);
-    return Results.Ok();
-}).WithTags("Send or Start DTMF APIs");
-
-app.MapPost("/sendDTMFTones", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-
-    List<DtmfTone> tones = new List<DtmfTone>
-        {
-            DtmfTone.Zero,
-            DtmfTone.One
-        };
-
-    CallMedia callMedia = GetCallMedia();
-
-    callMedia.SendDtmfTones(tones, target);
-    return Results.Ok();
-}).WithTags("Send or Start DTMF APIs");
-
-app.MapPost("/startContinuousDTMFTonesAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-
-    CallMedia callMedia = GetCallMedia();
-
-    await callMedia.StartContinuousDtmfRecognitionAsync(target);
-    return Results.Ok();
-}).WithTags("Send or Start DTMF APIs");
-
-app.MapPost("/startContinuousDTMFTones", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-
-    CallMedia callMedia = GetCallMedia();
-
-    callMedia.StartContinuousDtmfRecognition(target);
-    return Results.Ok();
-}).WithTags("Send or Start DTMF APIs");
-
-app.MapPost("/stopContinuousDTMFTonesAsync", async (string pstnTarget, ILogger<Program> logger) =>
-{
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-
-    CallMedia callMedia = GetCallMedia();
-
-    await callMedia.StopContinuousDtmfRecognitionAsync(target);
-    return Results.Ok();
-}).WithTags("Send or Start DTMF APIs");
-
-app.MapPost("/stopContinuousDTMFTones", (string pstnTarget, ILogger<Program> logger) =>
-{
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
-
-    CallMedia callMedia = GetCallMedia();
-
-    callMedia.StopContinuousDtmfRecognition(target);
-    return Results.Ok();
-}).WithTags("Send or Start DTMF APIs");
-
-# endregion
+//# region Play Media with Ssml Source
+
+////app.MapPost("/playSsmlSourceToPstnTargetAsync", async (string pstnTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
+////    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    await callMedia.PlayAsync(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceToPstnTarget", (string pstnTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
+////    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    callMedia.Play(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceAcsTargetAsync", async (string acsTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+////    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    await callMedia.PlayAsync(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceToAcsTarget", (string acsTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+////    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    callMedia.Play(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceToTeamsTargetAsync", async (string teamsObjectId, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
+////    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    await callMedia.PlayAsync(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceToTeamsTarget", (string teamsObjectId, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
+////    PlayOptions playToOptions = new PlayOptions(ssmlSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    callMedia.Play(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceToAllAsync", async (ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+////    PlayToAllOptions playToAllOptions = new PlayToAllOptions(ssmlSource)
+////    {
+////        OperationContext = "playToAllContext"
+////    };
+////    await callMedia.PlayToAllAsync(playToAllOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceToAll", (ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+
+////    PlayToAllOptions playToAllOptions = new PlayToAllOptions(ssmlSource)
+////    {
+////        OperationContext = "playToAllContext"
+////    };
+////    callMedia.PlayToAll(playToAllOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+////app.MapPost("/playSsmlSourceBargeInAsync", async (ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml barge in test played through ssml source thanks. Goodbye!</voice></speak>");
+////    PlayToAllOptions playToAllOptions = new PlayToAllOptions(ssmlSource)
+////    {
+////        OperationContext = "playBargeInContext",
+////        InterruptCallMediaOperation = true
+////    };
+////    await callMedia.PlayToAllAsync(playToAllOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play SsmlSource Media APIs");
+
+//#endregion 
+
+//# region Play Media with File Source
+
+////app.MapPost("/playFileSourceToPstnTargetAsync", async (string pstnTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
+////    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    await callMedia.PlayAsync(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceToPstnTarget", (string pstnTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
+////    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    callMedia.Play(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceAcsTargetAsync", async (string acsTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+////    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    await callMedia.PlayAsync(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceToAcsTarget", (string acsTarget, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new CommunicationUserIdentifier(acsTarget) };
+////    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    callMedia.Play(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceToTeamsTargetAsync", async (string teamsObjectId, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
+////    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    await callMedia.PlayAsync(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceToTeamsTarget", (string teamsObjectId, ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new MicrosoftTeamsUserIdentifier(teamsObjectId) };
+////    PlayOptions playToOptions = new PlayOptions(fileSource, playTo)
+////    {
+////        OperationContext = "playToContext"
+////    };
+
+////    callMedia.Play(playToOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceToAllAsync", async (ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    PlayToAllOptions playToAllOptions = new PlayToAllOptions(fileSource)
+////    {
+////        OperationContext = "playToAllContext"
+////    };
+////    await callMedia.PlayToAllAsync(playToAllOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceToAll", (ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+
+////    PlayToAllOptions playToAllOptions = new PlayToAllOptions(fileSource)
+////    {
+////        OperationContext = "playToAllContext"
+////    };
+////    callMedia.PlayToAll(playToAllOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+////app.MapPost("/playFileSourceBargeInAsync", async (ILogger<Program> logger) =>
+////{
+////    CallMedia callMedia = GetCallMedia();
+////    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+////    PlayToAllOptions playToAllOptions = new PlayToAllOptions(fileSource)
+////    {
+////        OperationContext = "playBargeInContext",
+////        InterruptCallMediaOperation = true
+////    };
+////    await callMedia.PlayToAllAsync(playToAllOptions);
+
+////    return Results.Ok();
+////}).WithTags("Play FileSource Media APIs");
+
+//#endregion 
+
+
+//# region Play Media With Multiple Play Source
+
+//app.MapPost("/playMultipleSourceToPstnTargetAsync", async (string pstnTarget, bool isLoop, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        ssmlSource,
+//        //fileSource
+//    };
+//    PlayOptions playToOptions = new PlayOptions(playSources, playTo)
+//    {
+//        OperationContext = "playToContext",
+//        OperationCallbackUri = eventCallbackUri, // Set the callback URI for operation events
+//        Loop = isLoop // Set Loop to true or false based on the input parameter
+
+//    };
+
+//    await callMedia.PlayAsync(playToOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play Multiple Source Media APIs");
+
+//app.MapPost("/playMultipleSourceToPstnTarget", (string pstnTarget, bool isLoop, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        ssmlSource,
+//        //fileSource
+//    };
+//    List<CommunicationIdentifier> playTo = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(pstnTarget) };
+//    PlayOptions playToOptions = new PlayOptions(playSources, playTo)
+//    {
+//        OperationContext = "playToContext",
+//        OperationCallbackUri = eventCallbackUri,
+//        Loop = isLoop // Set Loop to true or false based on the input parameter
+//    };
+
+//    callMedia.Play(playToOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play Multiple Source Media APIs");
+
+//app.MapPost("/playMultipleSourceToAllAsync", async (bool isLoop, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//{
+//    textSource,
+//    ssmlSource,
+//    //fileSource
+//};
+//    PlayToAllOptions playToAllOptions = new PlayToAllOptions(playSources)
+//    {
+//        OperationContext = "playToAllContext",
+//        OperationCallbackUri = eventCallbackUri, // Set the callback URI for operation events
+//        Loop = isLoop // Set Loop to true or false based on the input parameter
+//    };
+//    await callMedia.PlayToAllAsync(playToAllOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play Multiple Source Media APIs");
+
+//app.MapPost("/playMultipleSourceToAll", (bool isLoop, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+
+//    TextSource textSource = new TextSource("Hi, this is test source played through play source thanks. Goodbye!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//{
+//    textSource,
+//    ssmlSource,
+//    //fileSource
+//};
+//    PlayToAllOptions playToAllOptions = new PlayToAllOptions(playSources)
+//    {
+//        OperationContext = "playToAllContext",
+//        OperationCallbackUri = eventCallbackUri,
+//        Loop = isLoop
+//    };
+//    callMedia.PlayToAll(playToAllOptions);
+
+//    return Results.Ok();
+//}).WithTags("Play Multiple Source Media APIs");
+//#endregion 
+
+//#region Recognization
+
+//app.MapPost("/recognizeDTMFAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new PhoneNumberIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//            new CallMediaRecognizeDtmfOptions(
+//                targetParticipant: target, maxTonesToCollect: 4)
+//            {
+//                InterruptPrompt = false,
+//                InterToneTimeout = TimeSpan.FromSeconds(5),
+//                OperationContext = "DtmfContext",
+//                InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                Prompt = textSource
+//            };
+
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeDTMF", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//            new CallMediaRecognizeDtmfOptions(
+//                targetParticipant: target, maxTonesToCollect: 4)
+//            {
+//                InterruptPrompt = false,
+//                InterToneTimeout = TimeSpan.FromSeconds(5),
+//                OperationContext = "DtmfContext",
+//                InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                Prompt = textSource
+//            };
+
+//    callMedia.StartRecognizing(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+
+//app.MapPost("/recognizeSpeechAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant: target)
+//    {
+//        InterruptPrompt = false,
+//        OperationContext = "SpeechContext",
+//        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//        Prompt = textSource,
+//        EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//        IsSentimentAnalysisEnabled = true,
+//        SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//        OperationCallbackUri = eventCallbackUri
+//    };
+
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeSpeech", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant: target)
+//    {
+//        InterruptPrompt = false,
+//        OperationContext = "SpeechContext",
+//        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//        Prompt = textSource,
+//        EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//        IsSentimentAnalysisEnabled = true,
+//        SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//        OperationCallbackUri = eventCallbackUri
+//    };
+
+//    callMedia.StartRecognizing(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeSpeechOrDtmfAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//               new CallMediaRecognizeSpeechOrDtmfOptions(
+//                   targetParticipant: target, maxTonesToCollect: 4)
+//               {
+//                   InterruptPrompt = false,
+//                   OperationContext = "SpeechOrDTMFContext",
+//                   InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                   Prompt = textSource,
+//                   EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//                   IsSentimentAnalysisEnabled = true,
+//                   SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//                   OperationCallbackUri = eventCallbackUri
+//               };
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeSpeechOrDtmf", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//               new CallMediaRecognizeSpeechOrDtmfOptions(
+//                   targetParticipant: target, maxTonesToCollect: 4)
+//               {
+//                   InterruptPrompt = false,
+//                   OperationContext = "SpeechOrDTMFContext",
+//                   InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                   Prompt = textSource,
+//                   EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//                   IsSentimentAnalysisEnabled = true,
+//                   SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//                   OperationCallbackUri = eventCallbackUri
+//               };
+//    callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeChoiceAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+
+//    var recognizeOptions =
+//        new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
+//        {
+//            InterruptCallMediaOperation = false,
+//            InterruptPrompt = false,
+//            InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//            Prompt = textSource,
+//            OperationContext = "ChoiceContext",
+//            IsSentimentAnalysisEnabled = true,
+//            SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//            OperationCallbackUri = eventCallbackUri
+//        };
+
+
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeChoice", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+
+//    var recognizeOptions =
+//        new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
+//        {
+//            InterruptCallMediaOperation = false,
+//            InterruptPrompt = false,
+//            InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//            Prompt = textSource,
+//            OperationContext = "ChoiceContext",
+//            IsSentimentAnalysisEnabled = true,
+//            SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//            OperationCallbackUri = eventCallbackUri
+//        };
+
+//    callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//#endregion
+
+
+//#region Recognization multiple play sources
+
+//app.MapPost("/recognizeDTMFWithMultiplePlaySourcesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//            new CallMediaRecognizeDtmfOptions(
+//                targetParticipant: target, maxTonesToCollect: 4)
+//            {
+//                InterruptPrompt = false,
+//                InterToneTimeout = TimeSpan.FromSeconds(5),
+//                OperationContext = "DtmfContext",
+//                InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                //Prompt = textSource,
+//                PlayPrompts = playSources,
+//            };
+
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognization APIs");
+
+//app.MapPost("/recognizeDTMFWithMultiplePlaySources", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//            new CallMediaRecognizeDtmfOptions(
+//                targetParticipant: target, maxTonesToCollect: 4)
+//            {
+//                InterruptPrompt = false,
+//                InterToneTimeout = TimeSpan.FromSeconds(5),
+//                OperationContext = "DtmfContext",
+//                InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                //Prompt = textSource,
+//                PlayPrompts = playSources,
+//            };
+
+//    callMedia.StartRecognizing(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+
+//app.MapPost("/recognizeSpeechWithMultiplePlaySourcesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant: target)
+//    {
+//        InterruptPrompt = false,
+//        OperationContext = "SpeechContext",
+//        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//        //Prompt = textSource,
+//        PlayPrompts = playSources,
+//        EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//        IsSentimentAnalysisEnabled = true,
+//        SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//        OperationCallbackUri = eventCallbackUri
+//    };
+
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+//app.MapPost("/recognizeSpeechWithMultiplePlaySources", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions = new CallMediaRecognizeSpeechOptions(targetParticipant: target)
+//    {
+//        InterruptPrompt = false,
+//        OperationContext = "SpeechContext",
+//        InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//        //Prompt = textSource,
+//        PlayPrompts = playSources,
+//        EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//        IsSentimentAnalysisEnabled = true,
+//        SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//        OperationCallbackUri = eventCallbackUri
+//    };
+
+//    callMedia.StartRecognizing(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+//app.MapPost("/recognizeSpeechOrDtmfWithMultiplePlaySourcesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//               new CallMediaRecognizeSpeechOrDtmfOptions(
+//                   targetParticipant: target, maxTonesToCollect: 4)
+//               {
+//                   InterruptPrompt = false,
+//                   OperationContext = "SpeechOrDTMFContext",
+//                   InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                   //Prompt = textSource,
+//                   PlayPrompts = playSources,
+//                   EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//                   IsSentimentAnalysisEnabled = true,
+//                   SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//                   OperationCallbackUri = eventCallbackUri
+//               };
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+//app.MapPost("/recognizeSpeechOrDtmfWithMultiplePlaySources", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+//    var recognizeOptions =
+//               new CallMediaRecognizeSpeechOrDtmfOptions(
+//                   targetParticipant: target, maxTonesToCollect: 4)
+//               {
+//                   InterruptPrompt = false,
+//                   OperationContext = "SpeechOrDTMFContext",
+//                   InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//                   //Prompt = textSource,
+//                   PlayPrompts = playSources,
+//                   EndSilenceTimeout = TimeSpan.FromSeconds(5),
+//                   IsSentimentAnalysisEnabled = true,
+//                   SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//                   OperationCallbackUri = eventCallbackUri
+//               };
+//    callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+//app.MapPost("/recognizeChoiceWithMultiplePlaySourcesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//        //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+
+//    var recognizeOptions =
+//        new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
+//        {
+//            InterruptCallMediaOperation = false,
+//            InterruptPrompt = false,
+//            InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//            //Prompt = textSource,
+//            PlayPrompts = playSources,
+//            OperationContext = "ChoiceContext",
+//            IsSentimentAnalysisEnabled = true,
+//            SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//            OperationCallbackUri = eventCallbackUri
+//        };
+
+
+//    await callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+//app.MapPost("/recognizeChoiceWithMultiplePlaySources", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("Hi, this is recognize test. please provide input thanks!.")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+//    SsmlSource ssmlSource = new SsmlSource("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>");
+//    FileSource fileSource = new FileSource(new Uri(fileSourceUri));
+//    List<PlaySource> playSources = new List<PlaySource>
+//    {
+//        textSource,
+//       //fileSource,
+//        ssmlSource
+//    };
+//    var target = new CommunicationUserIdentifier(pstnTarget);
+
+
+//    var recognizeOptions =
+//        new CallMediaRecognizeChoiceOptions(targetParticipant: target, GetChoices())
+//        {
+//            InterruptCallMediaOperation = false,
+//            InterruptPrompt = false,
+//            InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+//            //Prompt = textSource,
+//            PlayPrompts = playSources,
+//            OperationContext = "ChoiceContext",
+//            IsSentimentAnalysisEnabled = true,
+//            SpeechLanguages = new List<string> { "en-US", "en-IN" },
+//            OperationCallbackUri = eventCallbackUri
+//        };
+
+//    callMedia.StartRecognizingAsync(recognizeOptions);
+
+//    return Results.Ok();
+//}).WithTags("Start Recognize with multiple play sources APIs");
+
+//#endregion
+
+//# region DTMF
+
+//app.MapPost("/sendDTMFTonesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    List<DtmfTone> tones = new List<DtmfTone>
+//        {
+//            DtmfTone.Zero,
+//            DtmfTone.One
+//        };
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    await callMedia.SendDtmfTonesAsync(tones, target);
+//    return Results.Ok();
+//}).WithTags("Send or Start DTMF APIs");
+
+//app.MapPost("/sendDTMFTones", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    List<DtmfTone> tones = new List<DtmfTone>
+//        {
+//            DtmfTone.Zero,
+//            DtmfTone.One
+//        };
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    callMedia.SendDtmfTones(tones, target);
+//    return Results.Ok();
+//}).WithTags("Send or Start DTMF APIs");
+
+//app.MapPost("/startContinuousDTMFTonesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    await callMedia.StartContinuousDtmfRecognitionAsync(target);
+//    return Results.Ok();
+//}).WithTags("Send or Start DTMF APIs");
+
+//app.MapPost("/startContinuousDTMFTones", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    callMedia.StartContinuousDtmfRecognition(target);
+//    return Results.Ok();
+//}).WithTags("Send or Start DTMF APIs");
+
+//app.MapPost("/stopContinuousDTMFTonesAsync", async (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    await callMedia.StopContinuousDtmfRecognitionAsync(target);
+//    return Results.Ok();
+//}).WithTags("Send or Start DTMF APIs");
+
+//app.MapPost("/stopContinuousDTMFTones", (string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    callMedia.StopContinuousDtmfRecognition(target);
+//    return Results.Ok();
+//}).WithTags("Send or Start DTMF APIs");
+
+//# endregion
 
 # region Hold/Unhold
 
@@ -1579,9 +2211,40 @@ app.MapPost("/holdParticipantAsync", async (string pstnTarget, bool isPlaySource
     return Results.Ok();
 }).WithTags("Hold Participant APIs");
 
-app.MapPost("/holdParticipant", (string pstnTarget, bool isPlaySource, ILogger<Program> logger) =>
+////app.MapPost("/holdTeamsParticipantAsync", async (string teamsId, bool isPlaySource, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new MicrosoftTeamsUserIdentifier(teamsId);
+
+////    CallMedia callMedia = GetCallMedia();
+////    TextSource textSource = new TextSource("You are on hold please wait..")
+////    {
+////        VoiceName = "en-US-NancyNeural"
+////    };
+
+////    if (isPlaySource)
+////    {
+////        HoldOptions holdOptions = new HoldOptions(target)
+////        {
+////            PlaySource = textSource,
+////            OperationContext = "holdUserContext"
+////        };
+////        await callMedia.HoldAsync(holdOptions);
+////    }
+////    else
+////    {
+////        HoldOptions holdOptions = new HoldOptions(target)
+////        {
+////            OperationContext = "holdUserContext"
+////        };
+////        await callMedia.HoldAsync(holdOptions);
+////    }
+
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
+
+app.MapPost("/holdTPEParticipantAsync", async (string userId, string tenantId, string resourceId, bool isPlaySource, ILogger<Program> logger) =>
 {
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+    CommunicationIdentifier target = new TeamsExtensionUserIdentifier(userId, tenantId, resourceId);
 
     CallMedia callMedia = GetCallMedia();
     TextSource textSource = new TextSource("You are on hold please wait..")
@@ -1596,7 +2259,7 @@ app.MapPost("/holdParticipant", (string pstnTarget, bool isPlaySource, ILogger<P
             PlaySource = textSource,
             OperationContext = "holdUserContext"
         };
-        callMedia.Hold(holdOptions);
+        await callMedia.HoldAsync(holdOptions);
     }
     else
     {
@@ -1604,11 +2267,42 @@ app.MapPost("/holdParticipant", (string pstnTarget, bool isPlaySource, ILogger<P
         {
             OperationContext = "holdUserContext"
         };
-        callMedia.Hold(holdOptions);
+        await callMedia.HoldAsync(holdOptions);
     }
 
     return Results.Ok();
 }).WithTags("Hold Participant APIs");
+
+////app.MapPost("/holdParticipant", (string pstnTarget, bool isPlaySource, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+////    CallMedia callMedia = GetCallMedia();
+////    TextSource textSource = new TextSource("You are on hold please wait..")
+////    {
+////        VoiceName = "en-US-NancyNeural"
+////    };
+
+////    if (isPlaySource)
+////    {
+////        HoldOptions holdOptions = new HoldOptions(target)
+////        {
+////            PlaySource = textSource,
+////            OperationContext = "holdUserContext"
+////        };
+////        callMedia.Hold(holdOptions);
+////    }
+////    else
+////    {
+////        HoldOptions holdOptions = new HoldOptions(target)
+////        {
+////            OperationContext = "holdUserContext"
+////        };
+////        callMedia.Hold(holdOptions);
+////    }
+
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
 
 app.MapPost("/unholdParticipantAsync", async (string pstnTarget, ILogger<Program> logger) =>
 {
@@ -1625,9 +2319,24 @@ app.MapPost("/unholdParticipantAsync", async (string pstnTarget, ILogger<Program
     return Results.Ok();
 }).WithTags("Hold Participant APIs");
 
-app.MapPost("/unholdParticipant", (string pstnTarget, ILogger<Program> logger) =>
+////app.MapPost("/unholdTeamsParticipantAsync", async (string teamsId, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new MicrosoftTeamsUserIdentifier(teamsId);
+
+////    CallMedia callMedia = GetCallMedia();
+
+////    UnholdOptions unholdOptions = new UnholdOptions(target)
+////    {
+////        OperationContext = "unholdUserContext"
+////    };
+
+////    await callMedia.UnholdAsync(unholdOptions);
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
+
+app.MapPost("/unholdTPEParticipantAsync", async (string userId, string tenantId, string resourceId, ILogger<Program> logger) =>
 {
-    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+    CommunicationIdentifier target = new TeamsExtensionUserIdentifier(userId, tenantId, resourceId);
 
     CallMedia callMedia = GetCallMedia();
 
@@ -1636,9 +2345,205 @@ app.MapPost("/unholdParticipant", (string pstnTarget, ILogger<Program> logger) =
         OperationContext = "unholdUserContext"
     };
 
-    callMedia.Unhold(unholdOptions);
+    await callMedia.UnholdAsync(unholdOptions);
     return Results.Ok();
 }).WithTags("Hold Participant APIs");
+
+////app.MapPost("/unholdParticipant", (string pstnTarget, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+////    CallMedia callMedia = GetCallMedia();
+
+////    UnholdOptions unholdOptions = new UnholdOptions(target)
+////    {
+////        OperationContext = "unholdUserContext"
+////    };
+
+////    callMedia.Unhold(unholdOptions);
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
+
+//app.MapPost("/holdParticipantWithoutOptionsAsync", async (string pstnTarget, bool isPlaySource, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("You are on hold please wait..")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    if (isPlaySource)
+//    {
+//        await callMedia.HoldAsync(target, textSource);
+//    }
+//    else
+//    {
+//        await callMedia.HoldAsync(target, textSource);
+//    }
+
+//    return Results.Ok();
+//}).WithTags("Hold Participant APIs");
+
+////app.MapPost("/holdParticipantWithoutOptions", (string pstnTarget, bool isPlaySource, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new PhoneNumberIdentifier(pstnTarget);
+
+////    CallMedia callMedia = GetCallMedia();
+////    TextSource textSource = new TextSource("You are on hold please wait..")
+////    {
+////        VoiceName = "en-US-NancyNeural"
+////    };
+
+////    if (isPlaySource)
+////    {
+////        callMedia.Hold(target, textSource);
+////    }
+////    else
+////    {
+////        callMedia.Hold(target);
+////    }
+
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
+
+
+//app.MapPost("/holdACSParticipantAsync", async (string acsTarget, bool isPlaySource, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("You are on hold please wait..")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    if (isPlaySource)
+//    {
+//        HoldOptions holdOptions = new HoldOptions(target)
+//        {
+//            PlaySource = textSource,
+//            OperationContext = "holdUserContext"
+//        };
+//        await callMedia.HoldAsync(holdOptions);
+//    }
+//    else
+//    {
+//        HoldOptions holdOptions = new HoldOptions(target)
+//        {
+//            OperationContext = "holdUserContext"
+//        };
+//        await callMedia.HoldAsync(holdOptions);
+//    }
+
+//    return Results.Ok();
+//}).WithTags("Hold Participant APIs");
+
+////app.MapPost("/holdACSParticipant", (string acsTarget, bool isPlaySource, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+////    CallMedia callMedia = GetCallMedia();
+////    TextSource textSource = new TextSource("You are on hold please wait..")
+////    {
+////        VoiceName = "en-US-NancyNeural"
+////    };
+
+////    if (isPlaySource)
+////    {
+////        HoldOptions holdOptions = new HoldOptions(target)
+////        {
+////            PlaySource = textSource,
+////            OperationContext = "holdUserContext"
+////        };
+////        callMedia.Hold(holdOptions);
+////    }
+////    else
+////    {
+////        HoldOptions holdOptions = new HoldOptions(target)
+////        {
+////            OperationContext = "holdUserContext"
+////        };
+////        callMedia.Hold(holdOptions);
+////    }
+
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
+
+//app.MapPost("/unholdACSParticipantAsync", async (string acsTarget, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+
+//    UnholdOptions unholdOptions = new UnholdOptions(target)
+//    {
+//        OperationContext = "unholdUserContext"
+//    };
+
+//    await callMedia.UnholdAsync(unholdOptions);
+//    return Results.Ok();
+//}).WithTags("Hold Participant APIs");
+
+////app.MapPost("/unholdACSParticipant", (string acsTarget, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+////    CallMedia callMedia = GetCallMedia();
+
+////    UnholdOptions unholdOptions = new UnholdOptions(target)
+////    {
+////        OperationContext = "unholdUserContext"
+////    };
+
+////    callMedia.Unhold(unholdOptions);
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
+
+//app.MapPost("/holdACSParticipantWithoutOptionsAsync", async (string acsTarget, bool isPlaySource, ILogger<Program> logger) =>
+//{
+//    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+//    CallMedia callMedia = GetCallMedia();
+//    TextSource textSource = new TextSource("You are on hold please wait..")
+//    {
+//        VoiceName = "en-US-NancyNeural"
+//    };
+
+//    if (isPlaySource)
+//    {
+//        await callMedia.HoldAsync(target, textSource);
+//    }
+//    else
+//    {
+//        await callMedia.HoldAsync(target, textSource);
+//    }
+
+//    return Results.Ok();
+//}).WithTags("Hold Participant APIs");
+
+////app.MapPost("/holdAcsParticipantWithoutOptions", (string acsTarget, bool isPlaySource, ILogger<Program> logger) =>
+////{
+////    CommunicationIdentifier target = new CommunicationUserIdentifier(acsTarget);
+
+////    CallMedia callMedia = GetCallMedia();
+////    TextSource textSource = new TextSource("You are on hold please wait..")
+////    {
+////        VoiceName = "en-US-NancyNeural"
+////    };
+
+////    if (isPlaySource)
+////    {
+////        callMedia.Hold(target, textSource);
+////    }
+////    else
+////    {
+////        callMedia.Hold(target);
+////    }
+
+////    return Results.Ok();
+////}).WithTags("Hold Participant APIs");
 
 # endregion
 
@@ -1661,6 +2566,29 @@ app.MapPost("/hangup", (bool isForEveryOne, ILogger<Program> logger) =>
 #endregion
 
 # region Mute Particiapant
+
+app.MapPost("/muteTeamsParticipantAsync", async (string teamsId, ILogger<Program> logger) =>
+{
+    CommunicationIdentifier target = new MicrosoftTeamsUserIdentifier(teamsId);
+
+    CallConnection callConnection = GetConnection();
+
+    await callConnection.MuteParticipantAsync(target);
+
+    return Results.Ok();
+}).WithTags("Mute Participant APIs");
+
+
+app.MapPost("/muteDuelPersonaParticipantAsync", async (string userId, string tenantId, string resourceId, ILogger<Program> logger) =>
+{
+    CommunicationIdentifier target = new TeamsExtensionUserIdentifier(userId, tenantId, resourceId);
+
+    CallConnection callConnection = GetConnection();
+
+    await callConnection.MuteParticipantAsync(target);
+
+    return Results.Ok();
+}).WithTags("Mute Participant APIs");
 
 app.MapPost("/muteAcsParticipantAsync", async (string acsTarget, ILogger<Program> logger) =>
 {
@@ -1688,145 +2616,145 @@ app.MapPost("/muteAcsParticipant", (string acsTarget, ILogger<Program> logger) =
 
 # region Media streaming
 
-app.MapPost("/createCallToPstnWithMediaStreamingAsync", async (string targetPhoneNumber, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
-{
-    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
-    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
+//app.MapPost("/createCallToPstnWithMediaStreamingAsync", async (string targetPhoneNumber, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
+//{
+//    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+//    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
 
 
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(target, caller);
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
-    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(target, caller);
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+//    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
+//    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        MediaStreamingOptions = mediaStreamingOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        MediaStreamingOptions = mediaStreamingOptions
+//    };
 
-    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+//    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-    logger.LogInformation($"Created async pstn media streaming call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Media streaming APIs");
+//    logger.LogInformation($"Created async pstn media streaming call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Media streaming APIs");
 
-app.MapPost("/createCallToPstnWithMediaStreaming", (string targetPhoneNumber, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
-{
-    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
-    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
+//app.MapPost("/createCallToPstnWithMediaStreaming", (string targetPhoneNumber, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
+//{
+//    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+//    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
 
 
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(target, caller);
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
-    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(target, caller);
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+//    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
+//    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        MediaStreamingOptions = mediaStreamingOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        MediaStreamingOptions = mediaStreamingOptions
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created async pstn media streaming call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Media streaming APIs");
+//    logger.LogInformation($"Created async pstn media streaming call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Media streaming APIs");
 
-app.MapPost("/createCallToAcsWithMediaStreamingAsync", async (string acsTarget, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
-    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
+//app.MapPost("/createCallToAcsWithMediaStreamingAsync", async (string acsTarget, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+//    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
+//    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        MediaStreamingOptions = mediaStreamingOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        MediaStreamingOptions = mediaStreamingOptions
+//    };
 
-    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+//    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-    logger.LogInformation($"Created async acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Media streaming APIs");
+//    logger.LogInformation($"Created async acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Media streaming APIs");
 
-app.MapPost("/createCallToAcsWithMediaStreaming", (string acsTarget, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
-    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
+//app.MapPost("/createCallToAcsWithMediaStreaming", (string acsTarget, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+//    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
+//    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        MediaStreamingOptions = mediaStreamingOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        MediaStreamingOptions = mediaStreamingOptions
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Media streaming APIs");
+//    logger.LogInformation($"Created acs call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Media streaming APIs");
 
-app.MapPost("/createCallToTeamsWithMediaStreamingAsync", async (string teamsObjectId, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
-    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
+//app.MapPost("/createCallToTeamsWithMediaStreamingAsync", async (string teamsObjectId, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+//    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
+//    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        MediaStreamingOptions = mediaStreamingOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        MediaStreamingOptions = mediaStreamingOptions
+//    };
 
-    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+//    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-    logger.LogInformation($"Created async teams call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Media streaming APIs");
+//    logger.LogInformation($"Created async teams call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Media streaming APIs");
 
-app.MapPost("/createCallToTeamsWithMediaStreaming", (string teamsObjectId, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
-        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
-    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
-    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
+//app.MapPost("/createCallToTeamsWithMediaStreaming", (string teamsObjectId, bool isEnableBidirectional, bool isPcm24kMono, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    MediaStreamingOptions mediaStreamingOptions = new MediaStreamingOptions(new Uri(websocketUri), MediaStreamingContent.Audio,
+//        MediaStreamingAudioChannel.Unmixed, MediaStreamingTransport.Websocket, true);
+//    mediaStreamingOptions.EnableBidirectional = isEnableBidirectional;
+//    mediaStreamingOptions.AudioFormat = isPcm24kMono ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        MediaStreamingOptions = mediaStreamingOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        MediaStreamingOptions = mediaStreamingOptions
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created teams call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Media streaming APIs");
+//    logger.LogInformation($"Created teams call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Media streaming APIs");
 
 
 app.MapPost("/startMediaStreamingAsync", async (ILogger<Program> logger) =>
@@ -1909,132 +2837,132 @@ app.MapPost("/stopMediaStreamingWithOptions", (ILogger<Program> logger) =>
 
 #region Transcription
 
-app.MapPost("/createCallToPstnWithTranscriptionAsync", async (string targetPhoneNumber, ILogger<Program> logger) =>
-{
-    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
-    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
+//app.MapPost("/createCallToPstnWithTranscriptionAsync", async (string targetPhoneNumber, ILogger<Program> logger) =>
+//{
+//    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+//    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
 
 
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(target, caller);
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", true, TranscriptionTransport.Websocket);
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(target, caller);
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//         "en-us", true, TranscriptionTransport.Websocket);
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        TranscriptionOptions = transcriptionOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        TranscriptionOptions = transcriptionOptions
+//    };
 
-    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+//    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-    logger.LogInformation($"Created async pstn transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Transcription APIs");
+//    logger.LogInformation($"Created async pstn transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Transcription APIs");
 
-app.MapPost("/createCallToPstnWithTranscription", (string targetPhoneNumber, ILogger<Program> logger) =>
-{
-    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
-    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
+//app.MapPost("/createCallToPstnWithTranscription", (string targetPhoneNumber, ILogger<Program> logger) =>
+//{
+//    PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+//    PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
 
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(target, caller);
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(target, caller);
 
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", true, TranscriptionTransport.Websocket);
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        TranscriptionOptions = transcriptionOptions
-    };
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//         "en-us", true, TranscriptionTransport.Websocket);
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        TranscriptionOptions = transcriptionOptions
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created pstn transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Transcription APIs");
+//    logger.LogInformation($"Created pstn transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Transcription APIs");
 
-app.MapPost("/createCallToAcsWithTranscriptionAsync", async (string acsTarget, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", true, TranscriptionTransport.Websocket);
+//app.MapPost("/createCallToAcsWithTranscriptionAsync", async (string acsTarget, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//         "en-us", true, TranscriptionTransport.Websocket);
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        TranscriptionOptions = transcriptionOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        TranscriptionOptions = transcriptionOptions
+//    };
 
-    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+//    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-    logger.LogInformation($"Created async acs transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Transcription APIs");
+//    logger.LogInformation($"Created async acs transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Transcription APIs");
 
-app.MapPost("/createCallToAcsWithTranscription", (string acsTarget, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", true, TranscriptionTransport.Websocket);
+//app.MapPost("/createCallToAcsWithTranscription", (string acsTarget, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new CommunicationUserIdentifier(acsTarget));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//         "en-us", true, TranscriptionTransport.Websocket);
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        TranscriptionOptions = transcriptionOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        TranscriptionOptions = transcriptionOptions
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created acs transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Transcription APIs");
+//    logger.LogInformation($"Created acs transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Transcription APIs");
 
-app.MapPost("/createCallToTeamsWithTranscriptionAsync", async (string teamsObjectId, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", true, TranscriptionTransport.Websocket);
+//app.MapPost("/createCallToTeamsWithTranscriptionAsync", async (string teamsObjectId, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//         "en-us", true, TranscriptionTransport.Websocket);
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        TranscriptionOptions = transcriptionOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        TranscriptionOptions = transcriptionOptions
+//    };
 
-    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
+//    CreateCallResult createCallResult = await client.CreateCallAsync(createCallOptions);
 
-    logger.LogInformation($"Created async teams transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Transcription APIs");
+//    logger.LogInformation($"Created async teams transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Transcription APIs");
 
-app.MapPost("/createCallToTeamsWithTranscription", (string teamsObjectId, ILogger<Program> logger) =>
-{
-    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
-    eventCallbackUri = callbackUri;
-    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
-    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
-    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
-         "en-us", true, TranscriptionTransport.Websocket);
+//app.MapPost("/createCallToTeamsWithTranscription", (string teamsObjectId, ILogger<Program> logger) =>
+//{
+//    var callbackUri = new Uri(new Uri(callbackUriHost), "/api/callbacks");
+//    eventCallbackUri = callbackUri;
+//    CallInvite callInvite = new CallInvite(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+//    var websocketUri = callbackUriHost.Replace("https", "wss") + "/ws";
+//    TranscriptionOptions transcriptionOptions = new TranscriptionOptions(new Uri(websocketUri),
+//         "en-us", true, TranscriptionTransport.Websocket);
 
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
-        TranscriptionOptions = transcriptionOptions
-    };
+//    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+//    {
+//        CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) },
+//        TranscriptionOptions = transcriptionOptions
+//    };
 
-    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
+//    CreateCallResult createCallResult = client.CreateCall(createCallOptions);
 
-    logger.LogInformation($"Created teams transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
-}).WithTags("Transcription APIs");
+//    logger.LogInformation($"Created teams transcription call with connection id: {createCallResult.CallConnectionProperties.CallConnectionId}");
+//}).WithTags("Transcription APIs");
 
 app.MapPost("/startTranscriptionAsync", async (ILogger<Program> logger) =>
 {
@@ -2105,7 +3033,11 @@ app.MapPost("/startTranscriptionWithOptions", (ILogger<Program> logger) =>
 app.MapPost("/stopTranscriptionWithOptionsAsync", async (ILogger<Program> logger) =>
 {
     CallMedia callMedia = GetCallMedia();
-    await callMedia.StopTranscriptionAsync();
+    StopTranscriptionOptions stopTranscriptionOptions = new StopTranscriptionOptions()
+    {
+        OperationContext = "StopTranscriptionContext"
+    };
+    await callMedia.StopTranscriptionAsync(stopTranscriptionOptions);
     return Results.Ok();
 }).WithTags("Transcription APIs");
 
@@ -2120,7 +3052,7 @@ app.MapPost("/stopTranscriptionWithOptions", (ILogger<Program> logger) =>
 
 #region Transfer Call
 
-app.MapPost("/transferCallToPstnParticipantAsync", async (string pstnTransferTarget, string pstnTarget, ILogger<Program> logger) =>
+app.MapPost("/transferCallPstnToPstnParticipantAsync", async (string pstnTransferTarget, string pstnTarget, ILogger<Program> logger) =>
 {
     CallConnection callConnection = GetConnection();
 
@@ -2128,11 +3060,27 @@ app.MapPost("/transferCallToPstnParticipantAsync", async (string pstnTransferTar
     {
         OperationContext = "TransferCallContext",
         Transferee = new PhoneNumberIdentifier(pstnTarget),
+        OperationCallbackUri = eventCallbackUri
     };
 
     await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
     return Results.Ok();
 }).WithTags("Transfer Call APIs");
+
+//app.MapPost("/transferCallPstnToACSParticipantAsync", async (string acsTransferTarget, string pstnTarget, ILogger<Program> logger) =>
+//{
+//    CallConnection callConnection = GetConnection();
+
+//    TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new CommunicationUserIdentifier(acsTransferTarget))
+//    {
+//        OperationContext = "TransferCallContext",
+//        Transferee = new PhoneNumberIdentifier(pstnTarget),
+//        OperationCallbackUri = eventCallbackUri
+//    };
+
+//    await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
+//    return Results.Ok();
+//}).WithTags("Transfer Call APIs");
 
 app.MapPost("/transferCallToPstnParticipant", (string pstnTransferTarget, string pstnTarget, ILogger<Program> logger) =>
 {
@@ -2141,13 +3089,73 @@ app.MapPost("/transferCallToPstnParticipant", (string pstnTransferTarget, string
     TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new PhoneNumberIdentifier(pstnTransferTarget))
     {
         OperationContext = "TransferCallContext",
-        Transferee = new PhoneNumberIdentifier(pstnTarget),
+        Transferee = new PhoneNumberIdentifier(acsPhoneNumber),
+        OperationCallbackUri = eventCallbackUri
     };
 
     callConnection.TransferCallToParticipant(transferToParticipantOptions);
     return Results.Ok();
 }).WithTags("Transfer Call APIs");
 
+app.MapPost("/transferCallTPEToPSTNParticipantAsync", async (string userId, string tenantId, string resourceId, string pstnTarget, ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+
+    TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new PhoneNumberIdentifier(pstnTarget))
+    {
+        OperationContext = "TransferCallContext",
+        Transferee = new TeamsExtensionUserIdentifier(userId, tenantId, resourceId),
+        OperationCallbackUri = eventCallbackUri
+    };
+
+    await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
+    return Results.Ok();
+}).WithTags("Transfer Call APIs");
+
+app.MapPost("/transferCallPSTNToTPEParticipantAsync", async (string userId, string tenantId, string resourceId, string pstnTarget, ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+
+    TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new TeamsExtensionUserIdentifier(userId, tenantId, resourceId))
+    {
+        OperationContext = "TransferCallContext",
+        Transferee = new PhoneNumberIdentifier(pstnTarget),
+        OperationCallbackUri = eventCallbackUri
+    };
+
+    await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
+    return Results.Ok();
+}).WithTags("Transfer Call APIs");
+
+app.MapPost("/transferCallPSTNToTeamsParticipantAsync", async (string teamsTransferTarget, string pstnTarget, ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+
+    TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new MicrosoftTeamsUserIdentifier(teamsTransferTarget))
+    {
+        OperationContext = "TransferCallContext",
+        Transferee = new PhoneNumberIdentifier(pstnTarget),
+        OperationCallbackUri = eventCallbackUri,
+    };
+
+    await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
+    return Results.Ok();
+}).WithTags("Transfer Call APIs");
+
+app.MapPost("/transferCallTeamsUserToPSTNAsync", async (string pstnTransferTarget, string teamsTarget, ILogger<Program> logger) =>
+{
+    CallConnection callConnection = GetConnection();
+
+    TransferToParticipantOptions transferToParticipantOptions = new TransferToParticipantOptions(new PhoneNumberIdentifier(pstnTransferTarget))
+    {
+        OperationContext = "TransferCallContext",
+        Transferee = new MicrosoftTeamsUserIdentifier(teamsTarget),
+        OperationCallbackUri = eventCallbackUri
+    };
+
+    await callConnection.TransferCallToParticipantAsync(transferToParticipantOptions);
+    return Results.Ok();
+}).WithTags("Transfer Call APIs");
 #endregion
 
 #region Get Participant
@@ -2208,33 +3216,33 @@ app.MapPost("/getAcsParticipant", (string acsTarget, ILogger<Program> logger) =>
     return Results.Ok();
 }).WithTags("Get Participant APIs");
 
-app.MapPost("/getTeamsParticipantAsync", async (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallConnection callConnection = GetConnection();
+//app.MapPost("/getTeamsParticipantAsync", async (string teamsObjectId, ILogger<Program> logger) =>
+//{
+//    CallConnection callConnection = GetConnection();
 
-    CallParticipant participant = await callConnection.GetParticipantAsync(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+//    CallParticipant participant = await callConnection.GetParticipantAsync(new MicrosoftTeamsUserIdentifier(teamsObjectId));
 
-    if (participant != null)
-    {
-        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
-        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
-    }
-    return Results.Ok();
-}).WithTags("Get Participant APIs");
+//    if (participant != null)
+//    {
+//        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
+//        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
+//    }
+//    return Results.Ok();
+//}).WithTags("Get Participant APIs");
 
-app.MapPost("/getTeamsParticipant", (string teamsObjectId, ILogger<Program> logger) =>
-{
-    CallConnection callConnection = GetConnection();
+//app.MapPost("/getTeamsParticipant", (string teamsObjectId, ILogger<Program> logger) =>
+//{
+//    CallConnection callConnection = GetConnection();
 
-    CallParticipant participant = callConnection.GetParticipant(new MicrosoftTeamsUserIdentifier(teamsObjectId));
+//    CallParticipant participant = callConnection.GetParticipant(new MicrosoftTeamsUserIdentifier(teamsObjectId));
 
-    if (participant != null)
-    {
-        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
-        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
-    }
-    return Results.Ok();
-}).WithTags("Get Participant APIs");
+//    if (participant != null)
+//    {
+//        Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
+//        Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
+//    }
+//    return Results.Ok();
+//}).WithTags("Get Participant APIs");
 
 app.MapPost("/getParticipantListAsync", async (ILogger<Program> logger) =>
 {
@@ -2247,6 +3255,7 @@ app.MapPost("/getParticipantListAsync", async (ILogger<Program> logger) =>
         Console.WriteLine("----------------------------------------------------------------------");
         Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
         Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
+        Console.WriteLine("Is Participant on mute:-->" + participant.IsMuted);
         Console.WriteLine("----------------------------------------------------------------------");
     }
     return Results.Ok();
@@ -2263,6 +3272,7 @@ app.MapPost("/getParticipantList", (ILogger<Program> logger) =>
         Console.WriteLine("----------------------------------------------------------------------");
         Console.WriteLine("Participant:-->" + participant.Identifier.RawId.ToString());
         Console.WriteLine("Is Participant on hold:-->" + participant.IsOnHold);
+        Console.WriteLine("Is Participant on mute:-->" + participant.IsMuted);
         Console.WriteLine("----------------------------------------------------------------------");
     }
     return Results.Ok();
@@ -2272,17 +3282,18 @@ app.MapPost("/getParticipantList", (ILogger<Program> logger) =>
 
 #region Recording
 
-app.MapPost("/startRecordingWithVideoMp4MixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithVideoMp4MixedAsync", async (bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    var recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
     recordingOptions.RecordingContent = RecordingContent.AudioVideo;
     recordingOptions.RecordingFormat = RecordingFormat.Mp4;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingOptions.PauseOnStart = isPauseOnStart;
+    //recordingOptions.RecordingStorage = RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri("https://waferwirestorage.blob.core.windows.net/ga5byos"));
     recordingFileFormat = "mp4";
     var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
     recordingId = recordingResult.Value.RecordingId;
@@ -2290,17 +3301,17 @@ app.MapPost("/startRecordingWithVideoMp4MixedAsync", async (bool isRecordingWith
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithVideoMp4Mixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithVideoMp4Mixed", (bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    var recordingOptions = new StartRecordingOptions(callLocator);
     recordingOptions.RecordingContent = RecordingContent.AudioVideo;
     recordingOptions.RecordingFormat = RecordingFormat.Mp4;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingOptions.PauseOnStart = isPauseOnStart;
     recordingFileFormat = "mp4";
 
     var recordingResult = client.GetCallRecording().Start(recordingOptions);
@@ -2309,17 +3320,17 @@ app.MapPost("/startRecordingWithVideoMp4Mixed", (bool isRecordingWithCallConnect
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithAudioMp3MixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithAudioMp3MixedAsync", async (bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    var recordingOptions = new StartRecordingOptions(callLocator);
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Mp3;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingOptions.PauseOnStart = isPauseOnStart;
     recordingFileFormat = "mp3";
 
     var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
@@ -2328,17 +3339,17 @@ app.MapPost("/startRecordingWithAudioMp3MixedAsync", async (bool isRecordingWith
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithAudioMp3Mixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithAudioMp3Mixed", (bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    var recordingOptions = new StartRecordingOptions(callLocator);
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Mp3;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingOptions.PauseOnStart = isPauseOnStart;
     recordingFileFormat = "mp3";
 
     var recordingResult = client.GetCallRecording().Start(recordingOptions);
@@ -2347,55 +3358,17 @@ app.MapPost("/startRecordingWithAudioMp3Mixed", (bool isRecordingWithCallConnect
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithAudioMp3UnMixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithAudioWavMixedAsync", async (bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
-    recordingOptions.RecordingContent = RecordingContent.Audio;
-    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
-    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
-    recordingFileFormat = "mp3";
-
-    var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
-    recordingId = recordingResult.Value.RecordingId;
-    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
-    return Results.Ok();
-}).WithTags("Recording APIs");
-
-app.MapPost("/startRecordingWithAudioMp3Unmixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
-{
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
-    var serverCallId = callConnectionProperties.ServerCallId;
-    CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
-    recordingOptions.RecordingContent = RecordingContent.Audio;
-    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
-    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
-    recordingFileFormat = "mp3";
-
-    var recordingResult = client.GetCallRecording().Start(recordingOptions);
-    recordingId = recordingResult.Value.RecordingId;
-    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
-    return Results.Ok();
-}).WithTags("Recording APIs");
-
-app.MapPost("/startRecordingWithAudioWavUnMixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
-{
-    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
-    var serverCallId = callConnectionProperties.ServerCallId;
-    CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    var recordingOptions = new StartRecordingOptions(callLocator);
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Wav;
-    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingOptions.PauseOnStart = isPauseOnStart;
     recordingFileFormat = "wav";
 
     var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
@@ -2404,17 +3377,55 @@ app.MapPost("/startRecordingWithAudioWavUnMixedAsync", async (bool isRecordingWi
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithAudioWavUnmixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithAudioWavMixed", (bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = isRecordingWithCallConnectionId ? new StartRecordingOptions(callConnectionProperties.CallConnectionId) : new StartRecordingOptions(callLocator);
+    var recordingOptions = new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Wav;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart;
+    recordingFileFormat = "wav";
+
+    var recordingResult = client.GetCallRecording().Start(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioWavUnMixedAsync", async (bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = new StartRecordingOptions(callLocator);
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Wav;
     recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
-    recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
+    recordingOptions.PauseOnStart = isPauseOnStart;
+    recordingFileFormat = "wav";
+
+    var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
+    recordingId = recordingResult.Value.RecordingId;
+    logger.LogInformation($"Recording started. RecordingId: {recordingId}");
+    return Results.Ok();
+}).WithTags("Recording APIs");
+
+app.MapPost("/startRecordingWithAudioWavUnmixed", (bool isPauseOnStart, ILogger<Program> logger) =>
+{
+    CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
+    var serverCallId = callConnectionProperties.ServerCallId;
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    var recordingOptions = new StartRecordingOptions(callLocator);
+    recordingOptions.RecordingContent = RecordingContent.Audio;
+    recordingOptions.RecordingFormat = RecordingFormat.Wav;
+    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
+    recordingOptions.PauseOnStart = isPauseOnStart;
     recordingFileFormat = "wav";
 
     var recordingResult = client.GetCallRecording().Start(recordingOptions);
@@ -2461,18 +3472,47 @@ app.MapPost("/stopRecording", () =>
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapGet("/downloadRecording", (ILogger<Program> logger) =>
+app.MapGet("/downloadRecording", async (ILogger<Program> logger) =>
 {
     if (!string.IsNullOrEmpty(recordingLocation))
     {
         string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         var date = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string fileName = $"Recording_{date}.{recordingFileFormat}";
-        client.GetCallRecording().DownloadTo(new Uri(recordingLocation), $"{downloadsPath}\\{fileName}");
+
+        logger.LogInformation($"Downloading recording location {recordingLocation}");
+        string recordingLocationNew = recordingLocation.Replace("https://as-storage.asm.skype.com/", "https://prod.asyncgw.teams.microsoft.com/");
+        logger.LogInformation($"Downloading recording location new {recordingLocationNew}");
+
+        var response = await client.GetCallRecording().DownloadStreamingAsync(new Uri(recordingLocationNew));
+
+        //var response2 = await client.GetCallRecording().DownloadToAsync(new Uri(recordingLocationNew), $"{downloadsPath}\\{fileName}");
     }
     else
     {
         logger.LogError("Recording is not available");
+    }
+    return Results.Ok();
+}).WithTags("Recording APIs");
+app.MapGet("/downloadRecordingMetadata", async (ILogger<Program> logger) =>
+{
+    if (!string.IsNullOrEmpty(metadataLocation))
+    {
+        string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        var recordingDownloadUri = new Uri(metadataLocation);
+        var date = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string fileName = $"Recording_{date}.json";
+        logger.LogInformation($"Downloading recording location {recordingLocation}");
+        string recordingLocationNew = metadataLocation.Replace("https://as-storage.asm.skype.com/", "https://prod.asyncgw.teams.microsoft.com/");
+        logger.LogInformation($"Downloading recording location new {recordingLocationNew}");
+
+        var response = await client.GetCallRecording().DownloadStreamingAsync(new Uri(metadataLocation));
+
+        //var response2 = await client.GetCallRecording().DownloadToAsync(new Uri(recordingLocationNew), $"{downloadsPath}\\{fileName}");
+    }
+    else
+    {
+        logger.LogError("Metadata location is empty.");
     }
     return Results.Ok();
 }).WithTags("Recording APIs");

@@ -30,7 +30,6 @@ namespace CallAutomation_Beta6_Test_sample
                             Console.WriteLine("ENCODING-->" + audioMetadata.Encoding);
                             Console.WriteLine("SAMPLE RATE-->" + audioMetadata.SampleRate);
                             Console.WriteLine("CHANNELS-->" + audioMetadata.Channels);
-                            Console.WriteLine("LENGTH-->" + audioMetadata.Length);
                             Console.WriteLine("***************************************************************************************");
                         }
                         if (response is AudioData audioData)
@@ -39,7 +38,9 @@ namespace CallAutomation_Beta6_Test_sample
                             Console.WriteLine("DATA-->" + JsonSerializer.Serialize(audioData.Data));
                             Console.WriteLine("TIMESTAMP-->" + audioData.Timestamp);
                             Console.WriteLine("IS SILENT-->" + audioData.IsSilent);
-                            if (audioData.Participant != null && audioData.Participant.RawId != null)
+                            if (audioData.Participant != null
+                                && !(audioData.Participant.RawId).Contains("87123")) 
+                                //&& !(audioData.Participant.RawId).Contains("2f6f-45f7-3a3a0d009a2d"))
                             {
                                 Console.WriteLine("Participant Id-->" + audioData.Participant.RawId);
                             }
@@ -47,6 +48,18 @@ namespace CallAutomation_Beta6_Test_sample
                             Console.WriteLine("***************************************************************************************");
                         }
 
+                        //if (response is DtmfData dtmfData)
+                        //{
+                        //    Console.WriteLine("***************************************************************************************");
+                        //    Console.WriteLine("DATA-->" + dtmfData.Data);
+                        //    Console.WriteLine("TIMESTAMP-->" + dtmfData.Timestamp);
+                        //    if (dtmfData.Participant != null && dtmfData.Participant.RawId != null)
+                        //    {
+                        //        Console.WriteLine("Participant Id-->" + dtmfData.Participant.RawId);
+                        //    }
+
+                        //    Console.WriteLine("***************************************************************************************");
+                        //}
                         if (response is TranscriptionMetadata transcriptionMetadata)
                         {
                             Console.WriteLine("***************************************************************************************");
@@ -65,11 +78,16 @@ namespace CallAutomation_Beta6_Test_sample
                             Console.WriteLine("DURATION-->" + transcriptionData.Duration);
                             Console.WriteLine("PARTICIPANT-->" + transcriptionData.Participant.RawId);
                             Console.WriteLine("CONFIDENCE-->" + transcriptionData.Confidence);
-                            foreach (var word in transcriptionData.Words)
+
+                            if (transcriptionData.Words != null)
                             {
-                                Console.WriteLine("WORDS TEXT-->" + word.Text);
-                                Console.WriteLine("WORDS OFFSET-->" + word.Offset);
-                                Console.WriteLine("WORDS DURATION-->" + word.Duration);
+
+                                foreach (var word in transcriptionData.Words)
+                                {
+                                    Console.WriteLine("WORDS TEXT-->" + word.Text);
+                                    Console.WriteLine("WORDS OFFSET-->" + word.Offset);
+                                    Console.WriteLine("WORDS DURATION-->" + word.Duration);
+                                }
                             }
                             Console.WriteLine("***************************************************************************************");
                         }
