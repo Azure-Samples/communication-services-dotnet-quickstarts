@@ -4,7 +4,7 @@
 
 # Call Automation - Lobby Call Support Sample
 
-This sample demonstrates how to utilize the Call Automation SDK to implement a Lobby Callscenario. In this setup, users initially join a lobby call (Call - I)  and remain on hold until an user in the target call (Call - II)  confirms their participation. Once approved, the bot automatically moves the lobby user to the target call.
+This sample demonstrates how to utilize the Call Automation SDK to implement a Lobby Callscenario. Users initially join a lobby call (Call - I)  and remain on hold until an user in the target call (Call - II)  confirms their participation. Once approved, the bot automatically moves the lobby user to the target call.
 
 # Design
 
@@ -30,9 +30,9 @@ This sample demonstrates how to utilize the Call Automation SDK to implement a L
     ```
 4. UI of client application will be available at `http://localhost:<port-number>/` and will look like below.
 
-![Lobby Call Support](./Resources/client-app-ui.jpg)
+	![Lobby Call Support](./Resources/client-app-ui.jpg)
 
-5. Generate an Azure Communication Services identity for the lobby call receiver and target call receiver. You can do this from the Azure Portal(ACS Resource -> Identities & User Access Tokens -> Generate Identity and USER ACCESS TOKEN).
+
 ### Setup and host your Azure DevTunnel
 
 [Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
@@ -63,16 +63,17 @@ Open `appSettings.json` file to configure the following settings
 	 "acsGeneratedIdForLobbyCallReceiver": "<acsGeneratedIdForLobbyCallReceiver>",(Generate Voice Calling Identity in Azure Portal)
 	 "acsGeneratedIdForTargetCallReceiver": "<acsGeneratedIdForTargetCallReceiver>",(Generate Voice Calling Identity in Azure Portal)
 	 "acsGeneratedIdForTargetCallSender": "<acsGeneratedIdForTargetCallSender>",(Generate Voice Calling Identity in Azure Portal)```
-4. Define a websocket with url as "/ws" in your application(program.cs) to send and receive messages from and to the client application.
-5. Define a Client application(JS Hero App in this case) that receives and responds to server notifications. Client application is available at <url>.
-  Start the target call in Client application, 
+5. Define a websocket with url as `ws://your-websocket-server-url:port/ws` in your application(program.cs) to send and receive messages from and to the client application.
+6. Define a Client application(JS Hero App in this case) that receives and responds to server notifications. Client application is available at `http://localhost:<port-number>/`.
+  
+7. Start the target call in Client application, 
     - Add token of target call sender(token would be generated in Azure user & tokens section).
 	- Add user id of the target call receiver `<ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER>`.
 	- Click on `Start Call` button to initiate the call.
-6. Expect Call Connected event in /callbacks.
-7. Call will be answered by the server app and automated voice will be played to lobby user with the text `You are currently in a lobby call, we will notify the admin that you are waiting.`
-8. Once the play is completed, Target call will be notified with `A user is waiting in lobby, do you want to add the lobby user to your call?`.
-9. Once the Target call confirms from client application, Move `ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER` in the backend sample.
-10. If Target user says no, then no MOVE will be performed.
-11. Ensure MoveParticipantSucceeded event is received in `/callbacks` endpoint.
-12. Ensure the output in the logs shows the the additional lobby user in the target call. The number of participants in the target call are increased by adding the lobby user, then lobby call gets disconnected after the moving the lobbyy user(as lobby user is already moved into the target call).
+8. Expect Call Connected event in /callbacks as the server app answers incoming call from target call sender to target call receiver.
+9. Start a call from ACS Test app(angular) to `acsGeneratedIdForLobbyCallReceiver`, call will be answered by the server app and automated voice will be played to lobby user with the text `You are currently in a lobby call, we will notify the admin that you are waiting.`
+10. Once the play is completed, Target call will be notified with `A user is waiting in lobby, do you want to add the lobby user to your call?`.
+11. Once the Target call confirms from client application, Move `ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER` in the backend sample.
+12. If Target user says no, then no MOVE will be performed.
+13. Ensure MoveParticipantSucceeded event is received in `/callbacks` endpoint.
+14. Ensure the output in the logs shows the the additional lobby user in the target call. The number of participants in the target call are increased by adding the lobby user, then lobby call gets disconnected after the moving the lobbyy user(as lobby user is already moved into the target call).
