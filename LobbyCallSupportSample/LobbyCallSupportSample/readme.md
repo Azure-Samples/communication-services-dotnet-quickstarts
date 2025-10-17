@@ -1,10 +1,10 @@
 | page_type | languages                               | products                                                                    |
 | --------- | --------------------------------------- | --------------------------------------------------------------------------- |
-| sample    | <table><tr><td>DotNet</tr></td></table> | <table><tr><td>azure</td><td>azure-communication-services</td></tr></table> |
+| sample    | <table><tr><td>DotNet</td><td>Java Script</td></tr></table> | <table><tr><td>azure</td><td>azure-communication-services</td></tr></table> |
 
 # Call Automation - Lobby Call Support Sample
 
-This sample demonstrates how to utilize the Call Automation SDK to implement a Lobby Call scenario. In this setup, users initially join a lobby call and remain on hold until an user in the target call confirms their participation. Once approved, the bot automatically moves the lobby user to the designated target call.
+This sample demonstrates how to utilize the Call Automation SDK to implement a Lobby Callscenario. In this setup, users initially join a lobby call (Call - I)  and remain on hold until an user in the target call (Call - II)  confirms their participation. Once approved, the bot automatically moves the lobby user to the target call.
 
 # Design
 
@@ -50,8 +50,10 @@ Open `appSettings.json` file to configure the following settings
 
 ## Run app locally
 
-1. Setup EventSubscription(Incoming) with filter for `TO.DATA.RAWID = <ACS_GENERATED_ID_TARGET_CALL_RECEIVER>, <ACS_GENERATED_ID_LOBBY_CALL_RECEIVER>`.
-2. Setup the following keys in the config/constants
+1. Generate an Azure Communication Services identity for the lobby call receiver and target call receiver. You can do this from the Azure Portal(ACS Resource ? Identities & User Access Tokens ? Generate Identity and USER ACCESS TOKEN).
+2.  Setup EventSubscription(Incoming) with filter for `TO.DATA.RAWID = <ACS_GENERATED_ID_TARGET_CALL_RECEIVER>, <ACS_GENERATED_ID_LOBBY_CALL_RECEIVER>`.
+3. Setup webhook for Incoming calls to point to `https://<your_dev_tunnel_url>/callbacks/incomingcall` in EventSubscription(Incoming).
+4. Setup the following keys in the config/constants
 	 ```
 	 "acsConnectionString": "<acsConnectionString>",
 	 "cognitiveServiceEndpoint": "<cognitiveServiceEndpoint>",
@@ -59,13 +61,16 @@ Open `appSettings.json` file to configure the following settings
 	 "acsGeneratedIdForLobbyCallReceiver": "<acsGeneratedIdForLobbyCallReceiver>",(Generate Voice Calling Identity in Azure Portal)
 	 "acsGeneratedIdForTargetCallReceiver": "<acsGeneratedIdForTargetCallReceiver>",(Generate Voice Calling Identity in Azure Portal)
 	 "acsGeneratedIdForTargetCallSender": "<acsGeneratedIdForTargetCallSender>",(Generate Voice Calling Identity in Azure Portal)```
-3. Define a websocket with url as "/ws" in your application(program.cs) to send and receive messages from and to the client application.
-4. Define a Client application(JS Hero App in this case) that receives and responds to server notifications. Client application is available at <url>.
-5. Start call to `<ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER>` (use the web client to initiate the call).
+4. Define a websocket with url as "/ws" in your application(program.cs) to send and receive messages from and to the client application.
+5. Define a Client application(JS Hero App in this case) that receives and responds to server notifications. Client application is available at <url>.
+  Start the target call in Client application, 
+    - Add token of target call sender(token would be generated in Azure user & tokens section).
+	- Add user id of the target call receiver `<ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER>`.
+	- Click on `Start Call` button to initiate the call.
 6. Expect Call Connected event in /callbacks.
-8. Call will be answered by the server app and automated voice will be played to lobby user with the text `You are currently in a lobby call, we will notify the admin that you are waiting.`
-9. Once the play completed, Target call will be notified with `A user is waiting in lobby, do you want to add the lobby user to your call?`.
-10. Once the Target call confirms from client application, Move `ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER` in the backend sample.
-11. If Target user says no, then no MOVE will be performed.
-12. Ensure MoveParticipantSucceeded event is received in `/callbacks` endpoint.
-13. Ensure the output in the logs shows the the additional lobby user in the target call. The number of participants in the target call are increased by adding the lobby user, then lobby call gets disconnected after the moving the lobbyy user(as lobby user is already moved into the target call).
+7. Call will be answered by the server app and automated voice will be played to lobby user with the text `You are currently in a lobby call, we will notify the admin that you are waiting.`
+8. Once the play is completed, Target call will be notified with `A user is waiting in lobby, do you want to add the lobby user to your call?`.
+9. Once the Target call confirms from client application, Move `ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER` in the backend sample.
+10. If Target user says no, then no MOVE will be performed.
+11. Ensure MoveParticipantSucceeded event is received in `/callbacks` endpoint.
+12. Ensure the output in the logs shows the the additional lobby user in the target call. The number of participants in the target call are increased by adding the lobby user, then lobby call gets disconnected after the moving the lobbyy user(as lobby user is already moved into the target call).
