@@ -17,11 +17,11 @@ This sample, discussed at the Microsoft Build 2025 session, demonstrates the int
 - Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
 - An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
 - Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
-- Create an [Azure AI Foundry](https://portal.azure.com/#create/Microsoft.CognitiveServicesAIServices) resource.
+- Create an [Azure AI Foundry](https://ai.azure.com/) resource.
 
 >[!NOTE]
 > ### Azure AI Foundry endpoint
-> The Voice Live API is only supported in east-us2 and swedencentral regions.
+> The Voice Live API is only supported in certain regions. See [supported regions](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/regions?tabs=voice-live#regions) for more details.
 >#### Regional endpoints
 >If you are using a regional endpoint for your Azure AI Services resource, the VA WebSocket endpoint would be `https://<region>.api.cognitive.microsoft.com/`.
 >#### Custom domains
