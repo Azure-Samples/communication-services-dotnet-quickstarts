@@ -254,6 +254,53 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
                     Call Connection Id: {moveParticipantSucceeded.CallConnectionId}
                     Correlation Id:      {moveParticipantSucceeded.CorrelationId}
                     """);
+                // move 
+                // Get the updated participants list
+                msgLog.AppendLine($"""
+
+                    ~~~~~~~~~~~~ Participants in Target Connection({targetCallConnectionId}) ~~~~~~~~~~~~
+                """);
+                try
+                {
+                    CallConnection targetConnection = client.GetCallConnection(moveParticipantSucceeded.CallConnectionId);
+                    var participants = await targetConnection.GetParticipantsAsync();
+
+                    var participantinfo = participants.Value.Select(p => new
+                    {
+                        p.Identifier.RawId,
+                        Type = p.Identifier.GetType().Name,
+                        PhoneNumber = p.Identifier is PhoneNumberIdentifier phone ? phone.PhoneNumber : null,
+                        AcsUserId = p.Identifier is CommunicationUserIdentifier user ? user.Id : null,
+                    }).OrderBy(p => p.AcsUserId) // to display phone numbers first
+                        .Select(p => new
+                        {
+                            Info = string.IsNullOrWhiteSpace(p.AcsUserId)
+                                ? $"{p.Type}       - RawId: {p.RawId}, Phone: {p.PhoneNumber}" // extra space for alignment
+                                : $"{p.Type} - RawId: {p.AcsUserId}"
+                        });
+
+                    if (!participantinfo.Any())
+                    {
+                        Console.WriteLine("No participants found for the specified call connection.");
+                    }
+                    else
+                    {
+                        msgLog.AppendLine($"""
+                                            No of Participants: {participantinfo.Count()}
+                                            Participants: 
+                                            -------------
+                                            {string.Join("\n", participantinfo.Select((p, index) => $"{index + 1}. {p.Info}"))}
+                                            """);
+                        Console.WriteLine(msgLog.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error getting participants for call {targetCallConnectionId}: {ex.Message}");
+
+                }
+                // end: Get the updated participants list
+                // end: move
             }
             else if (parsedEvent is CallDisconnected callDisconnected)
             {
