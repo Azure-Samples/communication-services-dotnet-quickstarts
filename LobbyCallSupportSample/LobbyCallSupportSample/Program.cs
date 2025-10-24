@@ -39,15 +39,15 @@ string
     callbackUriHost = 
         builder.Configuration["callbackUriHost"] 
         ?? throw new ArgumentNullException("callbackUriHost"),
-    acsIdentityForLobbyCallReceiver =
-        builder.Configuration["acsIdentityForLobbyCallReceiver"]
-        ?? throw new ArgumentNullException("acsIdentityForLobbyCallReceiver"),
-    acsIdentityForTargetCallReceiver =
-        builder.Configuration["acsIdentityForTargetCallReceiver"]
-        ?? throw new ArgumentNullException("acsIdentityForTargetCallReceiver"),
-    acsIdentityForTargetCallSender =
-        builder.Configuration["acsIdentityForTargetCallSender"]
-        ?? throw new ArgumentNullException("acsIdentityForTargetCallSender"),
+    acsLobbyCallReceiver =
+        builder.Configuration["acsLobbyCallReceiver"]
+        ?? throw new ArgumentNullException("acsLobbyCallReceiver"),
+    acsTargetCallReceiver =
+        builder.Configuration["acsTargetCallReceiver"]
+        ?? throw new ArgumentNullException("acsTargetCallReceiver"),
+    acsTargetCallSender =
+        builder.Configuration["acsTargetCallSender"]
+        ?? throw new ArgumentNullException("acsTargetCallSender"),
     confirmMessageToTargetCall = "A user is waiting in lobby, do you want to add the lobby user to your call?",
     textToPlayToLobbyUser = "You are currently in a lobby call, we will notify the admin that you are waiting.",
     // Track which type of workflow call was last created
@@ -99,13 +99,13 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
                         toCallerId = incomingCallEventData.ToCommunicationIdentifier.RawId;
 
                     // Lobby Call: Answer 
-                    if (toCallerId.Contains(acsIdentityForLobbyCallReceiver) || toCallerId.Contains(acsIdentityForTargetCallReceiver))
+                    if (toCallerId.Contains(acsLobbyCallReceiver) || toCallerId.Contains(acsTargetCallReceiver))
                     {
                         #region Answer Call
                         Uri callbackUri = new(new Uri(callbackUriHost), $"/api/callbacks");
                         AnswerCallOptions options = new(incomingCallEventData.IncomingCallContext, callbackUri)
                         {
-                            OperationContext = !toCallerId.Contains(acsIdentityForTargetCallReceiver) ? "LobbyCall" : "OtherCall",
+                            OperationContext = !toCallerId.Contains(acsTargetCallReceiver) ? "LobbyCall" : "OtherCall",
                             CallIntelligenceOptions = new CallIntelligenceOptions
                             {
                                 CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint)
@@ -114,7 +114,7 @@ app.MapPost("/api/LobbyCallSupportEventHandler", async (EventGridEvent[] eventGr
 
                         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
 
-                        if (toCallerId.Contains(acsIdentityForTargetCallReceiver))
+                        if (toCallerId.Contains(acsTargetCallReceiver))
                         {
                             targetCallConnectionId = answerCallResult.CallConnection.CallConnectionId;
 
