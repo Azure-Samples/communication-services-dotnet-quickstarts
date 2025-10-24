@@ -36,7 +36,6 @@ The sample uses a client application (java script sample) available in [Web Clie
    # Authenticate with Azure
    devtunnel login
    # Create and start a new tunnel
-   devtunnel create --allow-anonymous
    devtunnel port create -p 8080
    devtunnel host
 ```
@@ -56,25 +55,24 @@ Open `appSettings.json` file to configure the following settings
 
 ## Run app locally
 
-1. Generate an Azure Communication Services identity for the lobby call receiver and target call receiver. You can do this from the `Azure Portal(ACS Resource > Identities > User Access Tokens > Generate Identity and USER ACCESS TOKEN)`.
-2.  Setup EventSubscription(Incoming) with filter for `TO.DATA.RAWID = <ACS_GENERATED_ID_TARGET_CALL_RECEIVER>, <ACS_GENERATED_ID_LOBBY_CALL_RECEIVER>`.
+1. Generate an Azure Communication Services identity for the lobby call receiver and target call receiver. You can do this from the `Azure Portal(ACS Resource > Identities > User Access Tokens > Generate Identity and User Access Token)`.
+2.  Setup EventSubscription(Incoming) with filter for `TO.DATA.RAWID = acsLobbyCallReceiver, acsTargetCallReceiver`.
 3. Setup webhook for Incoming calls to point to `https://<your_dev_tunnel_url>/callbacks/incomingcall` in EventSubscription(Incoming).
 4. Setup the following keys in the config/constants
-	 ```
-	 "acsConnectionString": "<acsConnectionString>",
-	 "cognitiveServiceEndpoint": "<cognitiveServiceEndpoint>",
-	 "callbackUriHost": "<callbackUriHost>",
-	 "acsLobbyCallReceiver": "<acsLobbyCallReceiver>",(Generate Voice Calling Identity in Azure Portal)
-	 "acsTargetCallReceiver": "<acsTargetCallReceiver>",(Generate Voice Calling Identity in Azure Portal)
-	 "acsTargetCallSender": "<acsTargetCallSender>",(Generate Voice Calling Identity in Azure Portal)```
+	 ```"acsConnectionString": ""<ACS_CONNECTION_STRING>"",
+	 "cognitiveServiceEndpoint": "<COGNITIVE_SERVICE_ENDPOINT>",
+	 "callbackUriHost": "<CALLBACK_URI_HOST>",
+	 "acsLobbyCallReceiver": "<ACS_LOBBY_CALL_RECEIVER>",(Generate Voice Calling Identity in Azure Portal)
+	 "acsTargetCallReceiver": "<ACS_TARGET_CALL_RECEIVER>",(Generate Voice Calling Identity in Azure Portal)
+	 "acsTargetCallSender": "<ACS_TARGET_CALL_SENDER>",(Generate Voice Calling Identity in Azure Portal)```
 5. Define a websocket with url as `ws://your-websocket-server-url:port/ws` in your application(program.cs) to send and receive messages from and to the client application.
 6. Define a Client application(JS Hero App in this case) that receives and responds to server notifications. Client application is available at [Web Client Quickstart](https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/users/v-kuppu/LobbyCallConfirmSample).
   
 7. Start the target call in Client application, 
     - Add token of target call sender(token would be generated in Azure user & tokens section).
-	- Add user id of the target call receiver `acsLobbyCallReceiver`.
+	- Add user id of the target call receiver `acsTargetCallReceiver`.
 	- Click on `Start Call` button to initiate the call.
-8. Expect Call Connected event in /callbacks as the server app answers incoming call from target call sender to target call receiver.
+8. Expect `Call Connected` event in /callbacks as the server app answers incoming call from target call sender to target call receiver.
 9. Start a call from any Client Application (app used to make outbound calls) to `acsLobbyCallReceiver`, call will be answered by the server app and automated voice will be played to lobby user with the text `You are currently in a lobby call, we will notify the admin that you are waiting.`
 10. Once the play is completed, Target call will be notified with `A user is waiting in lobby, do you want to add the lobby user to your call?`.
 11. Once the Target call confirms from client application, Move `acsLobbyCallReceiver` in the backend sample.
