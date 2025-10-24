@@ -72,7 +72,7 @@ Open `appSettings.json` file to configure the following settings
   
 7. Start the target call in Client application, 
     - Add token of target call sender(token would be generated in Azure user & tokens section).
-	- Add user id of the target call receiver `<ACS_GENERATED_ID_FOR_LOBBY_CALL_RECEIVER>`.
+	- Add user id of the target call receiver `acsLobbyCallReceiver`.
 	- Click on `Start Call` button to initiate the call.
 8. Expect Call Connected event in /callbacks as the server app answers incoming call from target call sender to target call receiver.
 9. Start a call from any Client Application (app used to make outbound calls) to `acsLobbyCallReceiver`, call will be answered by the server app and automated voice will be played to lobby user with the text `You are currently in a lobby call, we will notify the admin that you are waiting.`
