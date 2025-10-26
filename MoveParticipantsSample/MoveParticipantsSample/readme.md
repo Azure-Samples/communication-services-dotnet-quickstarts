@@ -1,6 +1,6 @@
 | page_type | languages                               | products                                                                    |
 | --------- | --------------------------------------- | --------------------------------------------------------------------------- |
-| Sample    | <table><tr><td>DotNet</td></tr></table> | <table><tr><td>azure</td><td>azure-communication-services</td></tr></table> |
+| Sample    | <table><tr><td>DotNet</td><td>C#</td></tr></table> | <table><tr><td>azure</td><td>azure-communication-services</td></tr></table> |
 
 # Call Automation - Quick Start Sample
 
@@ -38,7 +38,6 @@ dotnet restore
 
 ```bash
 devtunnel create --allow-anonymous
-devtunnel port create -p 8080
 devtunnel host
 ```
 
