@@ -37,6 +37,7 @@ dotnet restore
 
 ```bash
 devtunnel create --allow-anonymous
+devtunnel port create -p 5142
 devtunnel host
 ```
 
