@@ -93,10 +93,23 @@ namespace Call_Automation_GCCH.Controllers
                                     var callbackUri = new Uri(new Uri(_config.CallbackUriHost), $"/api/callbacks");
                                     _logger.LogInformation($"Incoming call - correlationId: {incomingCallEventData.CorrelationId}, Callback url: {callbackUri}");
 
+                                    var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+
+                                    MediaStreamingOptions mediaOpts = new MediaStreamingOptions(
+                                        new Uri(websocketUri),
+                                        MediaStreamingContent.Audio,
+                                        MediaStreamingAudioChannel.Mixed,
+                                        MediaStreamingTransport.Websocket,
+                                        false)
+                                    {
+                                        EnableBidirectional = false,
+                                        AudioFormat = AudioFormat.Pcm24KMono
+                                    };
                                     var options = new AnswerCallOptions(incomingCallEventData.IncomingCallContext, callbackUri)
                                     {
                                         // ACS GCCH Phase 2
                                         // CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServicesEndpoint) }
+                                        MediaStreamingOptions = mediaOpts
                                     };
 
                                     _logger.LogInformation($"Answering call with correlationId: {incomingCallEventData.CorrelationId}");
