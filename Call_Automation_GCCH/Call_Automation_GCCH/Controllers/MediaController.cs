@@ -96,11 +96,6 @@ namespace Call_Automation_GCCH.Controllers
         public Task<IActionResult> PlayFileSourceBargeInAsync(string callConnectionId)
             => HandlePlayFileSource(callConnectionId, targets: null, playToAll: true, bargeIn: true, async: true);
 
-        [HttpPost("/playFileSourceBargeIn")]
-        [Tags("Play FileSource Media")]
-        public Task<IActionResult> PlayFileSourceBargeIn(string callConnectionId)
-            => HandlePlayFileSource(callConnectionId, targets: null, playToAll: true, bargeIn: true, async: false);
-
         [HttpPost("/interruptHoldWithPlay")]
         [Tags("Play FileSource Media")]
         public IActionResult InterruptHoldWithPlay(
