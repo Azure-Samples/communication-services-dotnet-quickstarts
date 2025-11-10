@@ -36,7 +36,7 @@ The sample uses a client application (java script sample) available in [Web Clie
    # Authenticate with Azure
    devtunnel login
    # Create and start a new tunnel
-   devtunnel port create -p 8080
+   devtunnel port create -p 7006
    devtunnel host
 ```
 
