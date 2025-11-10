@@ -5,12 +5,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Program1.cs" />
-    <Compile Remove="Program20250703.cs" />
-  </ItemGroup>
-
   <ItemGroup>
 	<!--<PackageReference Include="Azure.Communication.CallAutomation" Version="1.2.0-alpha.20250214.1" />-->
 	<PackageReference Include="Azure.Communication.CallAutomation" Version="1.5.0-alpha.20250604.1" />
