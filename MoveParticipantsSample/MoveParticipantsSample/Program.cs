@@ -61,8 +61,6 @@ string
     callConnectionId2 = string.Empty; // ACS user's redirected call
 
 CallAutomationClient client =  new(connectionString: acsConnectionString);
-Uri callbackUri = new(new Uri(callbackUriHost), $"/api/callbacks");
-
 #endregion
 
 #region Move Participants Event Handler
@@ -97,7 +95,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
                 // Call 1: User calls from their phone number to ACS inbound number
                 if (fromCallerId.Contains(acsUserPhoneNumber))
                 {
-                    // Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks"); // TODO: Remove
+                    Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks");
                     AnswerCallOptions options = new (incomingCallEventData.IncomingCallContext, callbackUri)
                     {
                         OperationContext = "IncomingCallFromUser"
@@ -232,7 +230,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
 app.MapPost("/CreateCall1(UserCallToCallAutomation)", async (ILogger<Program> logger) =>
 {
     var msgLog = CreateLogHeader("/CreateCall1(UserCallToCallAutomation)");
-    var createCallResult = await CreateCallAsync(client, acsUserPhoneNumber, acsInboundPhoneNumber, callbackUri);
+    var createCallResult = await CreateCallAsync(client, acsUserPhoneNumber, acsInboundPhoneNumber, callbackUriHost);
     callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
 
     msgLog.Append($"""  
@@ -251,7 +249,7 @@ app.MapPost("/CreateCall1(UserCallToCallAutomation)", async (ILogger<Program> lo
 app.MapPost("/CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogger<Program> logger) =>
 {
     var msgLog = CreateLogHeader("/CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity)");
-    var createCallResult = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUri, "CallTwo");
+    var createCallResult = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUriHost, "CallTwo");
     lastWorkflowCallType = "CallTwo";
     callConnectionId1 = createCallResult.CallConnectionProperties.CallConnectionId;
 
@@ -271,7 +269,7 @@ app.MapPost("/CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogg
 app.MapPost("/CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogger<Program> logger) =>
 {
     var msgLog = CreateLogHeader("/CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity)");
-    var createCallResult = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUri, "CallThree");
+    var createCallResult = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUriHost, "CallThree");
     lastWorkflowCallType = "CallThree";
     callConnectionId2 = createCallResult.CallConnectionProperties.CallConnectionId;
 
@@ -418,9 +416,10 @@ static async Task<CreateCallResult> CreateCallAsync(
     CallAutomationClient client,
     string fromNumber,
     string toNumber,
-    Uri callbackUri,
+    string callbackUriHost,
     string? operationContext = null)
 {
+    Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks");
     var caller = new PhoneNumberIdentifier(fromNumber);
     var callInvite = new CallInvite(new PhoneNumberIdentifier(toNumber), caller);
     var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
