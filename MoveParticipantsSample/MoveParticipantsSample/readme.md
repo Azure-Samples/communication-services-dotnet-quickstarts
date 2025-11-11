@@ -2,7 +2,7 @@
 | --------- | --------------------------------------- | --------------------------------------------------------------------------- |
 | Sample    | <table><tr><td>DotNet</td><td>C#</td></tr></table> | <table><tr><td>azure</td><td>azure-communication-services</td></tr></table> |
 
-# Call Automation – Quick Start Sample
+# Call Automation – Move Participants Sample
 
 This sample demonstrates how to use the Call Automation SDK to implement a Move Participants Call scenario with Azure Communication Services.
 
