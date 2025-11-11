@@ -67,8 +67,7 @@ CallAutomationClient client =  new(connectionString: acsConnectionString);
 
 app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
 {
-    StringBuilder msgLog = new(); // to make string builder thread-safe; declared here
-    msgLog.AppendLine("""
+    logger.LogInformation("""
 
             ~~~~~~~~~~~~ /api/MoveParticipantEvent (Event Grid Hook)  ~~~~~~~~~~~~
         """);
@@ -86,7 +85,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
             }
             if (eventData is AcsIncomingCallEventData incomingCallEventData)
             {
-                msgLog.AppendLine($"Event received: {eventGridEvent.EventType}");
+                logger.LogInformation($"Event received: {eventGridEvent.EventType}");
                 
                 string 
                     fromCallerId = incomingCallEventData.FromCommunicationIdentifier.RawId,
@@ -104,7 +103,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
                     AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
                     callConnectionId1 = answerCallResult.CallConnection.CallConnectionId;
 
-                    msgLog.AppendLine($"""
+                    logger.LogInformation($"""
                         User Call Answered by Call Automation.
                         From Caller Raw Id: {fromCallerId}
                         To Caller Raw Id:   {toCallerId}
@@ -121,7 +120,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
                         // Redirect the call to ACS User Identity 2
                         await RedirectCallAsync(client, incomingCallEventData.IncomingCallContext, acsTestIdentity2);
 
-                        msgLog.AppendLine($"""
+                        logger.LogInformation($"""
                             Call2 redirected to ACS User Identity 2: {acsTestIdentity2}
                             From Caller Raw Id: {fromCallerId}
                             To Caller Raw Id  : {toCallerId}
@@ -132,7 +131,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
                         // Redirect the call to ACS User Identity 3
                         await RedirectCallAsync(client, incomingCallEventData.IncomingCallContext, acsTestIdentity3);
 
-                        msgLog.AppendLine($"""
+                        logger.LogInformation($"""
                             Call3 redirected to ACS User Identity 3: {acsTestIdentity3}
                             From Caller Raw Id: {fromCallerId}
                             To Caller Raw Id  : {toCallerId}
@@ -146,7 +145,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
                         CallInvite callInvite = new (new CommunicationUserIdentifier(acsTestIdentity2));
                         var redirectCallResult = await client.RedirectCallAsync(incomingCallEventData.IncomingCallContext, callInvite);
 
-                        msgLog.AppendLine($"Default: Redirected to ACS User Identity 2: {acsTestIdentity2}");
+                        logger.LogInformation($"Default: Redirected to ACS User Identity 2: {acsTestIdentity2}");
                     }
                 }
                 else
@@ -156,11 +155,7 @@ app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents
             }
         }
     }
-    var logToSend = msgLog.ToString(); // avoiding multiple logs
-    msgLog.Clear();
-
-    Console.WriteLine(logToSend);
-    return Results.Text(logToSend, "text/plain");
+    return Results.Text("Success!", "text/plain");
 });
 
 #endregion
@@ -180,7 +175,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             if ((callConnected.OperationContext??string.Empty).Equals("CallTwo", StringComparison.Ordinal))
             {
                 // added logs to avoid multiple logs for the same callback
-                msgLog.AppendLine($"""
+                logger.LogInformation($"""
                         ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
                     Received call event  : {parsedEvent.GetType()}
                     Call 2 Internal Connection Id: {callConnected.CallConnectionId}
@@ -190,7 +185,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
             else if ((callConnected.OperationContext??string.Empty).Equals("CallThree", StringComparison.Ordinal))
             {
                 // added logs to avoid multiple logs for the same callback
-                msgLog.AppendLine($"""
+                logger.LogInformation($"""
                         ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
                     Received call event  : {parsedEvent.GetType()}
                     Call 3 Internal Connection Id: {callConnected.CallConnectionId}
@@ -201,7 +196,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         else if (parsedEvent is CallDisconnected callDisconnected)
         {
             // added logs to avoid multiple logs for the same callback
-            msgLog.AppendLine($"""
+            logger.LogInformation($"""
                         ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
                     Received event: {parsedEvent.GetType()}
                     Call Connection Id: {callDisconnected.CallConnectionId}
@@ -210,7 +205,7 @@ app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> 
         }
         else
         {
-            // msgLog.AppendLine($"Received event: {parsedEvent.GetType()}");
+            // logger.LogInformation($"Received event: {parsedEvent.GetType()}");
         }
     }
     // Log the final message
@@ -253,7 +248,7 @@ app.MapPost("/CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogg
     lastWorkflowCallType = "CallTwo";
     callConnectionId1 = createCallResult.CallConnectionProperties.CallConnectionId;
 
-    msgLog.AppendLine($"""
+    logger.LogInformation($"""
         Call 2:
         -------
         From: {acsInboundPhoneNumber} 
@@ -273,7 +268,7 @@ app.MapPost("/CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogg
     lastWorkflowCallType = "CallThree";
     callConnectionId2 = createCallResult.CallConnectionProperties.CallConnectionId;
 
-    msgLog.AppendLine($"""
+    logger.LogInformation($"""
         Call 3:
         -------
         From: {acsInboundPhoneNumber} 
@@ -292,7 +287,7 @@ app.MapPost("/MoveParticipant", async (MoveParticipantsRequest request, ILogger<
     var msgLog = CreateLogHeader("/MoveParticipant Operation");
     try
     {
-        msgLog.AppendLine($"""
+        logger.LogInformation($"""
             Source Caller Id:     {request.ParticipantToMove}
             Source Connection Id: {request.SourceCallConnectionId}
             Target Connection Id: {request.TargetCallConnectionId}
@@ -318,14 +313,14 @@ app.MapPost("/MoveParticipant", async (MoveParticipantsRequest request, ILogger<
         }
         else
         {
-            return Results.BadRequest("Invalid participant format. Use phone number (+1234567890) or ACS user ID (8:acs:...)");
+            throw new Exception("Invalid participant format, Use phone number (+1234567890) or ACS user ID (8:acs:...).");
         }
 
         var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], request.SourceCallConnectionId));
         var rawResponse = response.GetRawResponse();
         if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
         {
-            msgLog.AppendLine().AppendLine("Move Participants operation completed successfully.");
+            logger.LogInformation("Move Participants operation completed successfully.");
         }
         else
         {
@@ -337,13 +332,8 @@ app.MapPost("/MoveParticipant", async (MoveParticipantsRequest request, ILogger<
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error in manual move participants operation: {ex.Message}");
-        return Results.BadRequest(new
-        {
-            Success = false,
-            Error = ex.Message,
-            Message = "Move participants operation failed."
-        });
+        Console.WriteLine($"Error in /MoveParticipant: {ex.Message}");
+        throw;
     }
 }).WithTags("Move Participants APIs");
 
@@ -379,7 +369,7 @@ app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId
         }
         else
         {
-            msgLog.AppendLine($"""
+            logger.LogInformation($"""
 
             No of Participants: {participantinfo.Count()}
             Participants: 
@@ -393,11 +383,7 @@ app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId
     catch (Exception ex)
     {
         logger.LogError($"Error getting participants for call {callConnectionId}: {ex.Message}");
-        return Results.BadRequest(new
-        {
-            Error = ex.Message,
-            CallConnectionId = callConnectionId
-        });
+        throw;
     }
 }).WithTags("Move Participants APIs");
 
