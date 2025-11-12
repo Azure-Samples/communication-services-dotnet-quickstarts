@@ -3,9 +3,7 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using System.Text;
 
-#region Bootstrap
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -20,299 +18,161 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
-#endregion
 
-#region Global Variables for Move Participants Scenario
+// --- Config & Globals ---
+string GetConfig(string key) => builder.Configuration[key] ?? throw new ArgumentNullException(key);
+string acsConnectionString = GetConfig("acsConnectionString"),
+       callbackUriHost = GetConfig("callbackUriHost"),
+       acsOutboundPhoneNumber = GetConfig("acsOutboundPhoneNumber"),
+       acsInboundPhoneNumber = GetConfig("acsInboundPhoneNumber"),
+       acsUserPhoneNumber = GetConfig("acsUserPhoneNumber"),
+       acsTestIdentity2 = GetConfig("acsTestIdentity2"),
+       acsTestIdentity3 = GetConfig("acsTestIdentity3");
 
-string
-    // Configuration variables
-    acsConnectionString = 
-        builder.Configuration["acsConnectionString"] 
-        ?? throw new ArgumentNullException("acsConnectionString"),
-    callbackUriHost = 
-        builder.Configuration["callbackUriHost"] 
-        ?? throw new ArgumentNullException("callbackUriHost"),
+string lastWorkflowCallType = string.Empty, callConnectionId = string.Empty, callConnectionId1 = string.Empty, callConnectionId2 = string.Empty;
+CallAutomationClient client = new(acsConnectionString);
 
-    // Phone numbers and identities for Move Participants scenario
-    acsOutboundPhoneNumber = 
-        builder.Configuration["acsOutboundPhoneNumber"] 
-        ?? throw new ArgumentNullException("acsOutboundPhoneNumber"),
-    acsInboundPhoneNumber = 
-        builder.Configuration["acsInboundPhoneNumber"]  
-        ?? throw new ArgumentNullException("acsInboundPhoneNumber"),
-    acsUserPhoneNumber = 
-        builder.Configuration["acsUserPhoneNumber"] 
-        ?? throw new ArgumentNullException("acsUserPhoneNumber"),
-    acsTestIdentity2 = 
-        builder.Configuration["acsTestIdentity2"] 
-        ?? throw new ArgumentNullException("acsTestIdentity2"),
-    acsTestIdentity3 =  
-        builder.Configuration["acsTestIdentity3"] 
-        ?? throw new ArgumentNullException("acsTestIdentity3"),
-
-    // Track which type of workflow call was last created
-    lastWorkflowCallType = string.Empty, // "CallTwo" or "CallThree"
-
-    // Call connection IDs
-    callConnectionId = string.Empty,
-    callConnectionId1 = string.Empty, // User's incoming call
-    callConnectionId2 = string.Empty; // ACS user's redirected call
-
-CallAutomationClient client =  new(connectionString: acsConnectionString);
-#endregion
-
-#region Move Participants Event Handler
-
-app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] eventGridEvents, ILogger<Program> logger) =>
+// --- Event Grid Handler ---
+app.MapPost("/api/MoveParticipantEvent", async (EventGridEvent[] events, ILogger<Program> logger) =>
 {
-    logger.LogInformation("""
-
-            ~~~~~~~~~~~~ /api/MoveParticipantEvent (Event Grid Hook)  ~~~~~~~~~~~~
-        """);
-    foreach (var eventGridEvent in eventGridEvents)
+    logger.LogInformation("~~~~~~~~~~~~ /api/MoveParticipantEvent (Event Grid Hook) ~~~~~~~~~~~~");
+    foreach (var e in events)
     {
-        if (eventGridEvent.TryGetSystemEventData(out object eventData))
+        if (!e.TryGetSystemEventData(out var data)) continue;
+        if (data is SubscriptionValidationEventData sub)
+            return Results.Ok(new SubscriptionValidationResponse { ValidationResponse = sub.ValidationCode });
+
+        if (data is AcsIncomingCallEventData inc)
         {
-            if (eventData is SubscriptionValidationEventData subscriptionValidationEventData)
+            logger.LogInformation($"Event received: {e.EventType}");
+            string fromId = inc.FromCommunicationIdentifier.RawId, toId = inc.ToCommunicationIdentifier.RawId;
+            if (fromId.Contains(acsUserPhoneNumber))
             {
-                var responseData = new SubscriptionValidationResponse
-                {
-                    ValidationResponse = subscriptionValidationEventData.ValidationCode
-                };
-                return Results.Ok(responseData);
+                AnswerCallResult answer = await client.AnswerCallAsync(new(incomingCallContext: inc.IncomingCallContext, callbackUri: new(new Uri(callbackUriHost), "/api/callbacks")) { OperationContext = "IncomingCallFromUser" });
+                callConnectionId1 = answer.CallConnection.CallConnectionId;
+                logger.LogInformation($"""
+                    User Call Answered by Call Automation.
+                    From: {fromId}
+                    To:   {toId}
+                    Connection Id: {callConnectionId1}
+                    Correlation Id: {inc.CorrelationId}
+                    """);
             }
-            if (eventData is AcsIncomingCallEventData incomingCallEventData)
+            else if (fromId.Contains(acsInboundPhoneNumber))
             {
-                logger.LogInformation($"Event received: {eventGridEvent.EventType}");
-                
-                string 
-                    fromCallerId = incomingCallEventData.FromCommunicationIdentifier.RawId,
-                    toCallerId = incomingCallEventData.ToCommunicationIdentifier.RawId;
-                
-                // Call 1: User calls from their phone number to ACS inbound number
-                if (fromCallerId.Contains(acsUserPhoneNumber))
-                {
-                    Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks");
-                    AnswerCallOptions options = new (incomingCallEventData.IncomingCallContext, callbackUri)
-                    {
-                        OperationContext = "IncomingCallFromUser"
-                    };
-
-                    AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
-                    callConnectionId1 = answerCallResult.CallConnection.CallConnectionId;
-
-                    logger.LogInformation($"""
-                        User Call Answered by Call Automation.
-                        From Caller Raw Id: {fromCallerId}
-                        To Caller Raw Id:   {toCallerId}
-                        Internal Connection Id: {callConnectionId1}
-                        Correlation Id:         {incomingCallEventData.CorrelationId}
-                        """);
-                }
-                // Call 2: ACS inbound number calls ACS outbound number (workflow triggered)
-                else if (fromCallerId.Contains(acsInboundPhoneNumber))
-                {
-                    // Check which type of workflow call this is and redirect accordingly
-                    if (lastWorkflowCallType == "CallTwo")
-                    {
-                        // Redirect the call to ACS User Identity 2
-                        await RedirectCallAsync(client, incomingCallEventData.IncomingCallContext, acsTestIdentity2);
-
-                        logger.LogInformation($"""
-                            Call2 redirected to ACS User Identity 2: {acsTestIdentity2}
-                            From Caller Raw Id: {fromCallerId}
-                            To Caller Raw Id  : {toCallerId}
-                            """);
-                    }
-                    else if (lastWorkflowCallType == "CallThree")
-                    {
-                        // Redirect the call to ACS User Identity 3
-                        await RedirectCallAsync(client, incomingCallEventData.IncomingCallContext, acsTestIdentity3);
-
-                        logger.LogInformation($"""
-                            Call3 redirected to ACS User Identity 3: {acsTestIdentity3}
-                            From Caller Raw Id: {fromCallerId}
-                            To Caller Raw Id  : {toCallerId}
-                            """);
-                    }
-                    else
-                    {
-                        logger.LogWarning($"Unknown workflow call type: {lastWorkflowCallType}. Defaulting to Call Two behavior.");
-
-                        // Default to Call Two behavior
-                        CallInvite callInvite = new (new CommunicationUserIdentifier(acsTestIdentity2));
-                        var redirectCallResult = await client.RedirectCallAsync(incomingCallEventData.IncomingCallContext, callInvite);
-
-                        logger.LogInformation($"Default: Redirected to ACS User Identity 2: {acsTestIdentity2}");
-                    }
-                }
+                string target = lastWorkflowCallType == "CallThree" ? acsTestIdentity3 : acsTestIdentity2;
+                await RedirectCallAsync(client, inc.IncomingCallContext, target);
+                logger.LogInformation($"""
+                    Call redirected to ACS User Identity: {target}
+                    From: {fromId}
+                    To:   {toId}
+                    """);
             }
         }
     }
     return Results.Text("Success!", "text/plain");
 });
 
-#endregion
-
-#region Main Callback Handler
-
-app.MapPost("/api/callbacks", async (CloudEvent[] cloudEvents, ILogger<Program> logger) =>
+// --- Callback Handler ---
+app.MapPost("/api/callbacks", async (CloudEvent[] events, ILogger<Program> logger) =>
 {
-    foreach (var cloudEvent in cloudEvents)
+    foreach (var ce in events)
     {
-        CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
-        var callConnection = client.GetCallConnection(parsedEvent.CallConnectionId);
-        if (parsedEvent is CallConnected callConnected)
+        var evt = CallAutomationEventParser.Parse(ce);
+        if (evt is CallConnected cc)
         {
-            if ((callConnected.OperationContext??string.Empty).Equals("CallTwo", StringComparison.Ordinal))
+            string? which = (cc.OperationContext ?? "") switch
             {
-                // added logs to avoid multiple logs for the same callback
+                "CallTwo" => "Call 2",
+                "CallThree" => "Call 3",
+                _ => null
+            };
+            if (which != null)
                 logger.LogInformation($"""
-                        ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
-                    Received call event  : {parsedEvent.GetType()}
-                    Call 2 Internal Connection Id: {callConnected.CallConnectionId}
-                    Correlation Id:                {callConnected.CorrelationId}
+                    ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
+                    Received call event: {evt.GetType()}
+                    {which} Internal Connection Id: {cc.CallConnectionId}
+                    Correlation Id: {cc.CorrelationId}
                     """);
-            }
-            else if ((callConnected.OperationContext??string.Empty).Equals("CallThree", StringComparison.Ordinal))
-            {
-                // added logs to avoid multiple logs for the same callback
-                logger.LogInformation($"""
-                        ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
-                    Received call event  : {parsedEvent.GetType()}
-                    Call 3 Internal Connection Id: {callConnected.CallConnectionId}
-                                       Correlation Id: {callConnected.CorrelationId}
-                    """);
-            }
         }
-        else if (parsedEvent is CallDisconnected callDisconnected)
+        else if (evt is CallDisconnected cd)
         {
-            // added logs to avoid multiple logs for the same callback
             logger.LogInformation($"""
-                        ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
-                    Received event: {parsedEvent.GetType()}
-                    Call Connection Id: {callDisconnected.CallConnectionId}
-                    
-                    """);
-        }
-        else
-        {
-            // logger.LogInformation($"Received event: {parsedEvent.GetType()}");
+                ~~~~~~~~~~~~  /api/callbacks ~~~~~~~~~~~~ 
+                Received event: {evt.GetType()}
+                Call Connection Id: {cd.CallConnectionId}
+                """);
         }
     }
     return Results.Text("Sccess!", "text/plain");
 }).Produces(StatusCodes.Status200OK);
 
-#endregion
-
-#region Move Participants Workflow Endpoints
-
-// Helper endpoints for Move Participants workflow
-
+// --- Workflow Endpoints ---
 app.MapPost("/CreateCall1(UserCallToCallAutomation)", async (ILogger<Program> logger) =>
 {
-    logger.LogInformation($"\n\n~~~~~~~~~~~~ /CreateCall1(UserCallToCallAutomation) ~~~~~~~~~~~~\n");
-
-    var createCallResult = await CreateCallAsync(client, acsUserPhoneNumber, acsInboundPhoneNumber, callbackUriHost);
-    callConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
-
-    logger.LogInformation($"""  
-        Call 1(External PSTN to Call Automation, then be answered by Call Automation):
-        ------------------------------------------------------------------------------ 
-        From: {acsUserPhoneNumber}
-        To:   {acsInboundPhoneNumber}
+    logger.LogInformation("~~~~~~~~~~~~ /CreateCall1(UserCallToCallAutomation) ~~~~~~~~~~~~");
+    var result = await CreateCallAsync(client, acsUserPhoneNumber, acsInboundPhoneNumber, callbackUriHost);
+    callConnectionId = result.CallConnectionProperties.CallConnectionId;
+    logger.LogInformation($"""
+        Call 1: From {acsUserPhoneNumber} To {acsInboundPhoneNumber}
         Target Call Connection Id: {callConnectionId}
-        Correlation Id:            {createCallResult.CallConnectionProperties.CorrelationId}        
+        Correlation Id: {result.CallConnectionProperties.CorrelationId}
         """);
     return Results.Text("Success!", "text/plain");
 }).WithTags("Move Participants APIs");
 
 app.MapPost("/CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogger<Program> logger) =>
 {
-    logger.LogInformation($"\n\n~~~~~~~~~~~~ /CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity) ~~~~~~~~~~~~\n");
-    var createCallResult = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUriHost, "CallTwo");
+    logger.LogInformation("~~~~~~~~~~~~ /CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity) ~~~~~~~~~~~~");
+    var result = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUriHost, "CallTwo");
     lastWorkflowCallType = "CallTwo";
-    callConnectionId1 = createCallResult.CallConnectionProperties.CallConnectionId;
-
+    callConnectionId1 = result.CallConnectionProperties.CallConnectionId;
     logger.LogInformation($"""
-        Call 2:
-        -------
-        From: {acsInboundPhoneNumber} 
-        To:   {acsOutboundPhoneNumber}
+        Call 2: From {acsInboundPhoneNumber} To {acsOutboundPhoneNumber}
         Source Call Connection Id: {callConnectionId1}
-        Correlation Id:            {createCallResult.CallConnectionProperties.CorrelationId}
-        Rediect Call2 to: {acsTestIdentity2}
+        Correlation Id: {result.CallConnectionProperties.CorrelationId}
+        Redirect Call2 to: {acsTestIdentity2}
         """);
     return Results.Text("Success!", "text/plain");
 }).WithTags("Move Participants APIs");
 
 app.MapPost("/CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity)", async (ILogger<Program> logger) =>
 {
-    logger.LogInformation($"\n\n~~~~~~~~~~~~ /CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity) ~~~~~~~~~~~~\n");
-    var createCallResult = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUriHost, "CallThree");
+    logger.LogInformation("~~~~~~~~~~~~ /CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity) ~~~~~~~~~~~~");
+    var result = await CreateCallAsync(client, acsInboundPhoneNumber, acsOutboundPhoneNumber, callbackUriHost, "CallThree");
     lastWorkflowCallType = "CallThree";
-    callConnectionId2 = createCallResult.CallConnectionProperties.CallConnectionId;
-
+    callConnectionId2 = result.CallConnectionProperties.CallConnectionId;
     logger.LogInformation($"""
-        Call 3:
-        -------
-        From: {acsInboundPhoneNumber} 
-        To:   {acsOutboundPhoneNumber}
+        Call 3: From {acsInboundPhoneNumber} To {acsOutboundPhoneNumber}
         Source Call Connection Id: {callConnectionId2}
-        Correlation Id:            {createCallResult.CallConnectionProperties.CorrelationId}
-        Rediect Call2 to: {acsTestIdentity3}
+        Correlation Id: {result.CallConnectionProperties.CorrelationId}
+        Redirect Call3 to: {acsTestIdentity3}
         """);
-
     return Results.Text("Success!", "text/plain");
 }).WithTags("Move Participants APIs");
 
-app.MapPost("/MoveParticipant", async (MoveParticipantsRequest request, ILogger<Program> logger) =>
+app.MapPost("/MoveParticipant", async (MoveParticipantsRequest req, ILogger<Program> logger) =>
 {
-    logger.LogInformation($"\n\n~~~~~~~~~~~~ /MoveParticipant Operation ~~~~~~~~~~~~\n");
+    logger.LogInformation("~~~~~~~~~~~~ /MoveParticipant Operation ~~~~~~~~~~~~");
     try
     {
         logger.LogInformation($"""
-            Source Caller Id:     {request.ParticipantToMove}
-            Source Connection Id: {request.SourceCallConnectionId}
-            Target Connection Id: {request.TargetCallConnectionId}
+            Source Caller Id:     {req.ParticipantToMove}
+            Source Connection Id: {req.SourceCallConnectionId}
+            Target Connection Id: {req.TargetCallConnectionId}
             """);
-
-        // Get the target connection (where we want to move participants to)
-        var targetConnection = client.GetCallConnection(request.TargetCallConnectionId);
-
-        // Get participants from source connection for reference
-        var sourceConnection = client.GetCallConnection(request.SourceCallConnectionId);
-
-        // Create participant identifier based on the input
-        CommunicationIdentifier participantToMove;
-        if (request.ParticipantToMove.StartsWith("+"))
-        {
-            // Phone number
-            participantToMove = new PhoneNumberIdentifier(request.ParticipantToMove);
-        }
-        else if (request.ParticipantToMove.StartsWith("8:acs:"))
-        {
-            // ACS Communication User
-            participantToMove = new CommunicationUserIdentifier(request.ParticipantToMove);
-        }
-        else
-        {
-            throw new Exception("Invalid participant format, Use phone number (+1234567890) or ACS user ID (8:acs:...).");
-        }
-
-        var response = await targetConnection.MoveParticipantsAsync(options: new([participantToMove], request.SourceCallConnectionId));
-        var rawResponse = response.GetRawResponse();
-        if (rawResponse.Status >= 200 && rawResponse.Status <= 299)
-        {
+        var targetConn = client.GetCallConnection(req.TargetCallConnectionId);
+        CommunicationIdentifier participant = req.ParticipantToMove.StartsWith("+")
+            ? new PhoneNumberIdentifier(req.ParticipantToMove)
+            : req.ParticipantToMove.StartsWith("8:acs:")
+                ? new CommunicationUserIdentifier(req.ParticipantToMove)
+                : throw new Exception("Invalid participant format, Use phone number (+1234567890) or ACS user ID (8:acs:...).");
+        var resp = await targetConn.MoveParticipantsAsync(new([participant], req.SourceCallConnectionId));
+        if (resp.GetRawResponse().Status is >= 200 and <= 299)
             logger.LogInformation("Move Participants operation completed successfully.");
-        }
         else
-        {
-            throw new Exception($"Move Participants operation failed with status code: {rawResponse.Status}");
-        }
-
+            throw new Exception($"Move Participants operation failed with status code: {resp.GetRawResponse().Status}");
         return Results.Text("Success!", "text/plain");
     }
     catch (Exception ex)
@@ -324,47 +184,30 @@ app.MapPost("/MoveParticipant", async (MoveParticipantsRequest request, ILogger<
 
 app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId, ILogger<Program> logger) =>
 {
-    logger.LogInformation($"\n\n~~~~~~~~~~~~ /GetParticipants/{callConnectionId} ~~~~~~~~~~~~\n");
-
+    logger.LogInformation($"~~~~~~~~~~~~ /GetParticipants/{callConnectionId} ~~~~~~~~~~~~");
     try
     {
-        var callConnection = client.GetCallConnection(callConnectionId);
-        var participants = await callConnection.GetParticipantsAsync();
-
-        var participantinfo = participants.Value.Select(p => new
+        var callConn = client.GetCallConnection(callConnectionId);
+        var participants = await callConn.GetParticipantsAsync();
+        var info = participants.Value.Select(p => new
         {
             p.Identifier.RawId,
             Type = p.Identifier.GetType().Name,
             PhoneNumber = p.Identifier is PhoneNumberIdentifier phone ? phone.PhoneNumber : null,
             AcsUserId = p.Identifier is CommunicationUserIdentifier user ? user.Id : null,
-        }).OrderBy(p => p.AcsUserId) // to display phone numbers first
-            .Select(p => new
-            {
-                Info = string.IsNullOrWhiteSpace(p.AcsUserId)
-                    ? $"{p.Type}       - RawId: {p.RawId}, Phone: {p.PhoneNumber}" // extra space for alignment
-                    : $"{p.Type} - RawId: {p.AcsUserId}"
-            });
-
-        if (!participantinfo.Any())
-        {
-            return Results.NotFound(new
-            {
-                Message = "No participants found for the specified call connection.",
-                CallConnectionId = callConnectionId
-            });
-        }
-        else
-        {
-            var info = $"""
-
-            No of Participants: {participantinfo.Count()}
-            Participants: 
+        })
+        .OrderBy(p => p.AcsUserId)
+        .Select((p, i) => $"{i + 1}. {(string.IsNullOrWhiteSpace(p.AcsUserId) ? $"{p.Type} - RawId: {p.RawId}, Phone: {p.PhoneNumber}" : $"{p.Type} - RawId: {p.AcsUserId}")}");
+        if (!info.Any())
+            return Results.NotFound(new { Message = "No participants found for the specified call connection.", CallConnectionId = callConnectionId });
+        var output = $"""
+            No of Participants: {info.Count()}
+            Participants:
             -------------
-            {string.Join("\n", participantinfo.Select((p, index) => $"{index + 1}. {p.Info}"))}
+            {string.Join("\n", info)}
             """;
-            logger.LogInformation(info);
-            return Results.Text(info, "text/plain");
-        }
+        logger.LogInformation(output);
+        return Results.Text(output, "text/plain");
     }
     catch (Exception ex)
     {
@@ -373,35 +216,14 @@ app.MapGet("/GetParticipants/{callConnectionId}", async (string callConnectionId
     }
 }).WithTags("Move Participants APIs");
 
-#endregion 
-
 app.Run();
 
-static async Task<CreateCallResult> CreateCallAsync(
-    CallAutomationClient client,
-    string fromNumber,
-    string toNumber,
-    string callbackUriHost,
-    string? operationContext = null)
-{
-    Uri callbackUri = new (new Uri(callbackUriHost), $"/api/callbacks");
-    var caller = new PhoneNumberIdentifier(fromNumber);
-    var callInvite = new CallInvite(new PhoneNumberIdentifier(toNumber), caller);
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-    {
-        OperationContext = operationContext
-    };
-    return await client.CreateCallAsync(createCallOptions);
-}
+// --- Helper methods and models ---
+static async Task<CreateCallResult> CreateCallAsync(CallAutomationClient client, string from, string to, string callbackUriHost, string? opCtx = null)
+    => await client.CreateCallAsync(new(new(new PhoneNumberIdentifier(to), new PhoneNumberIdentifier(from)), new(new Uri(callbackUriHost), "/api/callbacks")) { OperationContext = opCtx });
 
-static async Task RedirectCallAsync(
-    CallAutomationClient client,
-    string incomingCallContext,
-    string targetIdentity)
-{
-    var callInvite = new CallInvite(new CommunicationUserIdentifier(targetIdentity));
-    await client.RedirectCallAsync(incomingCallContext, callInvite);
-}
+static async Task RedirectCallAsync(CallAutomationClient client, string ctx, string target)
+    => await client.RedirectCallAsync(ctx, new(new CommunicationUserIdentifier(target)));
 
 public class MoveParticipantsRequest
 {

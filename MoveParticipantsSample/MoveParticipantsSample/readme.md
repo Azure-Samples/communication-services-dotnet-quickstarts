@@ -125,12 +125,11 @@ Before running the application, configure the following settings in the `appSett
    - Run the application in debug mode.
 
 3. **Use the Endpoints in Sequence:**
-   - Create Call 1 – User Call to Call Automation.
-   - Create Call 2 – To PSTN user first and redirect to ACS identity.
+   - Create Call 1 – User(`acsUserPhoneNumber`) Call to Call Automation(`acsInboundPhoneNumber`).
+   - Create Call 2 – To PSTN(`acsInboundPhoneNumber -> acsOutboundPhoneNumber`) user first and redirect to ACS identity(`acsTestIdentity2`).
    - Move participants between calls.
    - Get participants for a specific call connection.
-   - Create Call 3 – To PSTN user first and redirect to ACS identity.
-   - Move participants between calls.
+   - Create Call 3 – To PSTN(`acsInboundPhoneNumber -> acsOutboundPhoneNumber`) user first and redirect to ACS identity(`acsTestIdentity3`).
    - Get participants for a specific call connection.
 
 ---
