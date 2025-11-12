@@ -135,7 +135,7 @@ Before running the application, configure the following settings in the `appSett
 3. **Configure webhook** for incoming calls:
 	`https://<your_dev_tunnel_url>/callbacks/incomingcall`
 4. Define a **WebSocket** in `program.cs` for client-server communication.
-5. Use the **JS Client App** from https://github.com/Azure-Samples/communication-services-javascript-quickstarts/tree/users/v-kuppu/LobbyCallConfirmSample.
+5. Use the **JS Client App**, Navigate to `LobbyCallSupport-Client` folder in https://github.com/Azure-Samples/communication-services-javascript-quickstarts.
 
 ---
 ## Workflow
