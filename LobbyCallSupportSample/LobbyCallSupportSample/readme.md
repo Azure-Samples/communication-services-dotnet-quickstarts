@@ -140,15 +140,15 @@ Before running the application, configure the following settings in the `appSett
 ---
 ## Workflow
 
-- Start target call in client app:
+- Start target call in client app `LobbyCallSupport-Client`:
   - Add token for `acsTargetCallSender`.
   - Add user ID for `acsTargetCallReceiver`.
   - Click **Start Call**.
-- Incoming call from target sender → server answers → `Call Connected` event.
+- Incoming call from target sender → server answers → expect `Call Connected` event.
 - Lobby user calls `acsLobbyCallReceiver` → automated voice plays: `You are currently in a lobby call, we will notify the admin that you are waiting.`
-- Target call receives notification: `A user is waiting in lobby, do you want to add them to your call?`
-- If confirmed → **MoveParticipantSucceeded** event → lobby user joins target call.
-- If declined → no move is performed.
+- Target call receives notification (a confirm dialog): `A user is waiting in lobby, do you want to add them to your call?`
+- If confirmed → expect **MoveParticipantSucceeded** event → lobby user joins target call.
+- If Target user declined → lobby user will not be moved to target call.
 
 ---
 ## Troubleshooting
@@ -163,6 +163,7 @@ Before running the application, configure the following settings in the `appSett
 - **Identity Errors:**  
   Regenerate ACS identities if invalid.
 
-For more help:
-- https://learn.microsoft.com/azure/communication-services/
-- https://learn.microsoft.com/answers/topics/azure-communication-services.html
+**Still having trouble?**  
+- Review the official https://learn.microsoft.com/azure/communication-services/.
+- Search for similar issues or ask questions on https://learn.microsoft.com/answers/topics/azure-communication-services.html.
+- Contact your Azure administrator or support team if you suspect a permissions or resource issue.

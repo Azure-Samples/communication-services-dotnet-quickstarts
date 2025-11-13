@@ -181,7 +181,7 @@ app.UseWebSockets();
 app.Map("/ws", async ctx =>
 {
     var log = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
-    log.LogInformation("WebSocket request");
+    // log.LogInformation("WebSocket request");
     if (!ctx.WebSockets.IsWebSocketRequest)
     {
         ctx.Response.StatusCode = 400;
@@ -226,7 +226,6 @@ app.Map("/ws", async ctx =>
         catch (Exception ex)
         {
             log.LogError("WebSocket error: {Msg}", ex.Message);
-            throw;
         }
     }
 });
