@@ -61,7 +61,7 @@ dotnet restore
 ---
 ## Configuration
 
-Before running the application, configure the following settings in the `appSettings.json` file:
+Before running the application, configure the following settings in the `appSettings.json` file.
 
 | Setting                  | Description                                                                                                    | Example Value                         |
 |--------------------------|----------------------------------------------------------------------------------------------------------------|---------------------------------------|
@@ -172,7 +172,7 @@ If you encounter issues while setting up or running the Call Automation sample, 
 
 ### 6. General Debugging Tips
 - Check application logs for detailed error messages.
-- Ensure all environment variables and configuration settings are correct.
+- Ensure all configuration settings are correct.
 - Restart your application and Dev Tunnel after making configuration changes.
 - Review Azure Portal for resource status and quotas.
 
