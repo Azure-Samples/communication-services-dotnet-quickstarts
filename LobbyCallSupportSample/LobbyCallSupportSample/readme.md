@@ -131,11 +131,11 @@ Before running the application, configure the following settings in the `appSett
 
 1. **Generate ACS identities** for lobby and target participants in **Azure Portal**.
 2. **Setup EventSubscription** for incoming calls:
-   - Filter: `TO.DATA.RAWID = acsLobbyCallReceiver, acsTargetCallReceiver`.
-3. **Configure webhook** for incoming calls:
-	`https://<your_dev_tunnel_url>/callbacks/incomingcall`
-4. Define a **WebSocket** in `program.cs` for client-server communication.
-5. Use the **JS Client App**, Navigate to `LobbyCallSupport-Client` folder in https://github.com/Azure-Samples/communication-services-javascript-quickstarts.
+	- Set up a Web hook(`https://<your_dev_tunnel_url>/callbacks/incomingcall`) for callback.
+   - Add Filter:
+     - Key: `data.to.rawid`, operator: `string contains`, value: `acsLobbyCallReceiver, acsTargetCallReceiver`
+3. Define a **WebSocket** in `program.cs` for client-server communication.
+4. Use the **JS Client App**, Navigate to `LobbyCallSupport-Client` folder in https://github.com/Azure-Samples/communication-services-javascript-quickstarts.
 
 ---
 ## Workflow
