@@ -113,11 +113,11 @@ Before running the application, configure the following settings in the `appSett
 ---
 ## Running the App Locally
 
-1. **Create an event subscription for incoming calls:**
-   - Set up a Web Hook for callback.
+1. **Create an azure event grid subscription for incoming calls:**
+   - Set up a Web hook(`https://<dev-tunnel-url>/api/MoveParticipantEvent`) for callback.
    - Add Filters:
-     - From Contains: External number, Inbound Number (ACS)
-     - To Not Contains: 8
+     - Key: `data.From.PhoneNumber.Value`, operator: `string contains`, value: `acsUserPhoneNumber, Inbound Number (ACS)`
+     - Key: `data.to.rawid`, operator: `string does not begin`, value: `8`
    - Deploy the event subscription.
 
 2. **Run the Application:**
