@@ -110,10 +110,11 @@ app.MapPost("/api/callbacks", async (CloudEvent[] events, ILogger<Program> logge
         {
             var callEvent = CallAutomationEventParser.Parse(cloudEvent);
             var callConnection = callAutomationClient.GetCallConnection(callConnectionId: callEvent.CallConnectionId);
+            logger.LogInformation("~~~ /api/callbacks ~~~\n Event: {callEvent}", callEvent);
             switch (callEvent)
             {
                 case CallConnected callConnected when (callConnected.OperationContext ?? "") == "LobbyCall":
-                    logger.LogInformation("~~~ /api/callbacks ~~~\nCallConnected: {ConnId}", callConnected.CallConnectionId);
+                    logger.LogInformation("\nCallConnected: {ConnId}", callConnected.CallConnectionId);
                     CallConnectionProperties callProperties = callConnection.GetCallConnectionProperties();
                     lobbyUserId = callProperties.Source.RawId;
                     lobbyCallConnectionId = callProperties.CallConnectionId;
