@@ -29,8 +29,7 @@ string acsConnectionString = GetConfig(key: "acsConnectionString"),
        cognitiveServiceEndpoint = GetConfig(key: "cognitiveServiceEndpoint"),
        callbackUriHost = GetConfig(key: "callbackUriHost"),
        acsLobbyCallReceiver = GetConfig(key: "acsLobbyCallReceiver"),
-       acsTargetCallReceiver = GetConfig(key: "acsTargetCallReceiver"),
-       acsTargetCallSender = GetConfig(key: "acsTargetCallSender");
+       acsTargetCallReceiver = GetConfig(key: "acsTargetCallReceiver");
 
 const string confirmationMessage = "A user is waiting in lobby, do you want to add the lobby user to your call?";
 const string lobbyMessage = "You are currently in a lobby call, we will notify the admin that you are waiting.";
@@ -165,28 +164,6 @@ app.MapPost("/api/callbacks", async (CloudEvent[] events, ILogger<Program> logge
         throw;
     }
 }).Produces(statusCode: 200);
-
-// Target Call Creation
-app.MapPost("/TargetCallToAcsUser(Call Replaced with client app)", async (string targetUserId, ILogger<Program> logger) =>
-{
-    logger.LogInformation("~~~ /TargetCall(Create) ~~~");
-    var callbackUri = new Uri(baseUri: new Uri(callbackUriHost), relativeUri: "/api/callbacks");
-    CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(
-        options: new CreateCallOptions(
-            callInvite: new CallInvite(targetIdentity: new CommunicationUserIdentifier(id: targetUserId)),
-            callbackUri: callbackUri)
-        {
-            CallIntelligenceOptions = new CallIntelligenceOptions
-            {
-                CognitiveServicesEndpoint = new Uri(uriString: "")
-            }
-        });
-    targetCallConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
-    logger.LogInformation(
-        "TargetCall: From: CallAutomation, To: {Tgt}, ConnId: {Conn}, CorrId: {Corr}",
-        targetUserId, targetCallConnectionId, createCallResult.CallConnectionProperties.CorrelationId);
-    return Results.Ok();
-}).WithTags("Lobby Call Support APIs");
 
 // Get Participants
 app.MapGet("/GetParticipants/{connId}", async (string connId, ILogger<Program> logger) =>
