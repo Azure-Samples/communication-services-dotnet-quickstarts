@@ -59,6 +59,21 @@ In the `MoveParticipantsSample/MoveParticipantsSample` directory, run:
 dotnet restore
 ```
 ---
+
+## Setup and Host Azure Dev Tunnel
+
+```
+# Install Dev Tunnel CLI
+dotnet tool install -g Microsoft.DevTunnels.Client
+
+# Authenticate with Azure
+devtunnel login
+
+# Create and start a tunnel
+devtunnel host -p 7006
+```
+
+---
 ## Configuration
 
 Before running the application, configure the following settings in the `appSettings.json` file.
@@ -124,13 +139,59 @@ Before running the application, configure the following settings in the `appSett
    - Navigate to the `MoveParticipantsSample` folder.
    - Run the application in debug mode.
 
-3. **Use the Endpoints in Sequence:**
-   - Create Call 1 – User(`acsUserPhoneNumber`) Call to Call Automation(`acsInboundPhoneNumber`).
-   - Create Call 2 – To PSTN(`acsInboundPhoneNumber -> acsOutboundPhoneNumber`) user first and redirect to ACS identity(`acsTestIdentity2`).
-   - Move participants between calls.
-   - Get participants for a specific call connection.
-   - Create Call 3 – To PSTN(`acsInboundPhoneNumber -> acsOutboundPhoneNumber`) user first and redirect to ACS identity(`acsTestIdentity3`).
-   - Get participants for a specific call connection.
+3. **Workflow Execution**
+
+> **Note:**  
+> The phone numbers and identities referenced below are configured in `appsettings.json`:
+> - `acsUserPhoneNumber`
+> - `acsInboundPhoneNumber`
+> - `acsOutboundPhoneNumber`
+> - `acsTestIdentity2`
+> - `acsTestIdentity3`
+> The phone numbers are released and available when the call is answered as they are created in ACS resource in Azure.
+
+#### Call 1
+
+1. `acsUserPhoneNumber` calls `acsInboundPhoneNumber`. Note the Call connection Id as **Target Call Connection Id** when the call is created.
+2. Call Automation answers the call and assigns a bot to the call as receiver.
+3. `acsInboundPhoneNumber` is freed from the call after the call was answered and assigned to a bot.
+
+
+#### Call 2
+
+1. `acsInboundPhoneNumber` makes a call to `acsOutboundPhoneNumber`. Note the Call connection Id as **Source Call Connection Id** when the call is created.
+2. Call Automation answers the call and redirects to `acsTestIdentity2`, then releases `acsOutboundPhoneNumber` from the call. The call connection id generated here is an internal connection id; do not consider this connection id during the Move operation.
+
+Move Participant operation:
+- Inputs:
+  - Source Connection Id (from Call 2) to move the participant from.
+  - Target Connection Id (from Call 1) to move the participant to.
+  - Participant (initial participant before call is redirected) from Source call (Call 2): `acsOutboundPhoneNumber`
+- **Participants list after `MoveParticipantSucceeded` event:** 3
+
+
+#### Call 3
+
+1. `acsInboundPhoneNumber` makes a call to `acsOutboundPhoneNumber`. Note the Call connection Id as **Source (to move) Call Connection Id** when the call is created.
+2. Call Automation answers the call and redirects to `acsTestIdentity3`, then releases `acsOutboundPhoneNumber` from the call. The call connection id generated here is an internal connection id; do not consider this connection id during the Move operation.
+
+Move Participant operation:
+- Inputs:
+  - Source Connection Id (from Call 3) to move the participant from.
+  - Target Connection Id (from Call 1) to move the participant to.
+  - Participant (initial participant before call is redirected) from Source call (Call 3): `acsOutboundPhoneNumber`
+- **Participants list after `MoveParticipantSucceeded` event:** 4
+
+---
+
+## API Testing with Swagger
+
+You can explore and test the available API endpoints using the built-in Swagger UI:
+
+- **Swagger URL:**  
+  [https://localhost:8080/swagger/index.html](https://localhost:8080/swagger/index.html)
+
+> If running in a dev tunnel or cloud environment, replace `localhost:8080` with your tunnel's public URL (e.g., `https://<your-dev-tunnel>.devtunnels.ms/swagger/index.html`).
 
 ---
 

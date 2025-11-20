@@ -171,6 +171,7 @@ app.MapPost(pattern: "/CreateCall2(ToPstnUserFirstAndRedirectToAcsIentity)", han
 
     logger.LogInformation(message: $"""
         Call 2: From {inboundPhoneNumber} To {outboundPhoneNumber}
+        Participant Identity: {outboundPhoneNumber}
         Source Call Connection Id: {userCallConnectionId}
         Correlation Id: {createCallResult.CallConnectionProperties.CorrelationId}
         Redirect Call2 to: {acsUserId2}
@@ -193,6 +194,7 @@ app.MapPost(pattern: "/CreateCall3(ToPstnUserFirstAndRedirectToAcsIentity)", han
 
     logger.LogInformation(message: $"""
         Call 3: From {inboundPhoneNumber} To {outboundPhoneNumber}
+        Participant Identity: {outboundPhoneNumber}
         Source Call Connection Id: {redirectedCallConnectionId}
         Correlation Id: {createCallResult.CallConnectionProperties.CorrelationId}
         Redirect Call3 to: {acsUserId3}
@@ -224,7 +226,7 @@ app.MapPost(pattern: "/MoveParticipant", handler: async (MoveParticipantsRequest
 
         if (moveResponse.GetRawResponse().Status is >= 200 and <= 299)
         {
-            logger.LogInformation(message: "Move Participants operation completed successfully.");
+            logger.LogInformation(message: "Move Participant operation is initiated.");
         }
         else
         {
