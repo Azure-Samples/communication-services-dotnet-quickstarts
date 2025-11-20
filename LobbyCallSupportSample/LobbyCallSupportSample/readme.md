@@ -78,9 +78,10 @@ dotnet tool install -g Microsoft.DevTunnels.Client
 devtunnel login
 
 # Create and start a tunnel
-devtunnel port create -p 7006
-devtunnel host start
+devtunnel host -p 7006
 ```
+
+---
 ## Configuration
 
 Before running the application, configure the following settings in the `appSettings.json` file:
@@ -147,10 +148,22 @@ Before running the application, configure the following settings in the `appSett
   - Add user ID for `acsTargetCallReceiver`.
   - Click **Start Call**.
 - Incoming call from target sender → server answers → expect `Call Connected` event.
-- Lobby user calls `acsLobbyCallReceiver` → automated voice plays: `You are currently in a lobby call, we will notify the admin that you are waiting.`
+- **Lobby user** calls `acsLobbyCallReceiver` → automated voice plays: `You are currently in a lobby call, we will notify the admin that you are waiting.`
 - Target call receives notification (a confirm dialog): `A user is waiting in lobby, do you want to add them to your call?`
-- If confirmed → expect **MoveParticipantSucceeded** event → lobby user joins target call.
+- If confirmed, **Lobby user must accept the call when prompted to move in call test app** → expect **MoveParticipantSucceeded** event → lobby user joins target call.
+- **If user does not accept the move call prompt → lobby user remains in lobby call.**
 - If Target user declined → lobby user will not be moved to target call.
+
+---
+
+## API Testing with Swagger
+
+You can explore and test the available API endpoints using the built-in Swagger UI:
+
+- **Swagger URL:**  
+  [https://localhost:7006/swagger/index.html](https://localhost:7006/swagger/index.html)
+
+> If running in a dev tunnel or cloud environment, replace `localhost:7006` with your tunnel's public URL (e.g., `https://<your-dev-tunnel>.devtunnels.ms/swagger/index.html`).
 
 ---
 ## Troubleshooting

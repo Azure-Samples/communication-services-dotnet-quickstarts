@@ -230,7 +230,7 @@ app.Map("/ws", async context =>
                             fromCall: lobbyCallConnectionId));
                     var rawResponse = moveResult.GetRawResponse();
                     if (rawResponse.Status is >= 200 and <= 299)
-                        logger.LogInformation("Move successful");
+                        logger.LogInformation("Move Participant operation is initiated.");
                     else
                         throw new Exception(message: $"Move failed: {rawResponse.Status}");
                 }
