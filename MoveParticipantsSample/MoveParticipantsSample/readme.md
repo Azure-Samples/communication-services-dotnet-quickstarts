@@ -70,7 +70,7 @@ dotnet tool install -g Microsoft.DevTunnels.Client
 devtunnel login
 
 # Create and start a tunnel
-devtunnel host -p 7006
+devtunnel host -p 8080
 ```
 
 ---
