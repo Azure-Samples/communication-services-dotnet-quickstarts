@@ -37,7 +37,7 @@ This sample demonstrates how to utilize the Call Automation SDK to implement a L
 
 ```
 devtunnel create --allow-anonymous
-devtunnel port create -p 8443
+devtunnel port create -p 7006
 devtunnel host
 ```
 
