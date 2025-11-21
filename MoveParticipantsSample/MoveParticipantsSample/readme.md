@@ -63,14 +63,9 @@ dotnet restore
 ## Setup and Host Azure Dev Tunnel
 
 ```
-# Install Dev Tunnel CLI
-dotnet tool install -g Microsoft.DevTunnels.Client
-
-# Authenticate with Azure
-devtunnel login
-
-# Create and start a tunnel
-devtunnel host -p 8080
+devtunnel create --allow-anonymous
+devtunnel port create -p 8443
+devtunnel host
 ```
 
 ---
@@ -149,6 +144,7 @@ Before running the application, configure the following settings in the `appSett
 > - `acsTestIdentity2`
 > - `acsTestIdentity3`
 > The phone numbers are released and available when the call is answered as they are created in ACS resource in Azure.
+> - **Call 2 and Call 3 must be answered after redirecting and before moving participants.**
 
 #### Call 1
 
