@@ -64,7 +64,7 @@ dotnet restore
 
 ```
 devtunnel create --allow-anonymous
-devtunnel port create -p 8443
+devtunnel port create -p 8080
 devtunnel host
 ```
 
