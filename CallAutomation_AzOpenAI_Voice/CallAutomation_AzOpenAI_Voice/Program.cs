@@ -1,29 +1,81 @@
+using System.ComponentModel.DataAnnotations;
+using System.IO;
 using Azure.Communication.CallAutomation;
+using Azure.Communication.Media;
+using Azure.Identity;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using CallAutomationOpenAI;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//Get ACS Connection String from appsettings.json
-var acsConnectionString = builder.Configuration.GetValue<string>("AcsConnectionString");
-ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
-
-//Call Automation Client
-var client = new CallAutomationClient(acsConnectionString);
 var app = builder.Build();
-var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 
-if (string.IsNullOrEmpty(appBaseUrl))
+MediaClientOptions mediaClientOptions = new MediaClientOptions("msit", false, null);
+var credential = new DefaultAzureCredential();
+var uri = new Uri(builder.Configuration.GetValue<string>("AcsConnectionString"));
+// TODO: Replace with your ACS endpoint and access key
+var _mediaClient = new MediaClient("endpoint=https://<YOUR_ACS_RESOURCE>.unitedstates.communication.azure.com/;accesskey=<YOUR_ACCESS_KEY>", mediaClientOptions);
+TestCallRoomConnector? testCallConnector = null;
+
+var client = new CallAutomationClient(uri, credential);
+
+
+
+
+// Initialize and start TestCallRoomConnector at startup
+var loggerFactory = app.Services.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
+var startupLogger = loggerFactory?.CreateLogger<Program>() ?? throw new Exception("LoggerFactory not found");
+testCallConnector = new TestCallRoomConnector(_mediaClient, startupLogger, app.Services);
+AcsMediaStreamingHandler? acsHandlerInstance = null;
+
+var appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri");
+
+_ = Task.Run(async () =>
 {
-    appBaseUrl = builder.Configuration.GetValue<string>("DevTunnelUri")?.TrimEnd('/');;
-    Console.WriteLine($"appBaseUrl :{appBaseUrl}");
-}
+
+});
 
 app.MapGet("/", () => "Hello ACS CallAutomation!");
+
+app.MapGet("/testcall", async (ILogger<Program> logger) =>
+{
+    if (testCallConnector == null)
+        return Results.Problem("TestCallRoomConnector not initialized");
+    if (!testCallConnector.IsConnected)
+        return Results.Problem($"Not connected: {testCallConnector.LastError}");
+    if (acsHandlerInstance == null)
+        return Results.Problem("AcsMediaStreamingHandler not initialized");
+
+    // Send test message to AcsMediaStreamingHandler
+    await acsHandlerInstance.WriteInputStream("What is the weather today in redmond");
+
+    return Results.Ok(new { message = "Sent test message to room", room = testCallConnector._sessionId });
+});
+
+app.MapGet("/testclient", async (ILogger<Program> logger) =>
+{
+    if (testCallConnector == null)
+        return Results.Problem("TestCallRoomConnector not initialized");
+    if (!testCallConnector.IsConnected)
+        return Results.Problem($"Not connected: {testCallConnector.LastError}");
+    if (acsHandlerInstance == null)
+        return Results.Problem("AcsMediaStreamingHandler not initialized");
+
+    // Send test message to AcsMediaStreamingHandler
+    using Stream audioStream = File.OpenRead($"whats_the_weather.wav");
+    using (MemoryStream memoryStream = new MemoryStream())
+    {
+        audioStream.CopyTo(memoryStream);
+        await acsHandlerInstance.SendMessageAsync(memoryStream.ToArray());
+    }
+
+    return Results.Ok(new { message = "Sent test message to room", room = testCallConnector._sessionId });
+});
+
 
 app.MapPost("/api/incomingCall", async (
     [FromBody] EventGridEvent[] eventGridEvents,
@@ -63,7 +115,7 @@ app.MapPost("/api/incomingCall", async (
             EnableBidirectional = true,
             AudioFormat = AudioFormat.Pcm24KMono
         };
-      
+
         var options = new AnswerCallOptions(incomingCallContext, callbackUri)
         {
             MediaStreamingOptions = mediaStreamingOptions,
@@ -71,6 +123,32 @@ app.MapPost("/api/incomingCall", async (
 
         AnswerCallResult answerCallResult = await client.AnswerCallAsync(options);
         logger.LogInformation($"Answered call for connection id: {answerCallResult.CallConnection.CallConnectionId}");
+
+        testCallConnector._sessionId = answerCallResult.CallConnectionProperties.CorrelationId;
+
+        var connected = await testCallConnector.ConnectAsync();
+        if (connected)
+        {
+            startupLogger.LogInformation($"TestCallRoomConnector started and connected to {testCallConnector._sessionId}");
+            try
+            {
+                // Start AzureOpenAIService after connection
+                // Provide a dummy AcsMediaStreamingHandler for initialization
+                acsHandlerInstance = new AcsMediaStreamingHandler(testCallConnector);
+                var openAIService = new AzureOpenAIService(acsHandlerInstance, builder.Configuration);
+                acsHandlerInstance.aiServiceHandler = openAIService;
+                openAIService.StartConversation();
+                startupLogger.LogInformation("AzureOpenAIService started after TestCallRoomConnector connection.");
+            }
+            catch (Exception ex)
+            {
+                startupLogger.LogError($"Failed to start AzureOpenAIService: {ex.Message}");
+            }
+        }
+        else
+        {
+            startupLogger.LogError($"TestCallRoomConnector failed: {testCallConnector.LastError}");
+        }
     }
     return Results.Ok();
 });
@@ -93,34 +171,5 @@ app.MapPost("/api/callbacks/{contextId}", async (
 
 app.UseWebSockets();
 
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path == "/ws")
-    {
-        if (context.WebSockets.IsWebSocketRequest)
-        {
-            try
-            {
-                var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                var mediaService = new AcsMediaStreamingHandler(webSocket, builder.Configuration);
-
-                // Set the single WebSocket connection
-                await mediaService.ProcessWebSocketAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception received {ex}");
-            }
-        }
-        else
-        {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        }
-    }
-    else
-    {
-        await next(context);
-    }
-});
 
 app.Run();

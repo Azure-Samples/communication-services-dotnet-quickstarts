@@ -1,20 +1,17 @@
-﻿using System.Net.WebSockets;
-using System.Threading.Channels;
-using OpenAI.RealtimeConversation;
+﻿using System.ClientModel;
+using System.Text;
 using Azure.AI.OpenAI;
-using System.ClientModel;
 using Azure.Communication.CallAutomation;
+using OpenAI.RealtimeConversation;
 
 #pragma warning disable OPENAI002
 namespace CallAutomationOpenAI
 {
     public class AzureOpenAIService
     {
-        private WebSocket m_webSocket;
         private CancellationTokenSource m_cts;
         private RealtimeConversationSession m_aiSession;
         private AcsMediaStreamingHandler m_mediaStreaming;
-        private MemoryStream m_memoryStream;
         private string m_answerPromptSystemTemplate = "You are an AI assistant that helps people find information.";
 
         public AzureOpenAIService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
@@ -22,7 +19,6 @@ namespace CallAutomationOpenAI
             m_mediaStreaming = mediaStreaming;
             m_cts = new CancellationTokenSource();
             m_aiSession =  CreateAISessionAsync(configuration).GetAwaiter().GetResult();
-            m_memoryStream = new MemoryStream();
         }
 
         private async Task<RealtimeConversationSession> CreateAISessionAsync(IConfiguration configuration)
@@ -81,7 +77,8 @@ namespace CallAutomationOpenAI
                             $"  -- Voice activity detection started at {speechStartedUpdate.AudioStartTime} ms");
                         // Barge-in, send stop audio
                         var jsonString = OutStreamingData.GetStopAudioForOutbound();
-                        await m_mediaStreaming.SendMessageAsync(jsonString);
+                        byte[] jsonBytes = Encoding.UTF8.GetBytes(jsonString);
+                        await m_mediaStreaming.SendMessageAsync(jsonBytes);
                     }
 
                     if (update is ConversationInputSpeechFinishedUpdate speechFinishedUpdate)
@@ -108,8 +105,7 @@ namespace CallAutomationOpenAI
                     {
                         if( deltaUpdate.AudioBytes != null)
                         {
-                            var jsonString = OutStreamingData.GetAudioDataForOutbound(deltaUpdate.AudioBytes.ToArray());
-                            await m_mediaStreaming.SendMessageAsync(jsonString);
+                            await m_mediaStreaming.SendMessageAsync(deltaUpdate.AudioBytes.ToArray());
                         }
                     }
 
@@ -154,9 +150,10 @@ namespace CallAutomationOpenAI
             _ = Task.Run(async () => await GetOpenAiStreamResponseAsync());
         }
 
-        public async Task SendAudioToExternalAI(MemoryStream memoryStream)
+        public async Task SendAudioToExternalAI(Stream memoryStream)
         {
             await m_aiSession.SendInputAudioAsync(memoryStream);
+            await m_aiSession.AddItemAsync(ConversationItem.CreateUserMessage(["Hello, assistant!"]));
         }
 
         public void Close()
