@@ -30,7 +30,7 @@ public class AcsMediaStreamingHandler
         }
         
         // start forwarder to AI model
-        m_aiServiceHandler = new AzureOpenAIService(this, m_configuration);
+        m_aiServiceHandler = new AzureOpenAIService(this, m_configuration, m_webSocket);
         
         try
         {
@@ -48,7 +48,7 @@ public class AcsMediaStreamingHandler
         }
     }
 
-    public async Task SendMessageAsync(string message)
+    public async Task SendMessageAsync(string message, bool isFinal = false)
     {
         if (m_webSocket?.State == WebSocketState.Open)
         {

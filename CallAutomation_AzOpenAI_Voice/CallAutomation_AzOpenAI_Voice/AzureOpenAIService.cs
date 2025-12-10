@@ -1,9 +1,10 @@
-﻿using System.Net.WebSockets;
-using System.Threading.Channels;
-using OpenAI.RealtimeConversation;
-using Azure.AI.OpenAI;
-using System.ClientModel;
+﻿using Azure.AI.OpenAI;
 using Azure.Communication.CallAutomation;
+using OpenAI.RealtimeConversation;
+using System.ClientModel;
+using System.Net.WebSockets;
+using System.Text;
+using System.Threading.Channels;
 
 #pragma warning disable OPENAI002
 namespace CallAutomationOpenAI
@@ -16,13 +17,17 @@ namespace CallAutomationOpenAI
         private AcsMediaStreamingHandler m_mediaStreaming;
         private MemoryStream m_memoryStream;
         private string m_answerPromptSystemTemplate = "You are an AI assistant that helps people find information.";
-
-        public AzureOpenAIService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration)
+        bool firstMessage = false;
+        string markTest = "Test";
+        int count = 1;
+        string markId = string.Empty;
+        public AzureOpenAIService(AcsMediaStreamingHandler mediaStreaming, IConfiguration configuration, WebSocket webSocket)
         {            
             m_mediaStreaming = mediaStreaming;
             m_cts = new CancellationTokenSource();
-            m_aiSession =  CreateAISessionAsync(configuration).GetAwaiter().GetResult();
+            m_aiSession = CreateAISessionAsync(configuration).GetAwaiter().GetResult();
             m_memoryStream = new MemoryStream();
+            m_webSocket = webSocket;
         }
 
         private async Task<RealtimeConversationSession> CreateAISessionAsync(IConfiguration configuration)
@@ -106,10 +111,27 @@ namespace CallAutomationOpenAI
                     // audio, matching the output audio format configured for the session.
                     if (update is ConversationItemStreamingPartDeltaUpdate deltaUpdate)
                     {
-                        if( deltaUpdate.AudioBytes != null)
+                        if (deltaUpdate.Kind.ToString() == "ItemContentPartStarted")
                         {
-                            var jsonString = OutStreamingData.GetAudioDataForOutbound(deltaUpdate.AudioBytes.ToArray());
-                            await m_mediaStreaming.SendMessageAsync(jsonString);
+                            firstMessage = true;
+                            Console.WriteLine();
+                            Console.WriteLine($"  -- Audio chunk started for response_id={deltaUpdate.ResponseId}");
+                        }
+                        if (deltaUpdate.AudioBytes != null)
+                        {
+                            if (firstMessage)
+                            {
+                                markId = $"{markTest}+{count}";
+                                var jsonString = OutStreamingData.GetAudioDataForOutbound(deltaUpdate.AudioBytes.ToArray(), markId);
+                                await m_mediaStreaming.SendMessageAsync(jsonString);
+                                firstMessage = false;
+                                count++;
+                            }
+                            else
+                            {
+                                var jsonString = OutStreamingData.GetAudioDataForOutbound(deltaUpdate.AudioBytes.ToArray());
+                                await m_mediaStreaming.SendMessageAsync(jsonString, true);
+                            }
                         }
                     }
 
@@ -129,6 +151,20 @@ namespace CallAutomationOpenAI
                     if (update is ConversationResponseFinishedUpdate turnFinishedUpdate)
                     {
                         Console.WriteLine($"  -- Model turn generation finished. Status: {turnFinishedUpdate.Status}");
+
+                        var emptyStringMark = OutStreamingData.GetAudioDataForOutbound(new byte[0], markId);
+                        Console.WriteLine($"************Mark JSON ********************");
+                        Console.WriteLine($"  -- Mark Data json={emptyStringMark}");
+                        Console.WriteLine($"******************************************");
+
+                        var emptyString = OutStreamingData.GetAudioDataForOutbound(new byte[0], markId);
+
+                        byte[] jsonBytes = Encoding.UTF8.GetBytes(emptyString);
+                        byte[] jsonBytes1 = Encoding.UTF8.GetBytes(emptyStringMark);
+                        await m_webSocket.SendAsync(new ArraySegment<byte>(jsonBytes), WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
+                        await m_webSocket.SendAsync(new ArraySegment<byte>(jsonBytes1), WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
+
+                        //Console.WriteLine($"  -- Audio chunk finished for response_id={turnFinishedUpdate.ResponseId}");
                     }
 
                     if (update is ConversationErrorUpdate errorUpdate)
