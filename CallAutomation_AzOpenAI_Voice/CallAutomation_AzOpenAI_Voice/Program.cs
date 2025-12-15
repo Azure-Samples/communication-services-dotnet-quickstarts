@@ -1,4 +1,4 @@
-using Azure.Communication.CallAutomation;
+﻿using Azure.Communication.CallAutomation;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging;
@@ -21,11 +21,11 @@ ArgumentNullException.ThrowIfNullOrEmpty(acsConnectionString);
 var (acsEndpoint, acsAccessKeyBase64) = AcsConnectionString.Parse(acsConnectionString);
 
 // Choose auth mode: "AAD" (recommended) or "HMAC"
-var authMode = builder.Configuration.GetValue<string>("MediaAuthMode") ?? "AAD";
+var authMode = "HMAC";
 
 // Call Automation Client -> **use your ACS resource endpoint**
 var credential = new DefaultAzureCredential();
-var client = new CallAutomationClient(new Uri("<PMA>"), new Uri(acsEndpoint), credential);
+var client = new CallAutomationClient(new Uri("https://uswc-01.sdf.pma.teams.microsoft.com"), new Uri(acsEndpoint), credential);
 
 var app = builder.Build();
 
@@ -104,7 +104,7 @@ app.MapPost("/api/incomingCall", async (
             continue;
         }
 
-        // Connect as a WS client (AAD or HMAC) � no /ws endpoint needed
+        // Connect as a WS client (AAD or HMAC) — no /ws endpoint needed
         AccessToken accessToken = default;
         if (authMode.Equals("AAD", StringComparison.OrdinalIgnoreCase))
         {
@@ -166,11 +166,7 @@ static async Task ConnectToAcsMediaAsync(
     ws.Options.SetRequestHeader("X-Ms-Host", new Uri(acsEndpoint).Authority);
 
     // RFC1123 UTC date and empty-body SHA256 (base64)
-    var date = DateTimeOffset.UtcNow.ToString("r"); // e.g., "Thu, 11 Dec 2025 07:19:00 GMT"
-    var contentHash = HmacAuth.ComputeContentHashBase64(string.Empty); // empty handshake body
     // For empty string, this should be: 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
-    ws.Options.SetRequestHeader("x-ms-date", date);
-    ws.Options.SetRequestHeader("x-ms-content-sha256", contentHash);
 
     if (authMode.Equals("AAD", StringComparison.OrdinalIgnoreCase))
     {
@@ -178,13 +174,25 @@ static async Task ConnectToAcsMediaAsync(
     }
     else
     {
-        // HMAC: METHOD + PATH+QUERY + DATE + HOST + CONTENT_HASH
-        var method = "GET";
-        var pathAndQuery = uri.PathAndQuery;
-        var stringToSign = $"{method}{pathAndQuery}{date}{host}{contentHash}";
-        using var hmac = new HMACSHA256(Convert.FromBase64String(acsAccessKeyBase64));
-        var sig = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-        ws.Options.SetRequestHeader("Authorization", $"HMAC {sig}");
+        var contentHash = ComputeSha256Base64(string.Empty);
+
+        const string signedHeaders = "date;host;x-ms-content-sha256";
+        var date = DateTime.UtcNow.ToString("R");
+        var stringToSign = $"GET\n{uri.PathAndQuery}\n{date};{new Uri(acsEndpoint).Authority};{contentHash}";
+
+        var signature = ComputeHmacSha256Base64(stringToSign, acsAccessKeyBase64);
+        var authorizationHeader = $"HMAC-SHA256 SignedHeaders={signedHeaders}&Signature={signature}";
+
+        // Diagnostics (avoid printing secrets)
+        Console.WriteLine("✅ HMAC signature generated");
+        Console.WriteLine($"🛣️ PathAndQuery: {uri.PathAndQuery}");
+        Console.WriteLine($"🔒 ContentHash: {contentHash}");
+        Console.WriteLine($"🧾 StringToSign (verbatim):\n{stringToSign}");
+        Console.WriteLine($"🔑 Signature(Base64): {signature}");
+
+        ws.Options.SetRequestHeader("date", date);
+        ws.Options.SetRequestHeader("x-ms-content-sha256", contentHash);
+        ws.Options.SetRequestHeader("Authorization", authorizationHeader);
     }
 
     try
@@ -193,7 +201,16 @@ static async Task ConnectToAcsMediaAsync(
         await ws.ConnectAsync(uri, CancellationToken.None);
         logger.LogInformation("WS connected.");
 
-        // Receive loop � PCM 24k mono frames will arrive as Binary messages
+        // Start receiving messages in background
+        var receiveTask = ReceiveMessagesWithAuth(ws);
+
+        // Example: Send initial message if needed
+        // await SendMessage(ws, "Hello from authenticated client");
+
+        // Wait for the receive task to complete (when connection closes)
+        await receiveTask;
+
+        // Receive loop — PCM 24k mono frames will arrive as Binary messages
         var buffer = new byte[64 * 1024];
         while (ws.State == WebSocketState.Open)
         {
@@ -232,6 +249,121 @@ static async Task ConnectToAcsMediaAsync(
     {
         logger.LogError(ex, $"WS connection failed for {streamUrl}");
         // Consider retry/backoff here
+    }
+
+    static async Task ReceiveMessagesWithAuth(ClientWebSocket webSocket)
+    {
+        byte[] buffer = new byte[4096];
+        StringBuilder messageBuilder = new StringBuilder();
+
+        while (webSocket.State == WebSocketState.Open)
+        {
+            try
+            {
+                WebSocketReceiveResult result = await webSocket.ReceiveAsync(
+                    new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    Console.WriteLine("Server initiated close");
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                        "Closing", CancellationToken.None);
+                }
+                else if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    string chunk = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    messageBuilder.Append(chunk);
+
+                    if (result.EndOfMessage)
+                    {
+                        string completeMessage = messageBuilder.ToString();
+                        Console.WriteLine($"-----Authenticated message received: {completeMessage}");
+
+                        // Process the complete message here
+                        await ProcessReceivedMessage(webSocket, completeMessage);
+
+                        messageBuilder.Clear();
+                    }
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary)
+                {
+                    Console.WriteLine($"Binary message received: {result.Count} bytes");
+                    // Handle binary messages if needed
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error receiving authenticated message: {ex.Message}");
+                break;
+            }
+        }
+    }
+
+    static async Task ProcessReceivedMessage(ClientWebSocket webSocket, string message)
+    {
+        try
+        {
+            // Example message processing logic
+            if (message.Contains("ping"))
+            {
+                await SendMessage(webSocket, "pong");
+                Console.WriteLine("Responded to ping with pong");
+            }
+            else if (message.Contains("metadata"))
+            {
+                Console.WriteLine("Received metadata message");
+                // Handle metadata
+            }
+            else if (message.Contains("audioData"))
+            {
+                Console.WriteLine("Received audio data");
+                // Handle audio data
+            }
+            else
+            {
+                Console.WriteLine("Received unknown message type " + message);
+            }
+            // Add more message processing logic as needed
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing message: {ex.Message}");
+        }
+    }
+
+    static async Task SendMessage(ClientWebSocket webSocket, string message)
+    {
+        byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+        await webSocket.SendAsync(
+            new ArraySegment<byte>(messageBytes),
+            WebSocketMessageType.Text,
+            true,
+            CancellationToken.None);
+        Console.WriteLine($"Message sent: {message}");
+    }
+
+    static string ComputeHmacSha256Base64(string stringToSign, string base64Key)
+    {
+        byte[] keyBytes;
+        try
+        {
+            keyBytes = Convert.FromBase64String(base64Key);
+        }
+        catch (FormatException fe)
+        {
+            throw new InvalidOperationException("API key must be Base64 encoded.", fe);
+        }
+
+        using var hmac = new HMACSHA256(keyBytes);
+        var signatureBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign));
+        return Convert.ToBase64String(signatureBytes);
+    }
+
+    static string ComputeSha256Base64(string data)
+    {
+        using var sha256 = SHA256.Create();
+        var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
+        return Convert.ToBase64String(hash);
     }
 }
 
