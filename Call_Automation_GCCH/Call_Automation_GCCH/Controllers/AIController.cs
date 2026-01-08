@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Azure;
-using Azure.Communication;
+﻿using Azure.Communication;
 using Azure.Communication.CallAutomation;
 using Call_Automation_GCCH.Models;
 using Call_Automation_GCCH.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Call_Automation_GCCH.Controllers
@@ -33,7 +27,6 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         // ──────────── COGNITIVE SERVICES INTEGRATION ───────────────────────────────
-
         /// <summary>
         /// Creates a call with Call Intelligence (Cognitive Services) enabled for advanced AI features (Async)
         /// </summary>
@@ -42,77 +35,12 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="locale">Transcription locale (default: en-US)</param>
         [HttpPost("createCallWithCallIntelligenceAsync")]
         [Tags("AI - Call with Cognitive Services")]
-        public async Task<IActionResult> CreateCallWithCallIntelligenceAsync(
+        public Task<IActionResult> CreateCallWithCallIntelligenceAsync(
             string target,
             bool enableTranscription = true,
             string locale = "en-US")
         {
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
-                return BadRequest("CognitiveServiceEndpoint must be configured in appsettings.json to use Call Intelligence features");
-
-            _logger.LogInformation($"Creating call with Call Intelligence. Target={target}, Locale={locale}");
-
-            try
-            {
-                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
-
-                CallInvite callInvite;
-                if (target.StartsWith("8:"))
-                {
-                    callInvite = new CallInvite(new CommunicationUserIdentifier(target));
-                }
-                else
-                {
-                    callInvite = new CallInvite(
-                        new PhoneNumberIdentifier(target),
-                        new PhoneNumberIdentifier(_config.AcsPhoneNumber));
-                }
-
-                var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-                {
-                    CallIntelligenceOptions = new CallIntelligenceOptions
-                    {
-                        CognitiveServicesEndpoint = new Uri(_config.CognitiveServiceEndpoint)
-                    }
-                };
-
-                if (enableTranscription)
-                {
-                    var transcriptionOptions = new TranscriptionOptions(
-                        new Uri(websocketUri),
-                        locale,
-                        enableTranscription,
-                        TranscriptionTransport.Websocket);
-                    createCallOptions.TranscriptionOptions = transcriptionOptions;
-                }
-
-                CreateCallResult result = await _service.GetCallAutomationClient().CreateCallAsync(createCallOptions);
-
-                var props = result.CallConnectionProperties;
-                _logger.LogInformation($"Call created with Call Intelligence. CallConnectionId={props.CallConnectionId}");
-
-                return Ok(new
-                {
-                    CallConnectionId = props.CallConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = props.CallConnectionState.ToString(),
-                    CallIntelligenceEnabled = true,
-                    TranscriptionEnabled = enableTranscription,
-                    CognitiveServicesEndpoint = _config.CognitiveServiceEndpoint
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating call with Call Intelligence");
-                return Problem($"Failed to create call with Call Intelligence: {ex.Message}");
-            }
+            return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: true, isAsync: true);
         }
 
         /// <summary>
@@ -123,12 +51,12 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="locale">Transcription locale (default: en-US)</param>
         [HttpPost("createCallWithCallIntelligence")]
         [Tags("AI - Call with Cognitive Services")]
-        public IActionResult CreateCallWithCallIntelligence(
+        public Task<IActionResult> CreateCallWithCallIntelligence(
             string target,
             bool enableTranscription = true,
             string locale = "en-US")
         {
-            return CreateCallWithCallIntelligenceAsync(target, enableTranscription, locale).Result;
+            return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: true, isAsync: false);
         }
 
         // ──────────── TRANSCRIPTION ENDPOINTS ─────────────────────────────────────
@@ -141,65 +69,12 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="enableTranscription">Whether to enable transcription on call creation</param>
         [HttpPost("createCallWithTranscriptionAsync")]
         [Tags("AI - Transcription")]
-        public async Task<IActionResult> CreateCallWithTranscriptionAsync(
+        public Task<IActionResult> CreateCallWithTranscriptionAsync(
             string target,
             string locale = "en-US",
             bool enableTranscription = true)
         {
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            _logger.LogInformation($"Creating call with transcription. Target={target}, Locale={locale}, Enabled={enableTranscription}");
-
-            try
-            {
-                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
-                var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
-
-                var transcriptionOptions = new TranscriptionOptions(
-                    new Uri(websocketUri),
-                    locale,
-                    enableTranscription,
-                    TranscriptionTransport.Websocket);
-
-                CallInvite callInvite;
-                if (target.StartsWith("8:"))
-                {
-                    callInvite = new CallInvite(new CommunicationUserIdentifier(target));
-                }
-                else
-                {
-                    callInvite = new CallInvite(
-                        new PhoneNumberIdentifier(target),
-                        new PhoneNumberIdentifier(_config.AcsPhoneNumber));
-                }
-
-                var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
-                {
-                    TranscriptionOptions = transcriptionOptions
-                };
-
-                CreateCallResult result = await _service.GetCallAutomationClient().CreateCallAsync(createCallOptions);
-
-                var props = result.CallConnectionProperties;
-                _logger.LogInformation($"Call created with transcription. CallConnectionId={props.CallConnectionId}");
-
-                return Ok(new
-                {
-                    CallConnectionId = props.CallConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = props.CallConnectionState.ToString(),
-                    TranscriptionEnabled = enableTranscription
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating call with transcription");
-                return Problem($"Failed to create call with transcription: {ex.Message}");
-            }
+            return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: false, isAsync: true);
         }
 
         /// <summary>
@@ -210,12 +85,12 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="enableTranscription">Whether to enable transcription on call creation</param>
         [HttpPost("createCallWithTranscription")]
         [Tags("AI - Transcription")]
-        public IActionResult CreateCallWithTranscription(
+        public Task<IActionResult> CreateCallWithTranscription(
             string target,
             string locale = "en-US",
             bool enableTranscription = true)
         {
-            return CreateCallWithTranscriptionAsync(target, locale, enableTranscription).Result;
+            return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: false, isAsync: false);
         }
 
         /// <summary>
@@ -225,48 +100,11 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="locale">Transcription locale (optional, default from initial setup)</param>
         [HttpPost("startTranscriptionAsync")]
         [Tags("AI - Transcription")]
-        public async Task<IActionResult> StartTranscriptionAsync(
+        public Task<IActionResult> StartTranscriptionAsync(
             string callConnectionId,
             string locale = null)
         {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            _logger.LogInformation($"Starting transcription. CallId={callConnectionId}, Locale={locale}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                if (string.IsNullOrWhiteSpace(locale))
-                {
-                    await callMedia.StartTranscriptionAsync();
-                }
-                else
-                {
-                    var options = new StartTranscriptionOptions
-                    {
-                        Locale = locale,
-                        OperationContext = "StartTranscriptionContext"
-                    };
-                    await callMedia.StartTranscriptionAsync(options);
-                }
-
-                _logger.LogInformation("Transcription started successfully");
-                return Ok(new
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "TranscriptionStarted",
-                    Locale = locale ?? "default"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error starting transcription");
-                return Problem($"Failed to start transcription: {ex.Message}");
-            }
+            return StartTranscriptionInternal(callConnectionId, locale, isAsync: true);
         }
 
         /// <summary>
@@ -276,11 +114,11 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="locale">Transcription locale (optional, default from initial setup)</param>
         [HttpPost("startTranscription")]
         [Tags("AI - Transcription")]
-        public IActionResult StartTranscription(
+        public Task<IActionResult> StartTranscription(
             string callConnectionId,
             string locale = null)
         {
-            return StartTranscriptionAsync(callConnectionId, locale).Result;
+            return StartTranscriptionInternal(callConnectionId, locale, isAsync: false);
         }
 
         /// <summary>
@@ -289,33 +127,9 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         [HttpPost("stopTranscriptionAsync")]
         [Tags("AI - Transcription")]
-        public async Task<IActionResult> StopTranscriptionAsync(string callConnectionId)
+        public Task<IActionResult> StopTranscriptionAsync(string callConnectionId)
         {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            _logger.LogInformation($"Stopping transcription. CallId={callConnectionId}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                await callMedia.StopTranscriptionAsync();
-
-                _logger.LogInformation("Transcription stopped successfully");
-                return Ok(new
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "TranscriptionStopped"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error stopping transcription");
-                return Problem($"Failed to stop transcription: {ex.Message}");
-            }
+            return StopTranscriptionInternal(callConnectionId, isAsync: true);
         }
 
         /// <summary>
@@ -324,9 +138,9 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         [HttpPost("stopTranscription")]
         [Tags("AI - Transcription")]
-        public IActionResult StopTranscription(string callConnectionId)
+        public Task<IActionResult> StopTranscription(string callConnectionId)
         {
-            return StopTranscriptionAsync(callConnectionId).Result;
+            return StopTranscriptionInternal(callConnectionId, isAsync: false);
         }
 
         /// <summary>
@@ -336,39 +150,11 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="locale">New transcription locale</param>
         [HttpPost("updateTranscriptionAsync")]
         [Tags("AI - Transcription")]
-        public async Task<IActionResult> UpdateTranscriptionAsync(
+        public Task<IActionResult> UpdateTranscriptionAsync(
             string callConnectionId,
             string locale)
         {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            if (string.IsNullOrWhiteSpace(locale))
-                return BadRequest("Locale is required");
-
-            _logger.LogInformation($"Updating transcription locale. CallId={callConnectionId}, Locale={locale}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                await callMedia.UpdateTranscriptionAsync(locale);
-
-                _logger.LogInformation("Transcription locale updated successfully");
-                return Ok(new
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "TranscriptionUpdated",
-                    NewLocale = locale
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating transcription");
-                return Problem($"Failed to update transcription: {ex.Message}");
-            }
+            return UpdateTranscriptionInternal(callConnectionId, locale, isAsync: true);
         }
 
         /// <summary>
@@ -378,11 +164,11 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="locale">New transcription locale</param>
         [HttpPost("updateTranscription")]
         [Tags("AI - Transcription")]
-        public IActionResult UpdateTranscription(
+        public Task<IActionResult> UpdateTranscription(
             string callConnectionId,
             string locale)
         {
-            return UpdateTranscriptionAsync(callConnectionId, locale).Result;
+            return UpdateTranscriptionInternal(callConnectionId, locale, isAsync: false);
         }
 
         // ──────────── SPEECH RECOGNITION ENDPOINTS ─────────────────────────────────
@@ -475,7 +261,58 @@ namespace Call_Automation_GCCH.Controllers
             int endSilenceTimeoutSeconds = 5,
             string speechLanguage = "en-US")
         {
-            return RecognizeSpeechAsync(callConnectionId, target, initialSilenceTimeoutSeconds, endSilenceTimeoutSeconds, speechLanguage).Result;
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            _logger.LogInformation($"Starting speech recognition. CallId={callConnectionId}, Target={target}, Language={speechLanguage}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource("Please respond with your message.")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var speechOptions = new CallMediaRecognizeSpeechOptions(identifier)
+                {
+                    Prompt = textSource,
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(initialSilenceTimeoutSeconds),
+                    EndSilenceTimeout = TimeSpan.FromSeconds(endSilenceTimeoutSeconds),
+                    OperationContext = "SpeechRecognitionContext",
+                    OperationCallbackUri = callbackUri,
+                    SpeechLanguage = speechLanguage
+                };
+
+                callMedia.StartRecognizing(speechOptions);
+
+                _logger.LogInformation("Speech recognition started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "SpeechRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting speech recognition");
+                return Problem($"Failed to start speech recognition: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -557,7 +394,57 @@ namespace Call_Automation_GCCH.Controllers
             string target,
             int maxTonesToCollect = 4)
         {
-            return RecognizeSpeechOrDtmfAsync(callConnectionId, target, maxTonesToCollect).Result;
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            _logger.LogInformation($"Starting speech or DTMF recognition. CallId={callConnectionId}, Target={target}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource("Please respond by speaking or pressing keys on your keypad.")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var recognizeOptions = new CallMediaRecognizeSpeechOrDtmfOptions(identifier, maxTonesToCollect)
+                {
+                    Prompt = textSource,
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    EndSilenceTimeout = TimeSpan.FromSeconds(5),
+                    OperationContext = "SpeechOrDTMFContext",
+                    OperationCallbackUri = callbackUri
+                };
+
+                callMedia.StartRecognizing(recognizeOptions);
+
+                _logger.LogInformation("Speech or DTMF recognition started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "SpeechOrDtmfRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting speech or DTMF recognition");
+                return Problem($"Failed to start speech or DTMF recognition: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -640,7 +527,62 @@ namespace Call_Automation_GCCH.Controllers
             string callConnectionId,
             string target)
         {
-            return RecognizeChoiceAsync(callConnectionId, target).Result;
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            _logger.LogInformation($"Starting choice recognition. CallId={callConnectionId}, Target={target}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource("Please say yes or no.")
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var choices = new List<RecognitionChoice>
+                {
+                    new RecognitionChoice("yes", new[] { "yes", "yeah", "sure", "confirm" }),
+                    new RecognitionChoice("no", new[] { "no", "nope", "cancel", "negative" })
+                };
+
+                var recognizeOptions = new CallMediaRecognizeChoiceOptions(identifier, choices)
+                {
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    Prompt = textSource,
+                    OperationContext = "ChoiceRecognitionContext",
+                    OperationCallbackUri = callbackUri
+                };
+
+                callMedia.StartRecognizing(recognizeOptions);
+
+                _logger.LogInformation("Choice recognition started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "ChoiceRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting choice recognition");
+                return Problem($"Failed to start choice recognition: {ex.Message}");
+            }
         }
 
         // ──────────── CONTINUOUS DTMF RECOGNITION ─────────────────────────────────
@@ -737,7 +679,69 @@ namespace Call_Automation_GCCH.Controllers
             string target,
             string promptText = "Hi, this is recognize test. Please say yes or no, or press 1 for yes and 2 for no.")
         {
-            return RecognizeChoiceWithSpeechAsync(callConnectionId, target, promptText).Result;
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
+                return BadRequest("CognitiveServiceEndpoint must be configured to use speech-enabled choice recognition");
+
+            _logger.LogInformation($"Starting choice recognition with speech. CallId={callConnectionId}, Target={target}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource(promptText)
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var choices = new List<RecognitionChoice>
+                {
+                    new RecognitionChoice("Confirm", new[] { "Confirm", "Yes", "One" })
+                    {
+                        Tone = DtmfTone.One
+                    },
+                    new RecognitionChoice("Cancel", new[] { "Cancel", "No", "Two" })
+                    {
+                        Tone = DtmfTone.Two
+                    }
+                };
+
+                var recognizeOptions = new CallMediaRecognizeChoiceOptions(identifier, choices)
+                {
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+                    Prompt = textSource,
+                    OperationContext = "ChoiceWithSpeechContext"
+                };
+
+                callMedia.StartRecognizing(recognizeOptions);
+
+                _logger.LogInformation("Choice recognition with speech started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "ChoiceWithSpeechRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting choice recognition with speech");
+                return Problem($"Failed to start choice recognition with speech: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -825,7 +829,59 @@ namespace Call_Automation_GCCH.Controllers
             string promptText = "Please tell me your request.",
             string speechLanguage = "en-US")
         {
-            return RecognizeSpeechAdvancedAsync(callConnectionId, target, promptText, speechLanguage).Result;
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
+                return BadRequest("CognitiveServiceEndpoint must be configured for advanced speech recognition");
+
+            _logger.LogInformation($"Starting advanced speech recognition. CallId={callConnectionId}, Target={target}, Language={speechLanguage}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource(promptText)
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var speechOptions = new CallMediaRecognizeSpeechOptions(identifier)
+                {
+                    Prompt = textSource,
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    EndSilenceTimeout = TimeSpan.FromSeconds(10),
+                    OperationContext = "AdvancedSpeechRecognitionContext",
+                    SpeechLanguage = speechLanguage
+                };
+
+                callMedia.StartRecognizing(speechOptions);
+
+                _logger.LogInformation("Advanced speech recognition started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "AdvancedSpeechRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting advanced speech recognition");
+                return Problem($"Failed to start advanced speech recognition: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -835,59 +891,24 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant to recognize from</param>
         [HttpPost("startContinuousDtmfRecognitionAsync")]
         [Tags("AI - Recognition")]
-        public async Task<IActionResult> StartContinuousDtmfRecognitionAsync(
+        public Task<IActionResult> StartContinuousDtmfRecognitionAsync(
             string callConnectionId,
             string target)
         {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            _logger.LogInformation($"Starting continuous DTMF recognition. CallId={callConnectionId}, Target={target}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                CommunicationIdentifier identifier = target.StartsWith("8:")
-                    ? new CommunicationUserIdentifier(target)
-                    : new PhoneNumberIdentifier(target);
-
-                await callMedia.StartContinuousDtmfRecognitionAsync(identifier);
-
-                _logger.LogInformation("Continuous DTMF recognition started successfully");
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "ContinuousDtmfRecognitionStarted"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error starting continuous DTMF recognition");
-                return Problem($"Failed to start continuous DTMF recognition: {ex.Message}");
-            }
+            return HandleContinuousDtmfInternal(callConnectionId, target, start: true, isAsync: true);
         }
 
         /// <summary>
         /// Starts continuous DTMF recognition on a call (Sync)
         /// </summary>
         /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
         [HttpPost("startContinuousDtmfRecognition")]
         [Tags("AI - Recognition")]
-        public IActionResult StartContinuousDtmfRecognition(
+        public Task<IActionResult> StartContinuousDtmfRecognition(
             string callConnectionId,
             string target)
         {
-            return StartContinuousDtmfRecognitionAsync(callConnectionId, target).Result;
+            return HandleContinuousDtmfInternal(callConnectionId, target, start: true, isAsync: false);
         }
 
         /// <summary>
@@ -897,45 +918,11 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant to stop recognition for</param>
         [HttpPost("stopContinuousDtmfRecognitionAsync")]
         [Tags("AI - Recognition")]
-        public async Task<IActionResult> StopContinuousDtmfRecognitionAsync(
+        public Task<IActionResult> StopContinuousDtmfRecognitionAsync(
             string callConnectionId,
             string target)
         {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            _logger.LogInformation($"Stopping continuous DTMF recognition. CallId={callConnectionId}, Target={target}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                CommunicationIdentifier identifier = target.StartsWith("8:")
-                    ? new CommunicationUserIdentifier(target)
-                    : new PhoneNumberIdentifier(target);
-
-                await callMedia.StopContinuousDtmfRecognitionAsync(identifier);
-
-                _logger.LogInformation("Continuous DTMF recognition stopped successfully");
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "ContinuousDtmfRecognitionStopped"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error stopping continuous DTMF recognition");
-                return Problem($"Failed to stop continuous DTMF recognition: {ex.Message}");
-            }
+            return HandleContinuousDtmfInternal(callConnectionId, target, start: false, isAsync: true);
         }
 
         /// <summary>
@@ -945,11 +932,11 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant to stop recognition for</param>
         [HttpPost("stopContinuousDtmfRecognition")]
         [Tags("AI - Recognition")]
-        public IActionResult StopContinuousDtmfRecognition(
+        public Task<IActionResult> StopContinuousDtmfRecognition(
             string callConnectionId,
             string target)
         {
-            return StopContinuousDtmfRecognitionAsync(callConnectionId, target).Result;
+            return HandleContinuousDtmfInternal(callConnectionId, target, start: false, isAsync: false);
         }
 
         // ──────────── TEXT-TO-SPEECH ENDPOINTS ─────────────────────────────────────
@@ -1034,63 +1021,55 @@ namespace Call_Automation_GCCH.Controllers
             string text,
             string voiceName = "en-US-NancyNeural")
         {
-            return PlayTextToSpeechAsync(callConnectionId, target, text, voiceName).Result;
-        }
-
-        /*
-        /// <summary>
-        /// Plays text-to-speech to all participants using TextSource
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="text">Text to convert to speech</param>
-        /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
-        [HttpPost("playTextToSpeechToAll")]
-        [Tags("AI - Text-to-Speech")]
-        public async Task<IActionResult> PlayTextToSpeechToAll(
-            string callConnectionId,
-            string text,
-            string voiceName = "en-US-NancyNeural")
-        {
             if (string.IsNullOrWhiteSpace(callConnectionId))
                 return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
 
             if (string.IsNullOrWhiteSpace(text))
                 return BadRequest("Text is required");
 
-            _logger.LogInformation($"Playing text-to-speech to all. CallId={callConnectionId}, Voice={voiceName}");
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            _logger.LogInformation($"Playing text-to-speech. CallId={callConnectionId}, Target={target}, Voice={voiceName}");
 
             try
             {
                 var callMedia = _service.GetCallMedia(callConnectionId);
                 var props = _service.GetCallConnectionProperties(callConnectionId);
 
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
                 var textSource = new TextSource(text)
                 {
                     VoiceName = voiceName
                 };
 
-                var playOptions = new PlayToAllOptions(textSource)
+                var playOptions = new PlayOptions(textSource, new List<CommunicationIdentifier> { identifier })
                 {
-                    OperationContext = "TextToSpeechToAllContext"
+                    OperationContext = "TextToSpeechContext"
                 };
 
-                await callMedia.PlayToAllAsync(playOptions);
+                callMedia.Play(playOptions);
 
-                _logger.LogInformation("Text-to-speech to all started successfully");
+                _logger.LogInformation("Text-to-speech playback started successfully");
                 return Ok(new CallConnectionResponse
                 {
                     CallConnectionId = callConnectionId,
                     CorrelationId = props.CorrelationId,
-                    Status = "TextToSpeechToAllStarted"
+                    Status = "TextToSpeechStarted"
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error playing text-to-speech to all");
-                return Problem($"Failed to play text-to-speech to all: {ex.Message}");
+                _logger.LogError(ex, "Error playing text-to-speech");
+                return Problem($"Failed to play text-to-speech: {ex.Message}");
             }
         }
-        */
 
         /// <summary>
         /// Plays SSML (Speech Synthesis Markup Language) to a specific target (Async)
@@ -1165,7 +1144,645 @@ namespace Call_Automation_GCCH.Controllers
             string target,
             string ssml= "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
         {
-            return PlaySsmlAsync(callConnectionId, target, ssml).Result;
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (string.IsNullOrWhiteSpace(ssml))
+                return BadRequest("SSML is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            _logger.LogInformation($"Playing SSML. CallId={callConnectionId}, Target={target}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var ssmlSource = new SsmlSource(ssml);
+
+                var playOptions = new PlayOptions(ssmlSource, new List<CommunicationIdentifier> { identifier })
+                {
+                    OperationContext = "SsmlPlayContext"
+                };
+
+                callMedia.Play(playOptions);
+
+                _logger.LogInformation("SSML playback started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "SsmlPlaybackStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing SSML");
+                return Problem($"Failed to play SSML: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Plays text-to-speech to all participants (Async)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="text">Text to convert to speech</param>
+        /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
+        [HttpPost("playTextToSpeechToAllAsync")]
+        [Tags("AI - Text-to-Speech")]
+        public async Task<IActionResult> PlayTextToSpeechToAllAsync(
+            string callConnectionId,
+            string text,
+            string voiceName = "en-US-NancyNeural")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(text))
+                return BadRequest("Text is required");
+
+            _logger.LogInformation($"Playing text-to-speech to all. CallId={callConnectionId}, Voice={voiceName}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                var textSource = new TextSource(text)
+                {
+                    VoiceName = voiceName
+                };
+
+                var playToAllOptions = new PlayToAllOptions(textSource)
+                {
+                    OperationContext = "TextToSpeechToAllContext"
+                };
+
+                await callMedia.PlayToAllAsync(playToAllOptions);
+
+                _logger.LogInformation("Text-to-speech to all started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "TextToSpeechToAllStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing text-to-speech to all");
+                return Problem($"Failed to play text-to-speech to all: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Plays text-to-speech to all participants (Sync)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="text">Text to convert to speech</param>
+        /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
+        [HttpPost("playTextToSpeechToAll")]
+        [Tags("AI - Text-to-Speech")]
+        public IActionResult PlayTextToSpeechToAll(
+            string callConnectionId,
+            string text,
+            string voiceName = "en-US-NancyNeural")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(text))
+                return BadRequest("Text is required");
+
+            _logger.LogInformation($"Playing text-to-speech to all. CallId={callConnectionId}, Voice={voiceName}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                var textSource = new TextSource(text)
+                {
+                    VoiceName = voiceName
+                };
+
+                var playToAllOptions = new PlayToAllOptions(textSource)
+                {
+                    OperationContext = "TextToSpeechToAllContext"
+                };
+
+                callMedia.PlayToAll(playToAllOptions);
+
+                _logger.LogInformation("Text-to-speech to all started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "TextToSpeechToAllStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing text-to-speech to all");
+                return Problem($"Failed to play text-to-speech to all: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Plays text-to-speech with barge-in capability (interrupts current audio) (Async)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="text">Text to convert to speech</param>
+        /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
+        [HttpPost("playTextToSpeechBargeInAsync")]
+        [Tags("AI - Text-to-Speech")]
+        public async Task<IActionResult> PlayTextToSpeechBargeInAsync(
+            string callConnectionId,
+            string text = "Hi, this is barge in test played through text source. Goodbye!",
+            string voiceName = "en-US-NancyNeural")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(text))
+                return BadRequest("Text is required");
+
+            _logger.LogInformation($"Playing text-to-speech with barge-in. CallId={callConnectionId}, Voice={voiceName}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                var textSource = new TextSource(text)
+                {
+                    VoiceName = voiceName
+                };
+
+                var playToAllOptions = new PlayToAllOptions(textSource)
+                {
+                    OperationContext = "TextToSpeechBargeInContext",
+                    InterruptCallMediaOperation = true
+                };
+
+                await callMedia.PlayToAllAsync(playToAllOptions);
+
+                _logger.LogInformation("Text-to-speech barge-in started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "TextToSpeechBargeInStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing text-to-speech with barge-in");
+                return Problem($"Failed to play text-to-speech with barge-in: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Plays SSML to all participants (Async)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="ssml">SSML content</param>
+        [HttpPost("playSsmlToAllAsync")]
+        [Tags("AI - Text-to-Speech")]
+        public async Task<IActionResult> PlaySsmlToAllAsync(
+            string callConnectionId,
+            string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(ssml))
+                return BadRequest("SSML is required");
+
+            _logger.LogInformation($"Playing SSML to all. CallId={callConnectionId}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                var ssmlSource = new SsmlSource(ssml);
+
+                var playToAllOptions = new PlayToAllOptions(ssmlSource)
+                {
+                    OperationContext = "SsmlToAllContext"
+                };
+
+                await callMedia.PlayToAllAsync(playToAllOptions);
+
+                _logger.LogInformation("SSML to all started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "SsmlToAllStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing SSML to all");
+                return Problem($"Failed to play SSML to all: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Plays SSML to all participants (Sync)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="ssml">SSML content</param>
+        [HttpPost("playSsmlToAll")]
+        [Tags("AI - Text-to-Speech")]
+        public IActionResult PlaySsmlToAll(
+            string callConnectionId,
+            string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(ssml))
+                return BadRequest("SSML is required");
+
+            _logger.LogInformation($"Playing SSML to all. CallId={callConnectionId}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                var ssmlSource = new SsmlSource(ssml);
+
+                var playToAllOptions = new PlayToAllOptions(ssmlSource)
+                {
+                    OperationContext = "SsmlToAllContext"
+                };
+
+                callMedia.PlayToAll(playToAllOptions);
+
+                _logger.LogInformation("SSML to all started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "SsmlToAllStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing SSML to all");
+                return Problem($"Failed to play SSML to all: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Plays SSML with barge-in capability (interrupts current audio) (Async)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="ssml">SSML content</param>
+        [HttpPost("playSsmlBargeInAsync")]
+        [Tags("AI - Text-to-Speech")]
+        public async Task<IActionResult> PlaySsmlBargeInAsync(
+            string callConnectionId,
+            string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml barge in test played through ssml source. Goodbye!</voice></speak>")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(ssml))
+                return BadRequest("SSML is required");
+
+            _logger.LogInformation($"Playing SSML with barge-in. CallId={callConnectionId}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                var ssmlSource = new SsmlSource(ssml);
+
+                var playToAllOptions = new PlayToAllOptions(ssmlSource)
+                {
+                    OperationContext = "SsmlBargeInContext",
+                    InterruptCallMediaOperation = true
+                };
+
+                await callMedia.PlayToAllAsync(playToAllOptions);
+
+                _logger.LogInformation("SSML barge-in started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "SsmlBargeInStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error playing SSML with barge-in");
+                return Problem($"Failed to play SSML with barge-in: {ex.Message}");
+            }
+        }
+
+        // ------------------ Internal / Private   ------------------
+        private async Task<IActionResult> CreateCallWithAIFeaturesInternal(
+            string target,
+            string locale,
+            bool enableTranscription,
+            bool enableCallIntelligence,
+            bool isAsync)
+        {
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            if (enableCallIntelligence && string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
+                return BadRequest("CognitiveServiceEndpoint must be configured in appsettings.json to use Call Intelligence features");
+
+            var featureDescription = enableCallIntelligence ? "Call Intelligence" : "transcription";
+            _logger.LogInformation($"Creating call with {featureDescription}. Target={target}, Locale={locale}, TranscriptionEnabled={enableTranscription}");
+
+            try
+            {
+                var callbackUri = new Uri(new Uri(_config.CallbackUriHost), "/api/callbacks");
+                var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
+
+                CallInvite callInvite;
+                if (target.StartsWith("8:"))
+                {
+                    callInvite = new CallInvite(new CommunicationUserIdentifier(target));
+                }
+                else
+                {
+                    callInvite = new CallInvite(
+                        new PhoneNumberIdentifier(target),
+                        new PhoneNumberIdentifier(_config.AcsPhoneNumber));
+                }
+
+                var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
+
+                if (enableCallIntelligence)
+                {
+                    createCallOptions.CallIntelligenceOptions = new CallIntelligenceOptions
+                    {
+                        CognitiveServicesEndpoint = new Uri(_config.CognitiveServiceEndpoint)
+                    };
+                }
+
+                if (enableTranscription)
+                {
+                    var transcriptionOptions = new TranscriptionOptions(
+                        new Uri(websocketUri),
+                        locale,
+                        enableTranscription,
+                        TranscriptionTransport.Websocket);
+                    createCallOptions.TranscriptionOptions = transcriptionOptions;
+                }
+
+                CreateCallResult result;
+                if (isAsync)
+                {
+                    result = await _service.GetCallAutomationClient().CreateCallAsync(createCallOptions);
+                }
+                else
+                {
+                    result = _service.GetCallAutomationClient().CreateCall(createCallOptions);
+                }
+
+                var props = result.CallConnectionProperties;
+                _logger.LogInformation($"Call created with {featureDescription}. CallConnectionId={props.CallConnectionId}");
+
+                var response = new
+                {
+                    CallConnectionId = props.CallConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = props.CallConnectionState.ToString(),
+                    TranscriptionEnabled = enableTranscription
+                };
+
+                if (enableCallIntelligence)
+                {
+                    return Ok(new
+                    {
+                        response.CallConnectionId,
+                        response.CorrelationId,
+                        response.Status,
+                        CallIntelligenceEnabled = true,
+                        response.TranscriptionEnabled,
+                        CognitiveServicesEndpoint = _config.CognitiveServiceEndpoint
+                    });
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error creating call with {featureDescription}");
+                return Problem($"Failed to create call with {featureDescription}: {ex.Message}");
+            }
+        }
+
+        private async Task<IActionResult> StartTranscriptionInternal(string callConnectionId, string locale, bool isAsync)
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            _logger.LogInformation($"Starting transcription. CallId={callConnectionId}, Locale={locale}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                if (string.IsNullOrWhiteSpace(locale))
+                {
+                    if (isAsync)
+                    {
+                        await callMedia.StartTranscriptionAsync();
+                    }
+                    else
+                    {
+                        callMedia.StartTranscription();
+                    }
+                }
+                else
+                {
+                    var options = new StartTranscriptionOptions
+                    {
+                        Locale = locale,
+                        OperationContext = "StartTranscriptionContext"
+                    };
+
+                    if (isAsync)
+                    {
+                        await callMedia.StartTranscriptionAsync(options);
+                    }
+                    else
+                    {
+                        callMedia.StartTranscription(options);
+                    }
+                }
+
+                _logger.LogInformation("Transcription started successfully");
+                return Ok(new
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "TranscriptionStarted",
+                    Locale = locale ?? "default"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting transcription");
+                return Problem($"Failed to start transcription: {ex.Message}");
+            }
+        }
+        private async Task<IActionResult> StopTranscriptionInternal(string callConnectionId, bool isAsync)
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            _logger.LogInformation($"Stopping transcription. CallId={callConnectionId}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                if (isAsync)
+                {
+                    await callMedia.StopTranscriptionAsync();
+                }
+                else
+                {
+                    callMedia.StopTranscription();
+                }
+
+                _logger.LogInformation("Transcription stopped successfully");
+                return Ok(new
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "TranscriptionStopped"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping transcription");
+                return Problem($"Failed to stop transcription: {ex.Message}");
+            }
+        }
+        private async Task<IActionResult> UpdateTranscriptionInternal(string callConnectionId, string locale, bool isAsync)
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(locale))
+                return BadRequest("Locale is required");
+
+            _logger.LogInformation($"Updating transcription locale. CallId={callConnectionId}, Locale={locale}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                if (isAsync)
+                {
+                    await callMedia.UpdateTranscriptionAsync(locale);
+                }
+                else
+                {
+                    callMedia.UpdateTranscription(locale);
+                }
+
+                _logger.LogInformation("Transcription locale updated successfully");
+                return Ok(new
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "TranscriptionUpdated",
+                    NewLocale = locale
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating transcription");
+                return Problem($"Failed to update transcription: {ex.Message}");
+            }
+        }
+        private async Task<IActionResult> HandleContinuousDtmfInternal(
+            string callConnectionId,
+            string target,
+            bool start,
+            bool isAsync)
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            var action = start ? "Starting" : "Stopping";
+            _logger.LogInformation($"{action} continuous DTMF recognition. CallId={callConnectionId}, Target={target}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                if (start)
+                {
+                    if (isAsync)
+                        await callMedia.StartContinuousDtmfRecognitionAsync(identifier);
+                    else
+                        callMedia.StartContinuousDtmfRecognition(identifier);
+                }
+                else
+                {
+                    if (isAsync)
+                        await callMedia.StopContinuousDtmfRecognitionAsync(identifier);
+                    else
+                        callMedia.StopContinuousDtmfRecognition(identifier);
+                }
+
+                var status = start ? "ContinuousDtmfRecognitionStarted" : "ContinuousDtmfRecognitionStopped";
+                _logger.LogInformation($"Continuous DTMF recognition {(start ? "started" : "stopped")} successfully");
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = status
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error {action.ToLower()} continuous DTMF recognition");
+                return Problem($"Failed to {action.ToLower()} continuous DTMF recognition: {ex.Message}");
+            }
         }
     }
 }
