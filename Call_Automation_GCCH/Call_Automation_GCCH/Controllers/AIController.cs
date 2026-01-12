@@ -26,15 +26,15 @@ namespace Call_Automation_GCCH.Controllers
             _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
         }
 
-        // ──────────── COGNITIVE SERVICES INTEGRATION ───────────────────────────────
+        #region AI(COGNITIVE) SERVICES - CALLS
         /// <summary>
         /// Creates a call with Call Intelligence (Cognitive Services) enabled for advanced AI features (Async)
         /// </summary>
         /// <param name="target">Target phone number (with country code) or communication user ID</param>
         /// <param name="enableTranscription">Whether to enable transcription (default: true)</param>
         /// <param name="locale">Transcription locale (default: en-US)</param>
-        [HttpPost("createCallWithCallIntelligenceAsync")]
-        [Tags("AI - Call with Cognitive Services")]
+        [HttpPost("createCallWithIntelligenceAsync")]
+        [Tags("AI - Call with AI(Cognitive) services")]
         public Task<IActionResult> CreateCallWithCallIntelligenceAsync(
             string target,
             bool enableTranscription = true,
@@ -49,8 +49,8 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target phone number (with country code) or communication user ID</param>
         /// <param name="enableTranscription">Whether to enable transcription (default: true)</param>
         /// <param name="locale">Transcription locale (default: en-US)</param>
-        [HttpPost("createCallWithCallIntelligence")]
-        [Tags("AI - Call with Cognitive Services")]
+        [HttpPost("createCallWithIntelligence")]
+        [Tags("AI - Call with AI(Cognitive) Services")]
         public Task<IActionResult> CreateCallWithCallIntelligence(
             string target,
             bool enableTranscription = true,
@@ -58,9 +58,9 @@ namespace Call_Automation_GCCH.Controllers
         {
             return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: true, isAsync: false);
         }
+        #endregion
 
-        // ──────────── TRANSCRIPTION ENDPOINTS ─────────────────────────────────────
-
+        #region TRANSCRIPTION
         /// <summary>
         /// Creates a call with transcription enabled (Async)
         /// </summary>
@@ -170,9 +170,9 @@ namespace Call_Automation_GCCH.Controllers
         {
             return UpdateTranscriptionInternal(callConnectionId, locale, isAsync: false);
         }
+        #endregion
 
-        // ──────────── SPEECH RECOGNITION ENDPOINTS ─────────────────────────────────
-
+        #region  RECOGNITION
         /// <summary>
         /// Starts speech recognition on a call (Async)
         /// </summary>
@@ -585,8 +585,149 @@ namespace Call_Automation_GCCH.Controllers
             }
         }
 
-        // ──────────── CONTINUOUS DTMF RECOGNITION ─────────────────────────────────
+        /// <summary>
+        /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Async)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="target">Target participant to recognize from</param>
+        /// <param name="promptText">Text prompt to play</param>
+        /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
+        [HttpPost("recognizeSpeechAdvancedAsync")]
+        [Tags("AI - Speech Recognition")]
+        public async Task<IActionResult> RecognizeSpeechAdvancedAsync(
+            string callConnectionId,
+            string target,
+            string promptText = "Please tell me your request.",
+            string speechLanguage = "en-US")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
 
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
+                return BadRequest("CognitiveServiceEndpoint must be configured for advanced speech recognition");
+
+            _logger.LogInformation($"Starting advanced speech recognition. CallId={callConnectionId}, Target={target}, Language={speechLanguage}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource(promptText)
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var speechOptions = new CallMediaRecognizeSpeechOptions(identifier)
+                {
+                    Prompt = textSource,
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    EndSilenceTimeout = TimeSpan.FromSeconds(10),
+                    OperationContext = "AdvancedSpeechRecognitionContext",
+                    SpeechLanguage = speechLanguage
+                };
+
+                await callMedia.StartRecognizingAsync(speechOptions);
+
+                _logger.LogInformation("Advanced speech recognition started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "AdvancedSpeechRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting advanced speech recognition");
+                return Problem($"Failed to start advanced speech recognition: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Sync)
+        /// </summary>
+        /// <param name="callConnectionId">The call connection ID</param>
+        /// <param name="target">Target participant to recognize from</param>
+        /// <param name="promptText">Text prompt to play</param>
+        /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
+        [HttpPost("recognizeSpeechAdvanced")]
+        [Tags("AI - Speech Recognition")]
+        public IActionResult RecognizeSpeechAdvanced(
+            string callConnectionId,
+            string target,
+            string promptText = "Please tell me your request.",
+            string speechLanguage = "en-US")
+        {
+            if (string.IsNullOrWhiteSpace(callConnectionId))
+                return BadRequest("CallConnectionId is required");
+
+            if (string.IsNullOrWhiteSpace(target))
+                return BadRequest("Target is required");
+
+            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
+                return BadRequest("CognitiveServiceEndpoint must be configured for advanced speech recognition");
+
+            _logger.LogInformation($"Starting advanced speech recognition. CallId={callConnectionId}, Target={target}, Language={speechLanguage}");
+
+            try
+            {
+                var callMedia = _service.GetCallMedia(callConnectionId);
+                var props = _service.GetCallConnectionProperties(callConnectionId);
+
+                CommunicationIdentifier identifier = target.StartsWith("8:")
+                    ? new CommunicationUserIdentifier(target)
+                    : new PhoneNumberIdentifier(target);
+
+                var textSource = new TextSource(promptText)
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
+
+                var speechOptions = new CallMediaRecognizeSpeechOptions(identifier)
+                {
+                    Prompt = textSource,
+                    InterruptPrompt = false,
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
+                    EndSilenceTimeout = TimeSpan.FromSeconds(10),
+                    OperationContext = "AdvancedSpeechRecognitionContext",
+                    SpeechLanguage = speechLanguage
+                };
+
+                callMedia.StartRecognizing(speechOptions);
+
+                _logger.LogInformation("Advanced speech recognition started successfully");
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = props.CorrelationId,
+                    Status = "AdvancedSpeechRecognitionStarted"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting advanced speech recognition");
+                return Problem($"Failed to start advanced speech recognition: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region CONTINUOUS DTMF RECOGNITION
         /// <summary>
         /// Starts advanced choice recognition with speech phrases enabled (requires Cognitive Services) (Async)
         /// </summary>
@@ -745,146 +886,6 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         /// <summary>
-        /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Async)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        /// <param name="promptText">Text prompt to play</param>
-        /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
-        [HttpPost("recognizeSpeechAdvancedAsync")]
-        [Tags("AI - Recognition")]
-        public async Task<IActionResult> RecognizeSpeechAdvancedAsync(
-            string callConnectionId,
-            string target,
-            string promptText = "Please tell me your request.",
-            string speechLanguage = "en-US")
-        {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
-                return BadRequest("CognitiveServiceEndpoint must be configured for advanced speech recognition");
-
-            _logger.LogInformation($"Starting advanced speech recognition. CallId={callConnectionId}, Target={target}, Language={speechLanguage}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                CommunicationIdentifier identifier = target.StartsWith("8:")
-                    ? new CommunicationUserIdentifier(target)
-                    : new PhoneNumberIdentifier(target);
-
-                var textSource = new TextSource(promptText)
-                {
-                    VoiceName = "en-US-NancyNeural"
-                };
-
-                var speechOptions = new CallMediaRecognizeSpeechOptions(identifier)
-                {
-                    Prompt = textSource,
-                    InterruptPrompt = false,
-                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                    EndSilenceTimeout = TimeSpan.FromSeconds(10),
-                    OperationContext = "AdvancedSpeechRecognitionContext",
-                    SpeechLanguage = speechLanguage
-                };
-
-                await callMedia.StartRecognizingAsync(speechOptions);
-
-                _logger.LogInformation("Advanced speech recognition started successfully");
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "AdvancedSpeechRecognitionStarted"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error starting advanced speech recognition");
-                return Problem($"Failed to start advanced speech recognition: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Sync)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        /// <param name="promptText">Text prompt to play</param>
-        /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
-        [HttpPost("recognizeSpeechAdvanced")]
-        [Tags("AI - Recognition")]
-        public IActionResult RecognizeSpeechAdvanced(
-            string callConnectionId,
-            string target,
-            string promptText = "Please tell me your request.",
-            string speechLanguage = "en-US")
-        {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
-                return BadRequest("CognitiveServiceEndpoint must be configured for advanced speech recognition");
-
-            _logger.LogInformation($"Starting advanced speech recognition. CallId={callConnectionId}, Target={target}, Language={speechLanguage}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                CommunicationIdentifier identifier = target.StartsWith("8:")
-                    ? new CommunicationUserIdentifier(target)
-                    : new PhoneNumberIdentifier(target);
-
-                var textSource = new TextSource(promptText)
-                {
-                    VoiceName = "en-US-NancyNeural"
-                };
-
-                var speechOptions = new CallMediaRecognizeSpeechOptions(identifier)
-                {
-                    Prompt = textSource,
-                    InterruptPrompt = false,
-                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
-                    EndSilenceTimeout = TimeSpan.FromSeconds(10),
-                    OperationContext = "AdvancedSpeechRecognitionContext",
-                    SpeechLanguage = speechLanguage
-                };
-
-                callMedia.StartRecognizing(speechOptions);
-
-                _logger.LogInformation("Advanced speech recognition started successfully");
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = "AdvancedSpeechRecognitionStarted"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error starting advanced speech recognition");
-                return Problem($"Failed to start advanced speech recognition: {ex.Message}");
-            }
-        }
-
-        /// <summary>
         /// Starts continuous DTMF recognition on a call (Async)
         /// </summary>
         /// <param name="callConnectionId">The call connection ID</param>
@@ -938,9 +939,9 @@ namespace Call_Automation_GCCH.Controllers
         {
             return HandleContinuousDtmfInternal(callConnectionId, target, start: false, isAsync: false);
         }
+        #endregion
 
-        // ──────────── TEXT-TO-SPEECH ENDPOINTS ─────────────────────────────────────
-
+        #region PLAY MEDIA SOURCE ENDPOINTS
         /// <summary>
         /// Plays text-to-speech to a specific target using TextSource (Async)
         /// </summary>
@@ -948,9 +949,9 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant</param>
         /// <param name="text">Text to convert to speech</param>
         /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
-        [HttpPost("playTextToSpeechAsync")]
-        [Tags("AI - Text-to-Speech")]
-        public async Task<IActionResult> PlayTextToSpeechAsync(
+        [HttpPost("playTextToTargetAsync")]
+        [Tags("AI - Play Media")]
+        public async Task<IActionResult> playTextSourceToTargetAsync(
             string callConnectionId,
             string target,
             string text,
@@ -1013,8 +1014,8 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant</param>
         /// <param name="text">Text to convert to speech</param>
         /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
-        [HttpPost("playTextToSpeech")]
-        [Tags("AI - Text-to-Speech")]
+        [HttpPost("playTextToTarget")]
+        [Tags("AI - Play Media")]
         public IActionResult PlayTextToSpeech(
             string callConnectionId,
             string target,
@@ -1078,7 +1079,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant</param>
         /// <param name="ssml">SSML content</param>
         [HttpPost("playSsmlAsync")]
-        [Tags("AI - Text-to-Speech")]
+        [Tags("AI - Play SSML Source Media")]
         public async Task<IActionResult> PlaySsmlAsync(
             string callConnectionId,
             string target,
@@ -1138,7 +1139,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant</param>
         /// <param name="ssml">SSML content</param>
         [HttpPost("playSsml")]
-        [Tags("AI - Text-to-Speech")]
+        [Tags("AI - Play SSML Source Media")]
         public IActionResult PlaySsml(
             string callConnectionId,
             string target,
@@ -1197,8 +1198,8 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="text">Text to convert to speech</param>
         /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
-        [HttpPost("playTextToSpeechToAllAsync")]
-        [Tags("AI - Text-to-Speech")]
+        [HttpPost("playTextToAllAsync")]
+        [Tags("AI - Play Media")]
         public async Task<IActionResult> PlayTextToSpeechToAllAsync(
             string callConnectionId,
             string text,
@@ -1250,8 +1251,8 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="text">Text to convert to speech</param>
         /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
-        [HttpPost("playTextToSpeechToAll")]
-        [Tags("AI - Text-to-Speech")]
+        [HttpPost("playTextToAll")]
+        [Tags("AI - Play Media")]
         public IActionResult PlayTextToSpeechToAll(
             string callConnectionId,
             string text,
@@ -1303,8 +1304,8 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="text">Text to convert to speech</param>
         /// <param name="voiceName">Voice name (default: en-US-NancyNeural)</param>
-        [HttpPost("playTextToSpeechBargeInAsync")]
-        [Tags("AI - Text-to-Speech")]
+        [HttpPost("playTextBargeInAsync")]
+        [Tags("AI - Play Media")]
         public async Task<IActionResult> PlayTextToSpeechBargeInAsync(
             string callConnectionId,
             string text = "Hi, this is barge in test played through text source. Goodbye!",
@@ -1357,7 +1358,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="ssml">SSML content</param>
         [HttpPost("playSsmlToAllAsync")]
-        [Tags("AI - Text-to-Speech")]
+        [Tags("AI - Play Media")]
         public async Task<IActionResult> PlaySsmlToAllAsync(
             string callConnectionId,
             string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
@@ -1405,7 +1406,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="ssml">SSML content</param>
         [HttpPost("playSsmlToAll")]
-        [Tags("AI - Text-to-Speech")]
+        [Tags("AI - Play Media")]
         public IActionResult PlaySsmlToAll(
             string callConnectionId,
             string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
@@ -1453,7 +1454,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="ssml">SSML content</param>
         [HttpPost("playSsmlBargeInAsync")]
-        [Tags("AI - Text-to-Speech")]
+        [Tags("AI - Play Media")]
         public async Task<IActionResult> PlaySsmlBargeInAsync(
             string callConnectionId,
             string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml barge in test played through ssml source. Goodbye!</voice></speak>")
@@ -1495,8 +1496,9 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to play SSML with barge-in: {ex.Message}");
             }
         }
+        #endregion
 
-        // ------------------ Internal / Private   ------------------
+        #region INTERNAL / PRIVATE METHODS
         private async Task<IActionResult> CreateCallWithAIFeaturesInternal(
             string target,
             string locale,
@@ -1784,5 +1786,6 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to {action.ToLower()} continuous DTMF recognition: {ex.Message}");
             }
         }
+        #endregion
     }
 }
