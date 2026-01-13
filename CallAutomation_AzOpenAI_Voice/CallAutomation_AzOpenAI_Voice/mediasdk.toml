@@ -1,0 +1,63 @@
+# Media SDK Configuration File
+# This file contains SDK-specific configuration values that will be loaded
+# when a MediaClient object is instantiated.
+#
+# Environment-Specific Configuration:
+# All configuration sections support environment-specific overrides using the pattern:
+#   [section.default]    - Default values used unless overridden
+#   [section.msit]       - Production-specific overrides
+#   [section.sdf]        - Staging-specific overrides
+#   [section.development] - Development-specific overrides
+#
+# You can also specify simple inline values (no environment suffix) which will be
+# used for all environments.
+
+[general]
+debug_mode = true
+
+# Enable Europe compliance mode
+# europe_compliant = false
+
+# Option 2: Environment-specific overrides (examples - commented out)
+
+# Media Processing Configuration
+[media]
+# audio_engine_type = "msrtc"
+
+# Telemetry and Monitoring
+[telemetry]
+# enabled = true
+
+# Stats report interval in seconds (default: 10)
+# stats_report_interval_secs = 10
+
+# Network and Connectivity
+[network]
+# Waimeabay frontdoor URL configuration
+# This setting takes priority over the WB_URL environment variable.
+
+# Option 1: Single URL for all environments (simple inline) - currently active
+wb_frontdoor_url = "https://insravan.personalsandbox.dev.waimeabae.com"
+
+# Option 2: Per-environment URLs (commented out - uncomment to use)
+[network.default]
+wb_frontdoor_url = "https://sdf.waimeabae.com/default_but_not_used"
+# connection_timeout_secs = 30
+# max_retries = 3
+#
+# [network.sdf]
+# wb_frontdoor_url = "https://sdf.mediabroker.communications.core.dev.microsoft"
+#
+# [network.msit]
+# wb_frontdoor_url = "https://msit.mediabroker.communications.svc.cloud.microsoft"
+# connection_timeout_secs = 60
+# max_retries = 5
+[network.prod]
+wb_frontdoor_url = "https://prod.mediabroker.communications.svc.cloud.microsoft"
+connection_timeout_secs = 60
+max_retries = 5
+[network.dev]
+wb_frontdoor_url = "https://dev.mediabroker.communications.core.dev.microsoft"
+
+#[seep.dev]
+#feed_id_name = "dev_override_feed"

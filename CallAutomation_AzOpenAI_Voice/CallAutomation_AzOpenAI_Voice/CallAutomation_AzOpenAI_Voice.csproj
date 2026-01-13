@@ -7,14 +7,28 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
+	<ItemGroup>
+		<None Update="mediasdk.toml">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+  
+  <Target Name="CopyToNativeRuntimeFolder" AfterTargets="Build">
+  <Copy
+      SourceFiles="$(ProjectDir)mediasdk.toml"
+      DestinationFolder="$(OutputPath)runtimes\win-x64\native"
+      SkipUnchangedFiles="true" />
+</Target>
+
+
+	<ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0-beta.2" />
     <PackageReference Include="Azure.Communication.CallAutomation" Version="1.4.0" />
     <PackageReference Include="Azure.Communication.Common" Version="1.3.0" />
     <PackageReference Include="Azure.Communication.Identity" Version="1.0.0-beta.4" />
     <PackageReference Include="Microsoft.Azure.Communication.Sydney" Version="1.*" />
-    <PackageReference Include="Microsoft.Azure.Communication.Media" Version="1.0.0-beta.2025120274278930" />
-    <PackageReference Include="Microsoft.Azure.Communication.Media.Extensions" Version="1.0.0-beta.2025120274278930" />
+    <PackageReference Include="Microsoft.Azure.Communication.Media" Version="1.0.0-beta.2025120974434908" />
+    <PackageReference Include="Microsoft.Azure.Communication.Media.Extensions" Version="1.0.0-beta.2025120974434908" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.13.0" />
     <PackageReference Include="CliWrap" Version="3.6.1" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.40.0" />

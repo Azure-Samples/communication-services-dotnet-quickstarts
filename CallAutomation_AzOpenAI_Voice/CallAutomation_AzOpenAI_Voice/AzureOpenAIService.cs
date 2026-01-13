@@ -153,7 +153,6 @@ namespace CallAutomationOpenAI
         public async Task SendAudioToExternalAI(Stream memoryStream)
         {
             await m_aiSession.SendInputAudioAsync(memoryStream);
-            await m_aiSession.AddItemAsync(ConversationItem.CreateUserMessage(["Hello, assistant!"]));
         }
 
         public void Close()

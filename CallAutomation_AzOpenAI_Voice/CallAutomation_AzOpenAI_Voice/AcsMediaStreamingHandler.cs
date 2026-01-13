@@ -1,9 +1,4 @@
-using System.Net.WebSockets;
-using System.Text;
-using Azure.Communication.CallAutomation;
-using Azure.Communication.Media;
 using CallAutomationOpenAI;
-#pragma warning disable OPENAI002
 
 public class AcsMediaStreamingHandler
 {
@@ -17,8 +12,11 @@ public class AcsMediaStreamingHandler
       
     public async Task SendMessageAsync(byte[] message)
     {
-        Console.WriteLine($"SendMessageAsync -> {message}");
-        m_roomConnector.OutgoingAudioStream.Write(message);
+        Console.WriteLine($"SendMessageAsync -> {message.Length}");
+        if (m_roomConnector != null && m_roomConnector.OutgoingAudioStream != null)
+        {
+            m_roomConnector.OutgoingAudioStream.Write(message);
+        }
     }
 
     public async Task WriteInputStream(string data)

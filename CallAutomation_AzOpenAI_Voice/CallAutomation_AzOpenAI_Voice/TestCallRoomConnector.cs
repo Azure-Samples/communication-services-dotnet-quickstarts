@@ -1,30 +1,32 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Communication.Media;
+using CallAutomationOpenAI;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using static System.Net.WebRequestMethods;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class TestCallRoomConnector
 {
     private readonly MediaClient _mediaClient;
     private readonly ILogger _logger;
-    public string _sessionId { get; set;  }
     private readonly IServiceProvider _serviceProvider;
     private bool _connected;
     public string? LastError { get; private set; }
     public OutgoingAudioStream OutgoingAudioStream { get; private set; }
+    public AzureOpenAIService aiServiceHandler { get; set; }
 
     public TestCallRoomConnector(MediaClient mediaClient, ILogger logger, IServiceProvider serviceProvider)
     {
         _mediaClient = mediaClient;
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _sessionId = $"room";
     }
 
-    public async Task<bool> ConnectAsync()
+    public async Task<bool> ConnectAsync(string sessionId)
     {
         try
         {
@@ -42,7 +44,7 @@ public class TestCallRoomConnector
 
             // Now that connection is ready, we can use it to join specific sessions.
             var _session = await _connection.JoinAsync(
-                sessionId: _sessionId,
+                sessionId: sessionId,
                 mediaSessionJoinOptions: new MediaSessionJoinOptions() { IncomingDataPayloadTypes = [5] });
 
             _session.OnIncomingAudioStreamAdded += OnIncomingAudioStreamAdded;
@@ -52,8 +54,6 @@ public class TestCallRoomConnector
 
             await Task.Delay(500);
             OutgoingAudioStream = _session.AddOutgoingAudioStream();
-            var options = new OutgoingDataStreamOptions(5, TransmissionMode.RealTime);
-            _session.AddOutgoingDataStream(options);
 
             _logger.LogInformation($"MediaConnection {_connection.ConnectionState}");
             // If you need to start media streaming, do it here
@@ -108,7 +108,10 @@ public class TestCallRoomConnector
 
     private void OnIncomingAudioStreamReceived(object? sender, IncomingAudioStreamReceivedEventArgs args)
     {
-        Console.WriteLine($"OnIncomingAudioStreamReceived - StreamId({args.Id}) : {args.Data.ReadDataAsSpan().Length}");
+        if (aiServiceHandler != null)
+        {
+            using var _ = aiServiceHandler.SendAudioToExternalAI(new MemoryStream(args.Data.ReadDataAsSpan().ToArray()));
+        }
     }
 
     private void OnIncomingAudioStreamRemoved(object? sender, IncomingAudioStreamRemovedEventArgs e)

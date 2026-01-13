@@ -3,8 +3,10 @@
     "CallAutomation_AzOpenAI_Voice": {
       "commandName": "Project",
       "launchBrowser": true,
+      "nativeDebugging": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "WB_URL": "https://insravan.personalsandbox.dev.waimeabae.com"
       },
       "applicationUrl": "https://localhost:49411;http://localhost:49412"
     }
