@@ -38,10 +38,9 @@ namespace Call_Automation_GCCH.Controllers
         public Task<IActionResult> CreateCallWithCallIntelligenceAsync(
             string target,
             bool isPstn = true,
-            bool enableTranscription = true,
             string locale = "en-US")
         {
-            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: true, isAsync: true);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription:false, isAsync: true);
         }
 
         /// <summary>
@@ -58,7 +57,7 @@ namespace Call_Automation_GCCH.Controllers
             bool enableTranscription = true,
             string locale = "en-US")
         {
-            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: true, isAsync: false);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription: false, isAsync: false);
         }
         #endregion
 
@@ -74,10 +73,9 @@ namespace Call_Automation_GCCH.Controllers
         public Task<IActionResult> CreateCallWithTranscriptionAsync(
             string target,
             bool isPstn = true,
-            string locale = "en-US",
-            bool enableTranscription = true)
+            string locale = "en-US")
         {
-            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: false, isAsync: true);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription: true, isAsync: true);
         }
 
         /// <summary>
@@ -94,7 +92,7 @@ namespace Call_Automation_GCCH.Controllers
             string locale = "en-US",
             bool enableTranscription = true)
         {
-            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: false, isAsync: false);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription: true, isAsync: false);
         }
 
         /// <summary>
@@ -106,7 +104,7 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("AI - Transcription")]
         public Task<IActionResult> StartTranscriptionAsync(
             string callConnectionId,
-            string locale = null)
+            string locale = "en-US")
         {
             return StartTranscriptionInternal(callConnectionId, locale, isAsync: true);
         }
@@ -120,7 +118,7 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("AI - Transcription")]
         public Task<IActionResult> StartTranscription(
             string callConnectionId,
-            string locale = null)
+            string locale = "en-US")
         {
             return StartTranscriptionInternal(callConnectionId, locale, isAsync: false);
         }
@@ -398,7 +396,7 @@ namespace Call_Automation_GCCH.Controllers
         public Task<IActionResult> PlaySsmlAsync(
             string callConnectionId,
             string target,
-            string ssml= "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
+            string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
         {
             return PlaySsmlInternal(callConnectionId, target, ssml, isAsync: true);
         }
@@ -414,7 +412,7 @@ namespace Call_Automation_GCCH.Controllers
         public Task<IActionResult> PlaySsml(
             string callConnectionId,
             string target,
-            string ssml= "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
+            string ssml = "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">Hi, this is ssml test played through ssml source thanks. Goodbye!</voice></speak>")
         {
             return PlaySsmlInternal(callConnectionId, target, ssml, isAsync: false);
         }
@@ -517,7 +515,6 @@ namespace Call_Automation_GCCH.Controllers
             string locale,
             bool isPstn,
             bool enableTranscription,
-            bool enableCallIntelligence,
             bool isAsync)
         {
             if (string.IsNullOrWhiteSpace(target))
@@ -529,19 +526,16 @@ namespace Call_Automation_GCCH.Controllers
             if (!isPstn && !target.StartsWith("8:"))
                 return BadRequest("ACS user ID must start with '8:'");
 
-            if (enableCallIntelligence)
-            {
-                if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
-                    return BadRequest("CognitiveServiceEndpoint must be configured in appsettings.json to use Call Intelligence features");
+            if (string.IsNullOrWhiteSpace(_config.CognitiveServiceEndpoint))
+                return BadRequest("CognitiveServiceEndpoint must be configured in appsettings.json to use Call Intelligence features");
 
-                // Validate the Cognitive Services endpoint format
-                if (!Uri.TryCreate(_config.CognitiveServiceEndpoint, UriKind.Absolute, out Uri cognitiveUri))
-                    return BadRequest($"Invalid CognitiveServiceEndpoint format: {_config.CognitiveServiceEndpoint}");
+            // Validate the Cognitive Services endpoint format
+            if (!Uri.TryCreate(_config.CognitiveServiceEndpoint, UriKind.Absolute, out Uri cognitiveUri))
+                return BadRequest($"Invalid CognitiveServiceEndpoint format: {_config.CognitiveServiceEndpoint}");
 
-                _logger.LogInformation($"Using Cognitive Services Endpoint: {_config.CognitiveServiceEndpoint}");
-            }
+            _logger.LogInformation($"Using Cognitive Services Endpoint: {_config.CognitiveServiceEndpoint}");
 
-            var featureDescription = enableCallIntelligence ? "Call Intelligence" : "transcription";
+            var featureDescription = "Call Intelligence";
             _logger.LogInformation($"Creating call with {featureDescription}. Target={target}, IsPstn={isPstn}, Locale={locale}, TranscriptionEnabled={enableTranscription}");
 
             try
@@ -563,18 +557,16 @@ namespace Call_Automation_GCCH.Controllers
 
                 var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
 
-                if (enableCallIntelligence)
+
+                var cognitiveEndpointUri = new Uri(_config.CognitiveServiceEndpoint);
+                _logger.LogInformation($"Setting up CallIntelligenceOptions with endpoint: {cognitiveEndpointUri}");
+
+                createCallOptions.CallIntelligenceOptions = new CallIntelligenceOptions
                 {
-                    var cognitiveEndpointUri = new Uri(_config.CognitiveServiceEndpoint);
-                    _logger.LogInformation($"Setting up CallIntelligenceOptions with endpoint: {cognitiveEndpointUri}");
-                    
-                    createCallOptions.CallIntelligenceOptions = new CallIntelligenceOptions
-                    {
-                        CognitiveServicesEndpoint = cognitiveEndpointUri
-                    };
-                    
-                    _logger.LogInformation("CallIntelligenceOptions configured successfully");
-                }
+                    CognitiveServicesEndpoint = cognitiveEndpointUri
+                };
+
+                _logger.LogInformation("CallIntelligenceOptions configured successfully");
 
                 if (enableTranscription)
                 {
@@ -608,8 +600,6 @@ namespace Call_Automation_GCCH.Controllers
                     IsPstn = isPstn
                 };
 
-                if (enableCallIntelligence)
-                {
                     return Ok(new
                     {
                         response.CallConnectionId,
@@ -620,25 +610,22 @@ namespace Call_Automation_GCCH.Controllers
                         response.IsPstn,
                         CognitiveServicesEndpoint = _config.CognitiveServiceEndpoint
                     });
-                }
-
-                return Ok(response);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error creating call with {featureDescription}. Target={target}, IsPstn={isPstn}, CognitiveEndpoint={_config.CognitiveServiceEndpoint}");
-                
+
                 var errorDetails = new
                 {
                     ErrorMessage = ex.Message,
                     Target = target,
                     IsPstn = isPstn,
                     FeatureDescription = featureDescription,
-                    CognitiveEndpoint = enableCallIntelligence ? _config.CognitiveServiceEndpoint : "N/A",
+                    CognitiveEndpoint = _config.CognitiveServiceEndpoint ,
                     InnerException = ex.InnerException?.Message,
                     StackTrace = ex.StackTrace
                 };
-                
+
                 _logger.LogError($"Detailed error info: {System.Text.Json.JsonSerializer.Serialize(errorDetails)}");
                 return Problem($"Failed to create call with {featureDescription}: {ex.Message}");
             }
@@ -774,7 +761,7 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to update transcription: {ex.Message}");
             }
         }
-        
+
         private async Task<IActionResult> RecognizeSpeechInternal(
             string callConnectionId,
             string target,
@@ -804,7 +791,7 @@ namespace Call_Automation_GCCH.Controllers
                     ? new CommunicationUserIdentifier(target)
                     : new PhoneNumberIdentifier(target);
 
-                var textSource = new TextSource("Please respond with your message.")
+                var textSource = new TextSource("Hi, this is recognize test. please provide input thanks!")
                 {
                     VoiceName = "en-US-NancyNeural"
                 };
