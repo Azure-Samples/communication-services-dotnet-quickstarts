@@ -30,33 +30,35 @@ namespace Call_Automation_GCCH.Controllers
         /// <summary>
         /// Creates a call with Call Intelligence (Cognitive Services) enabled for advanced AI features (Async)
         /// </summary>
-        /// <param name="targetPstnOrAcsIdentity">Target phone number (with country code) or communication user ID</param>
+        /// <param name="target">Target phone number (with country code) or communication user ID</param>
         /// <param name="enableTranscription">Whether to enable transcription (default: true)</param>
         /// <param name="locale">Transcription locale (default: en-US)</param>
         [HttpPost("createCallWithIntelligenceAsync")]
         [Tags("AI - Call with AI(Cognitive) Services")]
         public Task<IActionResult> CreateCallWithCallIntelligenceAsync(
-            string targetPstnOrAcsIdentity,
+            string target,
+            bool isPstn = true,
             bool enableTranscription = true,
             string locale = "en-US")
         {
-            return CreateCallWithAIFeaturesInternal(targetPstnOrAcsIdentity, locale, enableTranscription, enableCallIntelligence: true, isAsync: true);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: true, isAsync: true);
         }
 
         /// <summary>
         /// Creates a call with Call Intelligence (Cognitive Services) enabled for advanced AI features (Sync)
         /// </summary>
-        /// <param name="targetPstnOrAcsIdentity">Target phone number (with country code) or communication user ID</param>
+        /// <param name="target">Target phone number (with country code) or communication user ID</param>
         /// <param name="enableTranscription">Whether to enable transcription (default: true)</param>
         /// <param name="locale">Transcription locale (default: en-US)</param>
         [HttpPost("createCallWithIntelligence")]
         [Tags("AI - Call with AI(Cognitive) Services")]
         public Task<IActionResult> CreateCallWithCallIntelligence(
-            string targetPstnOrAcsIdentity,
+            string target,
+            bool isPstn = true,
             bool enableTranscription = true,
             string locale = "en-US")
         {
-            return CreateCallWithAIFeaturesInternal(targetPstnOrAcsIdentity, locale, enableTranscription, enableCallIntelligence: true, isAsync: false);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: true, isAsync: false);
         }
         #endregion
 
@@ -71,10 +73,11 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("AI - Transcription")]
         public Task<IActionResult> CreateCallWithTranscriptionAsync(
             string target,
+            bool isPstn = true,
             string locale = "en-US",
             bool enableTranscription = true)
         {
-            return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: false, isAsync: true);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: false, isAsync: true);
         }
 
         /// <summary>
@@ -87,10 +90,11 @@ namespace Call_Automation_GCCH.Controllers
         [Tags("AI - Transcription")]
         public Task<IActionResult> CreateCallWithTranscription(
             string target,
+            bool isPstn = true,
             string locale = "en-US",
             bool enableTranscription = true)
         {
-            return CreateCallWithAIFeaturesInternal(target, locale, enableTranscription, enableCallIntelligence: false, isAsync: false);
+            return CreateCallWithAIFeaturesInternal(target, locale, isPstn, enableTranscription, enableCallIntelligence: false, isAsync: false);
         }
 
         /// <summary>
@@ -182,7 +186,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="endSilenceTimeoutSeconds">End silence timeout in seconds (default: 5)</param>
         /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
         [HttpPost("recognizeSpeechAsync")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeSpeechAsync(
             string callConnectionId,
             string target,
@@ -202,7 +206,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="endSilenceTimeoutSeconds">End silence timeout in seconds (default: 5)</param>
         /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
         [HttpPost("recognizeSpeech")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeSpeech(
             string callConnectionId,
             string target,
@@ -220,7 +224,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant to recognize from</param>
         /// <param name="maxTonesToCollect">Maximum number of DTMF tones to collect</param>
         [HttpPost("recognizeSpeechOrDtmfAsync")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeSpeechOrDtmfAsync(
             string callConnectionId,
             string target,
@@ -236,7 +240,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="target">Target participant to recognize from</param>
         /// <param name="maxTonesToCollect">Maximum number of DTMF tones to collect</param>
         [HttpPost("recognizeSpeechOrDtmf")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeSpeechOrDtmf(
             string callConnectionId,
             string target,
@@ -251,7 +255,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="target">Target participant to recognize from</param>
         [HttpPost("recognizeChoiceAsync")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeChoiceAsync(
             string callConnectionId,
             string target)
@@ -265,14 +269,14 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="callConnectionId">The call connection ID</param>
         /// <param name="target">Target participant to recognize from</param>
         [HttpPost("recognizeChoice")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeChoice(
             string callConnectionId,
             string target)
         {
             return RecognizeChoiceInternal(callConnectionId, target, isAsync: false);
         }
-
+        /*
         /// <summary>
         /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Async)
         /// </summary>
@@ -281,7 +285,7 @@ namespace Call_Automation_GCCH.Controllers
         /// <param name="promptText">Text prompt to play</param>
         /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
         [HttpPost("recognizeSpeechAdvancedAsync")]
-        [Tags("AI - Speech Recognition")]
+        [Tags("AI - Recognition")]
         public Task<IActionResult> RecognizeSpeechAdvancedAsync(
             string callConnectionId,
             string target,
@@ -311,7 +315,7 @@ namespace Call_Automation_GCCH.Controllers
 
         #endregion
 
-        #region CONTINUOUS DTMF RECOGNITION
+        #region Choice With Speech
         /// <summary>
         /// Starts advanced choice recognition with speech phrases enabled (requires Cognitive Services) (Async)
         /// </summary>
@@ -343,64 +347,10 @@ namespace Call_Automation_GCCH.Controllers
         {
             return RecognizeChoiceWithSpeechInternal(callConnectionId, target, promptText, isAsync: false);
         }
-
-        /// <summary>
-        /// Starts continuous DTMF recognition on a call (Async)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        [HttpPost("startContinuousDtmfRecognitionAsync")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> StartContinuousDtmfRecognitionAsync(
-            string callConnectionId,
-            string target)
-        {
-            return HandleContinuousDtmfInternal(callConnectionId, target, start: true, isAsync: true);
-        }
-
-        /// <summary>
-        /// Starts continuous DTMF recognition on a call (Sync)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        [HttpPost("startContinuousDtmfRecognition")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> StartContinuousDtmfRecognition(
-            string callConnectionId,
-            string target)
-        {
-            return HandleContinuousDtmfInternal(callConnectionId, target, start: true, isAsync: false);
-        }
-
-        /// <summary>
-        /// Stops continuous DTMF recognition on a call (Async)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to stop recognition for</param>
-        [HttpPost("stopContinuousDtmfRecognitionAsync")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> StopContinuousDtmfRecognitionAsync(
-            string callConnectionId,
-            string target)
-        {
-            return HandleContinuousDtmfInternal(callConnectionId, target, start: false, isAsync: true);
-        }
-
-        /// <summary>
-        /// Stops continuous DTMF recognition on a call (Sync)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to stop recognition for</param>
-        [HttpPost("stopContinuousDtmfRecognition")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> StopContinuousDtmfRecognition(
-            string callConnectionId,
-            string target)
-        {
-            return HandleContinuousDtmfInternal(callConnectionId, target, start: false, isAsync: false);
-        }
+        */
         #endregion
 
-        #region Play Text Source Media SOURCE ENDPOINTS
+        #region PLAY TEXT SOURCE MEDIA
         /// <summary>
         /// Plays text-to-speech to a specific target using TextSource (Async)
         /// </summary>
@@ -565,6 +515,7 @@ namespace Call_Automation_GCCH.Controllers
         private async Task<IActionResult> CreateCallWithAIFeaturesInternal(
             string target,
             string locale,
+            bool isPstn,
             bool enableTranscription,
             bool enableCallIntelligence,
             bool isAsync)
@@ -572,8 +523,11 @@ namespace Call_Automation_GCCH.Controllers
             if (string.IsNullOrWhiteSpace(target))
                 return BadRequest("Target is required");
 
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
+            if (isPstn && !target.StartsWith("+"))
                 return BadRequest("PSTN number must include country code (e.g., +1 for US)");
+
+            if (!isPstn && !target.StartsWith("8:"))
+                return BadRequest("ACS user ID must start with '8:'");
 
             if (enableCallIntelligence)
             {
@@ -588,7 +542,7 @@ namespace Call_Automation_GCCH.Controllers
             }
 
             var featureDescription = enableCallIntelligence ? "Call Intelligence" : "transcription";
-            _logger.LogInformation($"Creating call with {featureDescription}. Target={target}, Locale={locale}, TranscriptionEnabled={enableTranscription}");
+            _logger.LogInformation($"Creating call with {featureDescription}. Target={target}, IsPstn={isPstn}, Locale={locale}, TranscriptionEnabled={enableTranscription}");
 
             try
             {
@@ -596,15 +550,15 @@ namespace Call_Automation_GCCH.Controllers
                 var websocketUri = _config.CallbackUriHost.Replace("https", "wss") + "/ws";
 
                 CallInvite callInvite;
-                if (target.StartsWith("8:"))
-                {
-                    callInvite = new CallInvite(new CommunicationUserIdentifier(target));
-                }
-                else
+                if (isPstn)
                 {
                     callInvite = new CallInvite(
                         new PhoneNumberIdentifier(target),
                         new PhoneNumberIdentifier(_config.AcsPhoneNumber));
+                }
+                else
+                {
+                    callInvite = new CallInvite(new CommunicationUserIdentifier(target));
                 }
 
                 var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
@@ -650,7 +604,8 @@ namespace Call_Automation_GCCH.Controllers
                     CallConnectionId = props.CallConnectionId,
                     CorrelationId = props.CorrelationId,
                     Status = props.CallConnectionState.ToString(),
-                    TranscriptionEnabled = enableTranscription
+                    TranscriptionEnabled = enableTranscription,
+                    IsPstn = isPstn
                 };
 
                 if (enableCallIntelligence)
@@ -662,6 +617,7 @@ namespace Call_Automation_GCCH.Controllers
                         response.Status,
                         CallIntelligenceEnabled = true,
                         response.TranscriptionEnabled,
+                        response.IsPstn,
                         CognitiveServicesEndpoint = _config.CognitiveServiceEndpoint
                     });
                 }
@@ -670,12 +626,13 @@ namespace Call_Automation_GCCH.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating call with {featureDescription}. Target={target}, CognitiveEndpoint={_config.CognitiveServiceEndpoint}");
+                _logger.LogError(ex, $"Error creating call with {featureDescription}. Target={target}, IsPstn={isPstn}, CognitiveEndpoint={_config.CognitiveServiceEndpoint}");
                 
                 var errorDetails = new
                 {
                     ErrorMessage = ex.Message,
                     Target = target,
+                    IsPstn = isPstn,
                     FeatureDescription = featureDescription,
                     CognitiveEndpoint = enableCallIntelligence ? _config.CognitiveServiceEndpoint : "N/A",
                     InnerException = ex.InnerException?.Message,
@@ -817,65 +774,7 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to update transcription: {ex.Message}");
             }
         }
-        private async Task<IActionResult> HandleContinuousDtmfInternal(
-            string callConnectionId,
-            string target,
-            bool start,
-            bool isAsync)
-        {
-            if (string.IsNullOrWhiteSpace(callConnectionId))
-                return BadRequest("CallConnectionId is required");
-
-            if (string.IsNullOrWhiteSpace(target))
-                return BadRequest("Target is required");
-
-            if (!target.StartsWith("8:") && !target.StartsWith("+"))
-                return BadRequest("PSTN number must include country code (e.g., +1 for US)");
-
-            var action = start ? "Starting" : "Stopping";
-            _logger.LogInformation($"{action} continuous DTMF recognition. CallId={callConnectionId}, Target={target}");
-
-            try
-            {
-                var callMedia = _service.GetCallMedia(callConnectionId);
-                var props = _service.GetCallConnectionProperties(callConnectionId);
-
-                CommunicationIdentifier identifier = target.StartsWith("8:")
-                    ? new CommunicationUserIdentifier(target)
-                    : new PhoneNumberIdentifier(target);
-
-                if (start)
-                {
-                    if (isAsync)
-                        await callMedia.StartContinuousDtmfRecognitionAsync(identifier);
-                    else
-                        callMedia.StartContinuousDtmfRecognition(identifier);
-                }
-                else
-                {
-                    if (isAsync)
-                        await callMedia.StopContinuousDtmfRecognitionAsync(identifier);
-                    else
-                        callMedia.StopContinuousDtmfRecognition(identifier);
-                }
-
-                var status = start ? "ContinuousDtmfRecognitionStarted" : "ContinuousDtmfRecognitionStopped";
-                _logger.LogInformation($"Continuous DTMF recognition {(start ? "started" : "stopped")} successfully");
-
-                return Ok(new CallConnectionResponse
-                {
-                    CallConnectionId = callConnectionId,
-                    CorrelationId = props.CorrelationId,
-                    Status = status
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error {action.ToLower()} continuous DTMF recognition");
-                return Problem($"Failed to {action.ToLower()} continuous DTMF recognition: {ex.Message}");
-            }
-        }
-
+        
         private async Task<IActionResult> RecognizeSpeechInternal(
             string callConnectionId,
             string target,
