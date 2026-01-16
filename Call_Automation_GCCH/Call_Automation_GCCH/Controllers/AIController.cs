@@ -274,78 +274,7 @@ namespace Call_Automation_GCCH.Controllers
         {
             return RecognizeChoiceInternal(callConnectionId, target, isAsync: false);
         }
-        /*
-        /// <summary>
-        /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Async)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        /// <param name="promptText">Text prompt to play</param>
-        /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
-        [HttpPost("recognizeSpeechAdvancedAsync")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> RecognizeSpeechAdvancedAsync(
-            string callConnectionId,
-            string target,
-            string promptText = "Please tell me your request.",
-            string speechLanguage = "en-US")
-        {
-            return RecognizeSpeechAdvancedInternal(callConnectionId, target, promptText, speechLanguage, isAsync: true);
-        }
-
-        /// <summary>
-        /// Starts advanced speech recognition with custom vocabulary (requires Cognitive Services) (Sync)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        /// <param name="promptText">Text prompt to play</param>
-        /// <param name="speechLanguage">Speech recognition language (default: en-US)</param>
-        [HttpPost("recognizeSpeechAdvanced")]
-        [Tags("AI - Speech Recognition")]
-        public Task<IActionResult> RecognizeSpeechAdvanced(
-            string callConnectionId,
-            string target,
-            string promptText = "Please tell me your request.",
-            string speechLanguage = "en-US")
-        {
-            return RecognizeSpeechAdvancedInternal(callConnectionId, target, promptText, speechLanguage, isAsync: false);
-        }
-
-        #endregion
-
-        #region Choice With Speech
-        /// <summary>
-        /// Starts advanced choice recognition with speech phrases enabled (requires Cognitive Services) (Async)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        /// <param name="promptText">Text prompt to play (optional)</param>
-        [HttpPost("recognizeChoiceWithSpeechAsync")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> RecognizeChoiceWithSpeechAsync(
-            string callConnectionId,
-            string target,
-            string promptText = "Hi, this is recognize test. Please say yes or no, or press 1 for yes and 2 for no.")
-        {
-            return RecognizeChoiceWithSpeechInternal(callConnectionId, target, promptText, isAsync: true);
-        }
-
-        /// <summary>
-        /// Starts advanced choice recognition with speech phrases enabled (requires Cognitive Services) (Sync)
-        /// </summary>
-        /// <param name="callConnectionId">The call connection ID</param>
-        /// <param name="target">Target participant to recognize from</param>
-        /// <param name="promptText">Text prompt to play (optional)</param>
-        [HttpPost("recognizeChoiceWithSpeech")]
-        [Tags("AI - Recognition")]
-        public Task<IActionResult> RecognizeChoiceWithSpeech(
-            string callConnectionId,
-            string target,
-            string promptText = "Hi, this is recognize test. Please say yes or no, or press 1 for yes and 2 for no.")
-        {
-            return RecognizeChoiceWithSpeechInternal(callConnectionId, target, promptText, isAsync: false);
-        }
-        */
+        
         #endregion
 
         #region PLAY TEXT SOURCE MEDIA
