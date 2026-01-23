@@ -635,5 +635,127 @@ namespace Call_Automation_GCCH.Controllers
                 return Problem($"Failed to download and upload recording: {ex.Message}. CallConnectionId: {callConnectionId}");
             }
         }
+
+        /// <summary>
+        /// Downloads the recording metadata to Downloads folder asynchronously
+        /// </summary>
+        [HttpPost("downloadRecordingMetadataAsync")]
+        [Tags("Recording APIs")]
+        public async Task<IActionResult> DownloadRecordingMetadataAsync(string callConnectionId)
+        {
+            try
+            {
+                var metadataLocation = CallAutomationService.GetMetadataLocation();
+
+                if (string.IsNullOrEmpty(metadataLocation))
+                {
+                    _logger.LogError($"Metadata location is not available from the events. CallConnectionId: {callConnectionId}");
+                    return Problem("Metadata Location from Azure Events is Null");
+                }
+
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+                var date = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"RecordingMetadata_{callConnectionId}_{date}.json";
+
+                // Create Downloads folder path
+                string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                Directory.CreateDirectory(downloadsPath);
+                var localFilePath = Path.Combine(downloadsPath, fileName);
+
+                _logger.LogInformation($"Downloading metadata from location: {metadataLocation}");
+
+                // Replace URL if needed for specific environments
+                string metadataLocationNew = metadataLocation.Replace("https://as-storage.asm.skype.com/", "https://prod.asyncgw.teams.microsoft.com/");
+                _logger.LogInformation($"Downloading metadata from modified location: {metadataLocationNew}");
+
+                // Download metadata using DownloadStreamingAsync
+                var recordingClient = _service.GetCallAutomationClient().GetCallRecording();
+                var response = await recordingClient.DownloadStreamingAsync(new Uri(metadataLocation));
+
+                // Write the stream to file
+                using (var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
+                {
+                    await response.Value.CopyToAsync(fileStream);
+                }
+
+                _logger.LogInformation($"Metadata downloaded successfully to: {localFilePath}, CallConnectionId: {callConnectionId}");
+
+                string successMessage = $"Metadata downloaded successfully. FilePath: {localFilePath}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}";
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = $"Metadata downloaded successfully. FilePath: {localFilePath}"
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error downloading metadata: {ex.Message}. CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to download metadata: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
+
+        /// <summary>
+        /// Downloads the recording metadata to Downloads folder synchronously
+        /// </summary>
+        [HttpPost("downloadRecordingMetadata")]
+        [Tags("Recording APIs")]
+        public IActionResult DownloadRecordingMetadata(string callConnectionId)
+        {
+            try
+            {
+                var metadataLocation = CallAutomationService.GetMetadataLocation();
+
+                if (string.IsNullOrEmpty(metadataLocation))
+                {
+                    _logger.LogError($"Metadata location is not available from the events. CallConnectionId: {callConnectionId}");
+                    return Problem("Metadata Location from Azure Events is Null");
+                }
+
+                var correlationId = _service.GetCallConnectionProperties(callConnectionId).CorrelationId;
+                var date = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"RecordingMetadata_{callConnectionId}_{date}.json";
+
+                // Create Downloads folder path
+                string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                Directory.CreateDirectory(downloadsPath);
+                var localFilePath = Path.Combine(downloadsPath, fileName);
+
+                _logger.LogInformation($"Downloading metadata from location: {metadataLocation}");
+
+                // Replace URL if needed for specific environments
+                string metadataLocationNew = metadataLocation.Replace("https://as-storage.asm.skype.com/", "https://prod.asyncgw.teams.microsoft.com/");
+                _logger.LogInformation($"Downloading metadata from modified location: {metadataLocationNew}");
+
+                // Download metadata using DownloadStreaming
+                var recordingClient = _service.GetCallAutomationClient().GetCallRecording();
+                var response = recordingClient.DownloadStreaming(new Uri(metadataLocation));
+
+                // Write the stream to file
+                using (var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
+                {
+                    response.Value.CopyTo(fileStream);
+                }
+
+                _logger.LogInformation($"Metadata downloaded successfully to: {localFilePath}, CallConnectionId: {callConnectionId}");
+
+                string successMessage = $"Metadata downloaded successfully. FilePath: {localFilePath}. CallConnectionId: {callConnectionId}, CorrelationId: {correlationId}";
+
+                return Ok(new CallConnectionResponse
+                {
+                    CallConnectionId = callConnectionId,
+                    CorrelationId = correlationId,
+                    Status = $"Metadata downloaded successfully. FilePath: {localFilePath}"
+                });
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = $"Error downloading metadata: {ex.Message}. CallConnectionId: {callConnectionId}";
+                _logger.LogError(errorMessage);
+                return Problem($"Failed to download metadata: {ex.Message}. CallConnectionId: {callConnectionId}");
+            }
+        }
     }
 }

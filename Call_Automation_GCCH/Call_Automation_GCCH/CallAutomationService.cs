@@ -9,6 +9,7 @@ namespace Call_Automation_GCCH.Services
     private CallAutomationClient _client;
     private ILogger<CallAutomationService> _logger;
     private static string? _recordingLocation;
+    private static string? _metadataLocation;
     private static string _recordingFileFormat = "mp4";
     private string _currentPmaEndpoint = string.Empty;
 
@@ -53,6 +54,24 @@ namespace Call_Automation_GCCH.Services
     public static void SetRecordingLocation(string location)
     {
       _recordingLocation = location;
+    }
+
+    /// <summary>
+    /// Gets the metadata location
+    /// </summary>
+    /// <returns>Metadata location string</returns>
+    public static string GetMetadataLocation()
+    {
+      return _metadataLocation;
+    }
+
+    /// <summary>
+    /// Sets the metadata location
+    /// </summary>
+    /// <param name="location">The metadata location to set</param>
+    public static void SetMetadataLocation(string location)
+    {
+      _metadataLocation = location;
     }
 
     /// <summary>

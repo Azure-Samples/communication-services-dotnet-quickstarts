@@ -117,6 +117,13 @@ namespace Call_Automation_GCCH.Controllers
                                 {
                                     CallAutomationService.SetRecordingLocation(statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation);
                                     _logger.LogInformation($"The recording location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation}");
+                                    
+                                    // Capture metadata location
+                                    if (!string.IsNullOrEmpty(statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation))
+                                    {
+                                        CallAutomationService.SetMetadataLocation(statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation);
+                                        _logger.LogInformation($"The metadata location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation}");
+                                    }
                                 }
                                 catch (Exception recordingEx)
                                 {
