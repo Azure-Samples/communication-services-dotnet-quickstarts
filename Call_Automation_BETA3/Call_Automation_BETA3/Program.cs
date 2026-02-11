@@ -8,6 +8,7 @@ using Azure.Messaging.EventGrid.SystemEvents;
 using Call_Automation_GCCH;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,6 +82,8 @@ app.MapPost("/api/events", async (EventGridEvent[] eventGridEvents, ILogger<Prog
 {
     foreach (var eventGridEvent in eventGridEvents)
     {
+        string eventDataJson = JsonSerializer.Serialize(eventGridEvents);
+        logger.LogInformation($"EVENT DATA:{eventDataJson}");
         logger.LogInformation($"Recording event received:{eventGridEvent.EventType}");
         if (eventGridEvent.TryGetSystemEventData(out object eventData))
         {
@@ -2920,9 +2923,17 @@ app.MapPost("/startRecordingWithVideoMp4MixedAsync", async (bool isRecordingWith
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
-    //CallLocator callLocator = new ServerCallLocator(serverCallId);
-    CallLocator callLocator = new RoomCallLocator("99495491359806362");
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
     recordingOptions.RecordingContent = RecordingContent.AudioVideo;
     recordingOptions.RecordingFormat = RecordingFormat.Mp4;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
@@ -2939,9 +2950,18 @@ app.MapPost("/startRecordingWithVideoMp4Mixed", (bool isRecordingWithCallConnect
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
-    //CallLocator callLocator = new ServerCallLocator(serverCallId);
-    CallLocator callLocator = new RoomCallLocator("99497984749597482");
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    CallLocator callLocator = new ServerCallLocator(serverCallId);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
+    
     recordingOptions.RecordingContent = RecordingContent.AudioVideo;
     recordingOptions.RecordingFormat = RecordingFormat.Mp4;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
@@ -2960,7 +2980,16 @@ app.MapPost("/startRecordingWithAudioMp3MixedAsync", async (bool isRecordingWith
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Mp3;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
@@ -2979,7 +3008,16 @@ app.MapPost("/startRecordingWithAudioMp3Mixed", (bool isRecordingWithCallConnect
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Mp3;
     recordingOptions.RecordingChannel = RecordingChannel.Mixed;
@@ -2993,38 +3031,54 @@ app.MapPost("/startRecordingWithAudioMp3Mixed", (bool isRecordingWithCallConnect
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithAudioMp3UnMixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithAudioWavMixedAsync", async (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
     recordingOptions.RecordingContent = RecordingContent.Audio;
-    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
-    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingFormat = RecordingFormat.Wav;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
     recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
-    recordingFileFormat = "mp3";
-
+    recordingFileFormat = "wav";
     var recordingResult = await client.GetCallRecording().StartAsync(recordingOptions);
     recordingId = recordingResult.Value.RecordingId;
     logger.LogInformation($"Recording started. RecordingId: {recordingId}");
     return Results.Ok();
 }).WithTags("Recording APIs");
 
-app.MapPost("/startRecordingWithAudioMp3Unmixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
+app.MapPost("/startRecordingWithAudioWavMixed", (bool isRecordingWithCallConnectionId, bool isPauseOnStart, ILogger<Program> logger) =>
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
     recordingOptions.RecordingContent = RecordingContent.Audio;
-    recordingOptions.RecordingFormat = RecordingFormat.Mp3;
-    recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
+    recordingOptions.RecordingFormat = RecordingFormat.Wav;
+    recordingOptions.RecordingChannel = RecordingChannel.Mixed;
     recordingOptions.RecordingStateCallbackUri = eventCallbackUri;
     recordingOptions.PauseOnStart = isPauseOnStart ? true : false;
-    recordingFileFormat = "mp3";
-
+    recordingFileFormat = "wav";
     var recordingResult = client.GetCallRecording().Start(recordingOptions);
     recordingId = recordingResult.Value.RecordingId;
     logger.LogInformation($"Recording started. RecordingId: {recordingId}");
@@ -3035,8 +3089,19 @@ app.MapPost("/startRecordingWithAudioWavUnMixedAsync", async (bool isRecordingWi
 {
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
+
+    StartRecordingOptions recordingOptions;
+
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
+
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Wav;
     recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
@@ -3055,7 +3120,16 @@ app.MapPost("/startRecordingWithAudioWavUnmixed", (bool isRecordingWithCallConne
     CallConnectionProperties callConnectionProperties = GetCallConnectionProperties();
     var serverCallId = callConnectionProperties.ServerCallId;
     CallLocator callLocator = new ServerCallLocator(serverCallId);
-    var recordingOptions = new StartRecordingOptions(callLocator);
+    StartRecordingOptions recordingOptions;
+
+    if (isRecordingWithCallConnectionId)
+    {
+        recordingOptions = new StartRecordingOptions(callConnectionProperties.CallConnectionId);
+    }
+    else
+    {
+        recordingOptions = new StartRecordingOptions(callLocator);
+    }
     recordingOptions.RecordingContent = RecordingContent.Audio;
     recordingOptions.RecordingFormat = RecordingFormat.Wav;
     recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
