@@ -1,0 +1,18 @@
+# Ignore all bin and obj folders (C# projects)
+bin/
+obj/
+
+# Ignore user-specific Visual Studio files
+.vscode/
+*.user
+*.suo
+
+# Ignore compiled code
+*.dll
+*.exe
+
+# Ignore log files
+*.log
+
+# Ignore environment-specific files
+.env
