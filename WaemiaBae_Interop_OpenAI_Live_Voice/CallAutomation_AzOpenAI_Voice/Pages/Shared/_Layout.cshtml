@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ACS Call Automation</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📞 ACS Call Automation</div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Active Calls</a>
+            <a href="/TestCall" class="nav-link">Test Call</a>
+            <a href="/Logs" class="nav-link">Call Logs</a>
+            <a href="/Health" class="nav-link">Health</a>
+        </div>
+    </nav>
+    <main class="container">
+        @RenderBody()
+    </main>
+    <script src="~/js/site.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

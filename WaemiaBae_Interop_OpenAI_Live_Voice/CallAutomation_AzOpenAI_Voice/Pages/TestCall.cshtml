@@ -1,0 +1,132 @@
+@page
+@model TestCallModel
+@{
+    ViewData["Title"] = "Test Call";
+}
+
+<h1>Test Call</h1>
+<p>Connect to an existing conversation using its Media Session GUID. This will join via Media SDK and start OpenAI processing.</p>
+
+<div class="card">
+    <div class="stats-row" style="align-items: flex-end;">
+        <div style="flex: 1;">
+            <label for="conversationId" style="display: block; margin-bottom: 6px; font-weight: 600;">Conversation ID (Media Session GUID)</label>
+            <input type="text" id="conversationId" placeholder="e.g. 4418eb47-22b6-4179-af94-009b36dba24d"
+                   style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 6px; font-family: monospace;" />
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 4px;">
+            <input type="checkbox" id="disableOpenAI" />
+            <label for="disableOpenAI" style="font-weight: 600; white-space: nowrap;">Disable OpenAI</label>
+        </div>
+        <div>
+            <button id="connectBtn" class="btn btn-primary" style="padding: 10px 24px;" onclick="startManualCall()">
+                🚀 Connect
+            </button>
+        </div>
+    </div>
+
+    <div id="result" style="margin-top: 16px; display: none;"></div>
+</div>
+
+<div id="live-stats" style="display: none;">
+    <h2>Live Session Stats</h2>
+    <div class="stats-row" id="session-stats"></div>
+    <div class="card" id="streams-card" style="display: none;">
+        <h2>Remote Streams</h2>
+        <div id="streams-table"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function startManualCall() {
+        const input = document.getElementById('conversationId');
+        const btn = document.getElementById('connectBtn');
+        const result = document.getElementById('result');
+        const conversationId = input.value.trim();
+
+        if (!conversationId) {
+            result.style.display = 'block';
+            result.innerHTML = '<div style="color: #d13438; padding: 8px;">❌ Please enter a Conversation ID.</div>';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Connecting...';
+        result.style.display = 'block';
+        result.innerHTML = '<div style="color: var(--text-secondary); padding: 8px;">Connecting to Media SDK...</div>';
+
+        const disableOpenAI = document.getElementById('disableOpenAI').checked;
+
+        try {
+            const resp = await fetch('/api/calls/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ conversationId: conversationId, disableOpenAI: disableOpenAI })
+            });
+            const data = await resp.json();
+
+            if (resp.ok) {
+                result.innerHTML = '<div style="color: #107c10; padding: 8px;">'
+                    + '✅ Connected! Session: <strong>' + data.correlationId + '</strong>'
+                    + '<br/><a href="/CallDetail?id=' + data.correlationId + '" class="btn btn-sm btn-primary" style="margin-top: 8px;">View Call Detail</a>'
+                    + '</div>';
+                startLiveStats(data.correlationId);
+            } else {
+                result.innerHTML = '<div style="color: #d13438; padding: 8px;">❌ ' + (data.error || 'Connection failed') + '</div>';
+            }
+        } catch (e) {
+            result.innerHTML = '<div style="color: #d13438; padding: 8px;">❌ Error: ' + e.message + '</div>';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🚀 Connect';
+        }
+    }
+
+    document.getElementById('conversationId').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') startManualCall();
+    });
+
+    function startLiveStats(correlationId) {
+        document.getElementById('live-stats').style.display = 'block';
+
+        startPolling('/api/calls/active', function(data) {
+            const s = data.activeSessions.find(function(x) { return x.CorrelationId === correlationId; });
+            if (!s) {
+                document.getElementById('session-stats').innerHTML = '<div class="stat-card"><div class="stat-label">Session ended or not found</div></div>';
+                return;
+            }
+
+            const mediaSdkStatus = s.MediaSdkStatus || '—';
+            let statsHtml = '';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Media SDK</div><div style="font-size:16px;font-weight:600"><span class="badge badge-' + mediaSdkStatus.toLowerCase() + '">' + mediaSdkStatus + '</span></div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Remote Streams</div><div style="font-size:16px;font-weight:600">🔊' + (s.RemoteAudioStreams || 0) + ' 📡' + (s.RemoteDataStreams || 0) + '</div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Media Pkts (S/R)</div><div style="font-size:16px;font-weight:600">' + (s.MediaSdkSent || 0) + ' / ' + (s.MediaSdkRecv || 0) + '</div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">OpenAI Pkts (S/R)</div><div style="font-size:16px;font-weight:600">' + (s.OpenAISent || 0) + ' / ' + (s.OpenAIRecv || 0) + '</div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Data Dropped</div><div style="font-size:16px;font-weight:600">' + (s.DataDropped || 0) + '</div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Bot Endpoint</div><div style="font-size:11px;word-break:break-all">' + (s.BotEndpointId || '—') + '</div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Resource ID</div><div style="font-size:11px;word-break:break-all">' + (s.ResourceId || '—') + '</div></div>';
+            statsHtml += '<div class="stat-card"><div class="stat-label">Service URL</div><div style="font-size:11px;word-break:break-all">' + (s.ServiceOrigin || '—') + '</div></div>';
+            document.getElementById('session-stats').innerHTML = statsHtml;
+
+            var streams = s.RemoteStreams || [];
+            var streamsCard = document.getElementById('streams-card');
+            if (streams.length > 0) {
+                streamsCard.style.display = 'block';
+                let tbl = '<table><thead><tr><th>Type</th><th>Stream ID</th><th>Endpoint ID</th><th>Last State</th><th>State At</th></tr></thead><tbody>';
+                streams.forEach(function(rs) {
+                    tbl += '<tr><td><span class="badge badge-active">' + rs.StreamType + '</span></td>';
+                    tbl += '<td>' + rs.StreamId + '</td>';
+                    tbl += '<td style="font-size:11px;word-break:break-all">' + rs.EndpointId + '</td>';
+                    tbl += '<td style="font-size:11px;font-family:monospace">' + (rs.LastState || '—') + '</td>';
+                    tbl += '<td>' + (rs.LastStateAt || '—') + '</td></tr>';
+                });
+                tbl += '</tbody></table>';
+                document.getElementById('streams-table').innerHTML = tbl;
+            } else {
+                streamsCard.style.display = 'none';
+            }
+        }, 2000);
+    }
+</script>
+}

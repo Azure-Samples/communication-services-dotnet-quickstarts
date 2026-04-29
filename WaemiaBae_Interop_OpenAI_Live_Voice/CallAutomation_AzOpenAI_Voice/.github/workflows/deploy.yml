@@ -1,0 +1,79 @@
+name: Build and Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CallAutomation_AzOpenAI_Voice/**'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: '' # Set this to your App Service name
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'CallAutomation_AzOpenAI_Voice/CallAutomation_AzOpenAI_Voice'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+        
+      - name: Build
+        run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+
+      - name: Publish
+        run: >
+          dotnet publish ${{ env.PROJECT_PATH }}
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          --output ${{ env.PROJECT_PATH }}/publish
+
+      - name: Verify native binaries
+        run: |
+          $nativeDir = "${{ env.PROJECT_PATH }}/publish/runtimes/win-x64/native"
+          if (Test-Path $nativeDir) {
+            $files = Get-ChildItem $nativeDir
+            Write-Host "Native binaries found: $($files.Count) files"
+            $files | ForEach-Object { Write-Host "  $_" }
+          } else {
+            Write-Warning "Native binaries directory not found!"
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-package
+          path: ${{ env.PROJECT_PATH }}/publish
+
+  deploy:
+    runs-on: windows-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-package
+          path: app-package
+
+      - name: Deploy to Azure App Service
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: app-package

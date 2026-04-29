@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <config>
+        <add key="defaultPushSource" value="https://api.nuget.org/v3/index.json" />
+    </config>
+    <packageRestore>
+        <add key="enabled" value="True" />
+        <add key="automatic" value="True" />
+    </packageRestore>
+    <packageSources>
+        <add key="NuGet DEV Feed" value="https://pkgs.dev.azure.com/azure-sdk/public/_packaging/azure-sdk-for-net/nuget/v3/index.json" />
+    </packageSources>
+</configuration>
