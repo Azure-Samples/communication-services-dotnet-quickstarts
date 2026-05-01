@@ -1,4 +1,4 @@
-using System.ComponentModel;
+ï»¿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -15,21 +15,18 @@ namespace Call_Automation_GCCH.Models
         /// Maximum number of DTMF tones to collect.
         /// Maps to: CallMediaRecognizeDtmfOptions.MaxTonesToCollect
         /// </summary>
-        /// <example>4</example>
         public int MaxTonesToCollect { get; set; } = 4;
 
         /// <summary>
         /// Timeout in seconds between each tone press.
         /// Maps to: CallMediaRecognizeDtmfOptions.InterToneTimeout
         /// </summary>
-        /// <example>5</example>
         public int InterToneTimeoutSec { get; set; } = 5;
 
         /// <summary>
         /// Comma-separated stop tones (e.g. "pound" or "asterisk").
         /// Maps to: CallMediaRecognizeDtmfOptions.StopTones
         /// </summary>
-        /// <example>pound</example>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? StopTones { get; set; }
     }
@@ -82,15 +79,12 @@ namespace Call_Automation_GCCH.Models
         /// Silence duration in seconds after speech ends to finalize recognition.
         /// Maps to: CallMediaRecognizeSpeechOptions.EndSilenceTimeout
         /// </summary>
-        /// <example>5</example>
         public int EndSilenceTimeoutSec { get; set; } = 5;
 
         /// <summary>
         /// Speech language locale (e.g. en-US).
         /// Maps to: CallMediaRecognizeOptions.SpeechLanguage
         /// </summary>
-        /// <example>en-US</example>
-        [DefaultValue("en-US")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? SpeechLanguage { get; set; }
     }
@@ -105,26 +99,21 @@ namespace Call_Automation_GCCH.Models
         /// <summary>
         /// Maximum number of DTMF tones to collect.
         /// </summary>
-        /// <example>4</example>
         public int MaxTonesToCollect { get; set; } = 4;
 
         /// <summary>
         /// Timeout in seconds between each tone press.
         /// </summary>
-        /// <example>5</example>
         public int InterToneTimeoutSec { get; set; } = 5;
 
         /// <summary>
         /// Silence duration in seconds after speech ends to finalize recognition.
         /// </summary>
-        /// <example>5</example>
         public int EndSilenceTimeoutSec { get; set; } = 5;
 
         /// <summary>
         /// Speech language locale (e.g. en-US).
         /// </summary>
-        /// <example>en-US</example>
-        [DefaultValue("en-US")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? SpeechLanguage { get; set; }
     }
@@ -135,7 +124,7 @@ namespace Call_Automation_GCCH.Models
     /// Set "recognizeType" to one of: "Dtmf", "Choice", "Speech", "SpeechOrDtmf".
     /// Then include the matching options object; irrelevant option objects are ignored.
     /// 
-    /// Example — DTMF recognition:
+    /// Example ï¿½ DTMF recognition:
     /// {
     ///   "callConnectionId": "...",
     ///   "target": "+18001234567",
@@ -143,7 +132,7 @@ namespace Call_Automation_GCCH.Models
     ///   "dtmfOptions": { "maxTonesToCollect": 4, "interToneTimeoutSec": 5 }
     /// }
     /// 
-    /// Example — Choice recognition:
+    /// Example ï¿½ Choice recognition:
     /// {
     ///   "callConnectionId": "...",
     ///   "target": "+18001234567",
@@ -156,7 +145,7 @@ namespace Call_Automation_GCCH.Models
     ///   }
     /// }
     /// 
-    /// Example — Speech recognition:
+    /// Example ï¿½ Speech recognition:
     /// {
     ///   "callConnectionId": "...",
     ///   "target": "+18001234567",
@@ -164,7 +153,7 @@ namespace Call_Automation_GCCH.Models
     ///   "speechOptions": { "endSilenceTimeoutSec": 3, "speechLanguage": "en-US" }
     /// }
     /// 
-    /// Example — SpeechOrDtmf recognition:
+    /// Example ï¿½ SpeechOrDtmf recognition:
     /// {
     ///   "callConnectionId": "...",
     ///   "target": "+18001234567",
@@ -191,27 +180,22 @@ namespace Call_Automation_GCCH.Models
         /// </summary>
         /// <example>Dtmf</example>
         [Required]
-        [DefaultValue("Dtmf")]
-        public string RecognizeType { get; set; } = "Dtmf";
+        public string? RecognizeType { get; set; }
 
         /// <summary>
         /// Whether to interrupt the prompt when the caller starts input.
         /// </summary>
-        /// <example>false</example>
         public bool InterruptPrompt { get; set; } = false;
 
         /// <summary>
         /// Seconds to wait for the caller to begin input before timing out.
         /// </summary>
-        /// <example>15</example>
         public int InitialSilenceTimeoutSec { get; set; } = 15;
 
         /// <summary>
         /// Custom context string for correlating callback events.
         /// </summary>
-        /// <example>RecognizeContext</example>
-        [DefaultValue("RecognizeContext")]
-        public string OperationContext { get; set; } = "RecognizeContext";
+        public string? OperationContext { get; set; }
 
         /// <summary>
         /// DTMF-specific options. Required when recognizeType is "Dtmf". Ignored otherwise.

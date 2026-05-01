@@ -1,4 +1,4 @@
-using System.ComponentModel;
+ï»¿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -42,17 +42,16 @@ namespace Call_Automation_GCCH.Models
         public bool Loop { get; set; } = false;
 
         /// <summary>Custom context. Maps to: PlayOptions.OperationContext</summary>
-        [DefaultValue("playContext")]
-        public string OperationContext { get; set; } = "playContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
     /// Request body for playing audio to a specific target.
     /// 
-    /// Example — simple play:
+    /// Example ï¿½ simple play:
     /// { "callConnectionId": "...", "target": "+18001234567" }
     /// 
-    /// Example — play with options:
+    /// Example ï¿½ play with options:
     /// {
     ///   "callConnectionId": "...",
     ///   "target": "+18001234567",
@@ -87,17 +86,16 @@ namespace Call_Automation_GCCH.Models
         public bool Loop { get; set; } = false;
 
         /// <summary>Custom context. Maps to: PlayToAllOptions.OperationContext</summary>
-        [DefaultValue("playToAllContext")]
-        public string OperationContext { get; set; } = "playToAllContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
     /// Request body for playing audio to all participants.
     /// 
-    /// Example — simple:
+    /// Example ï¿½ simple:
     /// { "callConnectionId": "..." }
     /// 
-    /// Example — with options:
+    /// Example ï¿½ with options:
     /// { "callConnectionId": "...", "playToAllOptions": { "loop": true, "interruptCallMediaOperation": false } }
     /// </summary>
     public class PlayToAllRequest
@@ -121,17 +119,16 @@ namespace Call_Automation_GCCH.Models
         public bool PlayHoldMusic { get; set; } = false;
 
         /// <summary>Custom context. Maps to: HoldOptions.OperationContext</summary>
-        [DefaultValue("holdContext")]
-        public string OperationContext { get; set; } = "holdContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
     /// Request body for holding a participant.
     /// 
-    /// Example — simple hold:
+    /// Example ï¿½ simple hold:
     /// { "callConnectionId": "...", "target": "+18001234567" }
     /// 
-    /// Example — hold with music:
+    /// Example ï¿½ hold with music:
     /// { "callConnectionId": "...", "target": "+18001234567", "holdOptions": { "playHoldMusic": true } }
     /// </summary>
     public class HoldRequest
@@ -150,17 +147,16 @@ namespace Call_Automation_GCCH.Models
     public class UnholdOptionsRequest
     {
         /// <summary>Custom context. Maps to: UnholdOptions.OperationContext</summary>
-        [DefaultValue("unholdContext")]
-        public string OperationContext { get; set; } = "unholdContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
     /// Request body for unholding a participant.
     /// 
-    /// Example — simple:
+    /// Example ï¿½ simple:
     /// { "callConnectionId": "...", "target": "+18001234567" }
     /// 
-    /// Example — with options:
+    /// Example ï¿½ with options:
     /// { "callConnectionId": "...", "target": "+18001234567", "unholdOptions": { "operationContext": "myCtx" } }
     /// </summary>
     public class UnholdRequest
@@ -185,13 +181,10 @@ namespace Call_Automation_GCCH.Models
         [Required] public string CallConnectionId { get; set; } = default!;
 
         /// <summary>Locale for transcription (e.g. en-US).</summary>
-        /// <example>en-US</example>
-        [DefaultValue("en-US")]
-        public string Locale { get; set; } = "en-US";
+        public string? Locale { get; set; }
 
         /// <summary>Custom context.</summary>
-        [DefaultValue("StartTranscriptionContext")]
-        public string OperationContext { get; set; } = "StartTranscriptionContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
@@ -202,9 +195,7 @@ namespace Call_Automation_GCCH.Models
     public class StopTranscriptionRequest
     {
         [Required] public string CallConnectionId { get; set; } = default!;
-
-        [DefaultValue("StopTranscriptionContext")]
-        public string OperationContext { get; set; } = "StopTranscriptionContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
@@ -217,13 +208,10 @@ namespace Call_Automation_GCCH.Models
         [Required] public string CallConnectionId { get; set; } = default!;
 
         /// <summary>New locale (e.g. en-US, es-ES).</summary>
-        /// <example>en-US</example>
-        [DefaultValue("en-US")]
-        public string Locale { get; set; } = "en-US";
+        public string? Locale { get; set; }
 
         /// <summary>Custom context.</summary>
-        [DefaultValue("UpdateTranscriptionContext")]
-        public string OperationContext { get; set; } = "UpdateTranscriptionContext";
+        public string? OperationContext { get; set; }
     }
 
     // ?? SendDtmfTones ???????????????????????????????????????????????????????????
@@ -240,14 +228,11 @@ namespace Call_Automation_GCCH.Models
         /// <summary>Target participant: ACS user ID (8:...) or phone number (+...).</summary>
         [Required] public string Target { get; set; } = default!;
 
-        /// <summary>Comma-separated tones: zero-nine, pound, asterisk (or 0-9, #, *).</summary>
-        /// <example>one,two,pound</example>
-        [DefaultValue("zero,one")]
-        public string Tones { get; set; } = "zero,one";
+        /// <summary>Comma-separated tones: zero-nine, pound, asterisk (or 0-9, #, *). e.g. "one,two,pound"</summary>
+        public string? Tones { get; set; }
 
         /// <summary>Custom context.</summary>
-        [DefaultValue("SendDtmfContext")]
-        public string OperationContext { get; set; } = "SendDtmfContext";
+        public string? OperationContext { get; set; }
     }
 
     // ?? ContinuousDtmf ?????????????????????????????????????????????????????????
@@ -265,8 +250,7 @@ namespace Call_Automation_GCCH.Models
         [Required] public string Target { get; set; } = default!;
 
         /// <summary>Custom context.</summary>
-        [DefaultValue("ContinuousDtmfContext")]
-        public string OperationContext { get; set; } = "ContinuousDtmfContext";
+        public string? OperationContext { get; set; }
     }
 
     // ?? InterruptAudioAndAnnounce ???????????????????????????????????????????????
@@ -284,8 +268,7 @@ namespace Call_Automation_GCCH.Models
         [Required] public string Target { get; set; } = default!;
 
         /// <summary>Custom context.</summary>
-        [DefaultValue("interruptContext")]
-        public string OperationContext { get; set; } = "interruptContext";
+        public string? OperationContext { get; set; }
     }
 
     // ?? StartMediaStreaming / StopMediaStreaming ?????????????????????????????????
@@ -300,7 +283,6 @@ namespace Call_Automation_GCCH.Models
         [Required] public string CallConnectionId { get; set; } = default!;
 
         /// <summary>Custom context.</summary>
-        [DefaultValue("MediaStreamingContext")]
-        public string OperationContext { get; set; } = "MediaStreamingContext";
+        public string? OperationContext { get; set; }
     }
 }

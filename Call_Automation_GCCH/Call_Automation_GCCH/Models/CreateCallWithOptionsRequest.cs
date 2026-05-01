@@ -1,4 +1,4 @@
-using System.ComponentModel;
+ï»¿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -13,22 +13,18 @@ namespace Call_Automation_GCCH.Models
         /// Locale for speech recognition (e.g. en-US, es-ES, fr-FR).
         /// Maps to: TranscriptionOptions.Locale
         /// </summary>
-        /// <example>en-US</example>
-        [DefaultValue("en-US")]
-        public string Locale { get; set; } = "en-US";
+        public string? Locale { get; set; }
 
         /// <summary>
         /// Start transcription immediately when the call connects.
         /// Maps to: TranscriptionOptions.StartTranscription
         /// </summary>
-        /// <example>false</example>
         public bool StartTranscription { get; set; } = false;
 
         /// <summary>
         /// Enable intermediate (partial) transcription results.
         /// Maps to: TranscriptionOptions.EnableIntermediateResults
         /// </summary>
-        /// <example>false</example>
         public bool EnableIntermediateResults { get; set; } = false;
     }
 
@@ -41,31 +37,25 @@ namespace Call_Automation_GCCH.Models
         /// Start media streaming immediately when the call connects.
         /// Maps to: MediaStreamingOptions.StartMediaStreaming
         /// </summary>
-        /// <example>false</example>
         public bool StartMediaStreaming { get; set; } = false;
 
         /// <summary>
         /// Audio channel mode: "Mixed" (all participants combined) or "Unmixed" (separate per participant).
         /// Maps to: MediaStreamingOptions.MediaStreamingAudioChannel
         /// </summary>
-        /// <example>Mixed</example>
-        [DefaultValue("Mixed")]
-        public string MediaStreamingAudioChannel { get; set; } = "Mixed";
+        public string? MediaStreamingAudioChannel { get; set; }
 
         /// <summary>
         /// Enable bidirectional media streaming (send audio back into the call).
         /// Maps to: MediaStreamingOptions.EnableBidirectional
         /// </summary>
-        /// <example>false</example>
         public bool EnableBidirectional { get; set; } = false;
 
         /// <summary>
         /// Audio format: "Pcm16KMono" or "Pcm24KMono".
         /// Maps to: MediaStreamingOptions.AudioFormat
         /// </summary>
-        /// <example>Pcm16KMono</example>
-        [DefaultValue("Pcm16KMono")]
-        public string AudioFormat { get; set; } = "Pcm16KMono";
+        public string? AudioFormat { get; set; }
     }
 
     /// <summary>
@@ -90,13 +80,13 @@ namespace Call_Automation_GCCH.Models
     /// To enable media streaming: include the "mediaStreamingOptions" object.
     /// To disable either feature: set it to null or remove it from the JSON body.
     /// 
-    /// Example — basic call (no transcription, no streaming):
+    /// Example ï¿½ basic call (no transcription, no streaming):
     /// {
     ///   "target": "+18001234567",
     ///   "isPstn": true
     /// }
     /// 
-    /// Example — call with transcription only:
+    /// Example ï¿½ call with transcription only:
     /// {
     ///   "target": "+18001234567",
     ///   "isPstn": true,
@@ -106,7 +96,7 @@ namespace Call_Automation_GCCH.Models
     ///   }
     /// }
     /// 
-    /// Example — call with both transcription and media streaming:
+    /// Example ï¿½ call with both transcription and media streaming:
     /// {
     ///   "target": "+18001234567",
     ///   "isPstn": true,
@@ -135,15 +125,12 @@ namespace Call_Automation_GCCH.Models
         /// <summary>
         /// True if the target is a PSTN phone number, false for ACS user.
         /// </summary>
-        /// <example>true</example>
         public bool IsPstn { get; set; } = false;
 
         /// <summary>
         /// Custom context string for correlating callback events.
         /// </summary>
-        /// <example>createCallContext</example>
-        [DefaultValue("createCallContext")]
-        public string OperationContext { get; set; } = "createCallContext";
+        public string? OperationContext { get; set; }
 
         /// <summary>
         /// Transcription configuration. Set to null or omit to disable transcription.
@@ -171,12 +158,12 @@ namespace Call_Automation_GCCH.Models
     /// To enable media streaming: include the "mediaStreamingOptions" object.
     /// To disable either feature: set it to null or remove it from the JSON body.
     /// 
-    /// Example — basic group call:
+    /// Example ï¿½ basic group call:
     /// {
     ///   "targets": ["+18001234567", "+18009876543"]
     /// }
     /// 
-    /// Example — group call with transcription:
+    /// Example ï¿½ group call with transcription:
     /// {
     ///   "targets": ["+18001234567"],
     ///   "transcriptionOptions": {
@@ -198,14 +185,11 @@ namespace Call_Automation_GCCH.Models
         /// <summary>
         /// Custom context string for correlating callback events.
         /// </summary>
-        /// <example>groupCallContext</example>
-        [DefaultValue("groupCallContext")]
-        public string OperationContext { get; set; } = "groupCallContext";
+        public string? OperationContext { get; set; }
 
         /// <summary>
         /// Display name shown as the caller. Maps to: CreateGroupCallOptions.SourceDisplayName
         /// </summary>
-        /// <example>Contoso Support</example>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? SourceDisplayName { get; set; }
 
@@ -231,10 +215,10 @@ namespace Call_Automation_GCCH.Models
     /// <summary>
     /// Request body for connecting to an existing server call.
     /// 
-    /// Example — basic connect (no streaming/transcription):
+    /// Example ï¿½ basic connect (no streaming/transcription):
     /// { "serverCallId": "aHR0cHM6..." }
     /// 
-    /// Example — connect with media streaming:
+    /// Example ï¿½ connect with media streaming:
     /// {
     ///   "serverCallId": "aHR0cHM6...",
     ///   "mediaStreamingOptions": { "startMediaStreaming": false, "mediaStreamingAudioChannel": "Mixed" }
@@ -252,9 +236,7 @@ namespace Call_Automation_GCCH.Models
         /// <summary>
         /// Custom context string for correlating events.
         /// </summary>
-        /// <example>ConnectCallContext</example>
-        [DefaultValue("ConnectCallContext")]
-        public string OperationContext { get; set; } = "ConnectCallContext";
+        public string? OperationContext { get; set; }
 
         /// <summary>
         /// Transcription configuration. Omit or set to null to disable.
@@ -283,34 +265,28 @@ namespace Call_Automation_GCCH.Models
         /// <summary>
         /// True for AudioVideo content, false for Audio only.
         /// </summary>
-        /// <example>false</example>
         public bool IsAudioVideo { get; set; } = false;
 
         /// <summary>
         /// Recording format: "Mp3", "Mp4", or "Wav".
         /// AudioVideo content requires Mp4.
         /// </summary>
-        /// <example>Mp3</example>
-        [DefaultValue("Mp3")]
-        public string RecordingFormat { get; set; } = "Mp3";
+        public string? RecordingFormat { get; set; }
 
         /// <summary>
         /// True for mixed channel (all participants combined), false for unmixed (separate streams).
         /// </summary>
-        /// <example>true</example>
         public bool IsMixed { get; set; } = true;
 
         /// <summary>
         /// Whether to pause recording on start. Use Resume to begin recording later.
         /// </summary>
-        /// <example>false</example>
         public bool PauseOnStart { get; set; } = false;
 
         /// <summary>
         /// Azure Blob Storage container URI for external recording storage.
         /// Omit to use default ACS recording storage.
         /// </summary>
-        /// <example>https://myaccount.blob.core.usgovcloudapi.net/recordings</example>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ExternalStorageContainerUri { get; set; }
 
@@ -363,32 +339,32 @@ namespace Call_Automation_GCCH.Models
     /// ?                      ? You MUST provide "groupCallId".                              ?
     /// ?????????????????????????????????????????????????????????????????????????????????????
     /// 
-    /// Example 1 — simplest (uses call connection ID):
+    /// Example 1 ï¿½ simplest (uses call connection ID):
     /// {
     ///   "callConnectionId": "411f0200-abcd-1234-..."
     /// }
     /// 
-    /// Example 2 — server call locator (auto-resolved):
+    /// Example 2 ï¿½ server call locator (auto-resolved):
     /// {
     ///   "callConnectionId": "411f0200-abcd-1234-...",
     ///   "callLocatorType": "ServerCallLocator"
     /// }
     /// 
-    /// Example 3 — server call locator (explicit ID from IncomingCall event):
+    /// Example 3 ï¿½ server call locator (explicit ID from IncomingCall event):
     /// {
     ///   "callConnectionId": "411f0200-abcd-1234-...",
     ///   "callLocatorType": "ServerCallLocator",
     ///   "serverCallId": "aHR0cHM6Ly9hcGku..."
     /// }
     /// 
-    /// Example 4 — group call locator:
+    /// Example 4 ï¿½ group call locator:
     /// {
     ///   "callConnectionId": "411f0200-abcd-1234-...",
     ///   "callLocatorType": "GroupCallLocator",
     ///   "groupCallId": "29228d3e-fbc0-4fef-..."
     /// }
     /// 
-    /// Example 5 — with recording options:
+    /// Example 5 ï¿½ with recording options:
     /// {
     ///   "callConnectionId": "411f0200-abcd-1234-...",
     ///   "recordingOptions": {
@@ -402,7 +378,7 @@ namespace Call_Automation_GCCH.Models
     public class StartRecordingRequest
     {
         /// <summary>
-        /// The call connection ID of the active call. Always required — used to resolve
+        /// The call connection ID of the active call. Always required ï¿½ used to resolve
         /// call properties and as the default locator when callLocatorType is "CallConnectionId".
         /// You receive this value from CreateCall, AnswerCall, or ConnectCall responses.
         /// </summary>
@@ -413,26 +389,23 @@ namespace Call_Automation_GCCH.Models
         /// <summary>
         /// Determines how the SDK locates the call for recording.
         /// 
-        /// • "CallConnectionId" (default) — uses callConnectionId directly.
+        /// ï¿½ "CallConnectionId" (default) ï¿½ uses callConnectionId directly.
         ///   Simplest option; works for all standard outbound/inbound calls.
         /// 
-        /// • "ServerCallLocator" — uses a server call ID. The server call ID is
+        /// ï¿½ "ServerCallLocator" ï¿½ uses a server call ID. The server call ID is
         ///   auto-resolved from callConnectionId unless you provide "serverCallId" explicitly.
         ///   Useful when you have the server call ID from an IncomingCall event or callback.
         /// 
-        /// • "GroupCallLocator" — uses a group call ID for group/rooms scenarios.
+        /// ï¿½ "GroupCallLocator" ï¿½ uses a group call ID for group/rooms scenarios.
         ///   You MUST supply "groupCallId" when using this option.
         /// </summary>
-        /// <example>CallConnectionId</example>
-        [DefaultValue("CallConnectionId")]
-        public string CallLocatorType { get; set; } = "CallConnectionId";
+        public string? CallLocatorType { get; set; }
 
         /// <summary>
         /// The server call ID. Only used when callLocatorType is "ServerCallLocator".
         /// If omitted, the server call ID is automatically resolved from callConnectionId.
         /// You can find this value in the IncomingCall event payload or call connection properties.
         /// </summary>
-        /// <example>aHR0cHM6Ly9hcGku...</example>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ServerCallId { get; set; }
 
@@ -440,7 +413,6 @@ namespace Call_Automation_GCCH.Models
         /// The group call ID. Required when callLocatorType is "GroupCallLocator".
         /// This is the ID of the group call you want to record (e.g. from a Rooms or group call scenario).
         /// </summary>
-        /// <example>29228d3e-fbc0-4fef-abcd-000000000000</example>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? GroupCallId { get; set; }
 

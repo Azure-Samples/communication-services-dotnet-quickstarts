@@ -203,6 +203,10 @@ namespace Call_Automation_GCCH.Controllers
                     Status = props.CallConnectionState.ToString()
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in CreateCall");
@@ -266,6 +270,10 @@ namespace Call_Automation_GCCH.Controllers
                     Status = props.CallConnectionState.ToString()
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in CreateGroupCallWithOptions");
@@ -280,7 +288,7 @@ namespace Call_Automation_GCCH.Controllers
             var wsUri = BuildWebSocketUri();
             return new TranscriptionOptions(
                 new Uri(wsUri),
-                config.Locale,
+                config.Locale ?? "en-US",
                 config.StartTranscription,
                 TranscriptionTransport.Websocket)
             {
@@ -291,9 +299,9 @@ namespace Call_Automation_GCCH.Controllers
         private MediaStreamingOptions ToSdkMediaStreamingOptions(MediaStreamingOptionsRequest config)
         {
             var wsUri = BuildWebSocketUri();
-            var audioChannel = config.MediaStreamingAudioChannel?.Equals("Unmixed", StringComparison.OrdinalIgnoreCase) == true
+            var audioChannel = (config.MediaStreamingAudioChannel ?? "Mixed").Equals("Unmixed", StringComparison.OrdinalIgnoreCase)
                 ? MediaStreamingAudioChannel.Unmixed : MediaStreamingAudioChannel.Mixed;
-            var format = config.AudioFormat?.Equals("Pcm24KMono", StringComparison.OrdinalIgnoreCase) == true
+            var format = (config.AudioFormat ?? "Pcm16KMono").Equals("Pcm24KMono", StringComparison.OrdinalIgnoreCase)
                 ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
             return new MediaStreamingOptions(
@@ -315,9 +323,15 @@ namespace Call_Automation_GCCH.Controllers
 
         private CallIntelligenceOptions ToSdkCallIntelligenceOptions(CallIntelligenceOptionsRequest config)
         {
+            if (string.IsNullOrWhiteSpace(config.CognitiveServicesEndpoint))
+                throw new ArgumentException("callIntelligenceOptions.cognitiveServicesEndpoint is required and cannot be empty.");
+
+            if (!Uri.TryCreate(config.CognitiveServicesEndpoint, UriKind.Absolute, out var endpoint))
+                throw new ArgumentException($"callIntelligenceOptions.cognitiveServicesEndpoint is not a valid URI: '{config.CognitiveServicesEndpoint}'");
+
             return new CallIntelligenceOptions
             {
-                CognitiveServicesEndpoint = new Uri(config.CognitiveServicesEndpoint)
+                CognitiveServicesEndpoint = endpoint
             };
         }
     }

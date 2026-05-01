@@ -313,6 +313,9 @@ namespace Call_Automation_GCCH.Controllers
             if (identifier == null)
                 return BadRequest("target must be an ACS user ID (8:...) or phone number (+...)");
 
+            if (string.IsNullOrEmpty(request.RecognizeType))
+                return BadRequest("recognizeType is required. Valid: Dtmf, Choice, Speech, SpeechOrDtmf");
+
             if (!Enum.TryParse<RecognizeType>(request.RecognizeType, ignoreCase: true, out var type))
                 return BadRequest($"Invalid recognizeType '{request.RecognizeType}'. Valid: Dtmf, Choice, Speech, SpeechOrDtmf");
 
@@ -443,7 +446,7 @@ namespace Call_Automation_GCCH.Controllers
             {
                 var callMedia = _service.GetCallMedia(request.CallConnectionId);
                 var props = _service.GetCallConnectionProperties(request.CallConnectionId);
-                var opts = new UpdateTranscriptionOptions(request.Locale) { OperationContext = request.OperationContext };
+                var opts = new UpdateTranscriptionOptions(request.Locale ?? "en-US") { OperationContext = request.OperationContext };
                 if (async) await callMedia.UpdateTranscriptionAsync(opts); else callMedia.UpdateTranscription(opts);
                 return Ok(new CallConnectionResponse { CallConnectionId = request.CallConnectionId, CorrelationId = props.CorrelationId, Status = props.CallConnectionState.ToString() });
             }

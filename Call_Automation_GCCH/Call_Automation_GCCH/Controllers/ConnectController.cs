@@ -66,9 +66,9 @@ namespace Call_Automation_GCCH.Controllers
                 if (request.MediaStreamingOptions != null)
                 {
                     var ms = request.MediaStreamingOptions;
-                    var audioChannel = ms.MediaStreamingAudioChannel?.Equals("Unmixed", StringComparison.OrdinalIgnoreCase) == true
+                    var audioChannel = (ms.MediaStreamingAudioChannel ?? "Mixed").Equals("Unmixed", StringComparison.OrdinalIgnoreCase)
                         ? MediaStreamingAudioChannel.Unmixed : MediaStreamingAudioChannel.Mixed;
-                    var audioFormat = ms.AudioFormat?.Equals("Pcm24KMono", StringComparison.OrdinalIgnoreCase) == true
+                    var audioFormat = (ms.AudioFormat ?? "Pcm16KMono").Equals("Pcm24KMono", StringComparison.OrdinalIgnoreCase)
                         ? AudioFormat.Pcm24KMono : AudioFormat.Pcm16KMono;
 
                     connectOpts.MediaStreamingOptions = new MediaStreamingOptions(
@@ -88,7 +88,7 @@ namespace Call_Automation_GCCH.Controllers
                     var tc = request.TranscriptionOptions;
                     connectOpts.TranscriptionOptions = new TranscriptionOptions(
                         new Uri(websocketUri),
-                        tc.Locale,
+                        tc.Locale ?? "en-US",
                         tc.StartTranscription,
                         TranscriptionTransport.Websocket)
                     {
@@ -98,9 +98,15 @@ namespace Call_Automation_GCCH.Controllers
 
                 if (request.CallIntelligenceOptions != null)
                 {
+                    if (string.IsNullOrWhiteSpace(request.CallIntelligenceOptions.CognitiveServicesEndpoint))
+                        throw new ArgumentException("callIntelligenceOptions.cognitiveServicesEndpoint is required and cannot be empty.");
+
+                    if (!Uri.TryCreate(request.CallIntelligenceOptions.CognitiveServicesEndpoint, UriKind.Absolute, out var cogEndpoint))
+                        throw new ArgumentException($"callIntelligenceOptions.cognitiveServicesEndpoint is not a valid URI: '{request.CallIntelligenceOptions.CognitiveServicesEndpoint}'");
+
                     connectOpts.CallIntelligenceOptions = new CallIntelligenceOptions
                     {
-                        CognitiveServicesEndpoint = new Uri(request.CallIntelligenceOptions.CognitiveServicesEndpoint)
+                        CognitiveServicesEndpoint = cogEndpoint
                     };
                 }
 
@@ -115,6 +121,10 @@ namespace Call_Automation_GCCH.Controllers
                     CorrelationId = props.CorrelationId,
                     Status = props.CallConnectionState.ToString()
                 });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

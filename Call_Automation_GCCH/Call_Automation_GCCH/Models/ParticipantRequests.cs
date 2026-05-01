@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Call_Automation_GCCH.Models
@@ -20,12 +20,10 @@ namespace Call_Automation_GCCH.Models
         public bool IsPstn { get; set; } = false;
 
         /// <summary>Seconds to wait before the invitation times out.</summary>
-        /// <example>30</example>
         public int InvitationTimeoutInSeconds { get; set; } = 30;
 
         /// <summary>Custom context for correlating events.</summary>
-        [DefaultValue("addParticipantContext")]
-        public string OperationContext { get; set; } = "addParticipantContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
@@ -42,9 +40,7 @@ namespace Call_Automation_GCCH.Models
 
         /// <summary>True if participant is a PSTN phone number.</summary>
         public bool IsPstn { get; set; } = false;
-
-        [DefaultValue("removeParticipantContext")]
-        public string OperationContext { get; set; } = "removeParticipantContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
@@ -56,9 +52,7 @@ namespace Call_Automation_GCCH.Models
     {
         [Required] public string CallConnectionId { get; set; } = default!;
         [Required] public string InvitationId { get; set; } = default!;
-
-        [DefaultValue("cancelAddParticipantContext")]
-        public string OperationContext { get; set; } = "cancelAddParticipantContext";
+        public string? OperationContext { get; set; }
     }
 
     /// <summary>
