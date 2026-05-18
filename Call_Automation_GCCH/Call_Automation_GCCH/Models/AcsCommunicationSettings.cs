@@ -11,5 +11,12 @@ namespace Call_Automation_GCCH.Models
         public string? AcsPhoneNumber { get; set; }
         public string? PmaEndpoint { get; set; }
         public string? CallbackUriHost { get; set; }
+
+        /// <summary>
+        /// Optional external URL for the audio/prompt file (e.g. Azure Blob Storage with a trusted cert).
+        /// When set, this is used instead of the self-hosted /audio/prompt.wav endpoint,
+        /// avoiding SSL certificate validation failures from ACS fetching hold music.
+        /// </summary>
+        public string? AudioFileUrl { get; set; }
     }
 }

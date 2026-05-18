@@ -151,7 +151,15 @@ namespace Call_Automation_GCCH.Controllers
 
         // ??? PRIVATE HANDLERS ???????????????????????????????????????????????????
 
-        private FileSource BuildFileSource() => new FileSource(new Uri(_config.CallbackUriHost + "/audio/prompt.wav"));
+        private FileSource BuildFileSource()
+        {
+            if (!string.IsNullOrWhiteSpace(_config.AudioFileUrl))
+                return new FileSource(new Uri(_config.AudioFileUrl));
+
+            if (string.IsNullOrWhiteSpace(_config.CallbackUriHost))
+                throw new InvalidOperationException("CallbackUriHost or AudioFileUrl is not configured. Set it in appsettings.json or via /api/configuration before using media operations.");
+            return new FileSource(new Uri(_config.CallbackUriHost.TrimEnd('/') + "/audio/prompt.wav"));
+        }
 
         private async Task<IActionResult> HandlePlay(PlayRequest request, bool async)
         {
