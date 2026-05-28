@@ -1,6 +1,7 @@
-﻿using Azure.Communication.CallAutomation;
+extern alias AzureIdentityAlias;
+using Azure.Communication.CallAutomation;
 using Azure.Core;
-using Azure.Identity;
+using AzureIdentityAlias::Azure.Identity;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
@@ -24,11 +25,10 @@ var (acsEndpoint, acsAccessKeyBase64) = AcsConnectionString.Parse(acsConnectionS
 var authMode = "HMAC";
 
 // Call Automation Client -> **use your ACS resource endpoint**
-var credential = new DefaultAzureCredential();
-var client = new CallAutomationClient(new Uri("https://uswc-01.sdf.pma.teams.microsoft.com"), new Uri(acsEndpoint), credential);
+var credential = new AzureIdentityAlias::Azure.Identity.DefaultAzureCredential();
+var client = new CallAutomationClient(pmaEndpoint: new Uri("https://uswe3-03.sdf.pma.teams.microsoft.com"), acsConnectionString);
 
 var app = builder.Build();
-
 var appBaseUrl = Environment.GetEnvironmentVariable("VS_TUNNEL_URL")?.TrimEnd('/');
 if (string.IsNullOrEmpty(appBaseUrl))
 {
@@ -100,20 +100,29 @@ app.MapPost("/api/incomingCall", async (
 
         if (string.IsNullOrWhiteSpace(streamUrl))
         {
-            logger.LogError("No MediaStreamingSubscription.StreamUrl was returned.");
-            continue;
+            Thread.Sleep(4000);
+
+            var props = client.GetCallConnection(answerCallResult.CallConnection.CallConnectionId);
+            streamUrl = props.GetCallConnectionProperties().Value?.MediaStreamingSubscription?.StreamUrl;
+            if (string.IsNullOrWhiteSpace(streamUrl))
+            {
+                logger.LogError("No MediaStreamingSubscription.StreamUrl was returned.");
+            }
         }
 
-        // Connect as a WS client (AAD or HMAC) — no /ws endpoint needed
-        AccessToken accessToken = default;
-        if (authMode.Equals("AAD", StringComparison.OrdinalIgnoreCase))
-        {
-            accessToken = await GetAccessTokenAsync();
-            logger.LogInformation($"Access Token acquired: {accessToken.Token}");
-        }
+         _ = Task.Run(() => ConnectAndProcessMediaStreamAsync(client, streamUrl, logger, builder.Configuration));
 
-        _ = Task.Run(() => ConnectToAcsMediaAsync(
-            streamUrl!, acsEndpoint, acsAccessKeyBase64, authMode, accessToken, logger, builder.Configuration));
+
+        //// // Connect as a WS client(AAD or HMAC) — no / ws endpoint needed
+        //AccessToken accessToken = default;
+        //if (authMode.Equals("AAD", StringComparison.OrdinalIgnoreCase))
+        //{
+        //    accessToken = await GetAccessTokenAsync();
+        //    logger.LogInformation($"Access Token acquired: {accessToken.Token}");
+        //}
+
+        //_ = Task.Run(() => ConnectToAcsMediaAsync(
+        //    streamUrl!, acsEndpoint, acsAccessKeyBase64, authMode, accessToken, logger, builder.Configuration));
     }
 
     return Results.Ok();
@@ -145,6 +154,118 @@ app.MapPost("/api/callbacks/{contextId}", async (
 app.Run();
 
 // ---------------------------
+// Connect to ACS media stream via authenticated WebSocket
+// ---------------------------
+static async Task ConnectAndProcessMediaStreamAsync(
+    CallAutomationClient client,
+    string streamUrl,
+    ILogger logger,
+    IConfiguration configuration)
+{
+    var authenticator = client.GetWebSocketAuthenticator();
+    var ws = new ClientWebSocket();
+
+    // Customer configures WebSocket
+    ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    ws.Options.SetBuffer(4096, 4096);
+
+    Uri uri = new Uri(streamUrl);
+    logger.LogInformation("Stream URL: " + streamUrl);
+
+    // SDK handles all authentication (HMAC or AAD based on how client was constructed)
+    await authenticator.AuthenticateWebSocketAsync(ws, uri);
+    logger.LogInformation("SDK authentication complete. Attempting WebSocket connect...");
+
+    // Customer connects
+    try
+    {
+        await ws.ConnectAsync(uri, CancellationToken.None);
+        logger.LogInformation("WebSocket connected successfully.");
+    }
+    catch (WebSocketException wsEx)
+    {
+        logger.LogError(wsEx, "WebSocket connect failed. Stream URL: " + streamUrl);
+        throw;
+    }
+
+    var buffer = new byte[64 * 1024];
+    // Simple echo test for bidirectional streaming verification
+    logger.LogInformation("Starting echo test - received audio will be sent back.");
+
+    //// Start receiving messages in background
+    //var receiveTask = ReceiveMessagesWithAuth(ws);
+    //await receiveTask;
+
+    //// Use AcsMediaStreamingHandler for full media processing
+    var mediaService = new AcsMediaStreamingHandler(ws, configuration);
+    await mediaService.ProcessWebSocketAsync();
+
+    //// Echo: send the received data back (bidirectional test)
+    //while (ws.State == WebSocketState.Open)
+    //{
+    //    var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+    //    if (result.MessageType == WebSocketMessageType.Close)
+    //    {
+    //        logger.LogWarning($"WS closed by remote. Status: {result.CloseStatus}, {result.CloseStatusDescription}");
+    //        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "closing", CancellationToken.None);
+    //        break;
+    //    }
+    //    if (result.Count > 0)
+    //    {
+    //        await ws.SendAsync(
+    //            new ArraySegment<byte>(buffer, 0, result.Count),
+    //            result.MessageType,
+    //            result.EndOfMessage,
+    //            CancellationToken.None);
+    //        logger.LogInformation($"Echoed {result.Count} bytes back.");
+    //    }
+    //}
+
+    static async Task ReceiveMessagesWithAuth(ClientWebSocket webSocket)
+    {
+        byte[] buffer = new byte[4096];
+        StringBuilder messageBuilder = new StringBuilder();
+
+        while (webSocket.State == WebSocketState.Open)
+        {
+            try
+            {
+                WebSocketReceiveResult result = await webSocket.ReceiveAsync(
+                    new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    Console.WriteLine("Server initiated close");
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                        "Closing", CancellationToken.None);
+                }
+                else if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    string chunk = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    messageBuilder.Append(chunk);
+
+                    if (result.EndOfMessage)
+                    {
+                        string completeMessage = messageBuilder.ToString();
+                        Console.WriteLine($"-----Authenticated message received: {completeMessage}");
+                        messageBuilder.Clear();
+                    }
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary)
+                {
+                    Console.WriteLine($"Binary message received: {result.Count} bytes");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error receiving authenticated message: {ex.Message}");
+                break;
+            }
+        }
+    }
+}
+
+// ---------------------------
 // WS client: connect out to ACS streamUrl (AAD or HMAC)
 // ---------------------------
 static async Task ConnectToAcsMediaAsync(
@@ -174,13 +295,13 @@ static async Task ConnectToAcsMediaAsync(
     }
     else
     {
-        var contentHash = ComputeSha256Base64(string.Empty);
+        string contentHash; using (var sha256 = SHA256.Create()) { contentHash = Convert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(string.Empty))); }
 
         const string signedHeaders = "date;host;x-ms-content-sha256";
         var date = DateTime.UtcNow.ToString("R");
         var stringToSign = $"GET\n{uri.PathAndQuery}\n{date};{new Uri(acsEndpoint).Authority};{contentHash}";
 
-        var signature = ComputeHmacSha256Base64(stringToSign, acsAccessKeyBase64);
+        string signature; using (var hmac = new HMACSHA256(Convert.FromBase64String(acsAccessKeyBase64))) { signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign))); }
         var authorizationHeader = $"HMAC-SHA256 SignedHeaders={signedHeaders}&Signature={signature}";
 
         // Diagnostics (avoid printing secrets)
