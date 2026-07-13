@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACS Call Automation - GCCH</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-indicator.configured {
+            background: #4caf50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .status-indicator.error {
+            background: #f44336;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.info {
+            border-left-color: #4caf50;
+        }
+
+        .log-entry.warning {
+            border-left-color: #ff9800;
+        }
+
+        .log-entry.error {
+            border-left-color: #f44336;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .quick-action-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-action-card:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .quick-action-card h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .quick-action-card p {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .collapsible {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .collapsible-content {
+            display: none;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+
+        .collapsible.active + .collapsible-content {
+            display: block;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .badge-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 ACS Call Automation - GCCH</h1>
+            <p>Azure Communication Services Call Automation for Government Community Cloud High</p>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-indicator" id="configStatus"></span>
+                <span id="configText">Configuration: Not Set</span>
+            </div>
+            <div class="status-item">
+                <span class="status-indicator" id="eventGridStatus"></span>
+                <span id="eventGridText">Event Grid: Unknown</span>
+            </div>
+            <div class="status-item">
+                <span class="status-indicator" id="serviceStatus"></span>
+                <span id="serviceText">Service: Checking...</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Configuration Panel -->
+            <div class="card">
+                <div class="card-header">
+                    ⚙️ Configuration
+                </div>
+                <div class="card-body">
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab(event, 'quick-setup')">Quick Setup</button>
+                        <button class="tab" onclick="switchTab(event, 'advanced')">Advanced</button>
+                    </div>
+
+                    <div id="quick-setup" class="tab-content active">
+                        <div class="form-group">
+                            <label>ACS Connection String <span style="color: red;">*</span></label>
+                            <textarea id="connectionString" rows="3" placeholder="endpoint=https://...;accesskey=..."></textarea>
+                            <small>From Azure Portal → Communication Services → Keys</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Phone Number <span style="color: red;">*</span></label>
+                            <input type="text" id="phoneNumber" placeholder="+1XXXXXXXXXX" />
+                            <small>Format: +1234567890</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Callback URL</label>
+                            <input type="text" id="callbackUrl" placeholder="Auto-detected" readonly />
+                            <small>Automatically set to current host</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>PMA Endpoint</label>
+                            <select id="pmaEndpoint">
+                                <option value="https://govtx-02.pma.gov.teams.microsoft.us:38000">Texas (Default)</option>
+                                <option value="https://govaz-02.pma.gov.teams.microsoft.us:38000">Arizona</option>
+                            </select>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="saveConfiguration()">
+                                💾 Save Configuration
+                            </button>
+                            <button class="btn btn-secondary" onclick="loadConfiguration()">
+                                🔄 Load Current
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="advanced" class="tab-content">
+                        <div class="alert alert-info">
+                            <strong>Advanced Settings</strong><br>
+                            Configure optional features and endpoints
+                        </div>
+
+                        <div class="form-group">
+                            <label>Audio File URL</label>
+                            <input type="text" id="audioFileUrl" placeholder="https://...blob.core.usgovcloudapi.net/..." />
+                            <small>External audio file for hold music (optional)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Custom PMA Endpoint</label>
+                            <input type="text" id="customPmaEndpoint" placeholder="https://custom-pma-endpoint:38000" />
+                        </div>
+
+                        <button class="btn btn-secondary" onclick="saveAdvancedSettings()">
+                            💾 Save Advanced Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Panel -->
+            <div class="card">
+                <div class="card-header">
+                    ⚡ Quick Actions
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions">
+                        <div class="quick-action-card" onclick="openMakeCallDialog()">
+                            <h3>📞 Make Call</h3>
+                            <p>Place an outbound call</p>
+                        </div>
+                        <div class="quick-action-card" onclick="window.open('/swagger', '_blank')">
+                            <h3>📚 API Docs</h3>
+                            <p>View Swagger UI</p>
+                        </div>
+                        <div class="quick-action-card" onclick="testConfiguration()">
+                            <h3>🔍 Test Config</h3>
+                            <p>Validate settings</p>
+                        </div>
+                        <div class="quick-action-card" onclick="viewLogs()">
+                            <h3>📋 View Logs</h3>
+                            <p>Application logs</p>
+                        </div>
+                    </div>
+
+                    <div class="collapsible" onclick="toggleCollapsible(this)">
+                        <strong>📞 Make Outbound Call</strong>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="form-group">
+                            <label>Target Phone Number</label>
+                            <input type="text" id="targetNumber" placeholder="+1XXXXXXXXXX" />
+                        </div>
+                        <div class="form-group">
+                            <label>Caller ID (Source)</label>
+                            <input type="text" id="sourceNumber" placeholder="Use configured phone" />
+                        </div>
+                        <button class="btn btn-success" onclick="makeCall()">
+                            📞 Place Call
+                        </button>
+                    </div>
+
+                    <div class="collapsible" onclick="toggleCollapsible(this)">
+                        <strong>🎵 Test Media Playback</strong>
+                    </div>
+                    <div class="collapsible-content">
+                        <p>Test audio file playback on active call</p>
+                        <div class="form-group">
+                            <label>Call Connection ID</label>
+                            <input type="text" id="mediaCallId" placeholder="Enter call connection ID" />
+                        </div>
+                        <button class="btn btn-secondary" onclick="testMedia()">
+                            🎵 Play Test Audio
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Panel -->
+        <div class="card">
+            <div class="card-header">
+                📋 Live Application Logs
+                <button class="btn btn-danger" style="float: right; padding: 5px 15px;" onclick="clearLogs()">
+                    🗑️ Clear
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry info">Waiting for logs...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-detect callback URL
+        document.getElementById('callbackUrl').value = window.location.origin;
+
+        // Load configuration on page load
+        window.addEventListener('load', function() {
+            loadConfiguration();
+            checkServiceStatus();
+            startLogPolling();
+        });
+
+        function switchTab(event, tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function toggleCollapsible(element) {
+            element.classList.toggle('active');
+        }
+
+        async function saveConfiguration() {
+            const connectionString = document.getElementById('connectionString').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const callbackUrl = document.getElementById('callbackUrl').value;
+            const pmaEndpoint = document.getElementById('pmaEndpoint').value;
+
+            if (!connectionString || !phoneNumber) {
+                alert('Please fill in all required fields (Connection String and Phone Number)');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/configuration/set', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        acsConnectionString: connectionString,
+                        acsPhoneNumber: phoneNumber,
+                        callbackUriHost: callbackUrl,
+                        pmaEndpoint: pmaEndpoint
+                    })
+                });
+
+                if (response.ok) {
+                    alert('✅ Configuration saved successfully!');
+                    loadConfiguration();
+                } else {
+                    const error = await response.text();
+                    alert('❌ Failed to save configuration: ' + error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/configuration/get');
+                if (response.ok) {
+                    const config = await response.json();
+
+                    // Update status indicator
+                    if (config.acsConnectionString && config.acsPhoneNumber) {
+                        document.getElementById('configStatus').classList.add('configured');
+                        document.getElementById('configText').textContent = 'Configuration: ✓ Configured';
+                    } else {
+                        document.getElementById('configStatus').classList.remove('configured');
+                        document.getElementById('configText').textContent = 'Configuration: ⚠ Not Set';
+                    }
+
+                    // Populate form fields
+                    if (config.acsPhoneNumber) {
+                        document.getElementById('phoneNumber').value = config.acsPhoneNumber;
+                        document.getElementById('sourceNumber').value = config.acsPhoneNumber;
+                    }
+
+                    if (config.callbackUriHost) {
+                        document.getElementById('callbackUrl').value = config.callbackUriHost;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load configuration:', error);
+            }
+        }
+
+        async function checkServiceStatus() {
+            try {
+                const response = await fetch('/api/configuration/get');
+                if (response.ok) {
+                    document.getElementById('serviceStatus').classList.add('configured');
+                    document.getElementById('serviceText').textContent = 'Service: ✓ Running';
+                } else {
+                    document.getElementById('serviceStatus').classList.add('error');
+                    document.getElementById('serviceText').textContent = 'Service: ✗ Error';
+                }
+            } catch (error) {
+                document.getElementById('serviceStatus').classList.add('error');
+                document.getElementById('serviceText').textContent = 'Service: ✗ Offline';
+            }
+        }
+
+        async function makeCall() {
+            const targetNumber = document.getElementById('targetNumber').value;
+            const sourceNumber = document.getElementById('sourceNumber').value || document.getElementById('phoneNumber').value;
+
+            if (!targetNumber) {
+                alert('Please enter a target phone number');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/call/createCall', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        targetParticipant: targetNumber,
+                        sourceCallerId: sourceNumber
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('✅ Call initiated successfully!\nCall ID: ' + result.callConnectionId);
+                } else {
+                    const error = await response.text();
+                    alert('❌ Failed to make call: ' + error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function testConfiguration() {
+            const config = {
+                connectionString: document.getElementById('connectionString').value,
+                phoneNumber: document.getElementById('phoneNumber').value
+            };
+
+            if (!config.connectionString || !config.phoneNumber) {
+                alert('⚠️ Configuration incomplete. Please set Connection String and Phone Number first.');
+                return;
+            }
+
+            alert('✅ Configuration looks good!\n\n' +
+                  '• Connection String: Set\n' +
+                  '• Phone Number: ' + config.phoneNumber + '\n' +
+                  '• Callback URL: ' + document.getElementById('callbackUrl').value);
+        }
+
+        function viewLogs() {
+            document.querySelector('.log-container').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function clearLogs() {
+            try {
+                const response = await fetch('/logs/clear', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    document.getElementById('logContainer').innerHTML = '<div class="log-entry info">Logs cleared</div>';
+                }
+            } catch (error) {
+                console.error('Failed to clear logs:', error);
+            }
+        }
+
+        function startLogPolling() {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/logs');
+                    const logs = await response.json();
+
+                    const logContainer = document.getElementById('logContainer');
+                    logContainer.innerHTML = '';
+
+                    logs.slice(-50).forEach(log => {
+                        const entry = document.createElement('div');
+                        entry.className = 'log-entry';
+
+                        if (log.toLowerCase().includes('error')) {
+                            entry.classList.add('error');
+                        } else if (log.toLowerCase().includes('warning')) {
+                            entry.classList.add('warning');
+                        } else {
+                            entry.classList.add('info');
+                        }
+
+                        entry.textContent = log;
+                        logContainer.appendChild(entry);
+                    });
+
+                    // Auto-scroll to bottom
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                } catch (error) {
+                    console.error('Failed to fetch logs:', error);
+                }
+            }, 2000);
+        }
+
+        function openMakeCallDialog() {
+            document.querySelector('.collapsible').click();
+            document.getElementById('targetNumber').focus();
+        }
+    </script>
+</body>
+</html>

@@ -70,4 +70,20 @@ namespace Call_Automation_GCCH.Models
         /// <summary>True if participant is a PSTN phone number.</summary>
         public bool IsPstn { get; set; } = false;
     }
+
+    /// <summary>
+    /// Request body for muting a participant in a call.
+    /// 
+    /// Example: { "callConnectionId": "...", "participantId": "+18001234567", "isPstn": true }
+    /// </summary>
+    public class MuteParticipantRequest
+    {
+        [Required] public string CallConnectionId { get; set; } = default!;
+
+        /// <summary>ACS user ID (8:...) or phone number (+...).</summary>
+        [Required] public string ParticipantId { get; set; } = default!;
+
+        /// <summary>True if participant is a PSTN phone number.</summary>
+        public bool IsPstn { get; set; } = false;
+    }
 }

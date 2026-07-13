@@ -90,6 +90,24 @@ namespace Call_Automation_GCCH.Controllers
             return Ok(BuildCurrentConfig());
         }
 
+        /// <summary>
+        /// Returns the current runtime configuration for UI (unmasked phone/callback, masked connection string)
+        /// </summary>
+        [HttpGet("get")]
+        [Tags("1. Configuration")]
+        public IActionResult GetConfiguration()
+        {
+            return Ok(new
+            {
+                AcsConnectionString = string.IsNullOrEmpty(_config.AcsConnectionString) ? null : "***configured***",
+                AcsPhoneNumber = _config.AcsPhoneNumber,
+                CallbackUriHost = _config.CallbackUriHost,
+                PmaEndpoint = _service.GetCurrentPmaEndpoint(),
+                AudioFileUrl = _config.AudioFileUrl,
+                IsConfigured = !string.IsNullOrEmpty(_config.AcsConnectionString) && !string.IsNullOrEmpty(_config.AcsPhoneNumber)
+            });
+        }
+
         private object BuildCurrentConfig()
         {
             return new

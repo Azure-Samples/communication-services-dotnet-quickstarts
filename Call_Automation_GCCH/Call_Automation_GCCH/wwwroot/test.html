@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Testing - ACS Call Automation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+        }
+
+        .header .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .header .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .header .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .test-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .category-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .category-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .category-card .icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .category-card h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .category-card p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .test-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .test-panel.active {
+            display: block;
+        }
+
+        .test-panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .form-group .help-text {
+            color: #999;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .result-panel {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-panel pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .result-panel.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result-panel.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .error-header, .success-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid currentColor;
+        }
+
+        .error-message {
+            padding: 10px;
+            background: rgba(114, 28, 36, 0.1);
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .test-section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .test-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .badge-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        h3.options-header {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #667eea;
+            border-left: 4px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .checkbox-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .test-categories {
+                grid-template-columns: 1fr;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-flask"></i> API Testing Center</h1>
+                <p>Test all Call Automation endpoints interactively</p>
+            </div>
+            <div class="nav-links">
+                <a href="/"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="/swagger" target="_blank"><i class="fas fa-book"></i> API Docs</a>
+            </div>
+        </div>
+
+        <div class="test-categories">
+            <div class="category-card active" onclick="showTestPanel('call')">
+                <div class="icon"><i class="fas fa-phone"></i></div>
+                <h3>Call Management</h3>
+                <p>Create, transfer, and hang up calls</p>
+            </div>
+            <div class="category-card" onclick="showTestPanel('media')">
+                <div class="icon"><i class="fas fa-music"></i></div>
+                <h3>Media Playback</h3>
+                <p>Play audio, hold music, streaming</p>
+            </div>
+            <div class="category-card" onclick="showTestPanel('participants')">
+                <div class="icon"><i class="fas fa-users"></i></div>
+                <h3>Participants</h3>
+                <p>Add, remove, mute participants</p>
+            </div>
+            <div class="category-card" onclick="showTestPanel('recording')">
+                <div class="icon"><i class="fas fa-record-vinyl"></i></div>
+                <h3>Recording</h3>
+                <p>Start, pause, stop, download</p>
+            </div>
+            <div class="category-card" onclick="showTestPanel('transcription')">
+                <div class="icon"><i class="fas fa-closed-captioning"></i></div>
+                <h3>Transcription</h3>
+                <p>Start/stop live transcription</p>
+            </div>
+            <div class="category-card" onclick="showTestPanel('recognition')">
+                <div class="icon"><i class="fas fa-microphone"></i></div>
+                <h3>Speech Recognition</h3>
+                <p>DTMF, speech, choice prompts</p>
+            </div>
+        </div>
+
+        <!-- Call Management Panel -->
+        <div id="call-panel" class="test-panel active">
+            <h2><i class="fas fa-phone"></i> Call Management Testing</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchSubTab(event, 'create-call')">Create Call</button>
+                <button class="tab" onclick="switchSubTab(event, 'group-call')">Group Call</button>
+                <button class="tab" onclick="switchSubTab(event, 'transfer')">Transfer</button>
+                <button class="tab" onclick="switchSubTab(event, 'hangup')">Hang Up</button>
+            </div>
+
+            <!-- Create Call Tab -->
+            <div id="create-call" class="test-section active">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Create Call</h4>
+                    <p>Make an outbound call to a phone number or ACS user with optional transcription and media streaming.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Target Phone Number <span style="color: red;">*</span></label>
+                        <input type="text" id="createCallTarget" placeholder="+1XXXXXXXXXX" />
+                        <small>E.164 format (e.g., +15551234567)</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Operation Context</label>
+                        <input type="text" id="createCallContext" placeholder="Optional context for callbacks" />
+                        <small>Custom string to correlate events</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="createCallIsPstn" checked /> Target is PSTN phone number
+                    </label>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-closed-captioning"></i> Transcription Options
+                </h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="createCallEnableTranscription" onchange="toggleTranscriptionOptions('create')" /> Enable Transcription
+                    </label>
+                </div>
+                <div id="createCallTranscriptionFields" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Locale</label>
+                            <select id="createCallTransLocale">
+                                <option value="en-US">English (US)</option>
+                                <option value="en-GB">English (UK)</option>
+                                <option value="es-ES">Spanish</option>
+                                <option value="fr-FR">French</option>
+                                <option value="de-DE">German</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="createCallTransStartImmediate" /> Start Transcription Immediately
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="createCallTransIntermediate" /> Enable Intermediate Results
+                        </label>
+                        <small>Get partial transcription results in real-time</small>
+                    </div>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-signal-stream"></i> Media Streaming Options
+                </h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="createCallEnableStreaming" onchange="toggleStreamingOptions('create')" /> Enable Media Streaming
+                    </label>
+                </div>
+                <div id="createCallStreamingFields" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Audio Channel</label>
+                            <select id="createCallStreamAudioChannel">
+                                <option value="Mixed">Mixed (all participants)</option>
+                                <option value="Unmixed">Unmixed (separate per participant)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Audio Format</label>
+                            <select id="createCallStreamAudioFormat">
+                                <option value="Pcm16KMono">PCM 16kHz Mono</option>
+                                <option value="Pcm24KMono">PCM 24kHz Mono</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="createCallStreamStartImmediate" /> Start Streaming Immediately
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="createCallStreamBidirectional" /> Enable Bidirectional Streaming
+                            </label>
+                            <small>Send audio back into the call</small>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-brain"></i> Call Intelligence Options
+                </h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="createCallEnableIntelligence" onchange="toggleIntelligenceOptions('create')" /> Enable Call Intelligence (AI Features)
+                    </label>
+                </div>
+                <div id="createCallIntelligenceFields" style="display: none;">
+                    <div class="form-group">
+                        <label>Cognitive Services Endpoint <span style="color: red;">*</span></label>
+                        <input type="text" id="createCallCognitiveEndpoint" placeholder="https://my-cognitive-services.cognitiveservices.azure.us/" />
+                        <small>Azure Cognitive Services endpoint URI for AI features (e.g., speech-to-text)</small>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="testCreateCall()">
+                        <i class="fas fa-phone"></i> Create Call
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('create-call')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="create-call-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Group Call Tab -->
+            <div id="group-call" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Group Call</h4>
+                    <p>Create a call with multiple participants simultaneously with optional transcription and media streaming.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Participants <span style="color: red;">*</span></label>
+                    <textarea id="groupCallTargets" placeholder="+15551111111&#10;+15552222222&#10;+15553333333"></textarea>
+                    <small>One phone number per line (+ for PSTN, 8: for ACS users)</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Operation Context</label>
+                    <input type="text" id="groupCallContext" placeholder="Optional context for callbacks" />
+                    <small>Custom string to correlate events</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" id="groupCallDisplayName" placeholder="Caller display name (optional)" />
+                    <small>Name shown to participants</small>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-closed-captioning"></i> Transcription Options
+                </h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="groupCallEnableTranscription" onchange="toggleTranscriptionOptions('group')" /> Enable Transcription
+                    </label>
+                </div>
+                <div id="groupCallTranscriptionFields" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Locale</label>
+                            <select id="groupCallTransLocale">
+                                <option value="en-US">English (US)</option>
+                                <option value="en-GB">English (UK)</option>
+                                <option value="es-ES">Spanish</option>
+                                <option value="fr-FR">French</option>
+                                <option value="de-DE">German</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="groupCallTransStartImmediate" /> Start Transcription Immediately
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="groupCallTransIntermediate" /> Enable Intermediate Results
+                        </label>
+                        <small>Get partial transcription results in real-time</small>
+                    </div>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-signal-stream"></i> Media Streaming Options
+                </h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="groupCallEnableStreaming" onchange="toggleStreamingOptions('group')" /> Enable Media Streaming
+                    </label>
+                </div>
+                <div id="groupCallStreamingFields" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Audio Channel</label>
+                            <select id="groupCallStreamAudioChannel">
+                                <option value="Mixed">Mixed (all participants)</option>
+                                <option value="Unmixed">Unmixed (separate per participant)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Audio Format</label>
+                            <select id="groupCallStreamAudioFormat">
+                                <option value="Pcm16KMono">PCM 16kHz Mono</option>
+                                <option value="Pcm24KMono">PCM 24kHz Mono</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="groupCallStreamStartImmediate" /> Start Streaming Immediately
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="groupCallStreamBidirectional" /> Enable Bidirectional Streaming
+                            </label>
+                            <small>Send audio back into the call</small>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-brain"></i> Call Intelligence Options
+                </h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="groupCallEnableIntelligence" onchange="toggleIntelligenceOptions('group')" /> Enable Call Intelligence (AI Features)
+                    </label>
+                </div>
+                <div id="groupCallIntelligenceFields" style="display: none;">
+                    <div class="form-group">
+                        <label>Cognitive Services Endpoint <span style="color: red;">*</span></label>
+                        <input type="text" id="groupCallCognitiveEndpoint" placeholder="https://my-cognitive-services.cognitiveservices.azure.us/" />
+                        <small>Azure Cognitive Services endpoint URI for AI features (e.g., speech-to-text)</small>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="testGroupCall()">
+                        <i class="fas fa-users"></i> Create Group Call
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('group-call')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="group-call-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Transfer Tab -->
+            <div id="transfer" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Transfer</h4>
+                    <p>Transfer an active call to another number or participant. You can perform a blind transfer (no transferee) or an attended transfer (specify which participant to transfer).</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="transferCallId" placeholder="Enter call connection ID" />
+                        <small>Get from active call</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Transfer Target Type <span style="color: red;">*</span></label>
+                        <select id="transferTargetType" onchange="updateTransferTargetFields()">
+                            <option value="pstn">PSTN (Phone Number)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group" id="transferTargetPstnGroup">
+                        <label>Transfer To (Phone Number) <span style="color: red;">*</span></label>
+                        <input type="text" id="transferTargetPstn" placeholder="+1XXXXXXXXXX" />
+                        <small>Target phone number in E.164 format</small>
+                    </div>
+                    <div class="form-group" id="transferTargetAcsGroup" style="display: none;">
+                        <label>Transfer To (ACS User ID) <span style="color: red;">*</span></label>
+                        <input type="text" id="transferTargetAcs" placeholder="8:acs:..." />
+                        <small>Full ACS user identifier</small>
+                    </div>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-user-plus"></i> Attended Transfer (Optional)
+                </h3>
+                <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3;">
+                    <p><strong>Attended Transfer:</strong> Specify which participant in the call should be transferred. Leave empty for blind transfer (transfer the entire call).</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Transferee Type</label>
+                        <select id="transfereeType" onchange="updateTransfereeFields()">
+                            <option value="">None (Blind Transfer)</option>
+                            <option value="pstn">PSTN (Phone Number)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="transfereePstnGroup" style="display: none;">
+                        <label>Transferee (Phone Number)</label>
+                        <input type="text" id="transfereePstn" placeholder="+1XXXXXXXXXX" />
+                        <small>Participant to transfer</small>
+                    </div>
+                    <div class="form-group" id="transfereeAcsGroup" style="display: none;">
+                        <label>Transferee (ACS User ID)</label>
+                        <input type="text" id="transfereeAcs" placeholder="8:acs:..." />
+                        <small>Participant to transfer</small>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testTransfer()">
+                        <i class="fas fa-exchange-alt"></i> Transfer Call
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('transfer')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="transfer-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Hang Up Tab -->
+            <div id="hangup" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Hang Up</h4>
+                    <p>Terminate an active call connection.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Call Connection ID <span style="color: red;">*</span></label>
+                    <input type="text" id="hangupCallId" placeholder="Enter call connection ID" />
+                    <small>Get from active call</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="hangupForEveryone" /> Hang up for everyone
+                    </label>
+                    <small>When checked, terminates the call for all participants. When unchecked, only disconnects your connection.</small>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="testHangup()">
+                        <i class="fas fa-phone-slash"></i> Hang Up
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('hangup')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="hangup-result" class="result-panel" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Media Panel -->
+        <div id="media-panel" class="test-panel">
+            <h2><i class="fas fa-music"></i> Media Playback Testing</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchSubTab(event, 'play-audio')">Play Audio</button>
+                <button class="tab" onclick="switchSubTab(event, 'hold-unhold')">Hold/Unhold</button>
+                <button class="tab" onclick="switchSubTab(event, 'streaming')">Media Streaming</button>
+                <button class="tab" onclick="switchSubTab(event, 'cancel-media')">Cancel Operations</button>
+            </div>
+
+            <!-- Play Audio Tab -->
+            <div id="play-audio" class="test-section active">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Play Audio</h4>
+                    <ul>
+                        <li><strong>Play Audio:</strong> Plays to a specific participant (requires target)</li>
+                        <li><strong>Play to All:</strong> Broadcasts audio to all participants in the call</li>
+                        <li><strong>File Source:</strong> Play from URL or local file</li>
+                        <li><strong>Text Source:</strong> Text-to-Speech (TTS)</li>
+                        <li><strong>SSML Source:</strong> Speech Synthesis Markup Language</li>
+                    </ul>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="playCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Media Source Type</label>
+                        <select id="playSourceType" onchange="updatePlaySourceFields()">
+                            <option value="file">File (URL)</option>
+                            <option value="text">Text-to-Speech</option>
+                            <option value="ssml">SSML</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3 class="options-header">
+                    <i class="fas fa-user"></i> Target Participant (For Play Audio Only)
+                </h3>
+                <div class="info-box" style="margin-bottom: 15px; background: #fff3cd; border-left: 4px solid #ffc107;">
+                    <p><strong>Note:</strong> "Play Audio" requires a specific target participant. If you want to broadcast to everyone, use "Play to All" button instead.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Target Participant Type <span style="color: red;">*</span></label>
+                        <select id="playTargetType" onchange="updatePlayTargetFields()">
+                            <option value="pstn">PSTN (Phone Number)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="playTargetPstnGroup">
+                        <label>Target Phone Number <span style="color: red;">*</span></label>
+                        <input type="text" id="playTargetPstn" placeholder="+1XXXXXXXXXX" />
+                        <small>E.164 format (e.g., +15551234567)</small>
+                    </div>
+                    <div class="form-group" id="playTargetAcsGroup" style="display: none;">
+                        <label>Target ACS User ID <span style="color: red;">*</span></label>
+                        <input type="text" id="playTargetAcs" placeholder="8:acs:..." />
+                        <small>Full ACS user identifier</small>
+                    </div>
+                </div>
+
+                <div class="form-group" id="playFileGroup">
+                    <label>Audio File URL</label>
+                    <input type="text" id="playFileUrl" placeholder="https://...example.com/audio.wav" />
+                    <small>WAV file recommended</small>
+                </div>
+
+                <div class="form-group" id="playTextGroup" style="display: none;">
+                    <label>Text to Speak</label>
+                    <textarea id="playText" placeholder="Enter text for TTS..."></textarea>
+                </div>
+
+                <div class="form-group" id="playSsmlGroup" style="display: none;">
+                    <label>SSML Content</label>
+                    <textarea id="playSsml" placeholder="<speak>...</speak>"></textarea>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="playLoop" /> Loop Audio
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="playInterruptPrompt" /> Interruptible
+                        </label>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testPlayAudio()">
+                        <i class="fas fa-play"></i> Play Audio
+                    </button>
+                    <button class="btn btn-success" onclick="testPlayToAll()">
+                        <i class="fas fa-broadcast-tower"></i> Play to All
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('play-audio')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="play-audio-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Hold/Unhold Tab -->
+            <div id="hold-unhold" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Hold/Unhold</h4>
+                    <p>Place a participant on hold with optional music, then unhold them.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="holdCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Participant Type <span style="color: red;">*</span></label>
+                        <select id="holdParticipantType" onchange="updateHoldParticipantFields()">
+                            <option value="pstn">PSTN (Phone Number)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group" id="holdParticipantPstnGroup">
+                        <label>Participant Phone Number <span style="color: red;">*</span></label>
+                        <input type="text" id="holdParticipantPstn" placeholder="+1XXXXXXXXXX" />
+                        <small>Participant to hold</small>
+                    </div>
+                    <div class="form-group" id="holdParticipantAcsGroup" style="display: none;">
+                        <label>Participant ACS User ID <span style="color: red;">*</span></label>
+                        <input type="text" id="holdParticipantAcs" placeholder="8:acs:..." />
+                        <small>Participant to hold</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Hold Music URL (optional)</label>
+                    <input type="text" id="holdMusicUrl" placeholder="https://...example.com/holdmusic.wav" />
+                    <small>Leave empty for silence</small>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testHold()">
+                        <i class="fas fa-pause"></i> Hold Participant
+                    </button>
+                    <button class="btn btn-success" onclick="testUnhold()">
+                        <i class="fas fa-play"></i> Unhold Participant
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('hold-unhold')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="hold-unhold-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Media Streaming Tab -->
+            <div id="streaming" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Media Streaming</h4>
+                    <p>Start/stop real-time audio streaming via WebSocket.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="streamCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>WebSocket URL</label>
+                        <input type="text" id="streamWsUrl" placeholder="wss://...example.com/ws" />
+                        <small>Your WebSocket endpoint</small>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testStartStreaming()">
+                        <i class="fas fa-signal-stream"></i> Start Streaming
+                    </button>
+                    <button class="btn btn-danger" onclick="testStopStreaming()">
+                        <i class="fas fa-stop"></i> Stop Streaming
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('streaming')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="streaming-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Cancel Media Tab -->
+            <div id="cancel-media" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Cancel Operations</h4>
+                    <p>Stop all ongoing media operations on a call.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Call Connection ID <span style="color: red;">*</span></label>
+                    <input type="text" id="cancelCallId" placeholder="Enter call connection ID" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="testCancelMedia()">
+                        <i class="fas fa-ban"></i> Cancel All Media Operations
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('cancel-media')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="cancel-media-result" class="result-panel" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Participants Panel -->
+        <div id="participants-panel" class="test-panel">
+            <h2><i class="fas fa-users"></i> Participant Management Testing</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchSubTab(event, 'add-participant')">Add</button>
+                <button class="tab" onclick="switchSubTab(event, 'remove-participant')">Remove</button>
+                <button class="tab" onclick="switchSubTab(event, 'mute-participant')">Mute</button>
+                <button class="tab" onclick="switchSubTab(event, 'list-participants')">List</button>
+            </div>
+
+            <!-- Add Participant Tab -->
+            <div id="add-participant" class="test-section active">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Add Participant</h4>
+                    <p>Add a new participant to an active call. Supports both PSTN phone numbers and ACS users.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="addPartCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Participant Type <span style="color: red;">*</span></label>
+                        <select id="addPartType" onchange="toggleParticipantInputType('add')">
+                            <option value="pstn">Phone Number (PSTN)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group" id="addPartPhoneGroup">
+                        <label>Participant Phone <span style="color: red;">*</span></label>
+                        <input type="text" id="addPartPhone" placeholder="+1XXXXXXXXXX" />
+                        <small>E.164 format (e.g., +18005551234)</small>
+                    </div>
+                    <div class="form-group" id="addPartAcsGroup" style="display: none;">
+                        <label>ACS User ID <span style="color: red;">*</span></label>
+                        <input type="text" id="addPartAcsId" placeholder="8:acs:..." />
+                        <small>Format: 8:acs:resource-id_user-id</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Operation Context (Optional)</label>
+                        <input type="text" id="addPartContext" placeholder="Custom context for callback" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Invitation Timeout (seconds)</label>
+                    <input type="number" id="addPartTimeout" placeholder="30" min="1" max="300" />
+                    <small>How long to wait for participant to answer (default: 30)</small>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testAddParticipant()">
+                        <i class="fas fa-user-plus"></i> Add Participant
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('add-participant')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="add-participant-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Remove Participant Tab -->
+            <div id="remove-participant" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Remove Participant</h4>
+                    <p>Remove a participant from the call. Supports both PSTN and ACS participants.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="removePartCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Participant Type <span style="color: red;">*</span></label>
+                        <select id="removePartType" onchange="toggleParticipantInputType('remove')">
+                            <option value="pstn">Phone Number (PSTN)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group" id="removePartPhoneGroup">
+                        <label>Participant Phone <span style="color: red;">*</span></label>
+                        <input type="text" id="removePartPhone" placeholder="+1XXXXXXXXXX" />
+                        <small>E.164 format (e.g., +18005551234)</small>
+                    </div>
+                    <div class="form-group" id="removePartAcsGroup" style="display: none;">
+                        <label>ACS User ID <span style="color: red;">*</span></label>
+                        <input type="text" id="removePartId" placeholder="8:acs:..." />
+                        <small>Format: 8:acs:resource-id_user-id</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Operation Context (Optional)</label>
+                        <input type="text" id="removePartContext" placeholder="Custom context for callback" />
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="testRemoveParticipant()">
+                        <i class="fas fa-user-minus"></i> Remove Participant
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('remove-participant')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="remove-participant-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Mute Participant Tab -->
+            <div id="mute-participant" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Mute Participant</h4>
+                    <p>Mute a participant's audio in the call. Supports both PSTN and ACS participants.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="mutePartCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Participant Type <span style="color: red;">*</span></label>
+                        <select id="mutePartType" onchange="toggleParticipantInputType('mute')">
+                            <option value="pstn">Phone Number (PSTN)</option>
+                            <option value="acs">ACS User</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group" id="mutePartPhoneGroup">
+                        <label>Participant Phone <span style="color: red;">*</span></label>
+                        <input type="text" id="mutePartPhone" placeholder="+1XXXXXXXXXX" />
+                        <small>E.164 format (e.g., +18005551234)</small>
+                    </div>
+                    <div class="form-group" id="mutePartAcsGroup" style="display: none;">
+                        <label>ACS User ID <span style="color: red;">*</span></label>
+                        <input type="text" id="mutePartId" placeholder="8:acs:..." />
+                        <small>Format: 8:acs:resource-id_user-id</small>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testMuteParticipant()">
+                        <i class="fas fa-microphone-slash"></i> Mute Participant
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('mute-participant')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="mute-participant-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- List Participants Tab -->
+            <div id="list-participants" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About List Participants</h4>
+                    <p>Get all participants in a call.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Call Connection ID <span style="color: red;">*</span></label>
+                    <input type="text" id="listPartCallId" placeholder="Enter call connection ID" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testListParticipants()">
+                        <i class="fas fa-list"></i> List Participants
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('list-participants')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="list-participants-result" class="result-panel" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Recording Panel -->
+        <div id="recording-panel" class="test-panel">
+            <h2><i class="fas fa-record-vinyl"></i> Recording Testing</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchSubTab(event, 'start-recording')">Start</button>
+                <button class="tab" onclick="switchSubTab(event, 'pause-recording')">Pause</button>
+                <button class="tab" onclick="switchSubTab(event, 'resume-recording')">Resume</button>
+                <button class="tab" onclick="switchSubTab(event, 'stop-recording')">Stop</button>
+                <button class="tab" onclick="switchSubTab(event, 'download-recording')">Download</button>
+            </div>
+
+            <!-- Start Recording Tab -->
+            <div id="start-recording" class="test-section active">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Start Recording</h4>
+                    <p>Start recording the call audio.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="startRecCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Recording Storage URL</label>
+                        <input type="text" id="startRecStorageUrl" placeholder="Azure Blob Storage URL (optional)" />
+                        <small>Leave empty for default storage</small>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testStartRecording()">
+                        <i class="fas fa-circle"></i> Start Recording
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('start-recording')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="start-recording-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Pause Recording Tab -->
+            <div id="pause-recording" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Pause Recording</h4>
+                    <p>Temporarily pause an active recording.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="pauseRecCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Recording ID <span style="color: red;">*</span></label>
+                        <input type="text" id="pauseRecId" placeholder="Recording ID from start" />
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testPauseRecording()">
+                        <i class="fas fa-pause"></i> Pause Recording
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('pause-recording')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="pause-recording-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Resume Recording Tab -->
+            <div id="resume-recording" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Resume Recording</h4>
+                    <p>Resume a paused recording.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="resumeRecCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Recording ID <span style="color: red;">*</span></label>
+                        <input type="text" id="resumeRecId" placeholder="Recording ID" />
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="testResumeRecording()">
+                        <i class="fas fa-play"></i> Resume Recording
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('resume-recording')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="resume-recording-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Stop Recording Tab -->
+            <div id="stop-recording" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Stop Recording</h4>
+                    <p>Stop recording and save the file.</p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="stopRecCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Recording ID <span style="color: red;">*</span></label>
+                        <input type="text" id="stopRecId" placeholder="Recording ID" />
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="testStopRecording()">
+                        <i class="fas fa-stop"></i> Stop Recording
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('stop-recording')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="stop-recording-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Download Recording Tab -->
+            <div id="download-recording" class="test-section">
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> About Download Recording</h4>
+                    <p>Download a completed recording file.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Recording URL <span style="color: red;">*</span></label>
+                    <input type="text" id="downloadRecUrl" placeholder="Recording content location URL" />
+                    <small>From recording status event</small>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="testDownloadRecording()">
+                        <i class="fas fa-download"></i> Download Recording
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('download-recording')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="download-recording-result" class="result-panel" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Transcription Panel -->
+        <div id="transcription-panel" class="test-panel">
+            <h2><i class="fas fa-closed-captioning"></i> Transcription Testing</h2>
+
+            <div class="info-box">
+                <h4><i class="fas fa-info-circle"></i> About Transcription</h4>
+                <p>Start and stop live call transcription (speech-to-text).</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchSubTab(event, 'start-transcription')">Start</button>
+                <button class="tab" onclick="switchSubTab(event, 'stop-transcription')">Stop</button>
+            </div>
+
+            <!-- Start Transcription Tab -->
+            <div id="start-transcription" class="test-section active">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="startTransCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Locale</label>
+                        <select id="startTransLocale">
+                            <option value="en-US">English (US)</option>
+                            <option value="en-GB">English (UK)</option>
+                            <option value="es-ES">Spanish</option>
+                            <option value="fr-FR">French</option>
+                            <option value="de-DE">German</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testStartTranscription()">
+                        <i class="fas fa-closed-captioning"></i> Start Transcription
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('start-transcription')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="start-transcription-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Stop Transcription Tab -->
+            <div id="stop-transcription" class="test-section">
+                <div class="form-group">
+                    <label>Call Connection ID <span style="color: red;">*</span></label>
+                    <input type="text" id="stopTransCallId" placeholder="Enter call connection ID" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="testStopTranscription()">
+                        <i class="fas fa-stop"></i> Stop Transcription
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('stop-transcription')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="stop-transcription-result" class="result-panel" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Recognition Panel -->
+        <div id="recognition-panel" class="test-panel">
+            <h2><i class="fas fa-microphone"></i> Speech Recognition Testing</h2>
+
+            <div class="info-box">
+                <h4><i class="fas fa-info-circle"></i> About Speech Recognition</h4>
+                <p>Capture DTMF tones, speech input, or choice selections from callers.</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchSubTab(event, 'dtmf-recognition')">DTMF</button>
+                <button class="tab" onclick="switchSubTab(event, 'speech-recognition')">Speech</button>
+                <button class="tab" onclick="switchSubTab(event, 'choice-recognition')">Choice</button>
+            </div>
+
+            <!-- DTMF Recognition Tab -->
+            <div id="dtmf-recognition" class="test-section active">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="dtmfCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Max Tones to Collect</label>
+                        <input type="number" id="dtmfMaxTones" value="5" min="1" max="20" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Prompt Text (optional)</label>
+                    <input type="text" id="dtmfPrompt" placeholder="Please enter your PIN" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testDtmfRecognition()">
+                        <i class="fas fa-keyboard"></i> Start DTMF Recognition
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('dtmf-recognition')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="dtmf-recognition-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Speech Recognition Tab -->
+            <div id="speech-recognition" class="test-section">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="speechCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Locale</label>
+                        <select id="speechLocale">
+                            <option value="en-US">English (US)</option>
+                            <option value="en-GB">English (UK)</option>
+                            <option value="es-ES">Spanish</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Prompt Text</label>
+                    <input type="text" id="speechPrompt" placeholder="Please say your response" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testSpeechRecognition()">
+                        <i class="fas fa-microphone"></i> Start Speech Recognition
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('speech-recognition')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="speech-recognition-result" class="result-panel" style="display: none;"></div>
+            </div>
+
+            <!-- Choice Recognition Tab -->
+            <div id="choice-recognition" class="test-section">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Call Connection ID <span style="color: red;">*</span></label>
+                        <input type="text" id="choiceCallId" placeholder="Enter call connection ID" />
+                    </div>
+                    <div class="form-group">
+                        <label>Choices (comma-separated)</label>
+                        <input type="text" id="choiceOptions" placeholder="sales, support, billing" />
+                        <small>e.g., sales, support, billing</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Prompt Text</label>
+                    <input type="text" id="choicePrompt" placeholder="Press 1 for sales, 2 for support" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testChoiceRecognition()">
+                        <i class="fas fa-list-ul"></i> Start Choice Recognition
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults('choice-recognition')">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="choice-recognition-result" class="result-panel" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/test-api.js?v=20260709230530"></script>
+</body>
+</html>
