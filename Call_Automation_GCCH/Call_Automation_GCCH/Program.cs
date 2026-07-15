@@ -255,8 +255,11 @@ if (Directory.Exists(audioPath))
     });
 }
 
-// Enable WebSocket support
-app.UseWebSockets();
+// Enable WebSocket support with keep-alive
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(30) // Send ping every 30 seconds to keep connection alive
+});
 app.Use(async (context, next) =>
 {
   // Get the logger instance from the DI container

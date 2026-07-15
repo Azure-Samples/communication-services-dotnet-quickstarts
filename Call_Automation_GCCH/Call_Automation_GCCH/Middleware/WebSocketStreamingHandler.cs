@@ -17,7 +17,8 @@ namespace Call_Automation_GCCH
             try
             {
                 var buffer = new byte[1024 * 4];
-                var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token;
+                // Use a longer timeout for media streaming (30 minutes) or CancellationToken.None for no timeout
+                var cancellationToken = CancellationToken.None;
                 WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
 
                 while (!receiveResult.CloseStatus.HasValue)

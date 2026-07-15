@@ -16,7 +16,7 @@ Write-Host "Quick Deploy to Azure App Service (GCCH)" -ForegroundColor Cyan
 Write-Host "=================================================`n" -ForegroundColor Cyan
 
 # Step 1: Connect to Azure US Government
-Write-Host "[1/7] Connecting to Azure US Government..." -ForegroundColor Yellow
+Write-Host "[1/8] Connecting to Azure US Government..." -ForegroundColor Yellow
 try {
 	$context = Get-AzContext
 	if ($null -eq $context -or $context.Environment.Name -ne "AzureUSGovernment") {
@@ -31,7 +31,7 @@ try {
 }
 
 # Step 2: Set subscription context
-Write-Host "`n[2/7] Setting subscription context..." -ForegroundColor Yellow
+Write-Host "`n[2/8] Setting subscription context..." -ForegroundColor Yellow
 try {
 	Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop | Out-Null
 	$context = Get-AzContext
@@ -43,7 +43,7 @@ try {
 }
 
 # Step 3: Verify/Create Resource Group
-Write-Host "`n[3/7] Checking resource group..." -ForegroundColor Yellow
+Write-Host "`n[3/8] Checking resource group..." -ForegroundColor Yellow
 try {
 	$rg = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
 	if ($null -eq $rg) {
@@ -59,7 +59,7 @@ try {
 }
 
 # Step 4: Verify/Create App Service Plan
-Write-Host "`n[4/7] Checking App Service Plan..." -ForegroundColor Yellow
+Write-Host "`n[4/8] Checking App Service Plan..." -ForegroundColor Yellow
 try {
 	$plan = Get-AzAppServicePlan -ResourceGroupName $ResourceGroupName -Name $AppServicePlan -ErrorAction SilentlyContinue
 	if ($null -eq $plan) {
@@ -76,7 +76,7 @@ try {
 }
 
 # Step 5: Verify/Create Web App
-Write-Host "`n[5/7] Checking Web App..." -ForegroundColor Yellow
+Write-Host "`n[5/8] Checking Web App..." -ForegroundColor Yellow
 try {
 	$webApp = Get-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppServiceName -ErrorAction SilentlyContinue
 	if ($null -eq $webApp) {
@@ -99,7 +99,7 @@ try {
 }
 
 # Step 6: Build and Publish the App
-Write-Host "`n[6/7] Building and publishing application..." -ForegroundColor Yellow
+Write-Host "`n[6/8] Building and publishing application..." -ForegroundColor Yellow
 $projectPath = Split-Path -Parent $PSScriptRoot
 $publishPath = Join-Path $projectPath "publish"
 $zipPath = Join-Path $projectPath "publish.zip"
@@ -140,7 +140,7 @@ try {
 }
 
 # Step 7: Deploy to App Service
-Write-Host "`n[7/7] Deploying to Azure App Service..." -ForegroundColor Yellow
+Write-Host "`n[7/8] Deploying to Azure App Service..." -ForegroundColor Yellow
 Write-Host "  This may take 2-3 minutes..." -ForegroundColor Gray
 try {
 	Publish-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppServiceName -ArchivePath $zipPath -Force -ErrorAction Stop | Out-Null
@@ -151,6 +151,20 @@ try {
 	exit 1
 }
 
+# Step 8: Configure WebSockets and Always On
+Write-Host "`n[8/8] Configuring WebSockets and Always On..." -ForegroundColor Yellow
+try {
+	$webApp = Get-AzWebApp -ResourceGroupName $ResourceGroupName -Name $AppServiceName -ErrorAction Stop
+	$webApp.SiteConfig.WebSocketsEnabled = $true
+	$webApp.SiteConfig.AlwaysOn = $true
+	Set-AzWebApp -WebApp $webApp -ErrorAction Stop | Out-Null
+	Write-Host "  ✓ WebSockets enabled" -ForegroundColor Green
+	Write-Host "  ✓ Always On enabled" -ForegroundColor Green
+} catch {
+	Write-Host "  ⚠ Could not configure WebSockets/Always On: $_" -ForegroundColor Yellow
+	Write-Host "  You may need to enable these manually in Azure Portal" -ForegroundColor Yellow
+}
+
 # Verify deployment
 Write-Host "`nVerifying deployment..." -ForegroundColor Yellow
 Start-Sleep -Seconds 5
@@ -159,6 +173,8 @@ try {
 	Write-Host "  ✓ App State: $($webApp.State)" -ForegroundColor Green
 	Write-Host "  ✓ Default Hostname: $($webApp.DefaultHostName)" -ForegroundColor Green
 	Write-Host "  ✓ HTTPS Only: $($webApp.HttpsOnly)" -ForegroundColor Green
+	Write-Host "  ✓ WebSockets: $($webApp.SiteConfig.WebSocketsEnabled)" -ForegroundColor Green
+	Write-Host "  ✓ Always On: $($webApp.SiteConfig.AlwaysOn)" -ForegroundColor Green
 } catch {
 	Write-Host "  ⚠ Could not verify deployment status" -ForegroundColor Yellow
 }
