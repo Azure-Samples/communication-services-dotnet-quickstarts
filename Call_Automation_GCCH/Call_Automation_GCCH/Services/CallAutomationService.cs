@@ -11,6 +11,7 @@ namespace Call_Automation_GCCH.Services
     public class CallAutomationService : ICallAutomationService
     {
         private CallAutomationClient? _client;
+        private CallAutomationClient? _downloadClient;
         private readonly ILogger<CallAutomationService> _logger;
         private string _currentPmaEndpoint = string.Empty;
         private string _currentConnectionString = string.Empty;
@@ -39,6 +40,22 @@ namespace Call_Automation_GCCH.Services
             if (_client == null)
                 throw new InvalidOperationException("CallAutomationClient is not initialized. Set the ACS connection string first via POST /api/configuration/setConnectionString.");
             return _client;
+        }
+
+        public CallAutomationClient GetRecordingDownloadClient()
+        {
+            if (string.IsNullOrEmpty(_currentConnectionString))
+                throw new InvalidOperationException("CallAutomationClient is not initialized. Set the ACS connection string first via POST /api/configuration/setConnectionString.");
+
+            // Recording content is served from the AMS storage endpoint (not PMA).
+            // A client constructed with a PMA endpoint signs against the PMA host and gets
+            // 401 Unauthorized from AMS. Use a connection-string-only client for downloads.
+            if (_downloadClient == null)
+            {
+                _downloadClient = new CallAutomationClient(connectionString: _currentConnectionString);
+                _logger.LogInformation("Recording download CallAutomationClient created (no PMA endpoint).");
+            }
+            return _downloadClient;
         }
 
         public CallConnection GetCallConnection(string callConnectionId)
@@ -84,6 +101,7 @@ namespace Call_Automation_GCCH.Services
         {
             _currentConnectionString = connectionString ?? string.Empty;
             _currentPmaEndpoint = pmaEndpoint ?? string.Empty;
+            _downloadClient = null;
             CreateClient(connectionString, pmaEndpoint);
         }
 

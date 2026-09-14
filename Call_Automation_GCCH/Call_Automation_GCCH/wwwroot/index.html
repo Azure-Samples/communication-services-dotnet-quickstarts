@@ -514,6 +514,25 @@
                             🎵 Play Test Audio
                         </button>
                     </div>
+
+                    <div class="collapsible" onclick="toggleCollapsible(this)">
+                        <strong>📡 Media Streaming</strong>
+                    </div>
+                    <div class="collapsible-content">
+                        <p>Start or stop media streaming on active call</p>
+                        <div class="form-group">
+                            <label>Call Connection ID</label>
+                            <input type="text" id="streamingCallId" placeholder="Enter call connection ID" />
+                        </div>
+                        <div class="btn-group" style="display: flex; gap: 10px;">
+                            <button class="btn btn-success" onclick="startMediaStreaming()">
+                                ▶️ Start Streaming
+                            </button>
+                            <button class="btn btn-danger" onclick="stopMediaStreaming()">
+                                ⏹️ Stop Streaming
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -752,6 +771,98 @@
         function openMakeCallDialog() {
             document.querySelector('.collapsible').click();
             document.getElementById('targetNumber').focus();
+        }
+
+        async function startMediaStreaming() {
+            const callConnectionId = document.getElementById('streamingCallId').value;
+
+            if (!callConnectionId) {
+                alert('Please enter a Call Connection ID');
+                return;
+            }
+
+            try {
+                const response = await fetch('/startMediaStreaming', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        callConnectionId: callConnectionId
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('✅ Media streaming started successfully!');
+                } else {
+                    const error = await response.text();
+                    alert('❌ Failed to start media streaming: ' + error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function stopMediaStreaming() {
+            const callConnectionId = document.getElementById('streamingCallId').value;
+
+            if (!callConnectionId) {
+                alert('Please enter a Call Connection ID');
+                return;
+            }
+
+            try {
+                const response = await fetch('/stopMediaStreaming', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        callConnectionId: callConnectionId
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('✅ Media streaming stopped successfully!');
+                } else {
+                    const error = await response.text();
+                    alert('❌ Failed to stop media streaming: ' + error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function testMedia() {
+            const callConnectionId = document.getElementById('mediaCallId').value;
+
+            if (!callConnectionId) {
+                alert('Please enter a Call Connection ID');
+                return;
+            }
+
+            try {
+                const response = await fetch('/playToAll', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        callConnectionId: callConnectionId
+                    })
+                });
+
+                if (response.ok) {
+                    alert('✅ Audio playback started!');
+                } else {
+                    const error = await response.text();
+                    alert('❌ Failed to play audio: ' + error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
         }
     </script>
 </body>

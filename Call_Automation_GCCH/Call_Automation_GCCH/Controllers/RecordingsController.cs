@@ -20,15 +20,18 @@ namespace Call_Automation_GCCH.Controllers
         private readonly ICallAutomationService _service;
         private readonly ILogger<RecordingsController> _logger;
         private readonly AcsCommunicationSettings _config;
+        private readonly IWebHostEnvironment _env;
 
         public RecordingsController(
             ICallAutomationService service,
             ILogger<RecordingsController> logger,
-            IOptions<AcsCommunicationSettings> configOptions)
+            IOptions<AcsCommunicationSettings> configOptions,
+            IWebHostEnvironment env)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _env = env ?? throw new ArgumentNullException(nameof(env));
         }
 
         /// <summary>Starts a recording. Include "recordingOptions" to customize format/channel. Omit for defaults.</summary>
@@ -70,6 +73,58 @@ namespace Call_Automation_GCCH.Controllers
         [HttpPost("downloadRecording")]
         [Tags("Recording APIs")]
         public IActionResult DownloadRecording(string callConnectionId) => HandleDownloadRecording(callConnectionId, async: false).Result;
+
+        /// <summary>
+        /// Downloads the recording using DownloadTo to the App Service wwwroot/downloads folder and returns a browsable URL.
+        /// Uses the recording location captured from the AcsRecordingFileStatusUpdated event.
+        /// </summary>
+        [HttpPost("downloadToFileAsync")]
+        [Tags("Recording APIs")]
+        public Task<IActionResult> DownloadToFileAsync(string? callConnectionId = null, [FromQuery] string? location = null) =>
+            HandleDownloadToFile(callConnectionId, location, async: true);
+
+        [HttpPost("downloadToFile")]
+        [Tags("Recording APIs")]
+        public IActionResult DownloadToFile(string? callConnectionId = null, [FromQuery] string? location = null) =>
+            HandleDownloadToFile(callConnectionId, location, async: false).Result;
+
+        /// <summary>
+        /// Lists all recordings currently saved to the App Service wwwroot/downloads folder with browsable URLs.
+        /// </summary>
+        [HttpGet("listDownloadedFiles")]
+        [Tags("Recording APIs")]
+        public IActionResult ListDownloadedFiles()
+        {
+            try
+            {
+                var downloadsPath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, "downloads");
+                if (!Directory.Exists(downloadsPath))
+                {
+                    return Ok(new { totalFiles = 0, files = Array.Empty<object>() });
+                }
+
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var files = Directory.GetFiles(downloadsPath)
+                    .Select(f => new FileInfo(f))
+                    .OrderByDescending(fi => fi.CreationTimeUtc)
+                    .Select(fi => new
+                    {
+                        fileName = fi.Name,
+                        sizeInBytes = fi.Length,
+                        sizeInMB = Math.Round(fi.Length / 1024.0 / 1024.0, 2),
+                        createdAt = fi.CreationTimeUtc,
+                        downloadUrl = $"{baseUrl}/downloads/{fi.Name}"
+                    })
+                    .ToArray();
+
+                return Ok(new { totalFiles = files.Length, downloadsFolderPath = downloadsPath, files });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing downloaded files");
+                return Problem($"Failed to list downloaded files: {ex.Message}");
+            }
+        }
 
         /// <summary>Gets the state of a recording.</summary>
         [HttpGet("getRecordingStateAsync")]
@@ -221,12 +276,87 @@ namespace Call_Automation_GCCH.Controllers
 
                 using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write);
                 var result = async
-                    ? await _service.GetCallAutomationClient().GetCallRecording().DownloadToAsync(new Uri(location), fileStream)
-                    : _service.GetCallAutomationClient().GetCallRecording().DownloadTo(new Uri(location), fileStream);
+                    ? await _service.GetRecordingDownloadClient().GetCallRecording().DownloadToAsync(new Uri(location), fileStream)
+                    : _service.GetRecordingDownloadClient().GetCallRecording().DownloadTo(new Uri(location), fileStream);
 
                 return Ok(new CallConnectionResponse { CallConnectionId = callConnectionId, CorrelationId = correlationId, Status = $"Recording downloaded. Path: {localFilePath}, Status: {result.Status}" });
             }
             catch (Exception ex) { _logger.LogError(ex, "Error downloading recording"); return Problem($"Failed to download recording: {ex.Message}"); }
+        }
+
+        private async Task<IActionResult> HandleDownloadToFile(string? callConnectionId, string? locationOverride, bool async)
+        {
+            try
+            {
+                _logger.LogInformation("=== DOWNLOAD-TO-FILE (App Service) INITIATED ===");
+                _logger.LogInformation("[DownloadToFile] Async: {Async}, CallConnectionId: {CallConnectionId}, LocationOverride: {LocationOverride}",
+                    async, callConnectionId ?? "(none)", string.IsNullOrEmpty(locationOverride) ? "(none)" : "(provided)");
+
+                // Prefer explicit location, otherwise use captured location from event
+                var location = !string.IsNullOrEmpty(locationOverride) ? locationOverride : _service.RecordingLocation;
+                var format = _service.RecordingFileFormat;
+
+                if (string.IsNullOrEmpty(location))
+                {
+                    _logger.LogWarning("[DownloadToFile] No location provided and no location captured from events");
+                    return Problem("Recording location is not available. Either pass ?location=<url> or wait for AcsRecordingFileStatusUpdated event.");
+                }
+                if (string.IsNullOrEmpty(format)) format = "mp4";
+
+                _logger.LogInformation("[DownloadToFile] Using location: {Location}", location);
+                _logger.LogInformation("[DownloadToFile] Format: {Format}", format);
+
+                // Save to wwwroot/downloads so it's served as static content
+                var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                var downloadsDir = Path.Combine(webRoot, "downloads");
+                Directory.CreateDirectory(downloadsDir);
+
+                var suffix = string.IsNullOrEmpty(callConnectionId) ? Guid.NewGuid().ToString("N").Substring(0, 8) : callConnectionId;
+                var fileName = $"Recording_{suffix}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{format}";
+                var localFilePath = Path.Combine(downloadsDir, fileName);
+                _logger.LogInformation("[DownloadToFile] Saving to: {Path}", localFilePath);
+
+                var startTime = DateTime.UtcNow;
+                using (var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
+                {
+                    var client = _service.GetRecordingDownloadClient();
+                    var result = async
+                        ? await client.GetCallRecording().DownloadToAsync(new Uri(location), fileStream)
+                        : client.GetCallRecording().DownloadTo(new Uri(location), fileStream);
+                    _logger.LogInformation("[DownloadToFile] SDK Status: {Status}", result.Status);
+                }
+                var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                var fi = new FileInfo(localFilePath);
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var downloadUrl = $"{baseUrl}/downloads/{fileName}";
+
+                _logger.LogInformation("[DownloadToFile] File saved: {Size} bytes in {Elapsed}ms", fi.Length, elapsed);
+                _logger.LogInformation("[DownloadToFile] Accessible at: {Url}", downloadUrl);
+                _logger.LogInformation("=== DOWNLOAD-TO-FILE COMPLETED ===");
+
+                return Ok(new
+                {
+                    status = "Success",
+                    fileName,
+                    localFilePath,
+                    sizeInBytes = fi.Length,
+                    sizeInMB = Math.Round(fi.Length / 1024.0 / 1024.0, 2),
+                    downloadUrl,
+                    elapsedMs = elapsed,
+                    message = "File saved to App Service. Click downloadUrl to access."
+                });
+            }
+            catch (Azure.RequestFailedException rfx) when (rfx.Status == 401)
+            {
+                _logger.LogError(rfx, "[DownloadToFile] 401 UNAUTHORIZED - ACS credentials don't match recording resource");
+                return Problem($"401 Unauthorized: The ACS connection string does not match the resource that owns this recording, or the access key has been rotated. Details: {rfx.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[DownloadToFile] Error: {Message}", ex.Message);
+                return Problem($"Failed to download recording to file: {ex.Message}");
+            }
         }
 
         private async Task<IActionResult> HandleGetRecordingState(string recordingId, bool async)
@@ -248,8 +378,8 @@ namespace Call_Automation_GCCH.Controllers
             {
                 if (string.IsNullOrEmpty(recordingLocation)) return BadRequest("Recording location URL is required");
                 var result = async
-                    ? await _service.GetCallAutomationClient().GetCallRecording().DeleteAsync(new Uri(recordingLocation))
-                    : _service.GetCallAutomationClient().GetCallRecording().Delete(new Uri(recordingLocation));
+                    ? await _service.GetRecordingDownloadClient().GetCallRecording().DeleteAsync(new Uri(recordingLocation))
+                    : _service.GetRecordingDownloadClient().GetCallRecording().Delete(new Uri(recordingLocation));
                 return Ok(new { RecordingLocation = recordingLocation, Status = result.Status.ToString() });
             }
             catch (Exception ex) { _logger.LogError(ex, "Error deleting recording"); return Problem($"Failed to delete recording: {ex.Message}"); }

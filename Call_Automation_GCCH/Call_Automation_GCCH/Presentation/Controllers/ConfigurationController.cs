@@ -1,5 +1,6 @@
 using Call_Automation_GCCH.Application.UseCases.Configuration;
 using Call_Automation_GCCH.Core.Interfaces;
+using Call_Automation_GCCH.Logging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Call_Automation_GCCH.Presentation.Controllers;
@@ -51,4 +52,75 @@ public class ConfigurationController : ControllerBase
             ? Ok(result.Data)
             : BadRequest(new { error = result.ErrorMessage });
     }
+
+    /// <summary>
+    /// Gets all logs collected since browser/session start.
+    /// Logs persist until browser reset.
+    /// </summary>
+    [HttpGet("logs")]
+    [ProducesResponseType(typeof(LogsResponse), StatusCodes.Status200OK)]
+    public IActionResult GetLogs()
+    {
+        _logger.LogInformation("GET /api/v2/configuration/logs - Retrieving all logs");
+
+        var logs = LogCollector.GetAll();
+        var logCount = LogCollector.GetLogCount();
+
+        return Ok(new LogsResponse
+        {
+            TotalLogCount = logCount,
+            DisplayedLogCount = logs.Count,
+            Logs = logs,
+            Timestamp = DateTime.UtcNow,
+            Message = "Logs persist until browser reset"
+        });
+    }
+
+    /// <summary>
+    /// Gets recent logs from the last N minutes.
+    /// </summary>
+    [HttpGet("logs/recent")]
+    [ProducesResponseType(typeof(LogsResponse), StatusCodes.Status200OK)]
+    public IActionResult GetRecentLogs([FromQuery] int minutes = 5)
+    {
+        _logger.LogInformation("GET /api/v2/configuration/logs/recent - Last {Minutes} minutes", minutes);
+
+        var logs = LogCollector.GetRecent(minutes);
+        var logCount = LogCollector.GetLogCount();
+
+        return Ok(new LogsResponse
+        {
+            TotalLogCount = logCount,
+            DisplayedLogCount = logs.Count,
+            Logs = logs,
+            Timestamp = DateTime.UtcNow,
+            Message = $"Logs from last {minutes} minutes"
+        });
+    }
+
+    /// <summary>
+    /// Clears all collected logs.
+    /// </summary>
+    [HttpPost("logs/clear")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public IActionResult ClearLogs()
+    {
+        _logger.LogInformation("POST /api/v2/configuration/logs/clear - Clearing all logs");
+
+        LogCollector.Clear();
+
+        return Ok(new { message = "Logs cleared successfully", timestamp = DateTime.UtcNow });
+    }
+}
+
+/// <summary>
+/// Response model for logs endpoint.
+/// </summary>
+public class LogsResponse
+{
+    public int TotalLogCount { get; set; }
+    public int DisplayedLogCount { get; set; }
+    public List<string> Logs { get; set; } = new();
+    public DateTime Timestamp { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

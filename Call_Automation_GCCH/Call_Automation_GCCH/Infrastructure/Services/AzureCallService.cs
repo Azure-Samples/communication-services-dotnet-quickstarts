@@ -15,19 +15,21 @@ namespace Call_Automation_GCCH.Infrastructure.Services;
 /// </summary>
 public class AzureCallService : ICallService
 {
-    private readonly CallAutomationClient _client;
+    private readonly ICallAutomationClientFactory _clientFactory;
     private readonly ILogger<AzureCallService> _logger;
     private readonly string _sourcePhoneNumber;
 
     public AzureCallService(
-        CallAutomationClient client,
+        ICallAutomationClientFactory clientFactory,
         ILogger<AzureCallService> logger,
         string sourcePhoneNumber)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
+        _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sourcePhoneNumber = sourcePhoneNumber;
     }
+
+    private CallAutomationClient Client => _clientFactory.GetClient();
 
     public async Task<DomainCallConnection> CreateCallAsync(CallOptions options, string callbackUri)
     {
@@ -64,6 +66,8 @@ public class AzureCallService : ICallService
         if (options.MediaStreaming != null)
         {
             var wsUri = BuildWebSocketUri(callbackUri);
+            _logger.LogInformation("AzureCallService: Media streaming enabled. WebSocket URI: {WsUri}", wsUri);
+
             var audioChannel = options.MediaStreaming.MediaStreamingAudioChannel.Equals("Unmixed", StringComparison.OrdinalIgnoreCase)
                 ? MediaStreamingAudioChannel.Unmixed
                 : MediaStreamingAudioChannel.Mixed;
@@ -81,6 +85,9 @@ public class AzureCallService : ICallService
                 EnableBidirectional = options.MediaStreaming.EnableBidirectional,
                 AudioFormat = format
             };
+
+            _logger.LogInformation("AzureCallService: MediaStreaming - StartImmediate: {Start}, AudioChannel: {Channel}, Format: {Format}, Bidirectional: {Bidir}",
+                options.MediaStreaming.StartMediaStreaming, audioChannel, format, options.MediaStreaming.EnableBidirectional);
         }
 
         // Add call intelligence if configured
@@ -98,7 +105,7 @@ public class AzureCallService : ICallService
         }
 
         // Execute SDK call
-        var result = await _client.CreateCallAsync(createOptions);
+        var result = await Client.CreateCallAsync(createOptions);
         var props = result.Value.CallConnectionProperties;
 
         return new DomainCallConnection
@@ -182,7 +189,7 @@ public class AzureCallService : ICallService
             };
         }
 
-        var result = await _client.CreateGroupCallAsync(groupOptions);
+        var result = await Client.CreateGroupCallAsync(groupOptions);
         var props = result.Value.CallConnectionProperties;
 
         return new DomainCallConnection
@@ -201,7 +208,7 @@ public class AzureCallService : ICallService
     {
         _logger.LogInformation("AzureCallService: Transferring call {CallId}", callConnectionId);
 
-        var connection = _client.GetCallConnection(callConnectionId);
+        var connection = Client.GetCallConnection(callConnectionId);
         var props = await connection.GetCallConnectionPropertiesAsync();
 
         var transferOptions = isPstn
@@ -230,7 +237,7 @@ public class AzureCallService : ICallService
     {
         _logger.LogInformation("AzureCallService: Hanging up call {CallId}", callConnectionId);
 
-        var connection = _client.GetCallConnection(callConnectionId);
+        var connection = Client.GetCallConnection(callConnectionId);
         var response = await connection.HangUpAsync(forEveryone);
 
         return response.Status == 204; // No Content = Success
@@ -238,7 +245,7 @@ public class AzureCallService : ICallService
 
     public async Task<DomainCallConnection> GetCallPropertiesAsync(string callConnectionId)
     {
-        var connection = _client.GetCallConnection(callConnectionId);
+        var connection = Client.GetCallConnection(callConnectionId);
         var props = await connection.GetCallConnectionPropertiesAsync();
 
         return new DomainCallConnection
@@ -251,8 +258,16 @@ public class AzureCallService : ICallService
 
     private string BuildWebSocketUri(string httpUri)
     {
-        return httpUri.Replace("https://", "wss://")
-            .Replace("http://", "ws://")
-            .TrimEnd('/') + "/ws";
+        // Extract base URL without any path (e.g., /api/callbacks)
+        var uri = new Uri(httpUri);
+        var baseUrl = $"{uri.Scheme}://{uri.Host}";
+        if (uri.Port != 80 && uri.Port != 443)
+        {
+            baseUrl += $":{uri.Port}";
+        }
+
+        // Convert to WebSocket scheme and add /ws path
+        return baseUrl.Replace("https://", "wss://")
+            .Replace("http://", "ws://") + "/ws";
     }
 }

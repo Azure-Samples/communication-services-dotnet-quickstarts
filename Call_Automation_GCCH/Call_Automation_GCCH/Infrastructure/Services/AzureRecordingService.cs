@@ -149,7 +149,7 @@ public class AzureRecordingService : IRecordingService
     {
         _logger.LogInformation("Deleting recording at {Location}", recordingLocation);
 
-        var client = _callAutomationService.GetCallAutomationClient();
+        var client = _callAutomationService.GetRecordingDownloadClient();
         var recording = client.GetCallRecording();
         await recording.DeleteAsync(new Uri(recordingLocation));
 
@@ -158,16 +158,91 @@ public class AzureRecordingService : IRecordingService
 
     public async Task<byte[]> DownloadRecordingAsync(string downloadLocation)
     {
-        _logger.LogInformation("Downloading recording from {Location}", downloadLocation);
+        _logger.LogInformation("[AzureRecordingService] Downloading recording from {Location}", downloadLocation);
+        _logger.LogInformation("[AzureRecordingService] Validating recording service client...");
 
-        var client = _callAutomationService.GetCallAutomationClient();
-        var recording = client.GetCallRecording();
-        var response = await recording.DownloadStreamingAsync(new Uri(downloadLocation));
+        try
+        {
+            var client = _callAutomationService.GetRecordingDownloadClient();
+            if (client == null)
+            {
+                _logger.LogError("[AzureRecordingService] Call Automation Client is null");
+                throw new InvalidOperationException("Call Automation Client is not initialized");
+            }
 
-        using var memoryStream = new MemoryStream();
-        await response.Value.CopyToAsync(memoryStream);
+            // Log which ACS resource the current client is authenticated against
+            try
+            {
+                var pmaEndpoint = _callAutomationService.GetCurrentPmaEndpoint();
+                _logger.LogInformation("[AzureRecordingService] Current PMA endpoint: {PmaEndpoint}",
+                    string.IsNullOrEmpty(pmaEndpoint) ? "(none - using default)" : pmaEndpoint);
+            }
+            catch { /* ignore if not available */ }
 
-        return memoryStream.ToArray();
+            _logger.LogInformation("[AzureRecordingService] Creating recording client...");
+            var recording = client.GetCallRecording();
+            if (recording == null)
+            {
+                _logger.LogError("[AzureRecordingService] Recording client is null");
+                throw new InvalidOperationException("Recording client is not initialized");
+            }
+
+            _logger.LogInformation("[AzureRecordingService] Calling DownloadStreamingAsync...");
+            var recordingUri = new Uri(downloadLocation);
+            _logger.LogInformation("[AzureRecordingService] Recording URI Scheme: {Scheme}", recordingUri.Scheme);
+            _logger.LogInformation("[AzureRecordingService] Recording URI Host: {Host}", recordingUri.Host);
+            _logger.LogInformation("[AzureRecordingService] Recording URI Path: {Path}", recordingUri.AbsolutePath);
+            _logger.LogInformation("[AzureRecordingService] Recording URI Query length: {QueryLen}", recordingUri.Query?.Length ?? 0);
+
+            var startTime = DateTime.UtcNow;
+            var response = await recording.DownloadStreamingAsync(recordingUri);
+            var downloadTime = DateTime.UtcNow - startTime;
+            _logger.LogInformation("[AzureRecordingService] DownloadStreamingAsync returned in {Elapsed}ms", downloadTime.TotalMilliseconds);
+
+            _logger.LogInformation("[AzureRecordingService] Response is null: {IsNull}", response == null);
+            _logger.LogInformation("[AzureRecordingService] Response Value is null: {IsNull}", response?.Value == null);
+
+            using var memoryStream = new MemoryStream();
+            var copyStartTime = DateTime.UtcNow;
+            await response.Value.CopyToAsync(memoryStream);
+            var copyTime = DateTime.UtcNow - copyStartTime;
+            _logger.LogInformation("[AzureRecordingService] Stream copied to memory in {Elapsed}ms", copyTime.TotalMilliseconds);
+
+            var result = memoryStream.ToArray();
+            _logger.LogInformation("[AzureRecordingService] Successfully downloaded {ByteCount} bytes", result.Length);
+            _logger.LogInformation("[AzureRecordingService] Total operation time: {Elapsed}ms", (DateTime.UtcNow - startTime).TotalMilliseconds);
+
+            return result;
+        }
+        catch (Azure.RequestFailedException rfx) when (rfx.Status == 401)
+        {
+            _logger.LogError(rfx, "[AzureRecordingService] AUTHORIZATION FAILED (401 Unauthorized)");
+            _logger.LogError("[AzureRecordingService] ACS Error Code: {ErrorCode}", rfx.ErrorCode);
+            _logger.LogError("[AzureRecordingService] ACS Status: {Status}", rfx.Status);
+            _logger.LogError("[AzureRecordingService] ACS Message: {Message}", rfx.Message);
+            _logger.LogError("[AzureRecordingService] === LIKELY CAUSES OF 401 ===");
+            _logger.LogError("[AzureRecordingService] 1. The ACS connection string in the app does NOT match the ACS resource that owns this recording.");
+            _logger.LogError("[AzureRecordingService] 2. The ACS access key has been rotated/regenerated after recording was created.");
+            _logger.LogError("[AzureRecordingService] 3. The recording URL is expired (recordings expire 48 hours after creation).");
+            _logger.LogError("[AzureRecordingService] 4. The recording URL is from a different environment (e.g., commercial vs GCCH).");
+            _logger.LogError("[AzureRecordingService] === RECOMMENDED FIX ===");
+            _logger.LogError("[AzureRecordingService] Verify AcsConnectionString points to the same ACS resource used to CREATE the recording.");
+            _logger.LogError("[AzureRecordingService] Check current config via: GET /api/v2/configuration");
+            throw;
+        }
+        catch (Azure.RequestFailedException rfx)
+        {
+            _logger.LogError(rfx, "[AzureRecordingService] ACS REQUEST FAILED - Status: {Status}, ErrorCode: {ErrorCode}", rfx.Status, rfx.ErrorCode);
+            _logger.LogError("[AzureRecordingService] Message: {Message}", rfx.Message);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AzureRecordingService] DOWNLOAD FAILED - Exception Type: {ExceptionType}", ex.GetType().Name);
+            _logger.LogError("[AzureRecordingService] Exception Message: {Message}", ex.Message);
+            _logger.LogError("[AzureRecordingService] Stack Trace: {StackTrace}", ex.StackTrace);
+            throw;
+        }
     }
 
     public async Task<string> StartRecordingAsync(string callConnectionId)

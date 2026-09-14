@@ -1,5 +1,6 @@
 using Call_Automation_GCCH.Application.UseCases.Recordings;
 using Call_Automation_GCCH.Core.Interfaces;
+using Call_Automation_GCCH.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Call_Automation_GCCH.Presentation.Controllers;
@@ -17,6 +18,7 @@ public class RecordingsController : ControllerBase
     private readonly GetRecordingStateUseCase _getRecordingStateUseCase;
     private readonly DeleteRecordingUseCase _deleteRecordingUseCase;
     private readonly DownloadRecordingUseCase _downloadRecordingUseCase;
+    private readonly IRecordingHistoryService _recordingHistory;
     private readonly ILogger<RecordingsController> _logger;
 
     public RecordingsController(
@@ -27,6 +29,7 @@ public class RecordingsController : ControllerBase
         GetRecordingStateUseCase getRecordingStateUseCase,
         DeleteRecordingUseCase deleteRecordingUseCase,
         DownloadRecordingUseCase downloadRecordingUseCase,
+        IRecordingHistoryService recordingHistory,
         ILogger<RecordingsController> logger)
     {
         _startRecordingUseCase = startRecordingUseCase;
@@ -36,6 +39,7 @@ public class RecordingsController : ControllerBase
         _getRecordingStateUseCase = getRecordingStateUseCase;
         _deleteRecordingUseCase = deleteRecordingUseCase;
         _downloadRecordingUseCase = downloadRecordingUseCase;
+        _recordingHistory = recordingHistory;
         _logger = logger;
     }
 
@@ -128,16 +132,115 @@ public class RecordingsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DownloadRecording([FromBody] DownloadRecordingRequest request)
     {
-        _logger.LogInformation("POST /api/v2/recordings/download - Location: {Location}", request.DownloadLocation);
+        _logger.LogInformation("=== POST /api/v2/recordings/download - CONTROLLER ENTRY ===");
+        _logger.LogInformation("Client IP: {ClientIP}", HttpContext.Connection.RemoteIpAddress);
+        _logger.LogInformation("Request Location: {Location}", request?.DownloadLocation);
+        _logger.LogInformation("Content-Length Expected: {ContentLength}", HttpContext.Request.ContentLength);
 
-        var result = await _downloadRecordingUseCase.ExecuteAsync(request.DownloadLocation);
-
-        if (!result.IsSuccess)
+        if (request == null || string.IsNullOrWhiteSpace(request.DownloadLocation))
         {
-            return BadRequest(new { error = result.ErrorMessage });
+            _logger.LogError("Invalid request: Location is null or empty");
+            return BadRequest(new { error = "Download location is required" });
         }
 
-        return File(result.Data!, "application/octet-stream", "recording.mp3");
+        try
+        {
+            _logger.LogInformation("Calling DownloadRecordingUseCase...");
+            var result = await _downloadRecordingUseCase.ExecuteAsync(request.DownloadLocation);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogError("UseCase returned failure: {Error}", result.ErrorMessage);
+                return BadRequest(new { error = result.ErrorMessage });
+            }
+
+            if (result.Data == null || result.Data.Length == 0)
+            {
+                _logger.LogError("Downloaded data is null or empty");
+                return BadRequest(new { error = "Downloaded recording is empty" });
+            }
+
+            _logger.LogInformation("Returning file response with {ByteCount} bytes", result.Data.Length);
+            _logger.LogInformation("=== DOWNLOAD RESPONSE PREPARED ===");
+
+            return File(result.Data, "application/octet-stream", "recording.mp3");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "=== CRITICAL ERROR IN DOWNLOAD CONTROLLER ===");
+            _logger.LogError("Exception Type: {ExceptionType}", ex.GetType().Name);
+            _logger.LogError("Exception Message: {Message}", ex.Message);
+            return BadRequest(new { error = $"Download failed: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Gets the last known recording location captured from the AcsRecordingFileStatusUpdated event.
+    /// </summary>
+    [HttpGet("last-location")]
+    [ProducesResponseType(typeof(CapturedRecordingInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetLastRecordingLocation()
+    {
+        _logger.LogInformation("GET /api/v2/recordings/last-location");
+        var last = _recordingHistory.GetLast();
+        if (last == null)
+        {
+            return NotFound(new
+            {
+                message = "No recording location captured yet. Trigger a recording and wait for the AcsRecordingFileStatusUpdatedEvent to arrive via Event Grid.",
+                hint = "Start a recording via POST /api/v2/recordings/start, then wait for it to stop. The location will be captured automatically."
+            });
+        }
+        return Ok(last);
+    }
+
+    /// <summary>
+    /// Gets the full history of recording locations captured from events.
+    /// </summary>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(IEnumerable<CapturedRecordingInfo>), StatusCodes.Status200OK)]
+    public IActionResult GetRecordingHistory()
+    {
+        _logger.LogInformation("GET /api/v2/recordings/history");
+        var history = _recordingHistory.GetAll();
+        return Ok(new
+        {
+            totalCount = history.Count,
+            recordings = history
+        });
+    }
+
+    /// <summary>
+    /// Downloads the file that was auto-downloaded when the AcsRecordingFileStatusUpdated event fired.
+    /// </summary>
+    [HttpGet("download-local")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult DownloadLocalRecording()
+    {
+        _logger.LogInformation("GET /api/v2/recordings/download-local");
+        var last = _recordingHistory.GetLast();
+        if (last == null || string.IsNullOrEmpty(last.LocalFilePath) || !System.IO.File.Exists(last.LocalFilePath))
+        {
+            return NotFound(new { message = "No auto-downloaded recording file found. Check /api/v2/recordings/last-location for details." });
+        }
+
+        var bytes = System.IO.File.ReadAllBytes(last.LocalFilePath);
+        var fileName = Path.GetFileName(last.LocalFilePath);
+        return File(bytes, "application/octet-stream", fileName);
+    }
+
+    /// <summary>
+    /// Clears the recording history in memory.
+    /// </summary>
+    [HttpPost("history/clear")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public IActionResult ClearRecordingHistory()
+    {
+        _logger.LogInformation("POST /api/v2/recordings/history/clear");
+        _recordingHistory.Clear();
+        return Ok(new { message = "Recording history cleared", timestamp = DateTime.UtcNow });
     }
 }
 

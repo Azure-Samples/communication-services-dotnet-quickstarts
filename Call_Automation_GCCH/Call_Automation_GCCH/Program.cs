@@ -27,37 +27,26 @@ string callbackUri = commSection["CallbackUriHost"] ?? string.Empty;
 bool isArizona = bool.Parse(commSection["IsArizona"] ?? "true");
 string pmaEndpoint = (isArizona ? commSection["PmaEndpointArizona"] : commSection["PmaEndpointTexas"]) ?? string.Empty;
 
-// Infrastructure Layer - Azure SDK Client
+// Infrastructure Layer - CallAutomationClient Factory (supports runtime PMA endpoint updates)
+builder.Services.AddSingleton<ICallAutomationClientFactory>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<CallAutomationClientFactory>>();
+    return new CallAutomationClientFactory(connectionString, pmaEndpoint, logger);
+});
+
+// Infrastructure Layer - Azure SDK Client (resolved from factory)
 builder.Services.AddSingleton<CallAutomationClient>(sp =>
 {
-    var logger = sp.GetRequiredService<ILogger<CallAutomationClient>>();
-
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        logger.LogWarning("AcsConnectionString is not set. Use POST /api/configuration/setConnectionString to configure at runtime.");
-        // Return a placeholder - will be replaced when connection string is set
-        return new CallAutomationClient("endpoint=https://placeholder.communication.azure.us;accesskey=placeholder");
-    }
-
-    // Create client with PMA endpoint for GCCH
-    if (!string.IsNullOrEmpty(pmaEndpoint))
-    {
-        logger.LogInformation("Creating CallAutomationClient with PMA endpoint: {PmaEndpoint}", pmaEndpoint);
-        return new CallAutomationClient(pmaEndpoint: new Uri(pmaEndpoint), connectionString: connectionString);
-    }
-    else
-    {
-        logger.LogInformation("Creating CallAutomationClient without PMA endpoint");
-        return new CallAutomationClient(connectionString);
-    }
+    var factory = sp.GetRequiredService<ICallAutomationClientFactory>();
+    return factory.GetClient();
 });
 
 // Infrastructure Layer - Services
 builder.Services.AddScoped<ICallService>(sp =>
 {
-    var client = sp.GetRequiredService<CallAutomationClient>();
+    var clientFactory = sp.GetRequiredService<ICallAutomationClientFactory>();
     var logger = sp.GetRequiredService<ILogger<AzureCallService>>();
-    return new AzureCallService(client, logger, phoneNumber);
+    return new AzureCallService(clientFactory, logger, phoneNumber);
 });
 
 builder.Services.AddScoped<IMediaService, AzureMediaService>();
@@ -115,6 +104,9 @@ builder.Services.AddScoped<Call_Automation_GCCH.Application.UseCases.Participant
 builder.Services.AddScoped<Call_Automation_GCCH.Application.UseCases.Participants.GetAllParticipantsUseCase>();
 builder.Services.AddScoped<Call_Automation_GCCH.Application.UseCases.Participants.MuteParticipantUseCase>();
 builder.Services.AddScoped<Call_Automation_GCCH.Application.UseCases.Participants.CancelAddParticipantUseCase>();
+
+// Recording history singleton for capturing recording locations from events
+builder.Services.AddSingleton<Call_Automation_GCCH.Services.IRecordingHistoryService, Call_Automation_GCCH.Services.RecordingHistoryService>();
 
 // Application Layer - Recording Use Cases
 builder.Services.AddScoped<Call_Automation_GCCH.Application.UseCases.Recordings.StartRecordingUseCase>();
@@ -174,7 +166,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Add CallAutomationService as a singleton behind ICallAutomationService
-// Client is initialized lazily — use the /api/configuration/setConnectionString endpoint
+// Client is initialized lazily ï¿½ use the /api/configuration/setConnectionString endpoint
 // to provide ACS credentials at runtime from Swagger.
 builder.Services.AddSingleton<ICallAutomationService, CallAutomationService>(sp => {
     string connectionString = commSection["AcsConnectionString"] ?? string.Empty;

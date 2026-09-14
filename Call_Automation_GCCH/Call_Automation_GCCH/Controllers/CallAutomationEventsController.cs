@@ -24,14 +24,18 @@ namespace Call_Automation_GCCH.Controllers
         private readonly ICallAutomationService _service;
         private readonly ILogger<CallAutomationEventsController> _logger;
         private readonly AcsCommunicationSettings _config;
+        private readonly IRecordingHistoryService _recordingHistory;
 
         public CallAutomationEventsController(
             ICallAutomationService service,
-            ILogger<CallAutomationEventsController> logger, IOptions<AcsCommunicationSettings> configOptions)
+            ILogger<CallAutomationEventsController> logger,
+            IOptions<AcsCommunicationSettings> configOptions,
+            IRecordingHistoryService recordingHistory)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
+            _recordingHistory = recordingHistory ?? throw new ArgumentNullException(nameof(recordingHistory));
         }
 
         /// <summary>
@@ -109,20 +113,12 @@ namespace Call_Automation_GCCH.Controllers
                                 }
                                 catch (Exception callEx)
                                 {
-                                    _logger.LogError($"Error handling incoming call: {callEx.Message}");
+                                     _logger.LogError($"Error handling incoming call: {callEx.Message}");
                                 }
                             }
                             if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
                             {
-                                try
-                                {
-                                    _service.RecordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                                    _logger.LogInformation($"The recording location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation}");
-                                }
-                                catch (Exception recordingEx)
-                                {
-                                    _logger.LogError($"Error handling recording status: {recordingEx.Message}");
-                                }
+                                await HandleRecordingFileStatusUpdatedAsync(statusUpdated);
                             }
                         }
                     }
@@ -593,15 +589,7 @@ namespace Call_Automation_GCCH.Controllers
                             }
                             if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
                             {
-                                try
-                                {
-                                    _service.RecordingLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                                    _logger.LogInformation($"The recording location is: {statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation}");
-                                }
-                                catch (Exception recordingEx)
-                                {
-                                    _logger.LogError($"Error handling recording status: {recordingEx.Message}");
-                                }
+                                await HandleRecordingFileStatusUpdatedAsync(statusUpdated);
                             }
                         }
                     }
@@ -620,6 +608,131 @@ namespace Call_Automation_GCCH.Controllers
         }
 
         #endregion
+
+        /// <summary>
+        /// Handles the AcsRecordingFileStatusUpdated event: captures location, adds to history,
+        /// and auto-downloads the recording to a local file (like the legacy flow).
+        /// </summary>
+        private async Task HandleRecordingFileStatusUpdatedAsync(AcsRecordingFileStatusUpdatedEventData statusUpdated)
+        {
+        try
+        {
+            var chunks = statusUpdated.RecordingStorageInfo?.RecordingChunks;
+            if (chunks == null || chunks.Count == 0)
+            {
+                _logger.LogWarning("[RecordingEvent] No recording chunks in event payload");
+                return;
+            }
+
+            var firstChunk = chunks[0];
+            var contentLocation = firstChunk.ContentLocation ?? string.Empty;
+            var metadataLocation = firstChunk.MetadataLocation ?? string.Empty;
+            var deleteLocation = firstChunk.DeleteLocation ?? string.Empty;
+            // Derive file extension from event's RecordingFormatType (mp3/mp4/wav), NOT URL path
+            string format = "mp3"; // Safe default for audio recordings
+            try
+            {
+                var formatType = statusUpdated.RecordingFormatType?.ToString();
+                if (!string.IsNullOrEmpty(formatType))
+                {
+                    format = formatType.ToLowerInvariant() switch
+                    {
+                        "mp3" => "mp3",
+                        "mp4" => "mp4",
+                        "wav" => "wav",
+                        _ => "mp3"
+                    };
+                }
+                else if (contentLocation.Contains("audiomp3", StringComparison.OrdinalIgnoreCase))
+                {
+                    format = "mp3";
+                }
+                else if (contentLocation.Contains("audiovideo", StringComparison.OrdinalIgnoreCase) ||
+                         contentLocation.Contains("videomp4", StringComparison.OrdinalIgnoreCase))
+                {
+                    format = "mp4";
+                }
+                else if (contentLocation.Contains("audiowav", StringComparison.OrdinalIgnoreCase))
+                {
+                    format = "wav";
+                }
+            }
+            catch { /* fallback to mp3 */ }
+
+            _service.RecordingLocation = contentLocation;
+            _service.RecordingFileFormat = format;
+
+            _logger.LogInformation("=== RECORDING FILE STATUS UPDATED EVENT ===");
+            _logger.LogInformation("[RecordingEvent] Content Location: {Location}", contentLocation);
+            _logger.LogInformation("[RecordingEvent] Metadata Location: {MetaLocation}", metadataLocation);
+            _logger.LogInformation("[RecordingEvent] Delete Location: {DelLocation}", deleteLocation);
+            _logger.LogInformation("[RecordingEvent] Chunk count: {Count}", chunks.Count);
+            _logger.LogInformation("[RecordingEvent] Format: {Format}", format);
+
+            var info = new CapturedRecordingInfo
+            {
+                ContentLocation = contentLocation,
+                MetadataLocation = metadataLocation,
+                DeleteLocation = deleteLocation,
+                Format = format,
+                CapturedAt = DateTime.UtcNow
+            };
+
+            // Auto-download to local file (like legacy behavior)
+            if (!string.IsNullOrEmpty(contentLocation))
+            {
+                try
+                {
+                    // Sanitize format defensively: strip any path separators / invalid chars
+                    var safeFormat = new string((format ?? "mp3").Where(c => char.IsLetterOrDigit(c)).ToArray());
+                    if (string.IsNullOrEmpty(safeFormat)) safeFormat = "mp3";
+
+                    var fileName = $"Recording_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{safeFormat}";
+                    var tempDir = Path.Combine(Path.GetTempPath(), "call-recordings");
+                    Directory.CreateDirectory(tempDir);
+                    var localFilePath = Path.Combine(tempDir, fileName);
+
+                    _logger.LogInformation("[RecordingEvent] Auto-downloading to: {Path}", localFilePath);
+
+                    var client = _service.GetRecordingDownloadClient();
+                    using (var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
+                    {
+                        var startTime = DateTime.UtcNow;
+                        var result = await client.GetCallRecording()
+                            .DownloadToAsync(new Uri(contentLocation), fileStream);
+                        var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                        _logger.LogInformation("[RecordingEvent] Auto-download completed in {Elapsed}ms - Status: {Status}",
+                            elapsed, result.Status);
+                    }
+
+                    var fi = new FileInfo(localFilePath);
+                    info.LocalFilePath = localFilePath;
+                    info.SizeInBytes = fi.Exists ? fi.Length : 0;
+                    info.AutoDownloaded = true;
+                    _logger.LogInformation("[RecordingEvent] File saved: {Path} ({Size} bytes)", localFilePath, info.SizeInBytes);
+                }
+                catch (Azure.RequestFailedException rfx) when (rfx.Status == 401)
+                {
+                    info.AutoDownloaded = false;
+                    info.AutoDownloadError = $"401 Unauthorized - ACS connection string may not match recording resource";
+                    _logger.LogError(rfx, "[RecordingEvent] AUTO-DOWNLOAD FAILED 401 - ACS credentials mismatch");
+                }
+                catch (Exception downloadEx)
+                {
+                    info.AutoDownloaded = false;
+                    info.AutoDownloadError = downloadEx.Message;
+                    _logger.LogError(downloadEx, "[RecordingEvent] Auto-download failed: {Message}", downloadEx.Message);
+                }
+            }
+
+            _recordingHistory.Add(info);
+            _logger.LogInformation("[RecordingEvent] Added to history. Retrieve via GET /api/v2/recordings/last-location or /history");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RecordingEvent] Error handling recording status: {Message}", ex.Message);
+        }
+        }
     }
 
 

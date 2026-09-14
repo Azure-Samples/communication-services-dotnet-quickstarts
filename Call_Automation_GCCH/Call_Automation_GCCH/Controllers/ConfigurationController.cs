@@ -1,3 +1,4 @@
+using Call_Automation_GCCH.Infrastructure.Services;
 using Call_Automation_GCCH.Models;
 using Call_Automation_GCCH.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -12,15 +13,18 @@ namespace Call_Automation_GCCH.Controllers
     public class ConfigurationController : ControllerBase
     {
         private readonly ICallAutomationService _service;
+        private readonly ICallAutomationClientFactory _clientFactory;
         private readonly AcsCommunicationSettings _config;
         private readonly ILogger<ConfigurationController> _logger;
 
         public ConfigurationController(
             ICallAutomationService service,
+            ICallAutomationClientFactory clientFactory,
             IOptions<AcsCommunicationSettings> configOptions,
             ILogger<ConfigurationController> logger)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
+            _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _config = configOptions.Value ?? throw new ArgumentNullException(nameof(configOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -47,13 +51,21 @@ namespace Call_Automation_GCCH.Controllers
             if (!string.IsNullOrWhiteSpace(acsConnectionString))
             {
                 _config.AcsConnectionString = acsConnectionString;
-                _service.UpdateClient(acsConnectionString, pmaEndpoint ?? _service.GetCurrentPmaEndpoint());
+                var effectivePmaEndpoint = pmaEndpoint ?? _clientFactory.GetCurrentPmaEndpoint();
+
+                // Update both the legacy service AND the factory (for Clean Architecture services)
+                _service.UpdateClient(acsConnectionString, effectivePmaEndpoint);
+                _clientFactory.UpdateClient(acsConnectionString, effectivePmaEndpoint);
+
                 clientUpdated = true;
-                _logger.LogInformation("ACS connection string updated. PmaEndpoint={PmaEndpoint}", pmaEndpoint ?? "(unchanged)");
+                _logger.LogInformation("ACS connection string updated. PmaEndpoint={PmaEndpoint}", effectivePmaEndpoint ?? "(none)");
             }
             else if (!string.IsNullOrWhiteSpace(pmaEndpoint) && !string.IsNullOrWhiteSpace(_config.AcsConnectionString))
             {
+                // Update both the legacy service AND the factory (for Clean Architecture services)
                 _service.UpdateClient(_config.AcsConnectionString, pmaEndpoint);
+                _clientFactory.UpdateClient(_config.AcsConnectionString, pmaEndpoint);
+
                 clientUpdated = true;
                 _logger.LogInformation("PMA endpoint updated to {PmaEndpoint}", pmaEndpoint);
             }
@@ -102,7 +114,7 @@ namespace Call_Automation_GCCH.Controllers
                 AcsConnectionString = string.IsNullOrEmpty(_config.AcsConnectionString) ? null : "***configured***",
                 AcsPhoneNumber = _config.AcsPhoneNumber,
                 CallbackUriHost = _config.CallbackUriHost,
-                PmaEndpoint = _service.GetCurrentPmaEndpoint(),
+                PmaEndpoint = _clientFactory.GetCurrentPmaEndpoint(),
                 AudioFileUrl = _config.AudioFileUrl,
                 IsConfigured = !string.IsNullOrEmpty(_config.AcsConnectionString) && !string.IsNullOrEmpty(_config.AcsPhoneNumber)
             });
@@ -110,12 +122,13 @@ namespace Call_Automation_GCCH.Controllers
 
         private object BuildCurrentConfig()
         {
+            var currentPma = _clientFactory.GetCurrentPmaEndpoint();
             return new
             {
                 AcsConnectionString = Mask(_config.AcsConnectionString),
                 AcsPhoneNumber = _config.AcsPhoneNumber ?? "(not set)",
                 CallbackUriHost = _config.CallbackUriHost ?? "(not set)",
-                PmaEndpoint = string.IsNullOrEmpty(_service.GetCurrentPmaEndpoint()) ? "(not set)" : _service.GetCurrentPmaEndpoint(),
+                PmaEndpoint = string.IsNullOrEmpty(currentPma) ? "(not set)" : currentPma,
                 IsClientInitialized = !string.IsNullOrEmpty(_config.AcsConnectionString)
             };
         }
