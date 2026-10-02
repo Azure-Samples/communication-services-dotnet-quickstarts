@@ -1,0 +1,118 @@
+HOW THIS PROGRAM WORKS - A PLAIN-LANGUAGE EXPLANATION
+=====================================================
+
+WHAT IS IT FOR?
+---------------
+Imagine an online meeting room, like a video call you join from your web browser.
+Now imagine someone who isn't at a computer and only has an ordinary telephone.
+This program shows how to bring that telephone caller into the online meeting room,
+so they can talk with the people who are already there.
+
+It is a small demonstration ("sample") built on Microsoft Azure Communication
+Services, a set of online building blocks for calls, meetings and messaging.
+
+
+A SIMPLE WAY TO PICTURE IT
+--------------------------
+Think of an office building with a receptionist:
+
+  - The MEETING ROOM is a private room in the building. Only invited people
+    can get in.
+  - The PHONE CALLER rings the building's front desk.
+  - The RECEPTIONIST (this program) picks up the phone, then walks the caller
+    down the hall and into the meeting room.
+
+The step where the receptionist walks the caller into the room is what the
+technical documents call "MoveParticipant": moving a person from one call
+into another.
+
+
+THE STEPS, IN ORDER
+-------------------
+
+1. Book a meeting room
+   The program asks Azure to create a new online meeting room and puts one
+   person on the guest list as the host (the "presenter").
+
+2. Someone has to be in the room first
+   An empty meeting room doesn't really exist yet. It only "opens" once a real
+   person walks in. So the program opens a web page in your browser that is
+   already filled in with the host's pass and the room number. You click
+   "Join Room" and wait until the page says "Connected".
+   Then you go back to the program window and press ENTER.
+
+   (Behind the scenes, the program runs a tiny private web server on your own
+   computer just to show that page. It is not visible to anyone else, and it
+   stops when the program closes.)
+
+3. Make a test phone call
+   To demonstrate, the program places a real phone call from one phone number
+   to another phone number that belongs to your Azure account. This is the
+   "phone caller ringing the front desk".
+
+4. Notice the ringing phone
+   When the call comes in, Azure leaves a note saying "you have an incoming
+   call". The note goes into a storage mailbox in the cloud (a "queue").
+   The program checks that mailbox every couple of seconds. When it finds the
+   note, it answers the call. Old notes from earlier attempts are thrown away.
+
+5. Walk the caller into the meeting room
+   - The program first steps into the meeting room itself.
+   - It waits until both the meeting room call AND the phone call are fully
+     up and running. Trying to move someone too early fails, like opening a
+     door before it's unlocked.
+   - It then moves the phone caller into the meeting room. If Azure says
+     "not ready yet", it waits two seconds and tries again, up to five times.
+   - If one of the calls has hung up in the meantime, the program says which
+     one, to help with troubleshooting.
+
+6. Tidy up
+   When everything is finished, or if something goes wrong along the way, the
+   program deletes the meeting room so nothing is left lying around.
+
+
+WHO IS WHO IN THE PROGRAM
+-------------------------
+  user1 - The host. This is the person who joins the room from the web browser.
+  user2 - The phone number owned by your Azure account (the "front desk" line).
+  user3 - The phone number the call comes from. This is the caller who gets
+          moved into the meeting room.
+
+
+WHAT YOU NEED BEFORE RUNNING IT
+-------------------------------
+  - An Azure account with a Communication Services resource (the calling service).
+  - A phone number bought through that service.
+  - An Azure Storage account with a queue (the "mailbox" for incoming call notes),
+    plus a setting (an Event Grid subscription) that tells Azure to put
+    incoming-call notes into that queue.
+  - The secret "connection strings" (like passwords) for the calling service
+    and the storage account. These are NOT stored in the program. You provide
+    them through your computer's environment settings, so they are never shared
+    by accident.
+  - A recent version of Microsoft Edge or Google Chrome, with permission to
+    use your microphone.
+
+
+THE FILES
+---------
+  Program.cs                - The main program: the "receptionist" described above.
+  RoomJoinClient\index.html - The web page you use to join the meeting room
+                              from your browser.
+  README.md                 - Technical setup and troubleshooting instructions.
+  RoomsInboundPSTN.csproj
+  RoomsInboundPSTN.sln      - Project files that Visual Studio uses to build
+                              and run the program.
+
+
+WHEN THINGS GO WRONG
+--------------------
+  - The web page shows an error code and a "callId": the browser couldn't keep
+    its connection to the meeting room. The callId is a reference number
+    Microsoft support can use to look into it.
+  - The program reports "not in Established state": a call wasn't ready yet.
+    The program already retries automatically.
+  - The program reports "Call not found": one of the calls hung up before the
+    move could happen.
+
+More detail is in README.md, under "Troubleshooting".

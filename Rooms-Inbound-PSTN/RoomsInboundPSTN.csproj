@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<AssemblyVersion>1.1.0</AssemblyVersion>
+		<FileVersion>1.1.0</FileVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<WarningLevel>0</WarningLevel>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="Azure.Communication.CallAutomation" Version="1.6.0-beta.1" />
+		<PackageReference Include="Azure.Communication.Common" Version="1.4.0" />
+		<PackageReference Include="Azure.Communication.Identity" Version="1.3.1" />
+		<PackageReference Include="Azure.Communication.Rooms" Version="1.2.0" />
+		<PackageReference Include="Azure.Core" Version="1.47.3" />
+		<PackageReference Include="Azure.Messaging.EventGrid" Version="4.16.0" />
+		<PackageReference Include="Azure.Storage.Queues" Version="12.21.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="RoomJoinClient\index.html">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+</Project>
