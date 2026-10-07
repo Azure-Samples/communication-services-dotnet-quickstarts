@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
@@ -20,17 +20,17 @@
 <body>
     <h2>Azure Communication Services - Room Join Client</h2>
     <p>
-        Paste the access token and Room Id printed by the <code>RoomsQuickstart</code> console app below,
-        then click <b>Join Room</b>. Once this page shows "Connected", go back to the console app and
-        press ENTER to continue (it needs a live participant present in the Room before it can bring in
-        the PSTN caller).
+        Open this page from the link returned by the sample's <code>/createRoom</code> endpoint and the access
+        token and Room Id are filled in automatically; otherwise paste them below. Click <b>Join Room</b> and
+        wait for "Connected", then continue with <code>/connectToRoom</code> (the sample needs a live
+        participant present in the Room before it can bring in the PSTN caller).
     </p>
 
     <label for="token">Access token (presenter)</label>
-    <textarea id="token" placeholder="Paste the access token printed by the console app here"></textarea>
+    <textarea id="token" placeholder="Filled in automatically, or paste an access token here"></textarea>
 
     <label for="roomId">Room Id</label>
-    <input id="roomId" type="text" placeholder="Paste the Room Id printed by the console app here" />
+    <input id="roomId" type="text" placeholder="Filled in automatically, or paste the Room Id here" />
 
     <button id="joinBtn">Join Room</button>
     <button id="leaveBtn" disabled>Leave Room</button>
@@ -67,7 +67,7 @@
             statusEl.className = cssClass;
         }
 
-        // The console app launches this page with a one-time nonce (?session=...). The token and room id
+        // The sample launches this page with a one-time nonce (?session=...). The token and room id
         // are fetched once from the local server so the token never appears in the URL or browser history.
         (async function prefillFromSession() {
             const session = new URLSearchParams(window.location.search).get('session');

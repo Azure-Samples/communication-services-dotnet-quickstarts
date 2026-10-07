@@ -1,4 +1,4 @@
-HOW THIS PROGRAM WORKS - A PLAIN-LANGUAGE EXPLANATION
+﻿HOW THIS PROGRAM WORKS - A PLAIN-LANGUAGE EXPLANATION
 =====================================================
 
 WHAT IS IT FOR?
@@ -31,55 +31,183 @@ THE STEPS, IN ORDER
 -------------------
 
 1. Book a meeting room
-   The program asks Azure to create a new online meeting room and puts one
-   person on the guest list as the host (the "presenter").
+   You ask the program (from its Swagger page) to create a new online meeting
+   room. It puts one person on the guest list as the host (the "presenter").
 
 2. Someone has to be in the room first
    An empty meeting room doesn't really exist yet. It only "opens" once a real
-   person walks in. So the program opens a web page in your browser that is
-   already filled in with the host's pass and the room number. You click
-   "Join Room" and wait until the page says "Connected".
-   Then you go back to the program window and press ENTER.
+   person walks in. So the program gives you the address of a web page, already
+   filled in with the host's pass and the room number. You open it in your
+   browser, click "Join Room" and wait until the page says "Connected".
 
-   (Behind the scenes, the program runs a tiny private web server on your own
-   computer just to show that page. It is not visible to anyone else, and it
-   stops when the program closes.)
+   (That page and the pass are only served on your own computer. They are not
+   reachable through the public internet address used for Azure's messages.)
 
-3. Make a test phone call
+3. Connect the program to the room
+   You ask the program to step into the meeting room itself, so it can later
+   bring someone in.
+
+4. Tell Azure where to send its messages (one-time setup)
+   Azure can only tell the program "you have an incoming call" if it knows
+   where to send that message. So, in the Azure portal, you create a
+   subscription (an Event Grid "webhook" subscription):
+     - Open your Communication Services resource and go to "Events".
+     - Add an event subscription for the "Incoming Call" event only.
+     - Choose "Web Hook" as the endpoint type and enter your tunnel address
+       followed by /api/incomingCall, for example
+       https://<your-tunnel-address>/api/incomingCall
+   When you save it, Azure sends a test message to that address and the
+   program must reply to prove the address is yours. So the program has to be
+   running, with the tunnel active, at that moment.
+   You only do this once. If the tunnel address changes (for example with a
+   temporary tunnel), edit the subscription to match, otherwise Azure keeps
+   sending messages to the old address and the call is never answered.
+5. Make a test phone call
    To demonstrate, the program places a real phone call from one phone number
    to another phone number that belongs to your Azure account. This is the
    "phone caller ringing the front desk".
 
-4. Notice the ringing phone
-   When the call comes in, Azure leaves a note saying "you have an incoming
-   call". The note goes into a storage mailbox in the cloud (a "queue").
-   The program checks that mailbox every couple of seconds. When it finds the
-   note, it answers the call, but only if it is the call between your two
-   numbers. Other calls are ignored. Handled notes are cleared away at the end.
+6. Answer the ringing phone
+   When the call comes in, Azure sends a message ("you have an incoming call")
+   straight to the program over the internet (a "webhook"). The program
+   answers the call, but only if it is the call between your two numbers.
+   Other calls are ignored. Azure also sends progress messages ("the call is
+   now connected", "the call hung up") to the program as they happen, so it
+   never has to keep asking.
 
-5. Walk the caller into the meeting room
-   - The program first steps into the meeting room itself.
-   - It waits until both the meeting room call AND the phone call are fully
-     up and running. Trying to move someone too early fails, like opening a
-     door before it's unlocked.
-   - It then moves the phone caller into the meeting room. If Azure says
-     "not ready yet", it waits two seconds and tries again, up to five times.
-   - If one of the calls has hung up in the meantime, the program says which
-     one, to help with troubleshooting.
+7. Walk the caller into the meeting room
+   You ask the program to move the phone caller into the meeting room. The
+   program only does it once Azure has said that both the meeting room call
+   AND the phone call are fully up and running. Moving someone too early
+   fails, like opening a door before it's unlocked.
 
-6. Tidy up
-   Once the caller is in the meeting room, the program waits. Press ENTER when
-   you are done. It then hangs up the calls it started, clears the handled
-   notes and deletes the meeting room so nothing is left lying around. If
-   something goes wrong along the way, this tidy-up happens straight away.
+8. Tidy up
+   When you are done, ask the program to clean up. It hangs up the calls it
+   started and deletes the meeting room so nothing is left lying around.
 
+
+WHAT EACH BUTTON IN THE PROGRAM DOES
+------------------------------------
+The program is a small web application. Its Swagger page (a list of buttons
+you can press in your browser) has five "POST" buttons, one for each action you
+trigger yourself. Press them in this order. Two more POST addresses exist for
+Azure to call, and two helper pages serve the browser. All are explained below.
+
+BUTTONS YOU PRESS (in order)
+
+  POST /createRoom
+    What it does: books the meeting room and gets the host ready to enter it.
+    In detail:
+      - Creates a new Azure Communication Services Room that lasts 10 days,
+        with User1 on the guest list as the "presenter" (the host), and with
+        phone dial-out allowed.
+      - Remembers the room's id.
+      - Asks Azure for a temporary entry pass (an access token) for User1.
+      - Stores that pass on the program's side and creates a one-time code
+        (a "session" code) that can be swapped for it.
+    What you get back: the room id and a hint with the address of the join
+    page, which includes the one-time code. The pass itself is never shown,
+    so it can't leak into your browser history or the Swagger page.
+    Next: open that address in your browser (on localhost) and click
+    "Join Room".
+
+  POST /connectToRoom
+    What it does: makes the program itself step into the meeting room.
+    In detail:
+      - Refuses (409 "Call /createRoom first") if no room exists yet.
+      - Asks Azure to connect the program to the room's call, using the room
+        id. This only works after the host has joined from the browser, since
+        an empty room has no call to connect to.
+      - Remembers the connection id of this "room call" and notes it down so
+        it can be hung up later.
+    What you get back: the room call's connection id. The connection is not
+    ready instantly; Azure tells the program when it is, through the
+    "callbacks" address (see below).
+
+  POST /dialInboundCall
+    What it does: makes the test phone call that stands in for a real caller.
+    In detail:
+      - Asks Azure to place a call to User2 with User3 as the caller's number
+        (the "caller ID"). Azure requires the caller ID to be a number you
+        own, which is why User3 must belong to your resource.
+      - Notes down the connection id of this outgoing call so it can be hung
+        up later.
+    What happens next, by itself: because User2 is a number you own, Azure
+    treats the call as "an incoming call" and sends a message about it to the
+    /api/incomingCall address. The program answers it there (see below).
+    What you get back: the outgoing call's connection id.
+
+  POST /moveParticipant
+    What it does: walks the phone caller into the meeting room.
+    In detail:
+      - Refuses (409) if the room call isn't connected or the incoming call
+        hasn't been answered yet.
+      - Refuses (409) unless Azure has already reported that BOTH the room
+        call and the answered phone call are connected. Moving too early would
+        fail with the "not in Established state" error, so the program checks
+        first instead of guessing and retrying.
+      - Asks Azure to move User3 out of the answered phone call and into the
+        room call (the "MoveParticipants" request).
+      - Reports a problem with Azure's own error message if the request
+        fails, for example "Call not found" if one of the calls has hung up.
+    What you get back: a message that the move was started. The final result
+    ("MoveParticipantSucceeded" or "MoveParticipantFailed") arrives later at
+    the callbacks address and appears in the program's log.
+
+  POST /cleanup
+    What it does: ends the demonstration and leaves nothing running.
+    In detail:
+      - Hangs up every call the program created or answered: the room call,
+        the outgoing call and the answered phone call. This matters because
+        deleting a room does NOT end a call that is already running, so the
+        calls (and their charges) would otherwise carry on.
+      - Ignores calls that have already ended.
+      - Deletes the meeting room.
+      - Forgets everything about this session so you can start again with
+        /createRoom.
+    What you get back: "Session cleaned up."
+
+ADDRESSES THAT AZURE CALLS (you don't press these)
+
+  POST /api/incomingCall
+    The "incoming call" message from Azure's Event Grid service arrives here.
+    - When you first subscribe, Azure sends a "validation" message and the
+      program replies with the code in it, proving the address is really
+      yours.
+    - For an incoming call, the program checks who is calling and who is being
+      called. Only the call from User3 to User2 is answered; every other call
+      is ignored, because this subscription sees all calls to your resource.
+    - It answers the call and remembers its connection id as the "source
+      call" that User3 will later be moved out of.
+
+  POST /api/callbacks
+    Azure's Call Automation service reports what is happening to each call:
+    - "Connected": the call is up. The program records this so
+      /moveParticipant knows both calls are ready.
+    - "Disconnected": the call ended. The program forgets that it was
+      connected.
+    - "MoveParticipantSucceeded" or "MoveParticipantFailed": the result of
+      the move, written to the log.
+    - "ConnectFailed" or "CreateCallFailed": a problem connecting to the
+      room or placing the test call, written to the log.
+
+HELPER PAGES FOR THE BROWSER (GET, not shown in Swagger)
+
+  GET /roomJoinClient
+    Serves the web page where the host clicks "Join Room". Answers only when
+    reached through "localhost", never through the public tunnel address.
+
+  GET /session?id=<one-time code>
+    Called by that web page to swap the one-time code for the entry pass and
+    room id. It works once; a second try, a wrong code or a request from
+    outside localhost gets "not found".
 
 WHO IS WHO IN THE PROGRAM
 -------------------------
-  user1 - The host. This is the person who joins the room from the web browser.
-  user2 - The phone number owned by your Azure account (the "front desk" line).
-  user3 - A second phone number owned by your Azure account; the call comes
-          numbers).
+  User1 - The host. This is the person who joins the room from the web browser.
+  User2 - The phone number owned by your Azure account (the "front desk" line).
+  User3 - A second phone number owned by your Azure account; the call comes
+          from it (Azure requires the caller ID to be one of your own numbers).
           This caller gets moved into the meeting room.
 
 
@@ -88,12 +216,14 @@ WHAT YOU NEED BEFORE RUNNING IT
   - An Azure account with a Communication Services resource (the calling service).
   - A phone number bought through that service for receiving the call, and a
     second one to place the test call from.
-  - An Azure Storage account with a queue (the "mailbox" for incoming call notes),
-    plus a setting (an Event Grid subscription) that tells Azure to put
-    incoming-call notes into that queue.
-  - The secret "connection strings" (like passwords) for the calling service
-    and the storage account. You put them in the appsettings.json file next to
-    the program, together with the phone numbers and the host's identity.
+  - A public internet address that reaches your computer while you test (an
+    "Azure Dev Tunnel", which Visual Studio can create for you from its debug
+    toolbar), because Azure needs somewhere to send its messages.
+    You also tell Azure (an Event Grid subscription) to send "incoming call"
+    messages to that address.
+  - The secret "connection string" (like a password) for the calling service.
+    You put it in the appsettings.json file next to the program, together with
+    the tunnel address, the phone numbers and the host's identity.
     Never share or upload that file once it contains real values.
   - A recent version of Microsoft Edge or Google Chrome, with permission to
     use your microphone.
@@ -102,8 +232,8 @@ WHAT YOU NEED BEFORE RUNNING IT
 THE FILES
 ---------
   Program.cs                - The main program: the "receptionist" described above.
-  appsettings.json          - Your settings: connection strings, queue name and
-                              the phone numbers and host identity.
+  appsettings.json          - Your settings: connection string, tunnel address,
+                              phone numbers and host identity.
   RoomJoinClient\index.html - The web page you use to join the meeting room
                               from your browser.
   README.md                 - Technical setup and troubleshooting instructions.
@@ -118,7 +248,7 @@ WHEN THINGS GO WRONG
     its connection to the meeting room. The callId is a reference number
     Microsoft support can use to look into it.
   - The program reports "not in Established state": a call wasn't ready yet.
-    The program already retries automatically.
+    Wait for the connected messages in the program's log, then try again.
   - The program reports "Call not found": one of the calls hung up before the
     move could happen.
 
