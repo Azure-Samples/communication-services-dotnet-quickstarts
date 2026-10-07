@@ -75,8 +75,9 @@ WHO IS WHO IN THE PROGRAM
 -------------------------
   user1 - The host. This is the person who joins the room from the web browser.
   user2 - The phone number owned by your Azure account (the "front desk" line).
-  user3 - The phone number the call comes from. This is the caller who gets
-          moved into the meeting room.
+  user3 - A second phone number owned by your Azure account; the call comes
+          numbers).
+          This caller gets moved into the meeting room.
 
 
 WHAT YOU NEED BEFORE RUNNING IT

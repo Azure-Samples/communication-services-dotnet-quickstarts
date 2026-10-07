@@ -19,15 +19,34 @@ namespace RoomsQuickstart
 {
     class Program
     {
-        private static readonly string connectionString = Environment.GetEnvironmentVariable("ACS_CONNECTION_STRING")
-            ?? throw new InvalidOperationException("Environment variable 'ACS_CONNECTION_STRING' is not set. Please set it to your Azure Communication Services connection string.");
+        private static readonly JsonElement config = LoadConfig();
+
+        private static JsonElement LoadConfig()
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException($"Configuration file not found: '{path}'.");
+            }
+
+            using var doc = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
+            return doc.RootElement.Clone();
+        }
+
+        private static string? GetSetting(string name) =>
+            config.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())
+                ? value.GetString()
+                : null;
+
+        private static readonly string connectionString = GetSetting("AcsConnectionString")
+            ?? throw new InvalidOperationException("'AcsConnectionString' is not set in appsettings.json. Please set it to your Azure Communication Services connection string.");
 
         // Storage account connection string + queue name that your Event Grid subscription for the
         // 'Microsoft.Communication.IncomingCall' event is configured to deliver to (Storage Queue destination).
         // This lets us retrieve the IncomingCall event by polling the queue instead of hosting a public webhook.
-        private static readonly string storageQueueConnectionString = Environment.GetEnvironmentVariable("STORAGE_QUEUE_CONNECTION_STRING")
-            ?? throw new InvalidOperationException("Environment variable 'STORAGE_QUEUE_CONNECTION_STRING' is not set. Please set it to your Azure Storage account connection string.");
-        private static readonly string incomingCallQueueName = Environment.GetEnvironmentVariable("INCOMING_CALL_QUEUE_NAME") ?? "incoming-call-events";
+        private static readonly string storageQueueConnectionString = GetSetting("StorageQueueConnectionString")
+            ?? throw new InvalidOperationException("'StorageQueueConnectionString' is not set in appsettings.json. Please set it to your Azure Storage account connection string.");
+        private static readonly string incomingCallQueueName = GetSetting("IncomingCallQueueName") ?? "incoming-call-events";
 
         static QueueClient? incomingCallQueueClient = null;
         public static QueueClient IncomingCallQueueClient
@@ -62,9 +81,12 @@ namespace RoomsQuickstart
             set => identityClient = value;
         }
 
-        static readonly CommunicationUserIdentifier user1 = new CommunicationUserIdentifier("8:acs:xxx");
-        static readonly PhoneNumberIdentifier user2 = new PhoneNumberIdentifier("+1xxxxxxxxxx");
-        static readonly PhoneNumberIdentifier user3 = new PhoneNumberIdentifier("+1xxxxxxxxxx");
+        private static string GetRequiredSetting(string name) =>
+            GetSetting(name) ?? throw new InvalidOperationException($"'{name}' is not set in appsettings.json.");
+
+        static readonly CommunicationUserIdentifier user1 = new CommunicationUserIdentifier(GetRequiredSetting("User1"));
+        static readonly PhoneNumberIdentifier user2 = new PhoneNumberIdentifier(GetRequiredSetting("User2"));
+        static readonly PhoneNumberIdentifier user3 = new PhoneNumberIdentifier(GetRequiredSetting("User3"));
 
         static async Task Main(string[] args)
         {
@@ -93,17 +115,30 @@ namespace RoomsQuickstart
                     "then press ENTER here to continue...");
                 Console.ReadLine();
 
-                // Dial from user3's real phone number to user2's ACS-acquired number. Only the
-                // call's *target* needs to be an ACS-acquired number for Azure to raise the
-                // 'Microsoft.Communication.IncomingCall' event.
-                await DialPstnToPstnAsync(user3, user2);
+                // Dial from user3 to user2. Both must be ACS-acquired numbers: CreateCallAsync requires
+                // the source caller ID to be owned by this resource, and user2 receives the call and
+                // raises the 'Microsoft.Communication.IncomingCall' event.
+                string? outboundCallConnectionId = await DialPstnToPstnAsync(user3, user2);
+                if (outboundCallConnectionId is null)
+                {
+                    return;
+                }
+                activeCallConnectionIds.Add(outboundCallConnectionId);
 
                 // Wait for the resulting inbound PSTN call event to arrive (via the IncomingCall
                 // event delivered to a Storage Queue), answer it, and get the resulting CallConnectionId.
                 string? sourceCallConnectionId = await WaitForAndAnswerIncomingCallAsync(TimeSpan.FromSeconds(30));
                 if (sourceCallConnectionId is not null)
                 {
-                    await InboundPstnDialInToRoom(roomId, user3, sourceCallConnectionId);
+                    activeCallConnectionIds.Add(sourceCallConnectionId);
+                    bool moved = await InboundPstnDialInToRoom(roomId, user3, sourceCallConnectionId);
+                    if (moved)
+                    {
+                        // Keep the Room and calls alive until the user is done; cleanup runs afterwards.
+                        Console.WriteLine("\nThe caller is now in the Room. Press ENTER to end the session and clean up " +
+                            "(hang up calls, delete the Room)...");
+                        Console.ReadLine();
+                    }
                 }
                 else
                 {
@@ -116,11 +151,96 @@ namespace RoomsQuickstart
             }
             finally
             {
+                await HangUpActiveCallsAsync();
+                await DeleteVisitedQueueMessagesAsync();
+                roomJoinClientListener?.Close();
+
                 if (roomId is not null)
                 {
                     await DeleteRoom(roomId);
                 }
             }
+        }
+
+        // Call connections created by this app; hung up on exit because deleting a Room doesn't end its call.
+        static readonly List<string> activeCallConnectionIds = new List<string>();
+
+        static async Task HangUpActiveCallsAsync()
+        {
+            foreach (string callConnectionId in activeCallConnectionIds)
+            {
+                try
+                {
+                    await CallAutomation.GetCallConnection(callConnectionId).HangUpAsync(true);
+                    Console.WriteLine($"Hung up call connection '{callConnectionId}'.");
+                }
+                catch (RequestFailedException ex) when (ex.Status == 404 || ex.ErrorCode == "8522")
+                {
+                    // Already ended.
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to hang up call connection '{callConnectionId}': {ex.Message}");
+                }
+            }
+
+            activeCallConnectionIds.Clear();
+        }
+
+        static bool IsPhoneParticipant(JsonElement data, string propertyName, PhoneNumberIdentifier expected)
+        {
+            if (!data.TryGetProperty(propertyName, out var participant))
+                return false;
+
+            string? actual = null;
+            if (participant.TryGetProperty("phoneNumber", out var phone) &&
+                phone.TryGetProperty("value", out var value))
+            {
+                actual = value.GetString();
+            }
+            else if (participant.TryGetProperty("rawId", out var rawId))
+            {
+                actual = rawId.GetString()?.Replace("4:", string.Empty);
+            }
+
+            return string.Equals(actual?.TrimStart('+'), expected.PhoneNumber?.TrimStart('+'), StringComparison.Ordinal);
+        }
+
+        // Queue messages already handled. They are hidden for a while instead of being deleted right away,
+        // and deleted during cleanup so late-arriving or related events aren't lost mid-flow.
+        static readonly Dictionary<string, string> visitedQueueMessages = new Dictionary<string, string>();
+        static readonly TimeSpan visitedMessageHideTime = TimeSpan.FromMinutes(10);
+
+        static async Task MarkQueueMessageVisitedAsync(QueueMessage message)
+        {
+            try
+            {
+                // Passing no new text keeps the content; the new pop receipt is needed for the later delete.
+                var receipt = await IncomingCallQueueClient.UpdateMessageAsync(
+                    message.MessageId, message.PopReceipt, visibilityTimeout: visitedMessageHideTime);
+                visitedQueueMessages[message.MessageId] = receipt.Value.PopReceipt;
+            }
+            catch (RequestFailedException ex)
+            {
+                Console.WriteLine($"Could not mark queue message '{message.MessageId}' as visited: {ex.Message}");
+            }
+        }
+
+        static async Task DeleteVisitedQueueMessagesAsync()
+        {
+            foreach (var (messageId, popReceipt) in visitedQueueMessages)
+            {
+                try
+                {
+                    await IncomingCallQueueClient.DeleteMessageAsync(messageId, popReceipt);
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Could not delete queue message '{messageId}': {ex.Message}");
+                }
+            }
+
+            visitedQueueMessages.Clear();
         }
 
         /// <summary>
@@ -145,12 +265,24 @@ namespace RoomsQuickstart
                     foreach (var message in messages)
                     {
                         EventGridEvent[] events = EventGridEvent.ParseMany(BinaryData.FromString(message.MessageText));
+                        bool leaveUntouched = false;
 
                         foreach (var egEvent in events)
                         {
                             if (egEvent.EventType == "Microsoft.Communication.IncomingCall")
                             {
                                 using var callDataDoc = JsonDocument.Parse(egEvent.Data.ToString());
+
+                                // The queue is resource-wide; only answer the call placed from user3 to user2.
+                                if (!IsPhoneParticipant(callDataDoc.RootElement, "from", user3) ||
+                                    !IsPhoneParticipant(callDataDoc.RootElement, "to", user2))
+                                {
+                                    // Leave it untouched (no delete) so other consumers can still process it.
+                                    Console.WriteLine("Ignoring incoming call event that doesn't match the expected caller/callee.");
+                                    leaveUntouched = true;
+                                    continue;
+                                }
+
                                 string incomingCallContext = callDataDoc.RootElement.GetProperty("incomingCallContext").GetString()!;
 
                                 try
@@ -161,20 +293,22 @@ namespace RoomsQuickstart
 
                                     Console.WriteLine($"Answered incoming PSTN call. CallConnectionId: {callConnectionId}");
 
-                                    await IncomingCallQueueClient.DeleteMessageAsync(message.MessageId, message.PopReceipt);
+                                    await MarkQueueMessageVisitedAsync(message);
                                     return callConnectionId;
                                 }
                                 catch (RequestFailedException ex) when (ex.ErrorCode == "8523")
                                 {
                                     // The incomingCallContext had already expired; drop it and keep waiting.
                                     Console.WriteLine("Incoming call context was invalid/expired; discarding this event and continuing to wait.");
-                                    await IncomingCallQueueClient.DeleteMessageAsync(message.MessageId, message.PopReceipt);
                                     continue;
                                 }
                             }
+                        }
 
-                            // Not the event we're looking for; delete so it doesn't keep reappearing.
-                            await IncomingCallQueueClient.DeleteMessageAsync(message.MessageId, message.PopReceipt);
+                        // Handled (or not relevant): hide it and delete it during cleanup so it doesn't keep reappearing.
+                        if (!leaveUntouched)
+                        {
+                            await MarkQueueMessageVisitedAsync(message);
                         }
                     }
                 }
@@ -224,7 +358,7 @@ namespace RoomsQuickstart
         ///   1. Connects Call Automation to the Room using a RoomCallLocator.
         ///   2. Uses the MoveParticipant API to move the PSTN caller from the source call into the Room call.
         /// </summary>
-        static async Task InboundPstnDialInToRoom(
+        static async Task<bool> InboundPstnDialInToRoom(
             string roomId,
             PhoneNumberIdentifier pstnCaller,
             string sourceCallConnectionId)
@@ -239,6 +373,7 @@ namespace RoomsQuickstart
                 var connectOptions = new ConnectCallOptions(new RoomCallLocator(roomId), callbackUri);
                 ConnectCallResult connectResult = await CallAutomation.ConnectCallAsync(connectOptions);
                 string roomCallConnectionId = connectResult.CallConnectionProperties.CallConnectionId;
+                activeCallConnectionIds.Add(roomCallConnectionId);
                 Console.WriteLine($"Connected to room '{roomId}'. Room call connection id: {roomCallConnectionId}");
 
                 var roomCallConnection = CallAutomation.GetCallConnection(roomCallConnectionId);
@@ -248,7 +383,7 @@ namespace RoomsQuickstart
                 if (!await WaitForCallConnectedAsync(roomCallConnection, TimeSpan.FromSeconds(10)))
                 {
                     Console.WriteLine($"Room call connection '{roomCallConnectionId}' did not reach the Connected state in time; aborting move.");
-                    return;
+                    return false;
                 }
 
                 // The answered PSTN (source) call must also be Established, otherwise the move fails with 8501.
@@ -256,7 +391,7 @@ namespace RoomsQuickstart
                 if (!await WaitForCallConnectedAsync(sourceCallConnection, TimeSpan.FromSeconds(15), "Source"))
                 {
                     Console.WriteLine($"Source call connection '{sourceCallConnectionId}' did not reach the Connected state in time; aborting move.");
-                    return;
+                    return false;
                 }
 
                 // 2. Move the inbound PSTN caller from their current call into the Room call.
@@ -282,9 +417,13 @@ namespace RoomsQuickstart
                     }
                     int status = moveResult.GetRawResponse().Status;
                     if (status is >= 200 and <= 299)
+                    {
                         Console.WriteLine($"MoveParticipant initiated: {pstnCaller.PhoneNumber} -> room '{roomId}'.");
-                    else
-                        Console.WriteLine($"MoveParticipant failed with status code: {status}");
+                        return true;
+                    }
+
+                    Console.WriteLine($"MoveParticipant failed with status code: {status}");
+                    return false;
                 }
                 catch (RequestFailedException ex) when (ex.ErrorCode == "8522")
                 {
@@ -301,6 +440,7 @@ namespace RoomsQuickstart
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed inbound PSTN dial-in to room '{roomId}', ex --> {ex}");
+                return false;
             }
         }
 
@@ -358,8 +498,10 @@ namespace RoomsQuickstart
         /// Starts a minimal background HTTP server on a free localhost port that serves the Room join
         /// client page, and returns its base URL (e.g. "http://localhost:51234/").
         /// </summary>
-        static string StartRoomJoinClientServer(string htmlPath)
+        static string StartRoomJoinClientServer(string htmlPath, string sessionId, string token, string roomId)
         {
+            // The token is handed out at most once, and only to a request that presents the nonce.
+            int sessionConsumed = 0;
             var portFinder = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
             portFinder.Start();
             int port = ((IPEndPoint)portFinder.LocalEndpoint).Port;
@@ -395,6 +537,22 @@ namespace RoomsQuickstart
                             context.Response.ContentLength64 = content.Length;
                             await context.Response.OutputStream.WriteAsync(content, 0, content.Length);
                         }
+                        else if (path.Equals("/session", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? id = context.Request.QueryString["id"];
+                            if (id == sessionId && Interlocked.Exchange(ref sessionConsumed, 1) == 0)
+                            {
+                                byte[] content = JsonSerializer.SerializeToUtf8Bytes(new { token, roomId });
+                                context.Response.ContentType = "application/json";
+                                context.Response.Headers["Cache-Control"] = "no-store";
+                                context.Response.ContentLength64 = content.Length;
+                                await context.Response.OutputStream.WriteAsync(content, 0, content.Length);
+                            }
+                            else
+                            {
+                                context.Response.StatusCode = 404;
+                            }
+                        }
                         else
                         {
                             context.Response.StatusCode = 404;
@@ -416,7 +574,7 @@ namespace RoomsQuickstart
 
         /// <summary>
         /// Opens the bundled browser-based Room join client (RoomJoinClient/index.html) in the default
-        /// browser, with the access token and Room Id pre-filled via query string parameters.
+        /// browser, with the access token and Room Id pre-filled via a one-time localhost session endpoint.
         /// </summary>
         static void LaunchRoomJoinClient(string token, string roomId)
         {
@@ -436,9 +594,10 @@ namespace RoomsQuickstart
                 }
 
                 // Serve the page over http://localhost because browsers block ES module scripts on file:// URLs.
-                string baseUrl = StartRoomJoinClientServer(htmlPath);
-                string url = $"{baseUrl}index.html" +
-                    $"?token={WebUtility.UrlEncode(token)}&roomId={WebUtility.UrlEncode(roomId)}";
+                // The token is not placed in the URL; the page redeems a one-time nonce for it instead.
+                string sessionId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+                string baseUrl = StartRoomJoinClientServer(htmlPath, sessionId, token, roomId);
+                string url = $"{baseUrl}index.html?session={sessionId}";
                 Console.WriteLine($"Room join client served at {baseUrl}index.html");
 
                 Process.Start(new ProcessStartInfo

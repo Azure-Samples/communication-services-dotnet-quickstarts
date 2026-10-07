@@ -35,7 +35,7 @@
     <button id="joinBtn">Join Room</button>
     <button id="leaveBtn" disabled>Leave Room</button>
 
-    <div id="status" class="status-idle">Not connected</div>
+    <div id="status" class="status-idle" role="status" aria-live="polite">Not connected</div>
     <div id="log"></div>
 
     <!-- Azure Communication Services Calling SDK loaded as ES modules via CDN -->
@@ -67,14 +67,21 @@
             statusEl.className = cssClass;
         }
 
-        // Pre-fill the token/room id fields from URL query params (?token=...&roomId=...) so the
-        // console app can auto-launch this page with everything already populated.
-        (function prefillFromQueryString() {
-            const params = new URLSearchParams(window.location.search);
-            const token = params.get('token');
-            const roomId = params.get('roomId');
-            if (token) document.getElementById('token').value = token;
-            if (roomId) document.getElementById('roomId').value = roomId;
+        // The console app launches this page with a one-time nonce (?session=...). The token and room id
+        // are fetched once from the local server so the token never appears in the URL or browser history.
+        (async function prefillFromSession() {
+            const session = new URLSearchParams(window.location.search).get('session');
+            if (!session) return;
+            history.replaceState(null, '', window.location.pathname);
+            try {
+                const response = await fetch('/session?id=' + encodeURIComponent(session));
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.token) document.getElementById('token').value = data.token;
+                if (data.roomId) document.getElementById('roomId').value = data.roomId;
+            } catch (e) {
+                console.warn('Could not load session data; paste the token and Room Id manually.', e);
+            }
         })();
 
         joinBtn.addEventListener('click', async () => {
@@ -130,12 +137,12 @@
                     await call.hangUp();
                     log('Left the room.');
                 }
-            } catch (ex) {
-                log('Error leaving: ' + ex.message);
-            } finally {
                 setStatus('Not connected', 'status-idle');
                 joinBtn.disabled = false;
                 leaveBtn.disabled = true;
+            } catch (ex) {
+                setStatus('Error leaving: ' + ex.message, 'status-error');
+                log('Error leaving: ' + ex.message);
             }
         });
     </script>
