@@ -54,7 +54,8 @@ THE STEPS, IN ORDER
    When the call comes in, Azure leaves a note saying "you have an incoming
    call". The note goes into a storage mailbox in the cloud (a "queue").
    The program checks that mailbox every couple of seconds. When it finds the
-   note, it answers the call. Old notes from earlier attempts are thrown away.
+   note, it answers the call, but only if it is the call between your two
+   numbers. Other calls are ignored. Handled notes are cleared away at the end.
 
 5. Walk the caller into the meeting room
    - The program first steps into the meeting room itself.
@@ -67,8 +68,10 @@ THE STEPS, IN ORDER
      one, to help with troubleshooting.
 
 6. Tidy up
-   When everything is finished, or if something goes wrong along the way, the
-   program deletes the meeting room so nothing is left lying around.
+   Once the caller is in the meeting room, the program waits. Press ENTER when
+   you are done. It then hangs up the calls it started, clears the handled
+   notes and deletes the meeting room so nothing is left lying around. If
+   something goes wrong along the way, this tidy-up happens straight away.
 
 
 WHO IS WHO IN THE PROGRAM
@@ -83,14 +86,15 @@ WHO IS WHO IN THE PROGRAM
 WHAT YOU NEED BEFORE RUNNING IT
 -------------------------------
   - An Azure account with a Communication Services resource (the calling service).
-  - A phone number bought through that service.
+  - A phone number bought through that service for receiving the call, and a
+    second one to place the test call from.
   - An Azure Storage account with a queue (the "mailbox" for incoming call notes),
     plus a setting (an Event Grid subscription) that tells Azure to put
     incoming-call notes into that queue.
   - The secret "connection strings" (like passwords) for the calling service
-    and the storage account. These are NOT stored in the program. You provide
-    them through your computer's environment settings, so they are never shared
-    by accident.
+    and the storage account. You put them in the appsettings.json file next to
+    the program, together with the phone numbers and the host's identity.
+    Never share or upload that file once it contains real values.
   - A recent version of Microsoft Edge or Google Chrome, with permission to
     use your microphone.
 
@@ -98,6 +102,8 @@ WHAT YOU NEED BEFORE RUNNING IT
 THE FILES
 ---------
   Program.cs                - The main program: the "receptionist" described above.
+  appsettings.json          - Your settings: connection strings, queue name and
+                              the phone numbers and host identity.
   RoomJoinClient\index.html - The web page you use to join the meeting room
                               from your browser.
   README.md                 - Technical setup and troubleshooting instructions.
