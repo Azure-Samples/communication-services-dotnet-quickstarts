@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>ACS Room Join Client</title>
+    <style>
+        body { font-family: Segoe UI, Arial, sans-serif; margin: 2rem; max-width: 720px; }
+        textarea, input { width: 100%; box-sizing: border-box; padding: 6px; margin-bottom: 10px; font-family: monospace; }
+        textarea { height: 90px; }
+        button { padding: 8px 16px; margin-right: 8px; cursor: pointer; }
+        #status { margin-top: 16px; padding: 10px; border-radius: 4px; font-weight: bold; }
+        .status-idle { background: #eee; }
+        .status-connecting { background: #fff3cd; }
+        .status-connected { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        label { font-weight: 600; display: block; margin-top: 10px; }
+        #log { white-space: pre-wrap; background: #111; color: #0f0; padding: 10px; height: 160px; overflow-y: auto; font-family: monospace; font-size: 12px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <h2>Azure Communication Services - Room Join Client</h2>
+    <p>
+        Open this page from the link returned by the sample's <code>/createRoom</code> endpoint and the access
+        token and Room Id are filled in automatically; otherwise paste them below. Click <b>Join Room</b> and
+        wait for "Connected", then continue with <code>/connectToRoom</code> (the sample needs a live
+        participant present in the Room before it can bring in the PSTN caller).
+    </p>
+
+    <label for="token">Access token (presenter)</label>
+    <textarea id="token" placeholder="Filled in automatically, or paste an access token here"></textarea>
+
+    <label for="roomId">Room Id</label>
+    <input id="roomId" type="text" placeholder="Filled in automatically, or paste the Room Id here" />
+
+    <button id="joinBtn">Join Room</button>
+    <button id="leaveBtn" disabled>Leave Room</button>
+
+    <div id="status" class="status-idle" role="status" aria-live="polite">Not connected</div>
+    <div id="log"></div>
+
+    <!-- Azure Communication Services Calling SDK loaded as ES modules via CDN -->
+    <script type="module">
+        import { CallClient } from 'https://esm.sh/@azure/communication-calling@1.46.1';
+        import { AzureCommunicationTokenCredential } from 'https://esm.sh/@azure/communication-common@2.5.0';
+        import { setLogLevel, AzureLogger } from 'https://esm.sh/@azure/logger@1.4.0';
+
+        // Verbose SDK logging to the browser console (F12) for diagnosing call failures.
+        setLogLevel('verbose');
+        AzureLogger.log = (...args) => console.log(...args);
+
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const joinBtn = document.getElementById('joinBtn');
+        const leaveBtn = document.getElementById('leaveBtn');
+
+        let callAgent;
+        let call;
+
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            logEl.textContent += `[${time}] ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function setStatus(text, cssClass) {
+            statusEl.textContent = text;
+            statusEl.className = cssClass;
+        }
+
+        // The sample launches this page with a one-time nonce (?session=...). The token and room id
+        // are fetched once from the local server so the token never appears in the URL or browser history.
+        (async function prefillFromSession() {
+            const session = new URLSearchParams(window.location.search).get('session');
+            if (!session) return;
+            history.replaceState(null, '', window.location.pathname);
+            try {
+                const response = await fetch('/session?id=' + encodeURIComponent(session));
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.token) document.getElementById('token').value = data.token;
+                if (data.roomId) document.getElementById('roomId').value = data.roomId;
+            } catch (e) {
+                console.warn('Could not load session data; paste the token and Room Id manually.', e);
+            }
+        })();
+
+        joinBtn.addEventListener('click', async () => {
+            const token = document.getElementById('token').value.trim();
+            const roomId = document.getElementById('roomId').value.trim();
+
+            if (!token || !roomId) {
+                alert('Please provide both the access token and the Room Id.');
+                return;
+            }
+
+            try {
+                joinBtn.disabled = true;
+                setStatus('Connecting...', 'status-connecting');
+                log('Initializing Calling SDK...');
+
+
+                const callClient = new CallClient();
+                const tokenCredential = new AzureCommunicationTokenCredential(token);
+                callAgent = await callClient.createCallAgent(tokenCredential);
+
+                log(`Joining Room '${roomId}'...`);
+                call = callAgent.join({ roomId: roomId }, {});
+
+                call.on('stateChanged', () => {
+                    log(`Call state changed: ${call.state}`);
+                    if (call.state === 'Connected') {
+                        setStatus(`Connected to room '${roomId}'`, 'status-connected');
+                        leaveBtn.disabled = false;
+                    } else if (call.state === 'Disconnected') {
+                        const reason = call.callEndReason;
+                        if (reason) {
+                            log(`Call ended. code=${reason.code}, subCode=${reason.subCode}, callId=${call.id}`);
+                        }
+                        setStatus('Disconnected', 'status-idle');
+                        joinBtn.disabled = false;
+                        leaveBtn.disabled = true;
+                    }
+                });
+
+                log('Join request sent, waiting for Connected state...');
+            } catch (ex) {
+                console.error(ex);
+                setStatus('Error: ' + ex.message, 'status-error');
+                log('Error: ' + ex.message);
+                joinBtn.disabled = false;
+            }
+        });
+
+        leaveBtn.addEventListener('click', async () => {
+            try {
+                if (call) {
+                    await call.hangUp();
+                    log('Left the room.');
+                }
+                setStatus('Not connected', 'status-idle');
+                joinBtn.disabled = false;
+                leaveBtn.disabled = true;
+            } catch (ex) {
+                setStatus('Error leaving: ' + ex.message, 'status-error');
+                log('Error leaving: ' + ex.message);
+            }
+        });
+    </script>
+</body>
+</html>
