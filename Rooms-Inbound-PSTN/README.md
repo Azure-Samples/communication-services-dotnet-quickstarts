@@ -161,7 +161,7 @@ Azure needs a public address to send events to. Use either option below.
 4. Select the new tunnel in the same dropdown so it is active, then press F5. Visual Studio starts the app and forwards its port through the tunnel.
 5. Copy the tunnel URL from the Output window (**Dev Tunnels**). It looks like `https://<id>-8080.<region>.devtunnels.ms`.
 
-If the tunnel forwards a different port from the one in `Properties/launchSettings.json`, correct it under **Debug > Debug Properties > Dev Tunnels**.
+Make sure the tunnel forwards only the webhook port (8080) and never the operator port (5142). If it forwards a different port, correct it under **Debug > Debug Properties > Dev Tunnels**.
 
 **Option B: from the command line**
 
@@ -270,8 +270,6 @@ The built-in test call (`/dialInboundCall`) only proves the API sequence, becaus
    - The log shows `MoveParticipant succeeded.`
    - **Two-way audio:** speak from the phone and confirm you hear it in the browser, then speak in the browser and confirm you hear it on the phone.
 6. Call `/cleanup`, and confirm it returns `Session cleaned up.` and the phone call ends.
-
-For customer sign-off, record one successful run of this procedure (date, environment, resource region, log excerpt and the two-way audio result). The code in this repository has not been verified with a real call.
 
 ---
 ## Troubleshooting

@@ -243,8 +243,6 @@ belong to your Azure account. To try it with a real caller:
      each other both ways (talk on the phone and listen in the browser, then
      the other way round).
   6. Press /cleanup and check that the phone call ends.
-For a customer sign-off, record one successful run (date, region, log excerpt
-and the two-way audio result). This has not been verified with a real call yet.
 
 WHO IS WHO IN THE PROGRAM
 -------------------------
