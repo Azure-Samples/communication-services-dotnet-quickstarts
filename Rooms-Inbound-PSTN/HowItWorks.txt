@@ -1,5 +1,19 @@
-﻿HOW THIS PROGRAM WORKS - A PLAIN-LANGUAGE EXPLANATION
+HOW THIS PROGRAM WORKS - A PLAIN-LANGUAGE EXPLANATION
 =====================================================
+
+*** PREVIEW NOTICE - PLEASE READ FIRST ***
+This sample uses a BETA programming interface (the "MoveParticipants" call
+feature), and the meeting-room scenario it shows is in PRIVATE PREVIEW.
+  - There is NO promise that it will become generally available (no "GA"
+    commitment), and no support guarantee. It can change or disappear.
+  - Calls into meeting rooms need extra validation. Seeing this sample work
+    somewhere else does not mean the feature is switched on for your account.
+  - Running this program does NOT switch the preview on. Your Azure account
+    must first be enrolled in the Rooms private preview and the MoveParticipants
+    beta (ask your Microsoft account team or the Azure Communication Services
+    preview contact). See "WHAT YOU NEED BEFORE RUNNING IT" below.
+  - Do not use it for real, production work.
+*****************************************
 
 WHAT IS IT FOR?
 ---------------
@@ -98,6 +112,8 @@ BUTTONS YOU PRESS (in order)
   POST /createRoom
     What it does: books the meeting room and gets the host ready to enter it.
     In detail:
+      - Refuses (409) if a room or calls from an earlier run are still active.
+        Press /cleanup first, then try again, so nothing is left running.
       - Creates a new Azure Communication Services Room that lasts 10 days,
         with User1 on the guest list as the "presenter" (the host), and with
         phone dial-out allowed.
@@ -162,6 +178,10 @@ BUTTONS YOU PRESS (in order)
         deleting a room does NOT end a call that is already running, so the
         calls (and their charges) would otherwise carry on.
       - Ignores calls that have already ended.
+      - If any call cannot be hung up, it says so (a "PartialFailure" answer
+        listing those calls), keeps the room and the session, and does NOT
+        say it succeeded. Press the button again to retry; the call may still
+        be running (and costing money) until it succeeds.
       - Deletes the meeting room.
       - Forgets everything about this session so you can start again with
         /createRoom.
@@ -191,16 +211,40 @@ ADDRESSES THAT AZURE CALLS (you don't press these)
     - "ConnectFailed" or "CreateCallFailed": a problem connecting to the
       room or placing the test call, written to the log.
 
+The five buttons above need the operator key and only work on the private
+operator port (5142), never through the public tunnel.
+
 HELPER PAGES FOR THE BROWSER (GET, not shown in Swagger)
 
   GET /roomJoinClient
-    Serves the web page where the host clicks "Join Room". Answers only when
-    reached through "localhost", never through the public tunnel address.
+    Serves the web page where the host clicks "Join Room". Answers only on
+    the private operator port (5142), never through the public tunnel.
 
   GET /session?id=<one-time code>
     Called by that web page to swap the one-time code for the entry pass and
-    room id. It works once; a second try, a wrong code or a request from
-    outside localhost gets "not found".
+    room id. It works once; a second try, a wrong code or a request that
+    did not come in on the operator port gets "not found".
+
+TESTING WITH A REAL PHONE
+-------------------------
+The built-in test call only proves the steps work, because both phone numbers
+belong to your Azure account. To try it with a real caller:
+  1. In appsettings.json, set User3 to the real phone's number (with country
+     code, like +14255550100). It does not have to be an Azure number now,
+     because the program will not dial it. User2 is still your Azure number.
+  2. Create the room, open the join page, click "Join Room", allow the
+     microphone, then press /connectToRoom.
+  3. Do NOT press /dialInboundCall. Instead, call your Azure number (User2)
+     from the real phone. The program answers only if the caller's number
+     matches User3, so don't hide your caller ID.
+  4. Press /moveParticipant. It answers 409 until both calls are connected, so
+     just try again after a few seconds.
+  5. Check that the log says "MoveParticipant succeeded." and that you can hear
+     each other both ways (talk on the phone and listen in the browser, then
+     the other way round).
+  6. Press /cleanup and check that the phone call ends.
+For a customer sign-off, record one successful run (date, region, log excerpt
+and the two-way audio result). This has not been verified with a real call yet.
 
 WHO IS WHO IN THE PROGRAM
 -------------------------
@@ -213,6 +257,9 @@ WHO IS WHO IN THE PROGRAM
 
 WHAT YOU NEED BEFORE RUNNING IT
 -------------------------------
+  - Enrollment in the Rooms private preview and the MoveParticipants beta for
+    your Azure Communication Services resource (see the PREVIEW NOTICE above).
+    Without it, the room and move steps will not work.
   - An Azure account with a Communication Services resource (the calling service).
   - A phone number bought through that service for receiving the call, and a
     second one to place the test call from.
@@ -225,6 +272,10 @@ WHAT YOU NEED BEFORE RUNNING IT
     You put it in the appsettings.json file next to the program, together with
     the tunnel address, the phone numbers and the host's identity.
     Never share or upload that file once it contains real values.
+  - An "operator key" (OperatorApiKey in appsettings.json): any long random
+    string you invent. It acts as a password for the Swagger buttons. On the
+    Swagger page click "Authorize" and paste it; without it every button
+    answers "401 Unauthorized". The program will not start without one.
   - A recent version of Microsoft Edge or Google Chrome, with permission to
     use your microphone.
 

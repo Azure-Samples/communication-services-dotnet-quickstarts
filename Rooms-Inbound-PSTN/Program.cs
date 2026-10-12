@@ -7,13 +7,71 @@ using Azure.Communication.Rooms;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Two listeners, both loopback-only: the webhook port (forward this one through the Dev Tunnel)
+// and the operator port (never forward it). Neither is reachable from other machines on the network.
+int webhookPort = builder.Configuration.GetValue<int?>("WebhookPort") ?? 8080;
+int operatorPort = builder.Configuration.GetValue<int?>("OperatorPort") ?? 5142;
+builder.WebHost.ConfigureKestrel(kestrel =>
+{
+    kestrel.ListenLocalhost(webhookPort, listen => listen.UseHttps());
+    kestrel.ListenLocalhost(operatorPort);
+});
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Description = "Value of OperatorApiKey from appsettings.json. Click Authorize and paste it here.",
+        Name = "X-Api-Key",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "ApiKey" } }, Array.Empty<string>() }
+    });
+});
 var app = builder.Build();
+
+// Only /api/* (the Event Grid and callback webhooks) may be reached on the public port that the Dev Tunnel forwards.
+// Everything else (Swagger, workflow endpoints, join page, token handoff) is served only on the local operator port.
+// The check uses the port the connection arrived on, not the Host header, because Dev Tunnels rewrite Host to localhost.
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.StartsWithSegments("/api") && context.Connection.LocalPort != operatorPort)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
+
+// The workflow endpoints (createRoom, connectToRoom, dialInboundCall, moveParticipant, cleanup) also need the X-Api-Key header.
+// Swagger docs are public on the operator port. The join page and /session are protected by the one-time session code.
+string? operatorApiKey = builder.Configuration["OperatorApiKey"];
+if (string.IsNullOrWhiteSpace(operatorApiKey) || operatorApiKey.StartsWith("<"))
+    throw new ArgumentNullException(paramName: "OperatorApiKey", message: "'OperatorApiKey' is not set in appsettings.json. Use any long random string.");
+byte[] operatorApiKeyBytes = Encoding.UTF8.GetBytes(operatorApiKey);
+string[] openPaths = { "/api", "/swagger", "/roomJoinClient", "/session" };
+app.Use(async (context, next) =>
+{
+    if (!openPaths.Any(path => context.Request.Path.StartsWithSegments(path)))
+    {
+        byte[] supplied = Encoding.UTF8.GetBytes(context.Request.Headers["X-Api-Key"].ToString());
+        if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(supplied), SHA256.HashData(operatorApiKeyBytes)))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+    }
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -120,6 +178,10 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
 // 1. Create the Room and prepare the browser join page.
 app.MapPost("/createRoom", async (ILogger<Program> logger) =>
 {
+    // Don't replace a Room while the previous session's Room or calls are still active; they must be released via /cleanup first.
+    if (session.RoomId is not null || !session.TrackedCalls.IsEmpty)
+        return Results.Conflict("A session is already active. Call /cleanup first, then create a new Room.");
+
     var createRoomOptions = new CreateRoomOptions
     {
         ValidFrom = DateTimeOffset.UtcNow,
@@ -138,7 +200,7 @@ app.MapPost("/createRoom", async (ILogger<Program> logger) =>
     return Results.Ok(new
     {
         roomId = room.Id,
-        next = $"Open https://localhost:<port>/roomJoinClient?session={nonce} in your browser, click 'Join Room', then call /connectToRoom."
+        next = $"Open http://localhost:{operatorPort}/roomJoinClient?session={nonce} in your browser, click 'Join Room', then call /connectToRoom."
     });
 }).WithTags("Rooms Inbound PSTN APIs");
 
@@ -210,48 +272,64 @@ app.MapPost("/moveParticipant", async (ILogger<Program> logger) =>
 app.MapPost("/cleanup", async (ILogger<Program> logger) =>
 {
     // Deleting a Room doesn't end its call, so hang up first.
+    var unresolved = new List<string>();
     foreach (string callConnectionId in session.TrackedCalls.Keys)
     {
         try
         {
             await callAutomationClient.GetCallConnection(callConnectionId).HangUpAsync(true);
             logger.LogInformation("Hung up call connection {Id}.", callConnectionId);
+            session.TrackedCalls.TryRemove(callConnectionId, out _);
         }
         catch (RequestFailedException ex) when (ex.Status == 404 || ex.ErrorCode == "8522")
         {
-            // Already ended.
+            session.TrackedCalls.TryRemove(callConnectionId, out _); // Already ended.
         }
         catch (Exception ex)
         {
             logger.LogWarning("Failed to hang up {Id}: {Message}", callConnectionId, ex.Message);
+            unresolved.Add(callConnectionId);
         }
+    }
+
+    // Keep the session (and the Room) until every call is ended, so calling /cleanup again retries the failed hang-ups.
+    if (unresolved.Count > 0)
+    {
+        return Results.Json(new
+        {
+            status = "PartialFailure",
+            message = "Some calls could not be hung up and may still be active. The Room was not deleted and the session was kept. Call /cleanup again to retry.",
+            unresolvedCallConnectionIds = unresolved
+        }, statusCode: StatusCodes.Status500InternalServerError);
     }
 
     if (session.RoomId is not null)
     {
-        await roomsClient.DeleteRoomAsync(session.RoomId);
-        logger.LogInformation("Deleted Room {RoomId}.", session.RoomId);
+        try
+        {
+            await roomsClient.DeleteRoomAsync(session.RoomId);
+            logger.LogInformation("Deleted Room {RoomId}.", session.RoomId);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            logger.LogInformation("Room {RoomId} was already deleted.", session.RoomId);
+        }
     }
 
     session.Reset();
-    return Results.Ok("Session cleaned up.");
-}).WithTags("Rooms Inbound PSTN APIs");
+    return Results.Ok("Session cleaned up.");}).WithTags("Rooms Inbound PSTN APIs");
 
-// --- Browser join client (served from localhost only) ---
+// --- Browser join client (operator port only) ---
 string joinClientPath = Path.Combine(AppContext.BaseDirectory, "RoomJoinClient", "index.html");
 
-// The page and the token handoff are only served to localhost so they aren't reachable through the Dev Tunnel.
-bool IsLocalhost(HttpContext context) =>
-    string.Equals(context.Request.Host.Host, "localhost", StringComparison.OrdinalIgnoreCase);
-
 app.MapGet("/roomJoinClient", (HttpContext context) =>
-    IsLocalhost(context) && File.Exists(joinClientPath)
+    File.Exists(joinClientPath)
         ? Results.File(joinClientPath, "text/html; charset=utf-8")
         : Results.NotFound()).ExcludeFromDescription();
 
 app.MapGet("/session", (string id, HttpContext context) =>
 {
-    if (!IsLocalhost(context) || !session.TryRedeemJoinSession(id, out var data)) return Results.NotFound();
+    if (!session.TryRedeemJoinSession(id, out var data)) return Results.NotFound();
     context.Response.Headers.CacheControl = "no-store";
     return Results.Json(new { token = data.Token, roomId = data.RoomId });
 }).ExcludeFromDescription();
