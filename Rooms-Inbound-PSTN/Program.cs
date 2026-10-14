@@ -126,13 +126,27 @@ app.MapPost("/api/incomingCall", async (EventGridEvent[] eventGridEvents, ILogge
                 continue;
             }
 
-            var answerOptions = new AnswerCallOptions(incomingCallData.IncomingCallContext, callbackUri);
-            AnswerCallResult answerResult = await callAutomationClient.AnswerCallAsync(answerOptions);
-            session.SourceCallConnectionId = answerResult.CallConnectionProperties.CallConnectionId;
-            session.Track(session.SourceCallConnectionId);
+            // A closing session must not take on new calls, or cleanup could miss them.
+            if (!session.TryEnterOperation())
+            {
+                logger.LogInformation("Session is closing; not answering call from {From} to {To}.", fromRawId, toRawId);
+                continue;
+            }
 
-            logger.LogInformation("Answered incoming PSTN call. From: {From} To: {To} CallConnectionId: {Id} CorrelationId: {Correlation}",
-                fromRawId, toRawId, session.SourceCallConnectionId, incomingCallData.CorrelationId);
+            try
+            {
+                var answerOptions = new AnswerCallOptions(incomingCallData.IncomingCallContext, callbackUri);
+                AnswerCallResult answerResult = await callAutomationClient.AnswerCallAsync(answerOptions);
+                session.SourceCallConnectionId = answerResult.CallConnectionProperties.CallConnectionId;
+                session.Track(session.SourceCallConnectionId);
+
+                logger.LogInformation("Answered incoming PSTN call. From: {From} To: {To} CallConnectionId: {Id} CorrelationId: {Correlation}",
+                    fromRawId, toRawId, session.SourceCallConnectionId, incomingCallData.CorrelationId);
+            }
+            finally
+            {
+                session.ExitOperation();
+            }
         }
     }
 
@@ -178,57 +192,85 @@ app.MapPost("/api/callbacks", (CloudEvent[] cloudEvents, ILogger<Program> logger
 // 1. Create the Room and prepare the browser join page.
 app.MapPost("/createRoom", async (ILogger<Program> logger) =>
 {
-    // Don't replace a Room while the previous session's Room or calls are still active; they must be released via /cleanup first.
-    if (session.RoomId is not null || !session.TrackedCalls.IsEmpty)
-        return Results.Conflict("A session is already active. Call /cleanup first, then create a new Room.");
+    // Reserve the session before any remote call, so overlapping requests can't create two Rooms and a
+    // previous session's Room or calls must be released via /cleanup first.
+    if (!session.TryBeginCreate())
+        return Results.Conflict("A session is already active or being created or closed. Call /cleanup first, then create a new Room.");
 
-    var createRoomOptions = new CreateRoomOptions
+    string? createdRoomId = null;
+    try
     {
-        ValidFrom = DateTimeOffset.UtcNow,
-        ValidUntil = DateTimeOffset.UtcNow.AddDays(10),
-        PstnDialOutEnabled = true,
-        Participants = new List<RoomParticipant> { new RoomParticipant(user1) { Role = ParticipantRole.Presenter } }
-    };
+        var createRoomOptions = new CreateRoomOptions
+        {
+            ValidFrom = DateTimeOffset.UtcNow,
+            ValidUntil = DateTimeOffset.UtcNow.AddDays(10),
+            PstnDialOutEnabled = true,
+            Participants = new List<RoomParticipant> { new RoomParticipant(user1) { Role = ParticipantRole.Presenter } }
+        };
 
-    CommunicationRoom room = await roomsClient.CreateRoomAsync(createRoomOptions);
-    session.RoomId = room.Id;
+        CommunicationRoom room = await roomsClient.CreateRoomAsync(createRoomOptions);
+        createdRoomId = room.Id;
 
-    var tokenResponse = await identityClient.GetTokenAsync(user1, new[] { CommunicationTokenScope.VoIP });
-    session.CreateJoinSession(tokenResponse.Value.Token, room.Id, out string nonce);
+        var tokenResponse = await identityClient.GetTokenAsync(user1, new[] { CommunicationTokenScope.VoIP });
+        session.CreateJoinSession(tokenResponse.Value.Token, room.Id, out string nonce);
 
-    logger.LogInformation("Created Room {RoomId}.", room.Id);
-    return Results.Ok(new
+        logger.LogInformation("Created Room {RoomId}.", room.Id);
+        return Results.Ok(new
+        {
+            roomId = room.Id,
+            next = $"Open http://localhost:{operatorPort}/roomJoinClient?session={nonce} in your browser, click 'Join Room', then call /connectToRoom."
+        });
+    }
+    finally
     {
-        roomId = room.Id,
-        next = $"Open http://localhost:{operatorPort}/roomJoinClient?session={nonce} in your browser, click 'Join Room', then call /connectToRoom."
-    });
+        // If the Room was created but a later step failed, keep its id so /cleanup deletes it.
+        // If creation itself failed, release the reservation.
+        session.CompleteCreate(createdRoomId);
+    }
 }).WithTags("Rooms Inbound PSTN APIs");
 
 // 2. Connect Call Automation to the Room call (a participant must already have joined it).
 app.MapPost("/connectToRoom", async (ILogger<Program> logger) =>
 {
     if (session.RoomId is null) return Results.Conflict("Call /createRoom first.");
+    if (!session.TryEnterOperation()) return Results.Conflict("The session is closing. Wait for /cleanup to finish.");
 
-    var connectOptions = new ConnectCallOptions(new RoomCallLocator(session.RoomId), callbackUri);
-    ConnectCallResult connectResult = await callAutomationClient.ConnectCallAsync(connectOptions);
-    session.RoomCallConnectionId = connectResult.CallConnectionProperties.CallConnectionId;
-    session.Track(session.RoomCallConnectionId);
+    try
+    {
+        var connectOptions = new ConnectCallOptions(new RoomCallLocator(session.RoomId), callbackUri);
+        ConnectCallResult connectResult = await callAutomationClient.ConnectCallAsync(connectOptions);
+        session.RoomCallConnectionId = connectResult.CallConnectionProperties.CallConnectionId;
+        session.Track(session.RoomCallConnectionId);
 
-    logger.LogInformation("Connecting to Room {RoomId}. Room call connection id: {Id}", session.RoomId, session.RoomCallConnectionId);
-    return Results.Ok(new { roomCallConnectionId = session.RoomCallConnectionId });
+        logger.LogInformation("Connecting to Room {RoomId}. Room call connection id: {Id}", session.RoomId, session.RoomCallConnectionId);
+        return Results.Ok(new { roomCallConnectionId = session.RoomCallConnectionId });
+    }
+    finally
+    {
+        session.ExitOperation();
+    }
 }).WithTags("Rooms Inbound PSTN APIs");
 
 // 3. Place the test call from user3 to user2. It raises IncomingCall, which /api/incomingCall answers.
 app.MapPost("/dialInboundCall", async (ILogger<Program> logger) =>
 {
-    var callInvite = new CallInvite(user2, user3);
-    var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
-    CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
-    string outboundCallConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
-    session.Track(outboundCallConnectionId);
+    if (!session.TryEnterOperation()) return Results.Conflict("The session is closing. Wait for /cleanup to finish.");
 
-    logger.LogInformation("Placed outbound call from {From} to {To}. CallConnectionId: {Id}", user3.PhoneNumber, user2.PhoneNumber, outboundCallConnectionId);
-    return Results.Ok(new { outboundCallConnectionId });
+    try
+    {
+        var callInvite = new CallInvite(user2, user3);
+        var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
+        CreateCallResult createCallResult = await callAutomationClient.CreateCallAsync(createCallOptions);
+        string outboundCallConnectionId = createCallResult.CallConnectionProperties.CallConnectionId;
+        session.Track(outboundCallConnectionId);
+
+        logger.LogInformation("Placed outbound call from {From} to {To}. CallConnectionId: {Id}", user3.PhoneNumber, user2.PhoneNumber, outboundCallConnectionId);
+        return Results.Ok(new { outboundCallConnectionId });
+    }
+    finally
+    {
+        session.ExitOperation();
+    }
 }).WithTags("Rooms Inbound PSTN APIs");
 
 // 4. Move the answered PSTN caller into the Room call.
@@ -271,54 +313,71 @@ app.MapPost("/moveParticipant", async (ILogger<Program> logger) =>
 // 5. End the session: hang up every call this app created, then delete the Room.
 app.MapPost("/cleanup", async (ILogger<Program> logger) =>
 {
-    // Deleting a Room doesn't end its call, so hang up first.
-    var unresolved = new List<string>();
-    foreach (string callConnectionId in session.TrackedCalls.Keys)
+    // Mark the session as closing first, so no new Room or call can join it while we tear it down.
+    if (!session.TryBeginClose())
+        return Results.Conflict("Room creation or another cleanup is in progress. Try again shortly.");
+
+    bool cleaned = false;
+    try
     {
-        try
-        {
-            await callAutomationClient.GetCallConnection(callConnectionId).HangUpAsync(true);
-            logger.LogInformation("Hung up call connection {Id}.", callConnectionId);
-            session.TrackedCalls.TryRemove(callConnectionId, out _);
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404 || ex.ErrorCode == "8522")
-        {
-            session.TrackedCalls.TryRemove(callConnectionId, out _); // Already ended.
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Failed to hang up {Id}: {Message}", callConnectionId, ex.Message);
-            unresolved.Add(callConnectionId);
-        }
-    }
+        // Let operations that started before the session closed finish, so their calls are in the snapshot below.
+        if (!await session.WaitForOperationsAsync(TimeSpan.FromSeconds(30)))
+            return Results.Conflict("Operations on the session are still in progress. Call /cleanup again shortly.");
 
-    // Keep the session (and the Room) until every call is ended, so calling /cleanup again retries the failed hang-ups.
-    if (unresolved.Count > 0)
+        // Deleting a Room doesn't end its call, so hang up first.
+        var unresolved = new List<string>();
+        foreach (string callConnectionId in session.TrackedCalls.Keys)
+        {
+            try
+            {
+                await callAutomationClient.GetCallConnection(callConnectionId).HangUpAsync(true);
+                logger.LogInformation("Hung up call connection {Id}.", callConnectionId);
+                session.TrackedCalls.TryRemove(callConnectionId, out _);
+            }
+            catch (RequestFailedException ex) when (ex.Status == 404 || ex.ErrorCode == "8522")
+            {
+                session.TrackedCalls.TryRemove(callConnectionId, out _); // Already ended.
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Failed to hang up {Id}: {Message}", callConnectionId, ex.Message);
+                unresolved.Add(callConnectionId);
+            }
+        }
+
+        // Keep the session (and the Room) until every call is ended, so calling /cleanup again retries the failed hang-ups.
+        if (unresolved.Count > 0)
+        {
+            return Results.Json(new
+            {
+                status = "PartialFailure",
+                message = "Some calls could not be hung up and may still be active. The Room was not deleted and the session was kept. Call /cleanup again to retry.",
+                unresolvedCallConnectionIds = unresolved
+            }, statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        if (session.RoomId is not null)
+        {
+            try
+            {
+                await roomsClient.DeleteRoomAsync(session.RoomId);
+                logger.LogInformation("Deleted Room {RoomId}.", session.RoomId);
+            }
+            catch (RequestFailedException ex) when (ex.Status == 404)
+            {
+                logger.LogInformation("Room {RoomId} was already deleted.", session.RoomId);
+            }
+        }
+
+        cleaned = true;
+        return Results.Ok("Session cleaned up.");
+    }
+    finally
     {
-        return Results.Json(new
-        {
-            status = "PartialFailure",
-            message = "Some calls could not be hung up and may still be active. The Room was not deleted and the session was kept. Call /cleanup again to retry.",
-            unresolvedCallConnectionIds = unresolved
-        }, statusCode: StatusCodes.Status500InternalServerError);
+        // Resets the session on success. Otherwise the session stays active, with its unresolved calls, for a retry.
+        session.EndClose(cleaned);
     }
-
-    if (session.RoomId is not null)
-    {
-        try
-        {
-            await roomsClient.DeleteRoomAsync(session.RoomId);
-            logger.LogInformation("Deleted Room {RoomId}.", session.RoomId);
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            logger.LogInformation("Room {RoomId} was already deleted.", session.RoomId);
-        }
-    }
-
-    session.Reset();
-    return Results.Ok("Session cleaned up.");}).WithTags("Rooms Inbound PSTN APIs");
-
+}).WithTags("Rooms Inbound PSTN APIs");
 // --- Browser join client (operator port only) ---
 string joinClientPath = Path.Combine(AppContext.BaseDirectory, "RoomJoinClient", "index.html");
 
@@ -369,11 +428,85 @@ class SessionState
 
     public bool TryRedeemJoinSession(string nonce, out JoinData data) => joinSessions.TryRemove(nonce, out data!);
 
-    public void Reset()
+    // --- Session lifecycle: Idle -> Creating -> Active -> Closing -> Idle. All transitions happen under one lock. ---
+    enum Phase { Idle, Creating, Active, Closing }
+    readonly object gate = new();
+    Phase phase = Phase.Idle;
+    int operationsInFlight;
+
+    // Reserves the session for Room creation. Fails if a session is active, being created or being closed.
+    public bool TryBeginCreate()
+    {
+        lock (gate)
+        {
+            if (phase != Phase.Idle || RoomId is not null || !TrackedCalls.IsEmpty) return false;
+            phase = Phase.Creating;
+            return true;
+        }
+    }
+
+    // Pass the Room id if one was created (even if a later step failed), or null to release the reservation.
+    public void CompleteCreate(string? roomId)
+    {
+        lock (gate)
+        {
+            RoomId = roomId;
+            phase = roomId is null && TrackedCalls.IsEmpty ? Phase.Idle : Phase.Active;
+        }
+    }
+
+    // Registers an operation that may add a call to the session. Refused once the session is closing.
+    public bool TryEnterOperation()
+    {
+        lock (gate)
+        {
+            if (phase == Phase.Closing) return false;
+            operationsInFlight++;
+            return true;
+        }
+    }
+
+    public void ExitOperation()
+    {
+        lock (gate) { operationsInFlight--; }
+    }
+
+    // Fails while a Room is being created or another cleanup is running.
+    public bool TryBeginClose()
+    {
+        lock (gate)
+        {
+            if (phase is Phase.Creating or Phase.Closing) return false;
+            phase = Phase.Closing;
+            return true;
+        }
+    }
+
+    public async Task<bool> WaitForOperationsAsync(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (true)
+        {
+            lock (gate) { if (operationsInFlight == 0) return true; }
+            if (DateTime.UtcNow >= deadline) return false;
+            await Task.Delay(50);
+        }
+    }
+
+    public void EndClose(bool cleaned)
+    {
+        lock (gate)
+        {
+            if (cleaned) Reset();
+            else phase = Phase.Active;
+        }
+    }
+
+    void Reset()
     {
         RoomId = RoomCallConnectionId = SourceCallConnectionId = null;
         TrackedCalls.Clear();
         ConnectedCalls.Clear();
         joinSessions.Clear();
-    }
-}
+        phase = Phase.Idle;
+    }}

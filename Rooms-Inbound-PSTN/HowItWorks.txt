@@ -1,18 +1,22 @@
 HOW THIS PROGRAM WORKS - A PLAIN-LANGUAGE EXPLANATION
 =====================================================
 
-*** PREVIEW NOTICE - PLEASE READ FIRST ***
+*** PREVIEW STATUS - PLEASE READ FIRST ***
 This sample uses a BETA programming interface (the "MoveParticipants" call
 feature), and the meeting-room scenario it shows is in PRIVATE PREVIEW.
-  - There is NO promise that it will become generally available (no "GA"
-    commitment), and no support guarantee. It can change or disappear.
+  - There is NO promise that either will become generally available (no "GA"
+    commitment).
   - Calls into meeting rooms need extra validation. Seeing this sample work
     somewhere else does not mean the feature is switched on for your account.
   - Running this program does NOT switch the preview on. Your Azure account
     must first be enrolled in the Rooms private preview and the MoveParticipants
     beta (ask your Microsoft account team or the Azure Communication Services
     preview contact). See "WHAT YOU NEED BEFORE RUNNING IT" below.
-  - Do not use it for real, production work.
+  - Support terms for the interface and the room feature come from your
+    private-preview agreement, not from this sample.
+
+ABOUT THIS SAMPLE: it is demonstration code, not ready for real, production
+work. It keeps its state in memory and is meant for local testing only.
 *****************************************
 
 WHAT IS IT FOR?
@@ -114,6 +118,8 @@ BUTTONS YOU PRESS (in order)
     In detail:
       - Refuses (409) if a room or calls from an earlier run are still active.
         Press /cleanup first, then try again, so nothing is left running.
+        Two /createRoom presses at the same moment can't both succeed: the
+        first reserves the session, the second gets 409.
       - Creates a new Azure Communication Services Room that lasts 10 days,
         with User1 on the guest list as the "presenter" (the host), and with
         phone dial-out allowed.
@@ -178,6 +184,10 @@ BUTTONS YOU PRESS (in order)
         deleting a room does NOT end a call that is already running, so the
         calls (and their charges) would otherwise carry on.
       - Ignores calls that have already ended.
+      - Starts by marking the session as "closing": from then on no new room or
+        call (including a phone call answered a moment too late) can join it.
+        It waits for anything already in progress before hanging up. If a room
+        is still being created, or another clean-up is running, it says 409.
       - If any call cannot be hung up, it says so (a "PartialFailure" answer
         listing those calls), keeps the room and the session, and does NOT
         say it succeeded. Press the button again to retry; the call may still

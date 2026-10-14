@@ -7,12 +7,13 @@
 This sample demonstrates how to bring an inbound PSTN caller into an Azure Communication Services Room using the Call Automation **MoveParticipants** API.
 
 > [!IMPORTANT]
-> **Preview notice.** This sample uses a **beta** Call Automation API (`Azure.Communication.CallAutomation` 1.6.0-beta.1, `MoveParticipants`), and the Room scenario it demonstrates is in **private preview**.
-> - There is **no GA commitment** or support guarantee for the API, the Room scenario or this sample. Behavior, names and availability can change or be removed without notice.
+> **Preview status.** This sample uses a **beta** Call Automation API (`Azure.Communication.CallAutomation` 1.6.0-beta.1, `MoveParticipants`), and the Room scenario it demonstrates is in **private preview**.
+> - There is **no GA commitment** for the API or the Room scenario.
 > - Room calls require **additional validation**. A call that works for one resource or region is not evidence that the feature is enabled for yours.
 > - Running this sample does **not** enable the preview for your resource. You must be onboarded to the private preview first (see [Preview onboarding prerequisites](#preview-onboarding-prerequisites)).
-> - Do not use this sample or the beta API in production workloads.
-
+> - Support terms for the API and the Room scenario are set by your private-preview agreement, not by this sample.
+>
+> **About this sample.** It is demonstration code, not production-ready. It keeps its state in memory and is meant for local testing only.
 ---
 ## Table of Contents
 - [Overview](#overview)
@@ -80,11 +81,11 @@ Run the steps in order from Swagger (`/swagger`):
 
 | Endpoint | What it does |
 |---|---|
-| `POST /createRoom` | Creates a 10-day Room with `User1` as `Presenter` and PSTN dial-out enabled, stores the Room id, issues a VoIP access token for `User1` and creates a one-time `session` code for it. Returns the Room id and the join-page address. The token itself is never returned. Returns 409 if a Room or calls from a previous run are still active; call `/cleanup` first. |
+| `POST /createRoom` | Creates a 10-day Room with `User1` as `Presenter` and PSTN dial-out enabled, stores the Room id, issues a VoIP access token for `User1` and creates a one-time `session` code for it. Returns the Room id and the join-page address. The token itself is never returned. Returns 409 if a Room or calls from a previous run are still active, or if another `/createRoom` or `/cleanup` is in progress; call `/cleanup` first. The session is reserved before the Room is created, so overlapping requests can't create two Rooms. |
 | `POST /connectToRoom` | Returns 409 if `/createRoom` hasn't been called. Otherwise calls `ConnectCallAsync` with a `RoomCallLocator` (this needs a participant to have already joined the Room from the browser) and stores the Room call connection id. Returns that id; the call becomes usable once `CallConnected` arrives on `/api/callbacks`. |
 | `POST /dialInboundCall` | Calls `CreateCallAsync` to `User2` with `User3` as the caller ID, which must be an ACS-owned number. The call raises `IncomingCall`, which `/api/incomingCall` answers. Returns the outbound call connection id. |
 | `POST /moveParticipant` | Returns 409 if the Room call isn't connected or the inbound call hasn't been answered, and 409 until `CallConnected` has been received for **both** calls. Then calls `MoveParticipantsAsync` to move `User3` from the answered call into the Room call. Returns the Azure error (for example `8522`) if it fails. The final result arrives on `/api/callbacks` and is logged. |
-| `POST /cleanup` | Hangs up every call the app created or answered (the Room call, the outbound call and the answered call), ignoring calls that already ended, then deletes the Room and resets the session. If any hang-up fails, it returns a 500 `PartialFailure` result listing the unresolved call ids, keeps the session and the Room, and does not report success; call it again to retry. Deleting a Room doesn't end its call, so the hang-up is required. |
+| `POST /cleanup` | Hangs up every call the app created or answered (the Room call, the outbound call and the answered call), ignoring calls that already ended, then deletes the Room and resets the session. If any hang-up fails, it returns a 500 `PartialFailure` result listing the unresolved call ids, keeps the session and the Room, and does not report success; call it again to retry. It first marks the session as closing, so no new Room or call (including a late-answered incoming call) can join while it runs, and waits for operations already in progress before hanging up. It returns 409 if a Room is still being created or another cleanup is running. Deleting a Room doesn't end its call, so the hang-up is required. |
 
 ### Webhook endpoints (Azure calls these)
 
@@ -290,7 +291,7 @@ The built-in test call (`/dialInboundCall`) only proves the API sequence, becaus
 ### 4. Browser Join Client Issues
 - `Cannot destructure property 'CallClient' of 'window.AzureCommunicationCalling'`: an old version of the page that used `<script src>` tags. Use the current `index.html`, which imports the SDK as ES modules.
 - Join Room button does nothing: script error or blocked CDN. Check the browser console (F12) and confirm `esm.sh` is reachable.
-- The join page fields are empty: the one-time `session` code was already used or the app restarted. Call `/cleanup` and then `/createRoom` again (`/createRoom` returns 409 while a session is active), and open the page on `http://localhost:5142`, not through the Dev Tunnel.
+- The join page fields are empty: the one-time `session` code was already used or the app restarted. Call `/cleanup` and then `/createRoom` again (`/createRoom` returns 409 while a session is active or being created or closed), and open the page on `http://localhost:5142`, not through the Dev Tunnel.
 - Browser call ends with `code=500, subCode=5701`: a failure on the Azure side or in your network. Check the verbose logs in the F12 console, try another network or VPN setting, and give the logged `callId` to Azure support.
 
 ### 5. Move Participant Errors
