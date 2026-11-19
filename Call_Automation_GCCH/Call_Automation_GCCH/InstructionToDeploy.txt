@@ -1,0 +1,16 @@
+Install Git Bash 
+
+Open Git Bash
+
+Navigate to deployment file location
+
+<Drive>:/<Drive>/Call_Automation_GCCH/Call_Automation_GCCH
+
+Execute following command to create executable.
+chmod +x gcchDeploy.sh
+
+Execute following command to deploy
+./gcchDeploy.sh
+
+https://<app-name>.scm.azurewebsites.net/swagger/index.html
+
