@@ -1,0 +1,61 @@
+@page
+@model LogsModel
+@{
+    ViewData["Title"] = "Call Logs";
+}
+
+<h1>Call Logs</h1>
+
+<div class="card">
+    @if (Model.CompletedCalls.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <p>No completed calls yet.</p>
+        </div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Caller ID</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>Started</th>
+                    <th>Ended</th>
+                    <th>Transcript</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var call in Model.CompletedCalls)
+                {
+                    <tr>
+                        <td>@call.CallerId</td>
+                        <td>
+                            <span class="badge badge-@call.Status.ToString().ToLower()">@call.Status</span>
+                        </td>
+                        <td>@call.Duration.ToString(@"hh\:mm\:ss")</td>
+                        <td>@call.StartTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@call.EndTime?.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>
+                            @{
+                                var transcriptCount = call.GetTranscriptSnapshot().Count;
+                            }
+                            @if (transcriptCount > 0)
+                            {
+                                <a href="/CallDetail?id=@call.CorrelationId&completed=true" class="btn-link">
+                                    View (@transcriptCount entries)
+                                </a>
+                            }
+                            else
+                            {
+                                <span style="color: var(--text-secondary);">No transcript</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

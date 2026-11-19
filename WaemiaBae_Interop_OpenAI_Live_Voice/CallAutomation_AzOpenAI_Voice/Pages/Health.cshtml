@@ -1,0 +1,61 @@
+@page
+@model HealthModel
+@{
+    ViewData["Title"] = "Health Status";
+}
+
+<h1>Health Status</h1>
+
+<div class="health-grid">
+    <div class="card health-item">
+        <div class="health-indicator @(Model.MediaSdkHealthy ? "healthy" : "unknown")"></div>
+        <div>
+            <div class="health-name">Media SDK</div>
+            <div class="health-detail">Origin: @Model.MediaServiceOrigin</div>
+        </div>
+    </div>
+    <div class="card health-item">
+        <div class="health-indicator @(Model.AcsConfigured ? "healthy" : "unhealthy")"></div>
+        <div>
+            <div class="health-name">Azure Communication Services</div>
+            <div class="health-detail">@(Model.AcsConfigured ? "Connection string configured" : "Not configured")</div>
+        </div>
+    </div>
+    <div class="card health-item">
+        <div class="health-indicator @(Model.OpenAiConfigured ? "healthy" : "unhealthy")"></div>
+        <div>
+            <div class="health-name">Azure OpenAI</div>
+            <div class="health-detail">
+                @if (Model.OpenAiConfigured)
+                {
+                    <text>Endpoint: @Model.OpenAiEndpoint | Model: @Model.OpenAiModel</text>
+                }
+                else
+                {
+                    <text>Not configured</text>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="card health-item">
+        <div class="health-indicator healthy"></div>
+        <div>
+            <div class="health-name">Application</div>
+            <div class="health-detail">Active calls: @Model.ActiveCallCount | Base URL: @Model.AppBaseUrl</div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+    <h2>Configuration Summary</h2>
+    <table>
+        <tbody>
+            <tr><td style="font-weight:600; width:250px;">App Base URL</td><td>@Model.AppBaseUrl</td></tr>
+            <tr><td style="font-weight:600;">Media Service Origin</td><td>@Model.MediaServiceOrigin</td></tr>
+            <tr><td style="font-weight:600;">ACS Configured</td><td>@(Model.AcsConfigured ? "✅ Yes" : "❌ No")</td></tr>
+            <tr><td style="font-weight:600;">OpenAI Endpoint</td><td>@(Model.OpenAiEndpoint ?? "Not set")</td></tr>
+            <tr><td style="font-weight:600;">OpenAI Model</td><td>@(Model.OpenAiModel ?? "Not set")</td></tr>
+            <tr><td style="font-weight:600;">System Prompt</td><td>@(string.IsNullOrEmpty(Model.SystemPrompt) ? "Default" : "Custom")</td></tr>
+        </tbody>
+    </table>
+</div>

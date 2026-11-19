@@ -1,0 +1,139 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Active Calls";
+}
+
+<h1>Active Calls</h1>
+
+<div class="stats-row" id="stats">
+    <div class="stat-card">
+        <div class="stat-value" id="active-count">@Model.ActiveCalls.Count</div>
+        <div class="stat-label">Active Calls</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="total-count">@Model.TotalCalls</div>
+        <div class="stat-label">Total Calls</div>
+    </div>
+</div>
+
+<div class="card">
+    <div id="calls-table">
+        @if (Model.ActiveCalls.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">📞</div>
+                <p>No active calls. Waiting for incoming calls...</p>
+            </div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Caller ID</th>
+                        <th>Status</th>
+                        <th>Media SDK</th>
+                        <th>Remote Streams</th>
+                        <th>Media Pkts (S/R)</th>
+                        <th>OpenAI Pkts (S/R)</th>
+                        <th>Dropped</th>
+                        <th>Resource ID</th>
+                        <th>Bot Endpoint ID</th>
+                        <th>Media Session GUID</th>
+                        <th>Duration</th>
+                        <th>Started</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="calls-body">
+                    @foreach (var call in Model.ActiveCalls)
+                    {
+                        var audioCount = call.RoomConnector?.RemoteAudioStreamCount ?? 0;
+                        var dataCount = call.RoomConnector?.RemoteDataStreamCount ?? 0;
+                        var streams = call.RoomConnector?.RemoteStreams ?? Array.Empty<RemoteStreamInfo>();
+                        <tr>
+                            <td>@call.CallerId</td>
+                            <td><span class="badge badge-@call.Status.ToString().ToLower()">@call.Status</span></td>
+                            <td><span class="badge badge-@((call.RoomConnector?.MediaConnectionState ?? "—").ToLower())">@(call.RoomConnector?.MediaConnectionState ?? "—")</span></td>
+                            <td title="@string.Join(", ", streams.Select(s => s.StreamType + ":" + s.StreamId + " " + s.EndpointId))">
+                                🔊 @(audioCount) 📡 @(dataCount)
+                            </td>
+                            <td>@(call.MediaHandler?.MediaPacketsSent ?? 0) / @(call.RoomConnector?.MediaPacketsReceived ?? 0)</td>
+                            <td>@(call.AiService?.OpenAIPacketsSent ?? 0) / @(call.AiService?.OpenAIPacketsReceived ?? 0)</td>
+                            <td>@(call.RoomConnector?.DataPacketsDropped ?? 0)</td>
+                            <td style="font-size: 11px; word-break: break-all;">@(call.ResourceId ?? "—")</td>
+                            <td style="font-size: 11px; word-break: break-all;">@(call.BotEndpointId ?? "—")</td>
+                            <td style="font-size: 11px; word-break: break-all;">@(call.MediaSessionId ?? "—")</td>
+                            <td>@call.Duration.ToString(@"hh\:mm\:ss")</td>
+                            <td>@call.StartTime.ToString("HH:mm:ss")</td>
+                            <td>
+                                <a href="/CallDetail?id=@call.CorrelationId" class="btn btn-sm btn-primary">Transcript</a>
+                                <button class="btn btn-sm" style="background:#0078d4;color:#fff" onclick="sendTestAudio('@call.CorrelationId','media')">🔊 Media SDK</button>
+                                <button class="btn btn-sm" style="background:#107c10;color:#fff" onclick="sendTestAudio('@call.CorrelationId','openai')">🤖 OpenAI</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    startPolling('/api/calls/active', function(data) {
+        const sessions = data.activeSessions;
+        document.getElementById('active-count').textContent = sessions.length;
+        document.getElementById('total-count').textContent = data.total;
+        
+        const container = document.getElementById('calls-table');
+        if (sessions.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📞</div><p>No active calls. Waiting for incoming calls...</p></div>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Caller ID</th><th>Status</th><th>Media SDK</th><th>Remote Streams</th><th>Media Pkts (S/R)</th><th>OpenAI Pkts (S/R)</th><th>Dropped</th><th>Resource ID</th><th>Bot Endpoint ID</th><th>Media Session GUID</th><th>Duration</th><th>Started</th><th>Actions</th></tr></thead><tbody>';
+        sessions.forEach(function(s) {
+            const badgeClass = s.Status.toLowerCase();
+            const mediaSdkStatus = s.MediaSdkStatus || '—';
+            const streamDetails = (s.RemoteStreams || []).map(function(rs) { return rs.StreamType + ':' + rs.StreamId + ' ' + rs.EndpointId; }).join(', ');
+            html += '<tr>';
+            html += '<td>' + s.CallerId + '</td>';
+            html += '<td><span class="badge badge-' + badgeClass + '">' + s.Status + '</span></td>';
+            html += '<td><span class="badge badge-' + mediaSdkStatus.toLowerCase() + '">' + mediaSdkStatus + '</span></td>';
+            html += '<td title="' + streamDetails + '">🔊' + (s.RemoteAudioStreams || 0) + ' 📡' + (s.RemoteDataStreams || 0) + '</td>';
+            html += '<td>' + (s.MediaSdkSent || 0) + ' / ' + (s.MediaSdkRecv || 0) + '</td>';
+            html += '<td>' + (s.OpenAISent || 0) + ' / ' + (s.OpenAIRecv || 0) + '</td>';
+            html += '<td>' + (s.DataDropped || 0) + '</td>';
+            html += '<td style="font-size:11px;word-break:break-all">' + (s.ResourceId || '—') + '</td>';
+            html += '<td style="font-size:11px;word-break:break-all">' + (s.BotEndpointId || '—') + '</td>';
+            html += '<td style="font-size:11px;word-break:break-all">' + (s.MediaSessionId || '—') + '</td>';
+            html += '<td>' + s.Duration + '</td>';
+            html += '<td>' + new Date(s.StartTime).toLocaleTimeString() + '</td>';
+            html += '<td>';
+            html += '<a href="/CallDetail?id=' + s.CorrelationId + '" class="btn btn-sm btn-primary">Transcript</a> ';
+            html += '<button class="btn btn-sm" style="background:#0078d4;color:#fff" onclick="sendTestAudio(\'' + s.CorrelationId + '\',\'media\')">🔊 Media SDK</button> ';
+            html += '<button class="btn btn-sm" style="background:#107c10;color:#fff" onclick="sendTestAudio(\'' + s.CorrelationId + '\',\'openai\')">🤖 OpenAI</button>';
+            html += '</td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    });
+
+    async function sendTestAudio(callId, target) {
+        try {
+            const resp = await fetch('/api/calls/' + callId + '/test/' + target, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert('✅ ' + data.message);
+            } else {
+                alert('❌ ' + (data.error || 'Request failed'));
+            }
+        } catch (e) {
+            alert('❌ Error: ' + e.message);
+        }
+    }
+</script>
+}

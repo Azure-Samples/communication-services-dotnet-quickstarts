@@ -1,0 +1,271 @@
+@page
+@model CallDetailModel
+@{
+    ViewData["Title"] = "Call Detail";
+}
+
+<h1>
+    Call Detail
+    @if (Model.Session != null)
+    {
+        <span class="badge badge-@Model.Session.Status.ToString().ToLower()" style="font-size: 14px; vertical-align: middle;">
+            @Model.Session.Status
+        </span>
+    }
+</h1>
+
+@if (Model.Session == null)
+{
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-state-icon">❓</div>
+            <p>Call session not found.</p>
+            <a href="/" class="btn btn-primary" style="margin-top: 12px;">Back to Active Calls</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Caller ID</div>
+            <div style="font-size: 16px; font-weight: 600;">@Model.Session.CallerId</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Duration</div>
+            <div style="font-size: 16px; font-weight: 600;">@Model.Session.Duration.ToString(@"hh\:mm\:ss")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Started</div>
+            <div style="font-size: 16px; font-weight: 600;">@Model.Session.StartTime.ToString("HH:mm:ss")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Correlation ID</div>
+            <div style="font-size: 12px; font-weight: 400; word-break: break-all;">@Model.Session.CorrelationId</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Bot Endpoint ID</div>
+            <div style="font-size: 12px; font-weight: 400; word-break: break-all;">@(Model.Session.BotEndpointId ?? "—")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Resource ID</div>
+            <div style="font-size: 12px; font-weight: 400; word-break: break-all;">@(Model.Session.ResourceId ?? "—")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Media SDK Service URL</div>
+            <div style="font-size: 12px; font-weight: 400; word-break: break-all;">@(Model.Session.RoomConnector?.ServiceOrigin ?? "—")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Media Session GUID</div>
+            <div style="font-size: 12px; font-weight: 400; word-break: break-all;">@(Model.Session.MediaSessionId ?? "—")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Media SDK Pkts (Sent / Recv)</div>
+            <div style="font-size: 16px; font-weight: 600;">@(Model.Session.MediaHandler?.MediaPacketsSent ?? 0) / @(Model.Session.RoomConnector?.MediaPacketsReceived ?? 0)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">OpenAI Pkts (Sent / Recv)</div>
+            <div style="font-size: 16px; font-weight: 600;">@(Model.Session.AiService?.OpenAIPacketsSent ?? 0) / @(Model.Session.AiService?.OpenAIPacketsReceived ?? 0)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Data Packets Dropped</div>
+            <div style="font-size: 16px; font-weight: 600;">@(Model.Session.RoomConnector?.DataPacketsDropped ?? 0)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Remote Audio Streams</div>
+            <div style="font-size: 16px; font-weight: 600;">@(Model.Session.RoomConnector?.RemoteAudioStreamCount ?? 0)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Remote Data Streams</div>
+            <div style="font-size: 16px; font-weight: 600;">@(Model.Session.RoomConnector?.RemoteDataStreamCount ?? 0)</div>
+        </div>
+    </div>
+
+    var remoteStreams = Model.Session.RoomConnector?.RemoteStreams ?? Array.Empty<RemoteStreamInfo>();
+    if (remoteStreams.Any())
+    {
+        <div class="card" style="margin-bottom: 16px;">
+            <h2>Remote Streams</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Stream ID</th>
+                        <th>Endpoint ID</th>
+                        <th>Last State</th>
+                        <th>State At</th>
+                        <th>Connected Since</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var stream in remoteStreams)
+                    {
+                        <tr>
+                            <td><span class="badge badge-active">@stream.StreamType</span></td>
+                            <td>@stream.StreamId</td>
+                            <td style="font-size: 11px; word-break: break-all;">@stream.EndpointId</td>
+                            <td style="font-size: 11px; font-family: monospace;">@(stream.LastState ?? "—")</td>
+                            <td>@(stream.LastStateAt?.ToString("HH:mm:ss") ?? "—")</td>
+                            <td>@stream.AddedAt.ToString("HH:mm:ss")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    var stateLog = Model.Session.RoomConnector?.StreamStateLog ?? Array.Empty<string>();
+    if (stateLog.Any())
+    {
+        <div class="card" style="margin-bottom: 16px;">
+            <h2>Stream State Events</h2>
+            <div style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; padding: 8px; background: var(--bg-primary); border-radius: 4px;">
+                @foreach (var entry in stateLog)
+                {
+                    <div>@entry</div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="card" style="margin-bottom: 16px;">
+        <h2>Test Audio</h2>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn test-audio-btn" style="background:#0078d4;color:#fff;padding:10px 20px;" onclick="sendTestAudio('media')">🔊 Play to Media SDK</button>
+            <button class="btn test-audio-btn" style="background:#107c10;color:#fff;padding:10px 20px;" onclick="sendTestAudio('openai')">🤖 Play to OpenAI</button>
+            <button class="btn" id="hangup-btn" style="background:#d13438;color:#fff;padding:10px 20px;" onclick="hangUp()">📞 Hang Up</button>
+        </div>
+        <div id="test-result" style="margin-top: 8px;"></div>
+    </div>
+
+    <div class="card">
+        <h2>Transcript</h2>
+        <div class="transcript-container" id="transcript">
+            @if (Model.Transcript.Count == 0)
+            {
+                <div class="empty-state" id="empty-transcript">
+                    <p>Waiting for conversation...</p>
+                </div>
+            }
+            @foreach (var entry in Model.Transcript)
+            {
+                <div class="transcript-entry">
+                    <span class="transcript-speaker @entry.Speaker.ToLower()">@entry.Speaker</span>
+                    <span class="transcript-time">@entry.Timestamp.ToString("HH:mm:ss")</span>
+                    <div class="transcript-text">@entry.Text</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+        <h2>Data Channel Messages <span id="data-msg-count" style="font-size: 12px; color: var(--text-secondary);"></span></h2>
+        <div id="data-messages" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+            <div class="empty-state" id="empty-data-messages">
+                <p>No data channel messages yet...</p>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+@if (Model.Session != null)
+{
+<script>
+    const callId = '@Model.Session.CorrelationId';
+
+    var _testBusy = false;
+    async function sendTestAudio(target) {
+        if (_testBusy) return;
+        _testBusy = true;
+        var btns = document.querySelectorAll('.test-audio-btn');
+        btns.forEach(function(b) { b.disabled = true; });
+        const result = document.getElementById('test-result');
+        result.innerHTML = '<span style="color: var(--text-secondary);">⏳ Sending...</span>';
+        try {
+            const resp = await fetch('/api/calls/' + callId + '/test/' + target, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                result.innerHTML = '<span style="color: #107c10;">✅ ' + data.message + '</span>';
+            } else {
+                result.innerHTML = '<span style="color: #d13438;">❌ ' + (data.error || 'Failed') + '</span>';
+            }
+        } catch (e) {
+            result.innerHTML = '<span style="color: #d13438;">❌ ' + e.message + '</span>';
+        } finally {
+            // Keep buttons disabled for 5s to allow VAD cycle to complete
+            setTimeout(function() { _testBusy = false; btns.forEach(function(b) { b.disabled = false; }); }, 5000);
+        }
+    }
+
+    async function hangUp() {
+        var btn = document.getElementById('hangup-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Ending...';
+        const result = document.getElementById('test-result');
+        try {
+            const resp = await fetch('/api/calls/' + callId + '/hangup', { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                result.innerHTML = '<span style="color: #107c10;">✅ ' + data.message + '</span>';
+                document.querySelectorAll('.test-audio-btn').forEach(function(b) { b.disabled = true; });
+            } else {
+                result.innerHTML = '<span style="color: #d13438;">❌ ' + (data.error || 'Failed') + '</span>';
+                btn.disabled = false;
+                btn.textContent = '📞 Hang Up';
+            }
+        } catch (e) {
+            result.innerHTML = '<span style="color: #d13438;">❌ ' + e.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = '📞 Hang Up';
+        }
+    }
+
+    // Data channel messages polling
+    var _dataMessagesSince = 0;
+    async function pollDataMessages() {
+        try {
+            const resp = await fetch('/api/calls/' + callId + '/data-messages?since=' + _dataMessagesSince);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.messages && data.messages.length > 0) {
+                var container = document.getElementById('data-messages');
+                var empty = document.getElementById('empty-data-messages');
+                if (empty) empty.remove();
+
+                data.messages.forEach(function(msg) {
+                    var timestamp = msg.timestamp ?? msg.Timestamp ?? '';
+                    var streamId = msg.streamId ?? msg.StreamId ?? '';
+                    var payloadType = msg.payloadType ?? msg.PayloadType ?? '';
+                    var dataLength = msg.dataLength ?? msg.DataLength ?? 0;
+                    var contentText = msg.content ?? msg.Content ?? '';
+
+                    var div = document.createElement('div');
+                    div.style.cssText = 'padding: 6px 8px; margin-bottom: 4px; background: var(--bg-primary); border-radius: 4px; border-left: 3px solid #0078d4;';
+                    var header = '<span style="color: var(--text-secondary); font-size: 11px;">'
+                        + timestamp + ' | Stream ' + streamId
+                        + ' | Type ' + payloadType
+                        + ' | ' + dataLength + ' bytes</span>';
+                    var content = '<div style="margin-top: 4px; white-space: pre-wrap; word-break: break-all;">'
+                        + escapeHtml(contentText) + '</div>';
+                    div.innerHTML = header + content;
+                    container.appendChild(div);
+                });
+                container.scrollTop = container.scrollHeight;
+                _dataMessagesSince = data.total;
+            }
+            document.getElementById('data-msg-count').textContent = '(' + (data.total || 0) + ')';
+        } catch (e) { }
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    setInterval(pollDataMessages, 2000);
+    pollDataMessages();
+</script>
+}
+}
